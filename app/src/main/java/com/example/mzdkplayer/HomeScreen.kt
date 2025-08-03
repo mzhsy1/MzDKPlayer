@@ -62,7 +62,7 @@ fun HomeScreen() {
                     leadingContent = {
                         Icon(
                             painter = painterResource(id = iconList[index]),
-                            contentDescription = "邮件图标"
+                            contentDescription = item
                         )
                     },
                     headlineContent = { Text(item) },
