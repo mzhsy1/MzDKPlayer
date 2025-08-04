@@ -55,6 +55,8 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer.dash)
     implementation(libs.androidx.media3.ui)
     implementation(libs.akdanmaku)
+    implementation(libs.accompanist.permissions)
+    implementation(libs.androidx.material3)
     implementation(libs.androidx.datastore.preferences)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)

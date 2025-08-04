@@ -1,10 +1,13 @@
 [versions]
+accompanistPermissions = "0.37.3"
+accompanistPermissionsVersion = "0.37.3"
 agp = "8.12.0"
 akdanmaku = "1.0.3"
 kotlin = "2.2.0"
 coreKtx = "1.16.0"
 appcompat = "1.7.1"
 composeBom = "2025.07.00"
+material3 = "1.3.2"
 tvFoundation = "1.0.0-alpha12"
 tvMaterial = "1.0.1"
 media3Ui = "1.8.0"
@@ -14,9 +17,12 @@ datastorePreferences = "1.1.7"
 navigationCompose = "2.9.3"
 
 [libraries]
+accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
+accompanist-permissions-v037 = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissionsVersion" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+androidx-material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }

@@ -8,16 +8,26 @@
     <uses-feature
         android:name="android.software.leanback"
         android:required="false" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 外部存储读取权限 -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" /><!--add 2022-2-11 Android11-->
+
+    <!-- 外部存储写入权限 -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
     <application
         android:allowBackup="true"
         android:banner="@mipmap/ic_launcher"
         android:icon="@mipmap/ic_launcher"
+        android:requestLegacyExternalStorage="true"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.MzDKPlayer">
         <activity
-            android:name=".MainActivity"
+            android:name="org.mz.mzdkplayer.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
