@@ -1,6 +1,9 @@
 package org.mz.mzdkplayer
 
+import android.content.Context
+import android.os.Build
 import android.provider.MediaStore
+import android.util.Log
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,6 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
+import androidx.navigation.NavHostController
+import androidx.navigation.navOptions
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.Text
@@ -19,28 +25,34 @@ import com.example.mzdkplayer.R
 import org.mz.mzdkplayer.ui.theme.myListItemBorder
 import org.mz.mzdkplayer.ui.theme.myListItemColor
 import java.io.File
+import java.net.URLDecoder
+import java.net.URLEncoder
+import kotlin.math.log
 
 @Composable
-fun FileScreen(path: String?) {
+fun FileScreen(path: String?, navController: NavHostController) {
     val context = LocalContext.current
     val files = remember { mutableStateListOf<File>() }
 
-    LaunchedEffect(Unit) {
-        val projection = arrayOf(
-            MediaStore.Files.FileColumns.DATA,
-            MediaStore.Files.FileColumns.DISPLAY_NAME
-        )
-        val cursor = context.contentResolver.query(
-            MediaStore.Files.getContentUri(path),
-            projection,
-            null,
-            null,
-            null
-        )
-        cursor?.use {
-            while (it.moveToNext()) {
-                val path = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA))
-                files.add(File(path))
+    LaunchedEffect(path) {
+        files.clear()
+        val decodedPath = URLDecoder.decode(path ?: "", "UTF-8")
+        if (decodedPath.isEmpty()) return@LaunchedEffect
+
+        // 1. 尝试 MediaStore 查询
+        val mediaStoreFiles = queryMediaStore(context, decodedPath)
+
+        if (mediaStoreFiles.isNotEmpty()) {
+            Log.d("mediaStoreFiles",mediaStoreFiles[0].path)
+            files.addAll(mediaStoreFiles)
+            return@LaunchedEffect
+        }
+
+        // 2. 降级到文件系统 API
+        val dir = File(decodedPath)
+        if (dir.exists() && dir.isDirectory) {
+            dir.listFiles()?.let {
+                files.addAll(it.toList())
             }
         }
     }
@@ -49,28 +61,59 @@ fun FileScreen(path: String?) {
         items(files) { file ->
             ListItem(
                 selected = false,
-                onClick = {  },
-
-                modifier = Modifier.padding(top = 2.dp),
-                colors = myListItemColor(),
-                border = myListItemBorder(),
-                leadingContent = {
-                    if (file.isDirectory){
-                        Icon(
-                            painter = painterResource(id = R.drawable.localfile),
-                            contentDescription = "wenj"
-                        )}else{
-                        Icon(
-                            painter = painterResource(id = R.drawable.baseline_insert_drive_file_24),
-                            contentDescription = "wenj"
-                        )
+                onClick = {
+                    if (file.isDirectory) {
+                        val encoded = URLEncoder.encode(file.path, "UTF-8")
+                        navController.navigate("FilePage/$encoded")
                     }
                 },
-                headlineContent = { Text(file.name) },
-                trailingContent = {
-
-                }
+                colors = myListItemColor(),
+                leadingContent = {
+                    Icon(
+                        painter = if (file.isDirectory) {
+                            painterResource(R.drawable.localfile)
+                        } else {
+                            painterResource(R.drawable.baseline_insert_drive_file_24)
+                        },
+                        contentDescription = null
+                    )
+                },
+                headlineContent = { Text(file.name) }
             )
         }
     }
 }
+
+private fun queryMediaStore(context: Context, path: String): List<File> {
+    val normalizedPath = if (path.endsWith("/")) path else "$path/"
+    val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
+    } else {
+        MediaStore.Files.getContentUri("external")
+    }
+    val selection = """
+        ${MediaStore.Files.FileColumns.DATA} LIKE ? 
+        AND ${MediaStore.Files.FileColumns.DATA} NOT LIKE ?
+    """.trimIndent()
+    val selectionArgs = arrayOf("$normalizedPath%", "$normalizedPath%/%")
+
+    return context.contentResolver.query(
+        collection,
+        arrayOf(MediaStore.Files.FileColumns.DATA),
+        selection,
+        selectionArgs,
+        null
+    )?.use { cursor ->
+        generateSequence { if (cursor.moveToNext()) cursor.getString(0) else null }
+            .mapNotNull { File(it).takeIf { it.exists() } }
+            .toList()
+    } ?: emptyList()
+}
+//navOptions {
+//                        popUpTo("FilePage/${URLEncoder.encode(pathUri, "UTF-8")}") {
+//                            inclusive = true
+//                            saveState = false
+//                        }
+//                        launchSingleTop = true
+//                        restoreState = false
+//                    }

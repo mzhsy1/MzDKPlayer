@@ -37,6 +37,7 @@ import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.NavigationDrawer
 import com.example.mzdkplayer.R
+import java.net.URLDecoder
 
 
 class MainActivity : AppCompatActivity() {
@@ -158,8 +159,14 @@ class MainActivity : AppCompatActivity() {
                         })
                 }
                 composable("FilePage/{path}") {backStackEntry ->
-                    val path = backStackEntry.arguments?.getString("path")
-                    FileScreen(path)
+                    val encodedPath = backStackEntry.arguments?.getString("path")
+                    if (encodedPath!=null){
+
+                        val path = URLDecoder.decode(encodedPath, "UTF-8")
+                        Log.d("encodedPath",path)
+                        FileScreen(path,mainNavController)
+                    }
+
                 }
             }
         }

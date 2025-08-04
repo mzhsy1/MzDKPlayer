@@ -1,6 +1,7 @@
 package org.mz.mzdkplayer
 
 
+import android.os.Environment
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +30,8 @@ import org.mz.mzdkplayer.ui.theme.FilePermissionScreen
 
 import org.mz.mzdkplayer.ui.theme.myListItemBorder
 import org.mz.mzdkplayer.ui.theme.myListItemColor
+import java.net.URLDecoder
+import java.net.URLEncoder
 
 
 @Composable
@@ -42,47 +45,46 @@ fun HomeScreen(mainNavController: NavHostController) {
         R.drawable.dolby_vision_seeklogo
     )
     Box(modifier = Modifier.fillMaxSize()) {
-        Column {  LazyVerticalGrid(
-            columns = GridCells.Fixed(4),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(70.dp)
-                .padding(top = 3.dp)
-        ) {
-            itemsIndexed(items) { index, item ->
-                ListItem(
-                    selected =  selectPanel == item,
-                    onClick = { selectPanel = item;when(item) {"local" -> mainNavController.navigate(
-                        "FilePage/external",
-                        navOptions {
-                            popUpTo("FilePage/external") {
-                                inclusive = true
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        })}; },
-                    modifier = Modifier.padding(top = 2.dp),
-                    colors = myListItemColor(),
-                    border = myListItemBorder(),
-                    leadingContent = {
-                        Icon(
-                            painter = painterResource(id = iconList[index]),
-                            contentDescription = item
-                        )
-                    },
-                    headlineContent = { Text(item) },
-                    trailingContent = {
+        Column {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(4),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(70.dp)
+                    .padding(top = 3.dp)
+            ) {
+                itemsIndexed(items) { index, item ->
+                    ListItem(
+                        selected = selectPanel == item,
+                        onClick = {
+                            val primaryStoragePath = Environment.getExternalStorageDirectory().absolutePath
+                            selectPanel = item;when (item) {
+                            "local" -> mainNavController.navigate(
+                                "FilePage/${URLEncoder.encode(primaryStoragePath,"UTF-8")}")
+                        };
+                        },
+                        modifier = Modifier.padding(top = 2.dp),
+                        colors = myListItemColor(),
+                        border = myListItemBorder(),
+                        leadingContent = {
+                            Icon(
+                                painter = painterResource(id = iconList[index]),
+                                contentDescription = item
+                            )
+                        },
+                        headlineContent = { Text(item) },
+                        trailingContent = {
 
-                    }
-                )
+                        }
+                    )
+                }
+
             }
-
-        }
             FilePermissionScreen()
 
-        } }
+        }
+    }
 
 }
 
