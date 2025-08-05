@@ -7,7 +7,9 @@ kotlin = "2.2.0"
 coreKtx = "1.16.0"
 appcompat = "1.7.1"
 composeBom = "2025.07.00"
+logbackAndroid = "3.0.0"
 material3 = "1.3.2"
+smbj = "0.14.0"
 tvFoundation = "1.0.0-alpha12"
 tvMaterial = "1.0.1"
 media3Ui = "1.8.0"
@@ -39,6 +41,8 @@ androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "medi
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 akdanmaku = { module = "com.kuaishou:akdanmaku", version.ref = "akdanmaku" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+logback-android = { module = "com.github.tony19:logback-android", version.ref = "logbackAndroid" }
+smbj = { module = "com.hierynomus:smbj", version.ref = "smbj" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

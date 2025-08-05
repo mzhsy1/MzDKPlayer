@@ -56,6 +56,9 @@ dependencies {
     implementation(libs.androidx.media3.ui)
     implementation(libs.akdanmaku)
     implementation(libs.accompanist.permissions)
+    implementation(libs.smbj)
+    implementation(libs.logback.android)
+
     implementation(libs.androidx.material3)
     implementation(libs.androidx.datastore.preferences)
     androidTestImplementation(platform(libs.androidx.compose.bom))

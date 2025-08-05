@@ -1,4 +1,4 @@
-package org.mz.mzdkplayer
+package org.mz.mzdkplayer.ui.screen
 
 
 import android.os.Environment
@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import androidx.navigation.navOptions
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.Text
@@ -30,7 +29,6 @@ import org.mz.mzdkplayer.ui.theme.FilePermissionScreen
 
 import org.mz.mzdkplayer.ui.theme.myListItemBorder
 import org.mz.mzdkplayer.ui.theme.myListItemColor
-import java.net.URLDecoder
 import java.net.URLEncoder
 
 
@@ -62,6 +60,7 @@ fun HomeScreen(mainNavController: NavHostController) {
                             selectPanel = item;when (item) {
                             "local" -> mainNavController.navigate(
                                 "FilePage/${URLEncoder.encode(primaryStoragePath,"UTF-8")}")
+                            "smb" -> mainNavController.navigate("SMBScreen")
                         };
                         },
                         modifier = Modifier.padding(top = 2.dp),

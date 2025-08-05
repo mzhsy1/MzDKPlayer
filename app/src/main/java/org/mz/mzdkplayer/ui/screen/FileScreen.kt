@@ -1,4 +1,4 @@
-package org.mz.mzdkplayer
+package org.mz.mzdkplayer.ui.screen
 
 import android.content.Context
 import android.os.Build
@@ -15,19 +15,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import androidx.navigation.NavHostController
-import androidx.navigation.navOptions
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
 import com.example.mzdkplayer.R
-import org.mz.mzdkplayer.ui.theme.myListItemBorder
 import org.mz.mzdkplayer.ui.theme.myListItemColor
 import java.io.File
 import java.net.URLDecoder
 import java.net.URLEncoder
-import kotlin.math.log
 
 @Composable
 fun FileScreen(path: String?, navController: NavHostController) {
@@ -68,6 +65,8 @@ fun FileScreen(path: String?, navController: NavHostController) {
                     }
                 },
                 colors = myListItemColor(),
+                modifier = Modifier.padding(10.dp),
+                scale = ListItemDefaults.scale(scale = 1.0f,focusedScale=1.02f),
                 leadingContent = {
                     Icon(
                         painter = if (file.isDirectory) {
