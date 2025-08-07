@@ -39,7 +39,8 @@ import androidx.tv.material3.NavigationDrawer
 import com.example.mzdkplayer.R
 import org.mz.mzdkplayer.ui.screen.FileScreen
 import org.mz.mzdkplayer.ui.screen.HomeScreen
-import org.mz.mzdkplayer.ui.screen.SMBApp
+
+import org.mz.mzdkplayer.ui.screen.SMBListScreen
 import java.net.URLDecoder
 
 
@@ -171,7 +172,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 composable("SMBScreen") {
-                    SMBApp()
+                    SMBListScreen()
                 }
             }
         }

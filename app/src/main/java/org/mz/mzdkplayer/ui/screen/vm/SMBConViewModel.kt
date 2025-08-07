@@ -1,8 +1,6 @@
 package org.mz.mzdkplayer.ui.screen.vm
 
-import android.content.Context
 import android.util.Log
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hierynomus.protocol.transport.TransportException
@@ -19,7 +17,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-class SMBViewModel : ViewModel() {
+class SMBConViewModel : ViewModel() {
     private val _connectionStatus = MutableStateFlow("未连接")
     val connectionStatus: StateFlow<String> = _connectionStatus
     private val _fileList = MutableStateFlow<List<String>>(emptyList())

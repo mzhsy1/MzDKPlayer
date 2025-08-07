@@ -5,16 +5,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material.icons.Icons
-import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -31,12 +26,14 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 
-import org.mz.mzdkplayer.ui.screen.vm.SMBViewModel
+import org.mz.mzdkplayer.ui.screen.vm.SMBConViewModel
 
-
+/**
+ * SMB连接界面
+ */
 @Composable
-fun SMBApp() {
-    val viewModel: SMBViewModel = viewModel()
+fun SMBConScreen() {
+    val viewModel: SMBConViewModel = viewModel()
     var ip by remember { mutableStateOf("192.168.1.3") }
     var username by remember { mutableStateOf("wang") }
     var password by remember { mutableStateOf("Wa541888") }
