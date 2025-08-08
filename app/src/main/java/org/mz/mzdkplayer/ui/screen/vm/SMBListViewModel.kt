@@ -33,9 +33,14 @@ class SMBListViewModel(application: Application) : AndroidViewModel(application)
     /**
      * add
      */
-    fun addConnection(connection: SMBConnection) {
-        repository.addConnection(connection)
-        loadConnections()
+    fun addConnection(connection: SMBConnection): Boolean{
+        if (!hasDuplicateConnection(_connections.value,connection)){
+            repository.addConnection(connection)
+            loadConnections()
+            return true
+        }else{
+            return false
+        }
     }
 
     /**
@@ -52,5 +57,16 @@ class SMBListViewModel(application: Application) : AndroidViewModel(application)
 
     fun selectConnection(connection: SMBConnection) {
         _selectedConnection.value = connection
+    }
+
+    fun hasDuplicateConnection(connections: List<SMBConnection>, newConnection: SMBConnection): Boolean {
+        return connections.any { existing ->
+            existing.id == newConnection.id ||
+                    (existing.ip == newConnection.ip &&
+                            existing.username == newConnection.username &&
+                            existing.shareName == newConnection.shareName &&
+                            existing.name == newConnection.name &&
+                            existing.password == newConnection.password)
+        }
     }
 }

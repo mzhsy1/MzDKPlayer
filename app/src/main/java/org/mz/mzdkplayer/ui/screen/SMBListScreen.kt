@@ -33,6 +33,7 @@ import androidx.tv.material3.ShapeDefaults
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.logic.model.SMBConnection
 import org.mz.mzdkplayer.ui.screen.vm.SMBListViewModel
+import org.mz.mzdkplayer.ui.theme.MyIconButton
 
 /**
  * SMB列表
@@ -44,29 +45,7 @@ fun SMBListScreen() {
     val connections by smbListViewModel.connections.collectAsState()
     Column(modifier = Modifier.padding(20.dp)) {
         // 添加新连接按钮
-        Button(
-            onClick = {},
-            modifier = Modifier.padding(top = 10.dp, start = 8.dp),
-            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-            shape = ButtonDefaults.shape(shape = ShapeDefaults.ExtraSmall),
-            colors = ButtonDefaults.colors(
-                Color.White,
-                Color.Black,
-                Color.White,
-                Color.Black
-            )
-
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Add,
-                contentDescription = null
-            )
-            Spacer(Modifier.size(8.dp))
-            Text(
-                text = "添加新连接",
-                style = MaterialTheme.typography.titleSmall
-            )
-        }
+        MyIconButton("添加新SMB链接",Icons.Outlined.Add, Modifier.padding(10.dp), onClick = {})
         if (connections.isEmpty()) {
             Text("no links", color = Color.White, fontSize = 20.sp)
         } else {
