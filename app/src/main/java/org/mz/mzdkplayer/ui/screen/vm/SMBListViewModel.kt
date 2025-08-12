@@ -78,6 +78,20 @@ class SMBListViewModel(application: Application) : AndroidViewModel(application)
     fun setSelectedIndex(index: Int) {
         _selectedIndex.value = index
     }
+
+    private val _selectedId = MutableStateFlow("") // 初始无选中
+    val selectedId = _selectedId.asStateFlow()
+
+    fun setSelectedId(id: String) {
+        _selectedId.value = id
+    }
+
+    private val _isLongPressInProgress = MutableStateFlow(false) // 初始无选中
+    val isLongPressInProgress = _isLongPressInProgress.asStateFlow()
+
+    fun setIsLongPressInProgress(isLongPressInProgress: Boolean) {
+        _isLongPressInProgress.value = isLongPressInProgress
+    }
     fun hasDuplicateConnection(connections: List<SMBConnection>, newConnection: SMBConnection): Boolean {
         return connections.any { existing ->
             existing.id == newConnection.id ||
