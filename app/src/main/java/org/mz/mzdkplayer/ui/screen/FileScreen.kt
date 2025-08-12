@@ -20,7 +20,8 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
-import com.example.mzdkplayer.R
+import org.mz.mzdkplayer.R
+
 import org.mz.mzdkplayer.ui.theme.myListItemColor
 import java.io.File
 import java.net.URLDecoder

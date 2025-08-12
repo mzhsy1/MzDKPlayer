@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.mzdkplayer"
+    namespace = "org.mz.mzdkplayer"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.mzdkplayer"
+        applicationId = "org.mz.mzdkplayer"
         minSdk = 21
         targetSdk = 36
         versionCode = 1

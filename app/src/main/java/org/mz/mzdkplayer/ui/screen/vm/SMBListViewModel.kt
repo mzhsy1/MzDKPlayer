@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.mz.mzdkplayer.logic.model.ConnectionRepository
 import org.mz.mzdkplayer.logic.model.SMBConnection
 
@@ -13,7 +14,10 @@ import org.mz.mzdkplayer.logic.model.SMBConnection
 class SMBListViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = ConnectionRepository(application)
     private val _connections = MutableStateFlow<List<SMBConnection>>(emptyList())
+    private val _isOPanelShow = MutableStateFlow<Boolean>(false)
     val connections: StateFlow<List<SMBConnection>> = _connections
+
+    val isOPanelShow: StateFlow<Boolean> = _isOPanelShow
 
     // 当前选中的连接（用于文件列表）
     private val _selectedConnection = MutableStateFlow<SMBConnection?>(null)
@@ -29,6 +33,8 @@ class SMBListViewModel(application: Application) : AndroidViewModel(application)
     private fun loadConnections() {
         _connections.value = repository.getConnections()
     }
+
+
 
     /**
      * add
@@ -59,6 +65,19 @@ class SMBListViewModel(application: Application) : AndroidViewModel(application)
         _selectedConnection.value = connection
     }
 
+    fun openOPlane(){
+        _isOPanelShow.value = true
+    }
+    fun closeOPanel(){
+        _isOPanelShow.value = false
+    }
+
+    private val _selectedIndex = MutableStateFlow(-1) // 初始无选中
+    val selectedIndex = _selectedIndex.asStateFlow()
+
+    fun setSelectedIndex(index: Int) {
+        _selectedIndex.value = index
+    }
     fun hasDuplicateConnection(connections: List<SMBConnection>, newConnection: SMBConnection): Boolean {
         return connections.any { existing ->
             existing.id == newConnection.id ||

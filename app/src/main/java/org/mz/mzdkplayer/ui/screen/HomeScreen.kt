@@ -24,7 +24,8 @@ import androidx.navigation.NavHostController
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.Text
-import com.example.mzdkplayer.R
+import org.mz.mzdkplayer.R
+
 import org.mz.mzdkplayer.ui.theme.FilePermissionScreen
 
 import org.mz.mzdkplayer.ui.theme.myListItemBorder
@@ -49,8 +50,8 @@ fun HomeScreen(mainNavController: NavHostController) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(70.dp)
-                    .padding(top = 3.dp)
+                    .height(90.dp)
+                    .padding(10.dp)
             ) {
                 itemsIndexed(items) { index, item ->
                     ListItem(
@@ -60,7 +61,7 @@ fun HomeScreen(mainNavController: NavHostController) {
                             selectPanel = item;when (item) {
                             "local" -> mainNavController.navigate(
                                 "FilePage/${URLEncoder.encode(primaryStoragePath,"UTF-8")}")
-                            "smb" -> mainNavController.navigate("SMBScreen")
+                            "smb" -> mainNavController.navigate("SMBListScreen")
                         };
                         },
                         modifier = Modifier.padding(top = 2.dp),

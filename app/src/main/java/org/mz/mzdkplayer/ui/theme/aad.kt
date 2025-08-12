@@ -1,11 +1,13 @@
 package org.mz.mzdkplayer.ui.theme
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -53,32 +55,7 @@ fun FilePermissionScreen() {
             } else {
                 Text("需要所有文件访问权限")
                 Button(onClick = {
-                    try {
-                        // 首先尝试标准的 Intent
-                        val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                        intent.data = "package:${context.packageName}".toUri()
-                        context.startActivity(intent)
-                    } catch (e: ActivityNotFoundException) {
-                        try {
-                            // 如果失败，尝试备用 Intent
-                            val intent = Intent()
-                            intent.action = Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION
-                            intent.data = "package:${context.packageName}".toUri()
-                            context.startActivity(intent)
-                        } catch (e: ActivityNotFoundException) {
-                            // 如果还是失败，打开应用详情设置页面
-                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                            intent.data = "package:${context.packageName}".toUri()
-                            context.startActivity(intent)
-
-                            // 可以显示一个 Snackbar 提示用户手动开启权限
-                            Toast.makeText(
-                                context,
-                                "请在权限设置中启用'所有文件访问'权限",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    }
+                    requestManageStoragePermission(context)
                 }) {
                     Text("请求所有文件访问权限")
                 }
@@ -117,4 +94,25 @@ fun FilePermissionScreen() {
             }
 
     }
+}
+@RequiresApi(Build.VERSION_CODES.R)
+private fun requestManageStoragePermission(context: Context) {
+    val intents = listOf(
+        Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+            .setData("package:${context.packageName}".toUri()),
+        Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+            .setData("package:${context.packageName}".toUri()),
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            .setData("package:${context.packageName}".toUri())
+    )
+
+    for (intent in intents) {
+        try {
+            context.startActivity(intent)
+            return
+        } catch (e: Exception) {
+            continue
+        }
+    }
+    Toast.makeText(context, "请在设置中手动开启权限", Toast.LENGTH_LONG).show()
 }

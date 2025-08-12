@@ -29,11 +29,17 @@ class SMBConViewModel : ViewModel() {
 
     private val mutex = Mutex()  // 协程互斥锁
     fun connectToSMB(ip: String, username: String, password: String, shareName: String) {
+
         viewModelScope.launch {
             disconnectSMB()  // 先清理旧连接
+//            withContext(Dispatchers.Main) {
+//                _connectionStatus.value = "正在尝试连接"
+//            }
             mutex.withLock {
                 try {
+
                     withContext(Dispatchers.IO) {
+
                         if (!isConnected()) {  // 避免重复连接
                             val client = SMBClient()
                             connection = client.connect(ip)
@@ -41,6 +47,7 @@ class SMBConViewModel : ViewModel() {
                             session = connection!!.authenticate(auth)
                             share = session!!.connectShare(shareName) as DiskShare
                         }
+
                     }
                     _connectionStatus.value = "已连接"
                     listFiles() // 获取文件列表
@@ -55,7 +62,7 @@ class SMBConViewModel : ViewModel() {
 
     // 列出文件
     fun listFiles() {
-        viewModelScope.launch {
+        viewModelScope.launch{
             try {
                 withContext(Dispatchers.IO) {
                     if (isConnected()) {  // 检查连接状态
@@ -70,6 +77,13 @@ class SMBConViewModel : ViewModel() {
                 disconnectSMB()
             } catch (e: Exception) {
                 _connectionStatus.value = "获取文件失败: ${e.message}"
+            }
+        }
+    }
+    fun changeSMBTest(){
+        viewModelScope.launch(Dispatchers.IO) {
+            withContext(Dispatchers.Main) {
+                _connectionStatus.value = "正在尝试连接"
             }
         }
     }

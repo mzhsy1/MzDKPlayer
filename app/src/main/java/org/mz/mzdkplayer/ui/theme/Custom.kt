@@ -101,7 +101,7 @@ fun TvTextField(
             cursorBrush = SolidColor(Color.White),
             interactionSource = interactionSource,
             singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
             keyboardActions = KeyboardActions(
                 onDone = { keyboardController?.hide() }
             ),

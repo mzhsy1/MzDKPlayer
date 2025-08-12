@@ -36,7 +36,8 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.NavigationDrawer
-import com.example.mzdkplayer.R
+
+import org.mz.mzdkplayer.ui.MzDKPlayerAPP
 import org.mz.mzdkplayer.ui.screen.FileScreen
 import org.mz.mzdkplayer.ui.screen.HomeScreen
 
@@ -54,6 +55,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         context = this
         val dm: DisplayMetrics = context.resources.displayMetrics
+        Log.d("dm",dm.densityDpi.toString())
         val newDensity: Float = dm.widthPixels / 960.0.toFloat();
 
         val newDensityDpi: Int = (newDensity * DisplayMetrics.DENSITY_DEFAULT).toInt();
@@ -66,115 +68,7 @@ class MainActivity : AppCompatActivity() {
             Log.d("isChangeDensityDpi", isChangeDensityDpi.toString())
         }
         setContent {
-
-            var selectedIndex by remember { mutableIntStateOf(0) }
-            val items =
-                listOf(
-                    "主页" to painterResource(id = R.drawable.baseline_home_24),
-                    "我的" to painterResource(id = R.drawable.baseline_account_circle_24),
-                    "设置" to painterResource(id = R.drawable.baseline_settings_24),
-                )
-
-            val mainNavController = rememberNavController()
-            val len = items.size
-
-            NavHost(
-                navController = mainNavController,
-                startDestination = "MainPage",
-                modifier = Modifier.background(Color.Black)
-            ) {
-                composable("MainPage") {
-                    val homeNavController = rememberNavController()
-                    NavigationDrawer(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .fillMaxHeight(),
-                        drawerContent = {
-                            Column(
-                                Modifier
-                                    .background(Color(38, 38, 42, 255))
-                                    .fillMaxHeight()
-                                    .padding(6.dp)
-                                    .widthIn(50.dp, 50.dp)
-                                    .selectableGroup(),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                items.forEachIndexed { index, item ->
-                                    val (text, icon) = item
-                                    ListItem(
-                                        selected = selectedIndex == index,
-                                        modifier = if (index == len - 0 || index == len - 1) Modifier
-                                            .widthIn(
-                                                50.dp
-                                            )
-                                            .height(50.dp)
-                                            .align(Alignment.End) else Modifier
-                                            .widthIn(
-                                                50.dp
-                                            )
-                                            .height(50.dp),
-                                        shape = ListItemDefaults.shape(RoundedCornerShape(50)),
-                                        onClick = {
-                                            selectedIndex = index
-                                            when (selectedIndex) {
-
-                                            }
-                                        },
-                                        leadingContent = {
-                                            Icon(
-                                                painter = icon,
-                                                contentDescription = null,
-                                            )
-                                            // Text(text, color = Color.White)
-                                        },
-                                        colors = ListItemDefaults.colors(
-                                            containerColor = Color(38, 38, 42, 255),
-                                            contentColor = Color(255, 255, 255),
-                                            selectedContainerColor = Color(251, 114, 153, 220),
-                                            selectedContentColor = Color(0, 0, 0),
-                                            focusedSelectedContentColor = Color(0, 0, 0),
-                                            focusedSelectedContainerColor = Color(255, 255, 255),
-                                            focusedContainerColor = Color(255, 255, 255),
-                                            focusedContentColor = Color(0, 0, 0)
-                                        ),
-                                        headlineContent = {},
-                                    )
-                                }
-                            }
-
-                        },
-                        drawerState = DrawerState(DrawerValue.Closed),
-                        content = {
-                            NavHost(
-                                navController = homeNavController,
-                                startDestination = "HomePage",
-                                modifier = Modifier
-                                    .background(Color.Black)
-                                    .fillMaxHeight()
-                                    .fillMaxWidth()
-                            ) {
-                                //声明名为MainPage的页面路由
-                                composable("HomePage") {
-                                    //页面路由对应的页面组件
-                                    HomeScreen(mainNavController)
-                                }
-
-                            }
-                        })
-                }
-                composable("FilePage/{path}") {backStackEntry ->
-                    val encodedPath = backStackEntry.arguments?.getString("path")
-                    if (encodedPath!=null){
-
-                        val path = URLDecoder.decode(encodedPath, "UTF-8")
-                        Log.d("encodedPath",path)
-                        FileScreen(path, mainNavController)
-                    }
-                }
-                composable("SMBScreen") {
-                    SMBListScreen()
-                }
-            }
+            MzDKPlayerAPP()
         }
 
         }
