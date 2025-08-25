@@ -35,6 +35,8 @@ import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.ui.screen.FileScreen
 import org.mz.mzdkplayer.ui.screen.HomeScreen
 import org.mz.mzdkplayer.ui.screen.SMBConScreen
+import org.mz.mzdkplayer.ui.screen.SMBFileListScreen
+
 import org.mz.mzdkplayer.ui.screen.SMBListScreen
 import java.net.URLDecoder
 
@@ -144,6 +146,16 @@ fun MzDKPlayerAPP() {
                     val path = URLDecoder.decode(encodedPath, "UTF-8")
                     Log.d("encodedPath",path)
                     FileScreen(path, mainNavController)
+                }
+            }
+
+            composable("SMBFileListScreen/{path}") {backStackEntry ->
+                val encodedPath = backStackEntry.arguments?.getString("path")
+                if (encodedPath!=null){
+
+                    val path = URLDecoder.decode(encodedPath, "UTF-8")
+                    Log.d("encodedPath",path)
+                    SMBFileListScreen(path, mainNavController)
                 }
             }
             composable("SMBListScreen") {

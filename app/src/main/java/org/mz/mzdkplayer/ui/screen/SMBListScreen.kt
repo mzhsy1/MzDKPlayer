@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -32,7 +34,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,6 +54,8 @@ import org.mz.mzdkplayer.ui.theme.myCardColor
 import org.mz.mzdkplayer.ui.theme.myCardScaleStyle
 import org.mz.mzdkplayer.ui.style.myListItemBorder
 import org.mz.mzdkplayer.ui.style.myListItemColor
+import org.mz.mzdkplayer.ui.style.myListItemCoverColor
+import java.net.URLEncoder
 
 /**
  * SMB列表
@@ -103,7 +109,7 @@ fun SMBListScreen(mainNavController: NavHostController) {
                 Modifier.padding(10.dp),
                 onClick = { mainNavController.navigate("SMBConScreen") })
             if (connections.isEmpty()) {
-                Text("no links", color = Color.White, fontSize = 20.sp)
+                Text("没有SMB连接", color = Color.White, fontSize = 20.sp, modifier = Modifier.padding(10.dp),)
             } else {
                 // 连接卡片列表
                 LazyColumn(state = listState) {
@@ -112,8 +118,9 @@ fun SMBListScreen(mainNavController: NavHostController) {
                             index = index,
                             connection = conn,
                             onClick = {
-                                smbListViewModel.selectConnection(conn)
 
+                                mainNavController.navigate(
+                                    "SMBFileListScreen/${URLEncoder.encode("smb://${conn.username}:${conn.password}@${conn.ip}/${conn.shareName}/","UTF-8")}")
                             },
                             onLogClick = {
                                 smbListViewModel.setIsLongPressInProgress(true)  // 标记长按开始
@@ -136,21 +143,35 @@ fun SMBListScreen(mainNavController: NavHostController) {
                 }
             }
         }
-
+// 在 Box 中添加一个拦截层
+        if (isOPanelShow) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(color = Color.Black.copy(alpha = 0.35f))
+                    .clickable(enabled = false) {} // 完全拦截所有交互
+            )
+        }
         AnimatedVisibility(
             visible = isOPanelShow,
             modifier = Modifier
-                .align(Alignment.Center)
+                .align(Alignment.CenterEnd)
+                .padding(end = 30.dp)
+                .focusRequester(panelFocusRequester)// 添加焦点捕获，防止焦点流失
 
         ) {
 
             LazyColumn(
                 modifier = Modifier
-                    .background(Color.Black, shape = RoundedCornerShape(5))
-                    .border(2.dp, shape = RoundedCornerShape(5), color = Color.Gray)
-                    .size(200.dp) .focusRequester(panelFocusRequester)
-                    .focusable()  // 关键：允许获取焦点
-                ,
+                    .background(
+                        Color(40, 37, 37, 255),
+                        shape = RoundedCornerShape(5)
+                    )
+                    .size(260.dp)
+                    .focusRequester(panelFocusRequester)
+                    .focusable(),  // 关键：允许获取焦点
+                horizontalAlignment = Alignment.CenterHorizontally, // 水平居中对齐所有子项
+                verticalArrangement = Arrangement.Center, // 水平居中对齐所有子项
             ) {
 
 
@@ -158,48 +179,68 @@ fun SMBListScreen(mainNavController: NavHostController) {
                     val interactionSource = remember { MutableInteractionSource() }
                     val isPressed by interactionSource.collectIsPressedAsState()
 
-                        ListItem(
-                            modifier = Modifier,
-                            selected = true,
-                            onClick = {
-                                Log.d("isPressed",isPressed.toString())
-                                if (isPressed){
+                    ListItem(
+                        modifier = Modifier
+                            .width(230.dp)
+                            .padding(top = 10.dp),  // 添加水平内边距,
+                        selected = false,
+                        onClick = {
+                            Log.d("isPressed", isPressed.toString())
+                            if (isPressed) {
                                 smbListViewModel.closeOPanel()
                                 smbListViewModel.deleteConnection(selectedId);Log.d(
-                                "selectedId",
-                                selectedId
-                            )// 处理确认键
-                            }},
-                            interactionSource = interactionSource, // 绑定 InteractionSource,
-                            colors = myListItemColor(),
-                            border = myListItemBorder(),
-                            headlineContent = { Text("删除", color = Color.White) }
-                        )
-                    }
+                                    "selectedId",
+                                    selectedId
+                                )// 处理确认键
+                            }
+                        },
+                        interactionSource = interactionSource, // 绑定 InteractionSource,
+                        colors = myListItemCoverColor(),
+                        headlineContent = {
+                            Text(
+                                "删除", modifier = Modifier.fillMaxWidth(),  // 文字容器充满宽度
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    )
+                }
 
                 item {
                     ListItem(
-                        false,
+                        modifier = Modifier
+                            .width(230.dp)
+                            .padding(top = 10.dp),  // 添加水平内边距,,
+                        selected = false,
                         onClick = {},
-                        colors = myListItemColor(),
-                        border = myListItemBorder(),
-                        headlineContent = { Text("删除", color = Color.Black) },
+                        colors = myListItemCoverColor(),
+
+                        headlineContent = {
+                            Text(
+                                "编辑", modifier = Modifier.fillMaxWidth(),  // 文字容器充满宽度
+                                textAlign = TextAlign.Center
+                            )
+                        },
                     )
                 }
                 item {
                     ListItem(
-                        false,
-                        onClick = {},
-                        colors = myListItemColor(),
-                        border = myListItemBorder(),
-                        headlineContent = { Text("删除", color = Color.Black) },
+                        modifier = Modifier
+                            .width(230.dp)
+                            .padding(top = 10.dp),  // 添加水平内边距,,
+                        selected = false,
+                        onClick = { smbListViewModel.closeOPanel() },
+                        colors = myListItemCoverColor(),
+                        headlineContent = {
+                            Text(
+                                "返回", modifier = Modifier.fillMaxWidth(),  // 文字容器充满宽度
+                                textAlign = TextAlign.Center
+                            )
+                        },
                     )
                 }
             }
         }
     }
-
-
 }
 
 
@@ -232,7 +273,7 @@ fun ConnectionCard(
             .fillMaxWidth()
             .padding(vertical = 8.dp)
             .focusRequester(focusRequester),
-        onClick = { Unit },
+        onClick = onClick ,
         colors = myCardColor(),
         border = myCardBorderStyle(),
         scale = myCardScaleStyle(),

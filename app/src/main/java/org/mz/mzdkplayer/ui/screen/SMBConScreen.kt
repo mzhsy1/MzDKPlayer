@@ -44,7 +44,6 @@ import org.mz.mzdkplayer.ui.theme.TvTextField
 
 import org.mz.mzdkplayer.ui.screen.vm.SMBConViewModel
 import org.mz.mzdkplayer.ui.screen.vm.SMBListViewModel
-import org.mz.mzdkplayer.ui.style.myTTFBorder
 import org.mz.mzdkplayer.ui.style.myTTFColor
 import org.mz.mzdkplayer.ui.theme.MyIconButton
 import java.util.UUID
@@ -136,15 +135,17 @@ fun SMBConScreen() {
             MyIconButton(
                 text = "测试连接",
                 imageVector = Icons.Outlined.Check,
+                modifier = Modifier.fillMaxWidth(0.5f),
+                enabled = true,
                 onClick = {
                     viewModel.connectToSMB(ip, username, password, shareName);viewModel.changeSMBTest()
                 },
-                modifier = Modifier.fillMaxWidth(0.5f)
             )
 
             MyIconButton(
                 text = "保存连接",
                 imageVector = Icons.Outlined.Star,
+                modifier = Modifier.fillMaxWidth(0.5f),
                 onClick = {
                     if (smbListViewModel.addConnection(
                             SMBConnection(
@@ -162,14 +163,13 @@ fun SMBConScreen() {
                         Toast.makeText(context, "添加失败", Toast.LENGTH_SHORT).show()
                     };Log.d("as", "K")
                 },
-                modifier = Modifier.fillMaxWidth(0.5f)
             )
 
             MyIconButton(
                 text = "断开连接",
-                onClick = { viewModel.disconnectSMB() },
                 imageVector = Icons.Outlined.Delete,
                 modifier = Modifier.fillMaxWidth(0.5f),
+                onClick = { viewModel.disconnectSMB() },
             )
 
 

@@ -24,6 +24,19 @@ fun myListItemColor(): ListItemColors {
     )
 }
 @Composable
+fun myListItemCoverColor(): ListItemColors {
+    return     ListItemDefaults.colors(
+        containerColor = Color.DarkGray,
+        contentColor = Color.White,
+        selectedContainerColor = Color.Gray,
+        selectedContentColor =Color.White,
+        focusedSelectedContentColor =Color.White,
+        focusedSelectedContainerColor = Color.Gray,
+        focusedContainerColor = Color(255, 255, 255),
+        focusedContentColor = Color(0, 0, 0)
+    )
+}
+@Composable
 fun myListItemBorder(): ListItemBorder {
     return     ListItemDefaults.border(
         border = Border(border = BorderStroke(width = 2.dp, color = Color.White),
