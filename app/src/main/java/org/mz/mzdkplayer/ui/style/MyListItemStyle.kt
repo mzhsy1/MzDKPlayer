@@ -1,4 +1,4 @@
-package org.mz.mzdkplayer.ui.theme
+package org.mz.mzdkplayer.ui.style
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape

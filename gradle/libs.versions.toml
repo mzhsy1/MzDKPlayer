@@ -1,13 +1,13 @@
 [versions]
 accompanistPermissions = "0.37.3"
 accompanistPermissionsVersion = "0.37.3"
-agp = "8.12.0"
+agp = "8.12.1"
 akdanmaku = "1.0.3"
 gson = "2.13.1"
-kotlin = "2.2.0"
-coreKtx = "1.16.0"
+kotlin = "2.2.10"
+coreKtx = "1.17.0"
 appcompat = "1.7.1"
-composeBom = "2025.07.00"
+composeBom = "2025.08.00"
 logbackAndroid = "3.0.0"
 material3 = "1.3.2"
 smbj = "0.14.0"
@@ -18,10 +18,12 @@ lifecycleRuntimeKtx = "2.9.2"
 activityCompose = "1.10.1"
 datastorePreferences = "1.1.7"
 navigationCompose = "2.9.3"
+ui = "1.9.0"
 
 [libraries]
+#noinspection SimilarGradleDependency
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
-accompanist-permissions-v037 = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissionsVersion" }
+
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
@@ -45,6 +47,7 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 logback-android = { module = "com.github.tony19:logback-android", version.ref = "logbackAndroid" }
 smbj = { module = "com.hierynomus:smbj", version.ref = "smbj" }
+ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

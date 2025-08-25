@@ -2,7 +2,6 @@ package org.mz.mzdkplayer.ui.screen
 
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.magnifier
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Delete
@@ -35,10 +33,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -49,6 +44,8 @@ import org.mz.mzdkplayer.ui.theme.TvTextField
 
 import org.mz.mzdkplayer.ui.screen.vm.SMBConViewModel
 import org.mz.mzdkplayer.ui.screen.vm.SMBListViewModel
+import org.mz.mzdkplayer.ui.style.myTTFBorder
+import org.mz.mzdkplayer.ui.style.myTTFColor
 import org.mz.mzdkplayer.ui.theme.MyIconButton
 import java.util.UUID
 
@@ -65,6 +62,9 @@ fun SMBConScreen() {
     var password by remember { mutableStateOf("Wa541888") }
     var shareName by remember { mutableStateOf("movies") }
     var aliasName by remember { mutableStateOf("my nas") }
+
+    // 全局跟踪当前活跃的输入框ID（初始为null）
+    val activeFieldId = remember { mutableStateOf<String?>(null) }
     val connectionStatus by viewModel.connectionStatus.collectAsState()
     val fileList by viewModel.fileList.collectAsState()
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -93,7 +93,7 @@ fun SMBConScreen() {
                 onValueChange = { ip = it },
                 modifier = Modifier.fillMaxWidth(0.5f),
                 placeholder = "Ip address",
-                textStyle = TextStyle(color = Color.White)
+                colors = myTTFColor(),
             )
 
             TvTextField(
@@ -101,15 +101,18 @@ fun SMBConScreen() {
                 onValueChange = { username = it },
                 modifier = Modifier.fillMaxWidth(0.5f),
                 placeholder = "Username",
-                textStyle = TextStyle(color = Color.White)
+                colors = myTTFColor(),
+                textStyle = TextStyle(color = Color.White),
             )
 
             TvTextField(
                 value = password,
                 onValueChange = { password = it },
                 modifier = Modifier.fillMaxWidth(0.5f),
+                colors = myTTFColor(),
                 placeholder = "password",
-                textStyle = TextStyle(color = Color.White)
+
+                textStyle = TextStyle(color = Color.White),
             )
 
             TvTextField(
@@ -117,7 +120,8 @@ fun SMBConScreen() {
                 onValueChange = { aliasName = it },
                 modifier = Modifier.fillMaxWidth(0.5f),
                 placeholder = "aliasName",
-                textStyle = TextStyle(color = Color.White)
+                colors = myTTFColor(),
+                textStyle = TextStyle(color = Color.White),
             )
 
             TvTextField(
@@ -125,7 +129,8 @@ fun SMBConScreen() {
                 onValueChange = { shareName = it },
                 modifier = Modifier.fillMaxWidth(0.5f),
                 placeholder = "shareName",
-                textStyle = TextStyle(color = Color.White)
+                colors = myTTFColor(),
+                textStyle = TextStyle(color = Color.White),
             )
 
             MyIconButton(

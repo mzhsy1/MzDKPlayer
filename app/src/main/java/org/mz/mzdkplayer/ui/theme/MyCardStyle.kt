@@ -33,10 +33,6 @@ fun myCardBorderStyle(): CardBorder {
             border = BorderStroke(width = 0.dp, color = Color(0, 0, 0, 0)),
             shape = RoundedCornerShape(5),
         ),
-//                pressedBorder = Border(
-//                    border = BorderStroke(width = 2.dp, color = Color.White),
-//                    shape = RoundedCornerShape(5),
-//                )
     )
 }@Composable
 fun myCardScaleStyle(): CardScale {

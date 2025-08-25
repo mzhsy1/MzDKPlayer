@@ -22,7 +22,7 @@ import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 
-import org.mz.mzdkplayer.ui.theme.myListItemColor
+import org.mz.mzdkplayer.ui.style.myListItemColor
 import java.io.File
 import java.net.URLDecoder
 import java.net.URLEncoder

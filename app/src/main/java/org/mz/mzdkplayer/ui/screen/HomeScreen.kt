@@ -28,8 +28,8 @@ import org.mz.mzdkplayer.R
 
 import org.mz.mzdkplayer.ui.theme.FilePermissionScreen
 
-import org.mz.mzdkplayer.ui.theme.myListItemBorder
-import org.mz.mzdkplayer.ui.theme.myListItemColor
+import org.mz.mzdkplayer.ui.style.myListItemBorder
+import org.mz.mzdkplayer.ui.style.myListItemColor
 import java.net.URLEncoder
 
 

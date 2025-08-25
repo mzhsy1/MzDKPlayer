@@ -2,7 +2,6 @@ package org.mz.mzdkplayer.ui.screen
 
 import android.annotation.SuppressLint
 import android.util.Log
-import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -23,44 +22,34 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 
-import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Card
-import androidx.tv.material3.Icon
-import androidx.tv.material3.IconButton
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import kotlinx.coroutines.delay
 import org.mz.mzdkplayer.logic.model.SMBConnection
 import org.mz.mzdkplayer.ui.screen.vm.SMBListViewModel
 import org.mz.mzdkplayer.ui.theme.MyIconButton
 import org.mz.mzdkplayer.ui.theme.myCardBorderStyle
 import org.mz.mzdkplayer.ui.theme.myCardColor
 import org.mz.mzdkplayer.ui.theme.myCardScaleStyle
-import org.mz.mzdkplayer.ui.theme.myListItemBorder
-import org.mz.mzdkplayer.ui.theme.myListItemColor
+import org.mz.mzdkplayer.ui.style.myListItemBorder
+import org.mz.mzdkplayer.ui.style.myListItemColor
 
 /**
  * SMB列表
