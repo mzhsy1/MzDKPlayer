@@ -38,6 +38,7 @@ import org.mz.mzdkplayer.ui.screen.SMBConScreen
 import org.mz.mzdkplayer.ui.screen.SMBFileListScreen
 
 import org.mz.mzdkplayer.ui.screen.SMBListScreen
+import org.mz.mzdkplayer.ui.videoplayer.VideoPlayerScreen
 import java.net.URLDecoder
 
 @Composable
@@ -148,7 +149,17 @@ fun MzDKPlayerAPP() {
                     FileScreen(path, mainNavController)
                 }
             }
+            composable("VideoPlayer/{smburi}") { backStackEntry ->
+                //val bvid = backStackEntry.arguments?.getString("smburi")
+                //页面路由对应的页面组件
+                val smburi = backStackEntry.arguments?.getString("smburi")
 
+                // 检查参数是否不为空，并渲染屏幕
+                if (smburi != null ) {
+                    Log.d("smburi",smburi)
+                    VideoPlayerScreen(smburi)
+                }
+            }
             composable("SMBFileListScreen/{path}") {backStackEntry ->
                 val encodedPath = backStackEntry.arguments?.getString("path")
                 if (encodedPath!=null){

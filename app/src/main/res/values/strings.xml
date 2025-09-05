@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">MzDKPlayer</string>
+    <string name="live">直播</string>
+    <string name="ad">广告</string>
 </resources>

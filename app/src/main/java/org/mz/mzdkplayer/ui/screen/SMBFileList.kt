@@ -67,6 +67,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
             ListItem(
                 selected = false,
                 onClick = {
+
                     if (file.isDirectory) {
                         val newPath = buildSMBPath(
                             file.server,
@@ -79,7 +80,8 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                         navController.navigate("SMBFileListScreen/$encoded")
                     } else {
                         // 处理文件点击，比如播放视频
-                        // navController.navigate("PlayerPage/${URLEncoder.encode(file.fullPath, "UTF-8")}")
+                        Log.d("file.fullPath",file.fullPath)
+                         navController.navigate("VideoPlayer/${URLEncoder.encode("smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}", "UTF-8")}")
                     }
                 },
                 colors = myListItemColor(),
