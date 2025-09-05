@@ -61,6 +61,7 @@ fun PlayerSurface(
                 setViewOnPlayer = { player, view -> player.setVideoSurfaceView(view) },
                 clearViewFromPlayer = { player, view -> player.clearVideoSurfaceView(view) },
             )
+
         SURFACE_TYPE_TEXTURE_VIEW ->
             PlayerSurfaceInternal(
                 player,
@@ -69,6 +70,7 @@ fun PlayerSurface(
                 setViewOnPlayer = { player, view -> player.setVideoTextureView(view) },
                 clearViewFromPlayer = { player, view -> player.clearVideoTextureView(view) },
             )
+
         else -> throw IllegalArgumentException("Unrecognized surface type: $surfaceType")
     }
 }
@@ -83,7 +85,11 @@ private fun <T : View> PlayerSurfaceInternal(
 ) {
     var view by remember { mutableStateOf<T?>(null) }
     var registeredPlayer by remember { mutableStateOf<Player?>(null) }
-    AndroidView(factory = { createView(it).apply { view = this } }, onReset = {}, modifier = modifier, onRelease = {player.release()})
+    AndroidView(
+        factory = { createView(it).apply { view = this } },
+        onReset = {},
+        modifier = modifier,
+        onRelease = { player.release() })
     view?.let { view ->
         LaunchedEffect(view, player) {
             registeredPlayer?.let { previousPlayer ->
@@ -110,6 +116,9 @@ private fun <T : View> PlayerSurfaceInternal(
 annotation class SurfaceType
 
 /** Surface type to create [SurfaceView]. */
-@UnstableApi const val SURFACE_TYPE_SURFACE_VIEW = 1
+@UnstableApi
+const val SURFACE_TYPE_SURFACE_VIEW = 1
+
 /** Surface type to create [TextureView]. */
-@UnstableApi const val SURFACE_TYPE_TEXTURE_VIEW = 2
+@UnstableApi
+const val SURFACE_TYPE_TEXTURE_VIEW = 2

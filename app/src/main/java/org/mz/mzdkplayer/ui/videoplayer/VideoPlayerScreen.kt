@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,10 +23,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,11 +40,15 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import com.kuaishou.akdanmaku.DanmakuConfig
 import com.kuaishou.akdanmaku.data.DanmakuItemData
 import com.kuaishou.akdanmaku.ecs.DanmakuEngine
@@ -137,11 +145,15 @@ fun VideoPlayerScreen(smbUri: String,) {
 
                 )  // 数据解析
 
-            // mDanmakuPlayer.send(data)
+             mDanmakuPlayer.send(data)
                 //Log.d("DanmakuItemData",data.toString())
 
         }
 
+    }
+    // 状态管理
+    var resizeMode by remember {
+        mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT)
     }
 
     val pulseState = rememberVideoPlayerPulseState()
@@ -192,12 +204,21 @@ fun VideoPlayerScreen(smbUri: String,) {
 //            update = { it.player = exoPlayer },
 //            onRelease = { exoPlayer.release();atpVisibility = false;atpFocus = false }
 //        )
-        PlayerSurface(
-            player = exoPlayer,
-            surfaceType = SURFACE_TYPE_SURFACE_VIEW,
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(),
+        AndroidView(
+            factory = { context ->
+                PlayerView(context).apply {
+                    useController = false // 如果你不需要控制器
+                    player = exoPlayer
+                }
+            },
+            update = { view ->
+                view.player = exoPlayer
+                view.resizeMode = resizeMode
+            },
+            modifier = Modifier.fillMaxSize(),
+            onRelease = {
+                exoPlayer.release()
+            }
         )
         // 弹幕层
         AkDanmakuPlayer(

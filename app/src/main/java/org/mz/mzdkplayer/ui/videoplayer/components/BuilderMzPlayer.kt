@@ -121,13 +121,12 @@ fun rememberPlayer(context: Context) =remember {
         DefaultRenderersFactory(context).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
     ExoPlayer.Builder(context)
         .setSeekForwardIncrementMs(10000)
-        .setSeekBackIncrementMs(10000)
+        .setSeekBackIncrementMs(10000).setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
         .setMediaSourceFactory(
             DefaultMediaSourceFactory(
                 dataSourceFactory
             )
-        ).setRenderersFactory(renderersFactory)
-        .setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
+        )
         .build()
         .apply {
             playWhenReady = true
