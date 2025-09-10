@@ -145,7 +145,7 @@ fun VideoPlayerScreen(smbUri: String,) {
 
                 )  // 数据解析
 
-             mDanmakuPlayer.send(data)
+            // mDanmakuPlayer.send(data)
                 //Log.d("DanmakuItemData",data.toString())
 
         }
@@ -209,6 +209,8 @@ fun VideoPlayerScreen(smbUri: String,) {
                 PlayerView(context).apply {
                     useController = false // 如果你不需要控制器
                     player = exoPlayer
+
+
                 }
             },
             update = { view ->

@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
@@ -43,35 +44,70 @@ import org.mz.mzdkplayer.ui.screen.HomeScreen
 
 import org.mz.mzdkplayer.ui.screen.SMBListScreen
 import java.net.URLDecoder
+import kotlin.properties.Delegates
 
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var context: Context
+    private val dm: DisplayMetrics = MzDkPlayerApplication.context.resources.displayMetrics
+    private val newDensity: Float = dm.widthPixels / 960.0.toFloat();
+
+    private val newDensityDpi: Int = (newDensity * DisplayMetrics.DENSITY_DEFAULT).toInt();
+    private val isChangeDensityDpi: Boolean = dm.densityDpi % DisplayMetrics.DENSITY_DEFAULT == 0
 
 
     @OptIn(ExperimentalTvMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-
-        super.onCreate(savedInstanceState)
-        context = this
-        val dm: DisplayMetrics = context.resources.displayMetrics
-        Log.d("dm",dm.densityDpi.toString())
-        val newDensity: Float = dm.widthPixels / 960.0.toFloat();
-
-        val newDensityDpi: Int = (newDensity * DisplayMetrics.DENSITY_DEFAULT).toInt();
-        val isChangeDensityDpi: Boolean = dm.densityDpi % DisplayMetrics.DENSITY_DEFAULT == 0
         if (!isChangeDensityDpi) {
             val newConfig = Configuration();
             newConfig.densityDpi = newDensityDpi
             applicationContext.createConfigurationContext(newConfig)
-        } else {
-            Log.d("isChangeDensityDpi", isChangeDensityDpi.toString())
         }
+        super.onCreate(savedInstanceState)
+
         setContent {
             MzDKPlayerAPP()
         }
 
         }
+    override fun attachBaseContext(newBase: Context?) {
+        val newConfig = Configuration()
+        if (!isChangeDensityDpi) {
+            newConfig.densityDpi = newDensityDpi
+
+        }
+        super.attachBaseContext(newBase?.createConfigurationContext(newConfig))
+    }
+
+    override fun onStop() {
+        if (!isChangeDensityDpi) {
+            val newConfig = Configuration();
+            newConfig.densityDpi = dm.densityDpi
+            // Log.d("attachBaseContext", dm.densityDpi.toString())
+            baseContext.createConfigurationContext(newConfig)
+        }
+        super.onStop()
+    }
+
+    override fun onResume() {
+        if (!isChangeDensityDpi) {
+            val newConfig = Configuration()
+            newConfig.densityDpi = newDensityDpi
+            // Log.d("attachBaseContext", newDensityDpi.toString())
+            baseContext.createConfigurationContext(newConfig)
+        }
+        super.onResume()
+    }
+
+    override fun onDestroy() {
+        if (!isChangeDensityDpi) {
+            val newConfig = Configuration()
+            newConfig.densityDpi = dm.densityDpi
+            // Log.d("attachBaseContext", newDensityDpi.toString())
+            baseContext.createConfigurationContext(newConfig)
+        }
+
+        super.onDestroy()
+    }
 
 }
 

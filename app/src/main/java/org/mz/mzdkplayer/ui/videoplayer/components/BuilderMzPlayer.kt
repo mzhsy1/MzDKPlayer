@@ -22,6 +22,7 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import com.yourpackage.smbplayer.SmbDataSource
@@ -34,7 +35,7 @@ import kotlin.time.Duration.Companion.microseconds
 @OptIn(UnstableApi::class)
 @SuppressLint("SuspiciousIndentation")
 @Composable
-fun BuilderMzPlayer(context: Context,smbUri: String, exoPlayer: ExoPlayer) {
+fun BuilderMzPlayer(context: Context, smbUri: String, exoPlayer: ExoPlayer) {
     val pathStr = LocalContext.current.filesDir.toString()
     val videoPlayerViewModel: VideoPlayerViewModel = viewModel()
     LaunchedEffect(Unit) {
@@ -52,6 +53,8 @@ fun BuilderMzPlayer(context: Context,smbUri: String, exoPlayer: ExoPlayer) {
                         val trackType = trackGroup.type
                         if (trackType == C.TRACK_TYPE_AUDIO) {
                             videoPlayerViewModel.mutableSetOfAudioTrackGroups.add(trackGroup)
+
+                            Log.d("TRACK_TYPE_AUDIO", trackGroup.getTrackFormat(0).toString())
 
                         }
                         if (trackType == C.TRACK_TYPE_VIDEO) {
@@ -87,14 +90,14 @@ fun BuilderMzPlayer(context: Context,smbUri: String, exoPlayer: ExoPlayer) {
 
 
     LaunchedEffect(exoPlayer) {
-        Log.d("sd","开始初始化mpd")
+        Log.d("sd", "开始初始化mpd")
         delay(150.microseconds)
     }
 }
 
 @OptIn(UnstableApi::class)
 @Composable
-fun rememberPlayer(context: Context) =remember {
+fun rememberPlayer(context: Context) = remember {
     val trackSelector = DefaultTrackSelector(context)
 
     val licenseRequestHeaders =
@@ -109,24 +112,42 @@ fun rememberPlayer(context: Context) =remember {
 
         )
 // 创建 SMB DataSource Factory
-   // val smbDataSourceFactory = SmbDataSource().
+    // val smbDataSourceFactory = SmbDataSource().
 
     // 创建一个专门的 MediaSource Factory，使用我们的 SMB DataSource Factory
     //val mediaSourceFactory = DefaultMediaSourceFactory(context,smbDataSourceFactory)
-
+    // 创建针对 Amlogic 芯片的 MediaCodecSelector
+//    val amlogicAwareCodecSelector =
+//        MediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunnelingDecoder ->
+//            val allDecoders = MediaCodecSelector.DEFAULT.getDecoderInfos(
+//                mimeType,
+//                requiresSecureDecoder,
+//                requiresTunnelingDecoder
+//            )
+//            // 优先选择 Amlogic 的杜比视界解码器
+//            val amlogicDecoders = allDecoders.filter { info ->
+//                info.name.contains("amlogic", ignoreCase = true) &&
+//                        info.name.contains("dolby", ignoreCase = true)
+//            }
+//            Log.d("amlogicDecoders",amlogicDecoders.toString())
+//            return@MediaCodecSelector amlogicDecoders.ifEmpty { allDecoders }
+//        }
+    // 配置 RenderersFactory
+    val renderersFactory = DefaultRenderersFactory(context).apply {
+        //setMediaCodecSelector(amlogicAwareCodecSelector)
+        setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+    }
     val dataSourceFactory =
         SmbDataSourceFactory()
 
-    val renderersFactory =
-        DefaultRenderersFactory(context).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
     ExoPlayer.Builder(context)
         .setSeekForwardIncrementMs(10000)
-        .setSeekBackIncrementMs(10000).setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
+        .setSeekBackIncrementMs(10000)
         .setMediaSourceFactory(
             DefaultMediaSourceFactory(
                 dataSourceFactory
             )
-        )
+        ).setRenderersFactory(renderersFactory)
         .build()
         .apply {
             playWhenReady = true

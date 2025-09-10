@@ -27,6 +27,7 @@ import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.focusOnInitialVisibility
 
 
@@ -48,7 +49,7 @@ fun AudioTrackPanel(
         .width(360.dp)
         .focusRequester(focusRequester)) {
         items(lists.size) { index ->
-            audioCode = lists[index].getTrackFormat(0).codecs.toString()
+            audioCode = lists[index].getTrackFormat(0).sampleMimeType.toString()
             channelCount = if (audioCode.contains("ec", true)) 6 else lists[index].getTrackFormat(0).channelCount
             ListItem(
                 modifier = if (index == selectedIndex /*选中的获取焦点*/) {
@@ -78,7 +79,7 @@ fun AudioTrackPanel(
                 headlineContent = { Text("${(lists[index].getTrackFormat(0).bitrate) / 1000}Kbps") },
                 overlineContent = {
                     Text(
-                        "${channelCount}声道"
+                        "${channelCount}声道 · ${Tools.inferAudioFormatType(lists[index].getTrackFormat(0))}"
                     )
                 },
 
@@ -91,24 +92,13 @@ fun AudioTrackPanel(
                     }
                 } else null,
                 trailingContent = {
-                    if (audioCode.contains("mp4a",true)) {
+
                         Icon(
-                            painterResource(id = R.drawable.aac),
+                            painterResource(id = Tools.audioFormatIconType(lists[index].getTrackFormat(0))),
                             contentDescription = "Localized description",
                         )
-                    } else if (audioCode.contains("ec",true)) {
-                        Icon(
-                            painterResource(id = R.drawable.dolby_atmos),
-                            contentDescription = "Localized description",
-                        )
-                    } else if (audioCode.contains("fLaC",true)) {
-                        Icon(
-                            painterResource(id = R.drawable.hei),
-                            contentDescription = "Localized description",
-                        )
-                    } else {
-                        Text(lists[index].getTrackFormat(0).codecs.toString().substring(0, 3))
-                    }
+
+
                 },
                 onClick = {
                     onSelectedIndexChange(index)
