@@ -3,6 +3,10 @@ accompanistPermissions = "0.37.3"
 accompanistPermissionsVersion = "0.37.3"
 agp = "8.12.1"
 akdanmaku = "1.0.3"
+ass = "0.3.0-rc03"
+assKt = "0.3.0-rc03"
+assMedia = "0.3.0-rc03"
+
 gson = "2.13.1"
 kotlin = "2.2.10"
 coreKtx = "1.17.0"
@@ -44,6 +48,10 @@ androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "medi
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 akdanmaku = { module = "com.kuaishou:akdanmaku", version.ref = "akdanmaku" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+ass = { module = "io.github.peerless2012:ass", version.ref = "ass" }
+ass-kt = { module = "io.github.peerless2012:ass-kt", version.ref = "assKt" }
+ass-media = { module = "io.github.peerless2012:ass-media", version.ref = "assMedia" }
+
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 logback-android = { module = "com.github.tony19:logback-android", version.ref = "logbackAndroid" }
 smbj = { module = "com.hierynomus:smbj", version.ref = "smbj" }

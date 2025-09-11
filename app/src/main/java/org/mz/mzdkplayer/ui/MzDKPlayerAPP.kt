@@ -157,7 +157,7 @@ fun MzDKPlayerAPP() {
                 // 检查参数是否不为空，并渲染屏幕
                 if (smburi != null ) {
                     Log.d("smburi",smburi)
-                    VideoPlayerScreen(smburi)
+                    VideoPlayerScreen(URLDecoder.decode(smburi, "UTF-8"))
                 }
             }
             composable("SMBFileListScreen/{path}") {backStackEntry ->

@@ -1,5 +1,7 @@
 package org.mz.mzdkplayer.ui.videoplayer
 
+import CustomSubtitleView
+import android.view.View
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
@@ -39,11 +41,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.C
+import androidx.media3.common.Format
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
+import androidx.media3.common.text.Cue
+import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -92,7 +101,7 @@ var selectedAorV by mutableStateOf("A")
 
 @OptIn(UnstableApi::class)
 @Composable
-fun VideoPlayerScreen(smbUri: String,) {
+fun VideoPlayerScreen(smbUri: String) {
     val context = LocalContext.current
     val exoPlayer = rememberPlayer(context)
     val videoPlayerState = rememberVideoPlayerState(hideSeconds = 6)
@@ -107,8 +116,10 @@ fun VideoPlayerScreen(smbUri: String,) {
     var mDanmakuPlayer: DanmakuPlayer= remember {DanmakuPlayer(SimpleRenderer())}
     var danmakuEngine: DanmakuEngine? by remember { mutableStateOf(null) }
 
+    var currentCueGroup: CueGroup? by remember { mutableStateOf<CueGroup?>(null) }
 
-
+    var isVisSub by remember { mutableIntStateOf(0) }
+    var playerView by remember { mutableStateOf<PlayerView?>(null) }
     BuilderMzPlayer(context,smbUri,exoPlayer)
     DisposableEffect(Unit) {
 
@@ -123,13 +134,38 @@ fun VideoPlayerScreen(smbUri: String,) {
    danmakuConfig.copy(
         textSizeScale = 3.0f
     )
+    LaunchedEffect(Unit) {
+        val playerListener = object : Player.Listener {
+            override fun onTracksChanged(tracks: Tracks) {
+                super.onTracksChanged(tracks)
+                // 5. 在轨道变化时检查
+                isVisSub = updateSubtitleViewVisibility(exoPlayer, tracks)
+            }
+        }
+        exoPlayer.addListener(playerListener)
 
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(200)
+            currentCueGroup = exoPlayer.currentCues
+        }
+
+    }
+    // 定义自定义字幕样式
+    val customSubtitleStyle = TextStyle(
+        color = Color.Yellow, // 字幕颜色为黄色
+        fontSize = 20.sp,     // 字幕字体大小为 20sp
+    )
     LaunchedEffect(Unit) {
         while (true) {
             delay(300)
             contentCurrentPosition = exoPlayer.currentPosition
             isPlaying = exoPlayer.isPlaying
         }
+        // 4. 启动一个协程来定期检查字幕
+
+
     }
     // 模拟接收弹幕
     LaunchedEffect(Unit) {
@@ -204,17 +240,22 @@ fun VideoPlayerScreen(smbUri: String,) {
 //            update = { it.player = exoPlayer },
 //            onRelease = { exoPlayer.release();atpVisibility = false;atpFocus = false }
 //        )
+        LaunchedEffect(isVisSub) {
+             playerView?.subtitleView?.visibility = isVisSub
+        }
         AndroidView(
             factory = { context ->
                 PlayerView(context).apply {
                     useController = false // 如果你不需要控制器
                     player = exoPlayer
 
+                    subtitleView?.visibility = isVisSub
 
                 }
             },
             update = { view ->
                 view.player = exoPlayer
+                view.subtitleView?.visibility = isVisSub
                 view.resizeMode = resizeMode
             },
             modifier = Modifier.fillMaxSize(),
@@ -222,6 +263,14 @@ fun VideoPlayerScreen(smbUri: String,) {
                 exoPlayer.release()
             }
         )
+        // 自定义字幕视图，显示 SRT 字幕 (从 CueGroup 中获取)
+        CustomSubtitleView(
+            cueGroup = currentCueGroup, // 传递 CueGroup?
+            modifier = Modifier.fillMaxSize(),
+            subtitleStyle = customSubtitleStyle,
+            backgroundColor = Color.Black.copy(alpha = 0.4f) // 半透明背景
+        )
+
         // 弹幕层
         AkDanmakuPlayer(
             modifier = Modifier.fillMaxSize().align(Alignment.TopCenter),
@@ -437,3 +486,63 @@ sealed class BackPress {
     data object InitialTouch : BackPress()
 }
 
+/**
+ * 根据当前选中的轨道信息，更新 PlayerView 中 SubtitleView 的可见性。
+ * 如果选中的文本轨道是 SRT，则隐藏 SubtitleView。
+ *
+ * @param player ExoPlayer 实例
+ * @param playerView PlayerView 实例
+ * @param tracks 当前的 Tracks 信息
+ */
+@OptIn(UnstableApi::class)
+private fun updateSubtitleViewVisibility(player: ExoPlayer,  tracks: Tracks) : Int{
+
+    // SRT 字幕的 MIME 类型
+    val MIME_TYPE_SRT = "application/x-subrip"
+
+
+    var isSrtTrackSelected = false
+
+    // 遍历所有轨道组
+    for (trackGroupInfo in tracks.groups) {
+        // 检查是否是文本轨道类型
+        if (trackGroupInfo.type == C.TRACK_TYPE_TEXT) {
+            val trackGroup = trackGroupInfo.mediaTrackGroup
+            // 遍历轨道组中的每个轨道
+            for (i in 0 until trackGroup.length) {
+                // 检查轨道是否被选中
+                if (trackGroupInfo.isTrackSelected(i)) {
+                    val format: Format = trackGroup.getFormat(i)
+                    // 检查 MIME 类型是否为 SRT
+                    // 注意：内嵌 SRT 在 MP4 中可能显示为 "text/x-subrip" 或 "application/x-subrip"
+                    // 或者检查 containerMimeType
+                    Log.d("SD2", "$format ${format.containerMimeType} ")
+                    if (MIME_TYPE_SRT == format.codecs ||
+                        MIME_TYPE_SRT == format.codecs
+                    ) {
+                        isSrtTrackSelected = true
+                        break // 找到一个 SRT 轨道就够了
+                    }
+                    // 可以添加其他 SRT 相关 MIME 类型的判断
+                    if ("application/x-subrip" == format.codecs) {
+                        isSrtTrackSelected = true
+                        break
+                    }
+                }
+            }
+            if (isSrtTrackSelected) break // 找到就退出外层循环
+        }
+    }
+
+    // 根据是否选中了 SRT 轨道来设置可见性
+    if (isSrtTrackSelected) {
+        Log.d("SD", "SubtitleView set to GONE because SRT track is selected.")
+        return  View.GONE
+
+    } else {
+        Log.d("SD", "SubtitleView set to VISIBLE because no SRT track is selected.")
+       return View.VISIBLE
+
+    }
+
+}

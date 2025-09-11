@@ -15,6 +15,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
@@ -27,6 +28,8 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import com.yourpackage.smbplayer.SmbDataSource
 import com.yourpackage.smbplayer.SmbDataSourceFactory
+import io.github.peerless2012.ass.media.kt.buildWithAssSupport
+import io.github.peerless2012.ass.media.type.AssRenderType
 import kotlinx.coroutines.delay
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 
@@ -38,7 +41,18 @@ import kotlin.time.Duration.Companion.microseconds
 fun BuilderMzPlayer(context: Context, smbUri: String, exoPlayer: ExoPlayer) {
     val pathStr = LocalContext.current.filesDir.toString()
     val videoPlayerViewModel: VideoPlayerViewModel = viewModel()
+
     LaunchedEffect(Unit) {
+        Log.d("播放器uri",smbUri)
+//        exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
+//            .buildUpon()
+//            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true) // 禁用文本轨道
+//            .build()
+        val trackSelectionParameters = exoPlayer.trackSelectionParameters
+            .buildUpon()
+            .setPreferredTextLanguage("zh") // 将 "zh" 替换为你需要的默认字幕语言代码，例如 "en" 表示英语
+            .build()
+        exoPlayer.trackSelectionParameters = trackSelectionParameters
         exoPlayer.setMediaItem(MediaItem.fromUri(smbUri))
         exoPlayer.prepare()
         exoPlayer.addListener(
@@ -84,6 +98,8 @@ fun BuilderMzPlayer(context: Context, smbUri: String, exoPlayer: ExoPlayer) {
                     }
                     videoPlayerViewModel.onTracksChangedState = 1
                 }
+
+
 
             })
     }
@@ -142,13 +158,10 @@ fun rememberPlayer(context: Context) = remember {
 
     ExoPlayer.Builder(context)
         .setSeekForwardIncrementMs(10000)
-        .setSeekBackIncrementMs(10000)
-        .setMediaSourceFactory(
-            DefaultMediaSourceFactory(
-                dataSourceFactory
-            )
-        ).setRenderersFactory(renderersFactory)
-        .build()
+        .setSeekBackIncrementMs(10000).setMediaSourceFactory(DefaultMediaSourceFactory(
+            dataSourceFactory
+        )).setRenderersFactory(renderersFactory)
+        .buildWithAssSupport(context, AssRenderType.LEGACY,dataSourceFactory=dataSourceFactory, renderersFactory = renderersFactory)
         .apply {
             playWhenReady = true
             repeatMode = Player.REPEAT_MODE_ONE

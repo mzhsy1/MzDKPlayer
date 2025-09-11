@@ -60,10 +60,14 @@ dependencies {
     implementation(libs.smbj)
     implementation(libs.logback.android)
     implementation(libs.gson)
+    implementation(libs.ass.media)
+    //implementation(libs.ass.kt)
+    //implementation(libs.ass.media.v030beta02)
     //implementation(libs.androidx.material3)
     implementation(libs.androidx.datastore.preferences)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     implementation(libs.androidx.ui.tooling)
+
     debugImplementation(libs.androidx.ui.test.manifest)
 }
