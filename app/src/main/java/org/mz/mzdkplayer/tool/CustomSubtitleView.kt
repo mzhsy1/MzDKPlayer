@@ -40,12 +40,11 @@ fun CustomSubtitleView(
         color = Color.White,
         fontSize = 18.sp // 默认字体大小
     ),
-    backgroundColor: Color = Color.Black.copy(alpha = 0.5f) // 默认半透明黑色背景
+    backgroundColor: Color = Color.Black.copy(alpha = 1.0f) // 默认半透明黑色背景
 ) {
     // 使用 Box 作为容器，方便定位和添加背景
     Box(
         modifier = modifier
-            .fillMaxWidth()
             .background(backgroundColor)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.BottomCenter // 将字幕放置在底部
@@ -61,7 +60,7 @@ fun CustomSubtitleView(
                 cueGroup.cues.forEach { cue ->
                     // Text 组件用于显示单个字幕文本
                     // 注意：cue.text 是 CharSequence，可能需要根据具体需求处理样式
-                    if (!cue.text.toString().isNotEmpty()){
+                    if (cue.text.toString()!="null"){
                         Text(
                             text = cue.text.toString(), // 转换为 String 以便显示
                             style = subtitleStyle,

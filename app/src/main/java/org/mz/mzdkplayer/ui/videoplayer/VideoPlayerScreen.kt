@@ -97,8 +97,6 @@ var atpFocus by mutableStateOf(false)
 var selectedAorV by mutableStateOf("A")
 
 
-
-
 @OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayerScreen(smbUri: String) {
@@ -113,14 +111,14 @@ fun VideoPlayerScreen(smbUri: String) {
     val danmakuConfig by remember { mutableStateOf(DanmakuConfig()) }
 
     var danmakuView: DanmakuView? by remember { mutableStateOf(null) }
-    var mDanmakuPlayer: DanmakuPlayer= remember {DanmakuPlayer(SimpleRenderer())}
+    var mDanmakuPlayer: DanmakuPlayer = remember { DanmakuPlayer(SimpleRenderer()) }
     var danmakuEngine: DanmakuEngine? by remember { mutableStateOf(null) }
 
     var currentCueGroup: CueGroup? by remember { mutableStateOf<CueGroup?>(null) }
 
     var isVisSub by remember { mutableIntStateOf(0) }
     var playerView by remember { mutableStateOf<PlayerView?>(null) }
-    BuilderMzPlayer(context,smbUri,exoPlayer)
+    BuilderMzPlayer(context, smbUri, exoPlayer)
     DisposableEffect(Unit) {
 
         onDispose {
@@ -131,7 +129,7 @@ fun VideoPlayerScreen(smbUri: String) {
     }
 
     //exoPlayer.setMediaItem(MediaItem.fromUri("http://127.0.0.1:13656/27137672496.mpd"))
-   danmakuConfig.copy(
+    danmakuConfig.copy(
         textSizeScale = 3.0f
     )
     LaunchedEffect(Unit) {
@@ -171,18 +169,18 @@ fun VideoPlayerScreen(smbUri: String) {
     LaunchedEffect(Unit) {
         while (true) {
             delay(1000) // 每秒添加一条弹幕
-                val data: DanmakuItemData = DanmakuItemData(
-                    danmakuId = (Math.random() * 1000000).toInt().toLong(),
-                    position = (mDanmakuPlayer.getCurrentTimeMs().plus(500)).toLong(),
-                    content = "sdsaaddsadsadd",
-                    mode = DanmakuItemData.DANMAKU_MODE_ROLLING,
-                    textSize = 50,
-                    textColor = Color.White.toArgb()
+            val data: DanmakuItemData = DanmakuItemData(
+                danmakuId = (Math.random() * 1000000).toInt().toLong(),
+                position = (mDanmakuPlayer.getCurrentTimeMs().plus(500)),
+                content = "sdsaaddsadsadd",
+                mode = DanmakuItemData.DANMAKU_MODE_ROLLING,
+                textSize = 50,
+                textColor = Color.White.toArgb()
 
-                )  // 数据解析
+            )  // 数据解析
 
             // mDanmakuPlayer.send(data)
-                //Log.d("DanmakuItemData",data.toString())
+            //Log.d("DanmakuItemData",data.toString())
 
         }
 
@@ -196,10 +194,10 @@ fun VideoPlayerScreen(smbUri: String) {
     exoPlayer.addListener(object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             super.onIsPlayingChanged(isPlaying)
-            if (isPlaying){
+            if (isPlaying) {
 
                 mDanmakuPlayer.start(danmakuConfig)
-            }else{
+            } else {
                 mDanmakuPlayer.pause()
 
             }
@@ -241,7 +239,7 @@ fun VideoPlayerScreen(smbUri: String) {
 //            onRelease = { exoPlayer.release();atpVisibility = false;atpFocus = false }
 //        )
         LaunchedEffect(isVisSub) {
-             playerView?.subtitleView?.visibility = isVisSub
+            playerView?.subtitleView?.visibility = isVisSub
         }
         AndroidView(
             factory = { context ->
@@ -266,39 +264,45 @@ fun VideoPlayerScreen(smbUri: String) {
         // 自定义字幕视图，显示 SRT 字幕 (从 CueGroup 中获取)
         CustomSubtitleView(
             cueGroup = currentCueGroup, // 传递 CueGroup?
-            modifier = Modifier.fillMaxSize(),
             subtitleStyle = customSubtitleStyle,
-            backgroundColor = Color.Black.copy(alpha = 0.4f) // 半透明背景
+            modifier = Modifier.align(Alignment.BottomCenter),
+            backgroundColor = Color.Black.copy(alpha = 0.0f) // 半透明背景
         )
 
         // 弹幕层
         AkDanmakuPlayer(
-            modifier = Modifier.fillMaxSize().align(Alignment.TopCenter),
+            modifier = Modifier
+                .fillMaxSize()
+                .align(Alignment.TopCenter),
             danmakuPlayer = mDanmakuPlayer
         )
 
-            VideoPlayerOverlay(
-                modifier = Modifier.align(Alignment.BottomCenter),
-                focusRequester = focusRequester,
-                state = videoPlayerState,
-                isPlaying = isPlaying,
-                centerButton = { VideoPlayerPulse(pulseState) },
-                subtitles = { /* TODO Implement subtitles */ },
-                controls = {
+        VideoPlayerOverlay(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            focusRequester = focusRequester,
+            state = videoPlayerState,
+            isPlaying = isPlaying,
+            centerButton = { VideoPlayerPulse(pulseState) },
+            subtitles = { /* TODO Implement subtitles */ },
+            controls = {
 
-                        VideoPlayerControls(
-                            isPlaying,
-                            contentCurrentPosition,
-                            exoPlayer,
-                            videoPlayerState,
-                            focusRequester,
-                            "asasas","sdssdsd","2022/1/20"
-                              ,videoPlayerViewModel,danmakuConfig, mDanmakuPlayer
-                        )
+                VideoPlayerControls(
+                    isPlaying,
+                    contentCurrentPosition,
+                    exoPlayer,
+                    videoPlayerState,
+                    focusRequester,
+                    "asasas",
+                    "sdssdsd",
+                    "2022/1/20",
+                    videoPlayerViewModel,
+                    danmakuConfig,
+                    mDanmakuPlayer
+                )
 
-                },
-                atpFocus = atpFocus
-            )
+            },
+            atpFocus = atpFocus
+        )
 
         if (showToast) {
             Toast.makeText(context, "再按一次退出", Toast.LENGTH_SHORT).show()
@@ -400,7 +404,7 @@ fun VideoPlayerControls(
     exoPlayer: ExoPlayer,
     state: VideoPlayerState,
     focusRequester: FocusRequester,
-    title: String,secondaryText:String,tertiaryText:String,
+    title: String, secondaryText: String, tertiaryText: String,
     videoPlayerViewModel: VideoPlayerViewModel,
     danmakuConfig: DanmakuConfig,
     danmakuPlayer: DanmakuPlayer
@@ -456,11 +460,16 @@ fun VideoPlayerControls(
                     state = state,
                     isPlaying = isPlaying,
                     onClick = {
-                        videoPlayerViewModel.textSize+=0.05f
-                        Log.d("textSizeScale",videoPlayerViewModel.textSize.toString())
-                        Log.d("danmakuConfig",danmakuConfig.toString())
+                        videoPlayerViewModel.textSize += 0.05f
+                        Log.d("textSizeScale", videoPlayerViewModel.textSize.toString())
+                        Log.d("danmakuConfig", danmakuConfig.toString())
 
-                        danmakuPlayer.updateConfig( danmakuConfig.copy(textSizeScale = videoPlayerViewModel.textSize, retainerPolicy = RETAINER_BILIBILI))
+                        danmakuPlayer.updateConfig(
+                            danmakuConfig.copy(
+                                textSizeScale = videoPlayerViewModel.textSize,
+                                retainerPolicy = RETAINER_BILIBILI
+                            )
+                        )
 
                     }
                 )
@@ -491,14 +500,13 @@ sealed class BackPress {
  * 如果选中的文本轨道是 SRT，则隐藏 SubtitleView。
  *
  * @param player ExoPlayer 实例
- * @param playerView PlayerView 实例
  * @param tracks 当前的 Tracks 信息
  */
 @OptIn(UnstableApi::class)
-private fun updateSubtitleViewVisibility(player: ExoPlayer,  tracks: Tracks) : Int{
+private fun updateSubtitleViewVisibility(player: ExoPlayer, tracks: Tracks): Int {
 
     // SRT 字幕的 MIME 类型
-    val MIME_TYPE_SRT = "application/x-subrip"
+    val mimeTypeSRT = "application/x-subrip"
 
 
     var isSrtTrackSelected = false
@@ -517,17 +525,12 @@ private fun updateSubtitleViewVisibility(player: ExoPlayer,  tracks: Tracks) : I
                     // 注意：内嵌 SRT 在 MP4 中可能显示为 "text/x-subrip" 或 "application/x-subrip"
                     // 或者检查 containerMimeType
                     Log.d("SD2", "$format ${format.containerMimeType} ")
-                    if (MIME_TYPE_SRT == format.codecs ||
-                        MIME_TYPE_SRT == format.codecs
+                    if (mimeTypeSRT == format.codecs
                     ) {
                         isSrtTrackSelected = true
                         break // 找到一个 SRT 轨道就够了
                     }
-                    // 可以添加其他 SRT 相关 MIME 类型的判断
-                    if ("application/x-subrip" == format.codecs) {
-                        isSrtTrackSelected = true
-                        break
-                    }
+
                 }
             }
             if (isSrtTrackSelected) break // 找到就退出外层循环
@@ -537,11 +540,11 @@ private fun updateSubtitleViewVisibility(player: ExoPlayer,  tracks: Tracks) : I
     // 根据是否选中了 SRT 轨道来设置可见性
     if (isSrtTrackSelected) {
         Log.d("SD", "SubtitleView set to GONE because SRT track is selected.")
-        return  View.GONE
+        return View.GONE
 
     } else {
         Log.d("SD", "SubtitleView set to VISIBLE because no SRT track is selected.")
-       return View.VISIBLE
+        return View.VISIBLE
 
     }
 
