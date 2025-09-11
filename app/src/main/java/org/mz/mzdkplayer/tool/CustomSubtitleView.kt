@@ -61,12 +61,15 @@ fun CustomSubtitleView(
                 cueGroup.cues.forEach { cue ->
                     // Text 组件用于显示单个字幕文本
                     // 注意：cue.text 是 CharSequence，可能需要根据具体需求处理样式
-                    Text(
-                        text = cue.text.toString(), // 转换为 String 以便显示
-                        style = subtitleStyle,
-                        textAlign = TextAlign.Center, // 文本居中对齐
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    if (!cue.text.toString().isNotEmpty()){
+                        Text(
+                            text = cue.text.toString(), // 转换为 String 以便显示
+                            style = subtitleStyle,
+                            textAlign = TextAlign.Center, // 文本居中对齐
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
                 }
             }
         }
