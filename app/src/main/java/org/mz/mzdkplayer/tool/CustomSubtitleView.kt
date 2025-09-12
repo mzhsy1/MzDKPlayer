@@ -23,6 +23,7 @@ import androidx.media3.common.text.CueGroup
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import org.mz.mzdkplayer.ui.videoplayer.SimpleStrokedText
 
 /**
  * 自定义 SubtitleView 组件，用于在 Jetpack Compose 中显示 Media3 ExoPlayer 的字幕。
@@ -61,6 +62,7 @@ fun CustomSubtitleView(
                     // Text 组件用于显示单个字幕文本
                     // 注意：cue.text 是 CharSequence，可能需要根据具体需求处理样式
                     if (cue.text.toString()!="null"){
+
                         Text(
                             text = cue.text.toString(), // 转换为 String 以便显示
                             style = subtitleStyle,

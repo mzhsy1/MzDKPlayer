@@ -1,5 +1,6 @@
 package org.mz.mzdkplayer.ui.screen.vm
 
+import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -24,9 +25,22 @@ class VideoPlayerViewModel:ViewModel() {
     }
     val mutableSetOfAudioTrackGroups = mutableListOf<Tracks.Group>()
     val mutableSetOfVideoTrackGroups = mutableListOf<Tracks.Group>()
+
+    val mutableSetOfTextTrackGroups = mutableListOf<Tracks.Group>()
     var selectedAtIndex by  mutableIntStateOf(0)
     var selectedVtIndex by mutableIntStateOf(0)
+
+    var selectedStIndex by mutableIntStateOf(0)
     var onTracksChangedState by  mutableIntStateOf(0)
 
+    var isSubtitleViewVis by mutableIntStateOf(View.VISIBLE)
+
+    var isSubtitlePanelVis by mutableStateOf("S")
+
+    var selectedAorVorS by mutableStateOf("A")
+
+    fun updateSubtitleVisibility(visible: Int) {
+        isSubtitleViewVis = visible
+    }
     var textSize = 1.0f
 }

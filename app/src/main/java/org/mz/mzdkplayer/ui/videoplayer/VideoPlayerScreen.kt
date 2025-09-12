@@ -37,11 +37,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -58,6 +61,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import androidx.tv.material3.Text
 import com.kuaishou.akdanmaku.DanmakuConfig
 import com.kuaishou.akdanmaku.data.DanmakuItemData
 import com.kuaishou.akdanmaku.ecs.DanmakuEngine
@@ -90,11 +94,12 @@ import org.mz.mzbi.ui.videoplayer.components.VideoTrackPanel
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberPlayer
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
+import org.mz.mzdkplayer.ui.videoplayer.components.SubtitleTrackPanel
 import kotlin.time.Duration.Companion.milliseconds
 
 var atpVisibility by mutableStateOf(false)
 var atpFocus by mutableStateOf(false)
-var selectedAorV by mutableStateOf("A")
+//var selectedAorV by mutableStateOf("A")
 
 
 @OptIn(UnstableApi::class)
@@ -116,7 +121,7 @@ fun VideoPlayerScreen(smbUri: String) {
 
     var currentCueGroup: CueGroup? by remember { mutableStateOf<CueGroup?>(null) }
 
-    var isVisSub by remember { mutableIntStateOf(0) }
+    //var isVisSub: Int by remember { mutableIntStateOf(0) }
     var playerView by remember { mutableStateOf<PlayerView?>(null) }
     BuilderMzPlayer(context, smbUri, exoPlayer)
     DisposableEffect(Unit) {
@@ -132,29 +137,36 @@ fun VideoPlayerScreen(smbUri: String) {
     danmakuConfig.copy(
         textSizeScale = 3.0f
     )
-    LaunchedEffect(Unit) {
-        val playerListener = object : Player.Listener {
-            override fun onTracksChanged(tracks: Tracks) {
-                super.onTracksChanged(tracks)
-                // 5. 在轨道变化时检查
-                isVisSub = updateSubtitleViewVisibility(exoPlayer, tracks)
-            }
-        }
-        exoPlayer.addListener(playerListener)
-
-    }
+//    LaunchedEffect(Unit) {
+//        val playerListener = object : Player.Listener {
+//            override fun onTracksChanged(tracks: Tracks) {
+//                super.onTracksChanged(tracks)
+//                // 5. 在轨道变化时检查
+//                isVisSub = updateSubtitleViewVisibility(exoPlayer, tracks)
+//            }
+//        }
+//        exoPlayer.addListener(playerListener)
+//
+//    }
+    // 每隔100毫秒获取字幕
     LaunchedEffect(Unit) {
         while (true) {
-            delay(200)
+            delay(100)
             currentCueGroup = exoPlayer.currentCues
         }
 
     }
     // 定义自定义字幕样式
     val customSubtitleStyle = TextStyle(
-        color = Color.Yellow, // 字幕颜色为黄色
+        color = Color.White, // 字幕颜色为黄色
         fontSize = 20.sp,     // 字幕字体大小为 20sp
-    )
+        shadow = androidx.compose.ui.graphics.Shadow(
+            color = Color.Black, // 黑色阴影
+            offset = androidx.compose.ui.geometry.Offset(3f, 3f),
+            blurRadius = 1f
+        ),
+
+        )
     LaunchedEffect(Unit) {
         while (true) {
             delay(300)
@@ -219,10 +231,6 @@ fun VideoPlayerScreen(smbUri: String) {
 
     ) {
         val focusRequester = remember { FocusRequester() }
-        //val mediaSource: MediaSource =
-        //DashMediaSource.Factory(dataSourceFactory)
-        //    .createMediaSource(MediaItem.fromUri("https://media.w3.org/2010/05/sintel/trailer.mp4"))
-        //exoPlayer.setMediaSource(mediaSource)
 //        Surface {
 //            PlayerSurface(
 //                player = exoPlayer,
@@ -238,22 +246,25 @@ fun VideoPlayerScreen(smbUri: String) {
 //            update = { it.player = exoPlayer },
 //            onRelease = { exoPlayer.release();atpVisibility = false;atpFocus = false }
 //        )
-        LaunchedEffect(isVisSub) {
-            playerView?.subtitleView?.visibility = isVisSub
-        }
+
+//        LaunchedEffect(videoPlayerViewModel.isSubtitleViewVis) {
+//            isVisSub =  videoPlayerViewModel.isSubtitleViewVis
+//            playerView?.subtitleView?.visibility = isVisSub
+//            Log.d("isSubtitleViewVis",videoPlayerViewModel.isSubtitleViewVis.toString()+isVisSub.toString())
+//        }
+
         AndroidView(
             factory = { context ->
                 PlayerView(context).apply {
                     useController = false // 如果你不需要控制器
                     player = exoPlayer
-
-                    subtitleView?.visibility = isVisSub
+                    subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
 
                 }
             },
             update = { view ->
                 view.player = exoPlayer
-                view.subtitleView?.visibility = isVisSub
+                view.subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
                 view.resizeMode = resizeMode
             },
             modifier = Modifier.fillMaxSize(),
@@ -268,6 +279,7 @@ fun VideoPlayerScreen(smbUri: String) {
             modifier = Modifier.align(Alignment.BottomCenter),
             backgroundColor = Color.Black.copy(alpha = 0.0f) // 半透明背景
         )
+
 
         // 弹幕层
         AkDanmakuPlayer(
@@ -348,16 +360,25 @@ fun VideoPlayerScreen(smbUri: String) {
                         atpFocus = it.isFocused
                     }
                 }) {
-            if (selectedAorV == "A") AudioTrackPanel(
-                videoPlayerViewModel.selectedAtIndex,
-                onSelectedIndexChange = { videoPlayerViewModel.selectedAtIndex = it },
-                videoPlayerViewModel.mutableSetOfAudioTrackGroups, exoPlayer
-            )
-            else VideoTrackPanel(
-                videoPlayerViewModel.selectedVtIndex,
-                onSelectedIndexChange = { videoPlayerViewModel.selectedVtIndex = it },
-                videoPlayerViewModel.mutableSetOfVideoTrackGroups, exoPlayer
-            )
+            when (videoPlayerViewModel.selectedAorVorS) {
+                "A" -> AudioTrackPanel(
+                    videoPlayerViewModel.selectedAtIndex,
+                    onSelectedIndexChange = { videoPlayerViewModel.selectedAtIndex = it },
+                    videoPlayerViewModel.mutableSetOfAudioTrackGroups, exoPlayer
+                )
+                "V" -> VideoTrackPanel(
+                    videoPlayerViewModel.selectedVtIndex,
+                    onSelectedIndexChange = { videoPlayerViewModel.selectedVtIndex = it },
+                    videoPlayerViewModel.mutableSetOfVideoTrackGroups, exoPlayer
+                )
+                else -> {
+                    SubtitleTrackPanel(
+                        videoPlayerViewModel.selectedStIndex,
+                        onSelectedIndexChange = { videoPlayerViewModel.selectedStIndex = it },
+                        videoPlayerViewModel.mutableSetOfTextTrackGroups, exoPlayer
+                    )
+                }
+            }
             BackHandler(true) {
                 atpVisibility = false
             }
@@ -438,7 +459,7 @@ fun VideoPlayerControls(
                     state = state,
                     isPlaying = isPlaying,
                     onClick = {
-                        selectedAorV = "V"
+                        videoPlayerViewModel.selectedAorVorS = "V"
                         atpVisibility = !atpVisibility;focusRequester.requestFocus()
                     }
                 )
@@ -448,7 +469,7 @@ fun VideoPlayerControls(
                     state = state,
                     isPlaying = isPlaying,
                     onClick = {
-                        selectedAorV = "A"
+                        videoPlayerViewModel.selectedAorVorS = "A"
                         atpVisibility = !atpVisibility;focusRequester.requestFocus()
 
                     }
@@ -460,16 +481,19 @@ fun VideoPlayerControls(
                     state = state,
                     isPlaying = isPlaying,
                     onClick = {
-                        videoPlayerViewModel.textSize += 0.05f
-                        Log.d("textSizeScale", videoPlayerViewModel.textSize.toString())
-                        Log.d("danmakuConfig", danmakuConfig.toString())
-
-                        danmakuPlayer.updateConfig(
-                            danmakuConfig.copy(
-                                textSizeScale = videoPlayerViewModel.textSize,
-                                retainerPolicy = RETAINER_BILIBILI
-                            )
-                        )
+                        videoPlayerViewModel.selectedAorVorS = "S"
+                        atpVisibility = !atpVisibility;
+                        focusRequester.requestFocus()
+//                        videoPlayerViewModel.textSize += 0.05f
+//                        Log.d("textSizeScale", videoPlayerViewModel.textSize.toString())
+//                        Log.d("danmakuConfig", danmakuConfig.toString())
+//
+//                        danmakuPlayer.updateConfig(
+//                            danmakuConfig.copy(
+//                                textSizeScale = videoPlayerViewModel.textSize,
+//                                retainerPolicy = RETAINER_BILIBILI
+//                            )
+//                        )
 
                     }
                 )
@@ -502,50 +526,90 @@ sealed class BackPress {
  * @param player ExoPlayer 实例
  * @param tracks 当前的 Tracks 信息
  */
-@OptIn(UnstableApi::class)
-private fun updateSubtitleViewVisibility(player: ExoPlayer, tracks: Tracks): Int {
+//@OptIn(UnstableApi::class)
+//private fun updateSubtitleViewVisibility(player: ExoPlayer, tracks: Tracks): Int {
+//
+//    // SRT 字幕的 MIME 类型
+//    val mimeTypeSRT = "application/x-subrip"
+//
+//
+//    var isSrtTrackSelected = false
+//
+//    // 遍历所有轨道组
+//    for (trackGroupInfo in tracks.groups) {
+//        // 检查是否是文本轨道类型
+//        if (trackGroupInfo.type == C.TRACK_TYPE_TEXT) {
+//            val trackGroup = trackGroupInfo.mediaTrackGroup
+//            // 遍历轨道组中的每个轨道
+//            for (i in 0 until trackGroup.length) {
+//                // 检查轨道是否被选中
+//                if (trackGroupInfo.isTrackSelected(i)) {
+//                    val format: Format = trackGroup.getFormat(i)
+//                    // 检查 MIME 类型是否为 SRT
+//                    // 注意：内嵌 SRT 在 MP4 中可能显示为 "text/x-subrip" 或 "application/x-subrip"
+//                    // 或者检查 containerMimeType
+//                    Log.d("SD2", "$format ${format.containerMimeType} ")
+//                    if (mimeTypeSRT == format.codecs
+//                    ) {
+//                        isSrtTrackSelected = true
+//                        break // 找到一个 SRT 轨道就够了
+//                    }
+//
+//                }
+//            }
+//            if (isSrtTrackSelected) break // 找到就退出外层循环
+//        }
+//    }
+//
+//    // 根据是否选中了 SRT 轨道来设置可见性
+//    if (isSrtTrackSelected) {
+//        Log.d("SD", "SubtitleView set to GONE because SRT track is selected.")
+//        return View.GONE
+//
+//    } else {
+//        Log.d("SD", "SubtitleView set to VISIBLE because no SRT track is selected.")
+//        return View.VISIBLE
+//
+//    }
+//
+//}
 
-    // SRT 字幕的 MIME 类型
-    val mimeTypeSRT = "application/x-subrip"
+@Composable
+fun SimpleStrokedText(
+    text: String,
+    modifier: Modifier = Modifier,
+    fontSize: TextUnit = 20.sp,
+    textColor: Color = Color.White,
+    strokeColor: Color = Color.Black
+) {
+    Box(modifier = modifier) {
+        // 绘制4次轻微偏移的文本来创建描边效果
+        Text(
+            text = text,
+            color = strokeColor,
+            fontSize = fontSize,
+            modifier = Modifier.offset((-1).dp, 0.dp)
+        )
+        Text(
+            text = text,
+            color = strokeColor,
+            fontSize = fontSize,
+            modifier = Modifier.offset(1.dp, 0.dp)
+        )
+        Text(
+            text = text,
+            color = strokeColor,
+            fontSize = fontSize,
+            modifier = Modifier.offset(0.dp, (-1).dp)
+        )
+        Text(
+            text = text,
+            color = strokeColor,
+            fontSize = fontSize,
+            modifier = Modifier.offset(0.dp, 1.dp)
+        )
 
-
-    var isSrtTrackSelected = false
-
-    // 遍历所有轨道组
-    for (trackGroupInfo in tracks.groups) {
-        // 检查是否是文本轨道类型
-        if (trackGroupInfo.type == C.TRACK_TYPE_TEXT) {
-            val trackGroup = trackGroupInfo.mediaTrackGroup
-            // 遍历轨道组中的每个轨道
-            for (i in 0 until trackGroup.length) {
-                // 检查轨道是否被选中
-                if (trackGroupInfo.isTrackSelected(i)) {
-                    val format: Format = trackGroup.getFormat(i)
-                    // 检查 MIME 类型是否为 SRT
-                    // 注意：内嵌 SRT 在 MP4 中可能显示为 "text/x-subrip" 或 "application/x-subrip"
-                    // 或者检查 containerMimeType
-                    Log.d("SD2", "$format ${format.containerMimeType} ")
-                    if (mimeTypeSRT == format.codecs
-                    ) {
-                        isSrtTrackSelected = true
-                        break // 找到一个 SRT 轨道就够了
-                    }
-
-                }
-            }
-            if (isSrtTrackSelected) break // 找到就退出外层循环
-        }
+        // 最上层的填充文字
+        Text(text = text, color = textColor, fontSize = fontSize)
     }
-
-    // 根据是否选中了 SRT 轨道来设置可见性
-    if (isSrtTrackSelected) {
-        Log.d("SD", "SubtitleView set to GONE because SRT track is selected.")
-        return View.GONE
-
-    } else {
-        Log.d("SD", "SubtitleView set to VISIBLE because no SRT track is selected.")
-        return View.VISIBLE
-
-    }
-
 }
