@@ -76,7 +76,7 @@ fun AudioTrackPanel(
 
 
                 ),
-                headlineContent = { Text("${(lists[index].getTrackFormat(0).bitrate) / 1000}Kbps") },
+                headlineContent = { Text("${Tools.getFullLanguageName(lists[index].getTrackFormat(0).language)} ${(lists[index].getTrackFormat(0).bitrate) / 1000}Kbps") },
                 overlineContent = {
                     Text(
                         "${channelCount}声道 · ${Tools.inferAudioFormatType(lists[index].getTrackFormat(0))}"

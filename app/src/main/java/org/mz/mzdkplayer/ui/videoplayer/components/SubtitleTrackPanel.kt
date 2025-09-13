@@ -47,9 +47,11 @@ fun SubtitleTrackPanel(
     val isVis = remember { mutableStateOf(false) }
 //    var channelCount = 2
 //    var audioCode: String
-    LazyColumn(modifier = Modifier
-        .width(360.dp)
-        .focusRequester(focusRequester)) {
+    LazyColumn(
+        modifier = Modifier
+            .width(360.dp)
+            .focusRequester(focusRequester)
+    ) {
         items(lists.size) { index ->
             //audioCode = lists[index].getTrackFormat(0).sampleMimeType.toString()
             //channelCount = if (audioCode.contains("ec", true)) 6 else lists[index].getTrackFormat(0).channelCount
@@ -76,7 +78,17 @@ fun SubtitleTrackPanel(
                     focusedContainerColor = Color(255, 255, 255),
                     focusedContentColor = Color(0, 0, 0)
                 ),
-                headlineContent = { Text("${(lists[index].getTrackFormat(0).language?.lowercase())}") },
+                headlineContent = {
+                    Text(
+                        "${
+                            if (!lists[index].getTrackFormat(0).label.isNullOrEmpty()) {
+                                lists[index].getTrackFormat(0).label
+                            } else {
+                                "未知名称字幕"
+                            }
+                        }  ${(Tools.getFullLanguageName(lists[index].getTrackFormat(0).language))}"
+                    )
+                },
 //                overlineContent = {
 //                    Text(
 //                        "${channelCount}声道 · ${Tools.inferAudioFormatType(lists[index].getTrackFormat(0))}"
