@@ -173,6 +173,9 @@ object Tools {
     /**
      * 将语言代码转换为中文语言名称（特别细化中文区分）
      */
+    /**
+     * 将语言代码转换为中文语言名称（特别细化中文区分，包括字幕语言）
+     */
     fun getFullLanguageName(languageCode: String?): String {
         if (languageCode.isNullOrEmpty() || languageCode == "und") {
             return "未知语言"
@@ -180,12 +183,17 @@ object Tools {
 
         val lowerCode = languageCode.lowercase()
 
-        // 特别处理中文的细分
+        // 特别处理中文的细分（包括字幕语言代码）
         return when {
-            // 简体中文
-            lowerCode == "zh-hans" || lowerCode == "zh-cn" || lowerCode == "zh-sg" -> "简体中文"
-            // 繁体中文
-            lowerCode == "zh-hant" || lowerCode == "zh-tw" || lowerCode == "zh-hk" || lowerCode == "zh-mo" -> "繁体中文"
+            // 简体中文（视频轨道和字幕轨道）
+            lowerCode == "zh-hans" || lowerCode == "zh-cn" || lowerCode == "zh-sg" ||
+                    lowerCode == "chs" || lowerCode == "sc" || lowerCode == "chi_sim" -> "简体中文"
+
+            // 繁体中文（视频轨道和字幕轨道）
+            lowerCode == "zh-hant" || lowerCode == "zh-tw" || lowerCode == "zh-hk" ||
+                    lowerCode == "zh-mo" || lowerCode == "cht" || lowerCode == "tc" ||
+                    lowerCode == "chi_tra" -> "繁体中文"
+
             // 一般中文代码（无法区分简繁体时）
             lowerCode == "zh" || lowerCode == "zho" || lowerCode == "chi" -> "中文"
 
@@ -193,6 +201,9 @@ object Tools {
             else -> getOtherLanguageName(lowerCode)
         }
     }
+
+
+
 
     /**
      * 处理其他语言的名称转换
@@ -293,7 +304,7 @@ object Tools {
             "fj", "fij" -> "斐济语"
             "haw" -> "夏威夷语"
             // 其他语言代码...
-            else -> "${languageCode.uppercase()} (未知代码)"
+            else -> languageCode.uppercase()
         }
     }
 }

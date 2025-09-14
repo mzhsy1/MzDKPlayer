@@ -341,9 +341,9 @@ fun VideoPlayerScreen(smbUri: String) {
                 .widthIn(200.dp, 420.dp)
                 .heightIn(200.dp, 420.dp)
                 .align(AbsoluteAlignment.CenterRight)
-                .offset(y = 20.dp)
+                .offset(x = (-20).dp)
                 .background(
-                    Color(0, 0, 0), shape = RoundedCornerShape(2)
+                    Color(0, 0, 0, 193), shape = RoundedCornerShape(8.dp)
                 )
                 .handleDPadKeyEvents(
                     onRight = {

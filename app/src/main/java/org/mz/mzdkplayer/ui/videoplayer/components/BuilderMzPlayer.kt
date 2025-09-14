@@ -69,6 +69,10 @@ fun BuilderMzPlayer(context: Context, smbUri: String, exoPlayer: ExoPlayer) {
                 videoPlayerViewModel.mutableSetOfAudioTrackGroups.clear()
                 videoPlayerViewModel.mutableSetOfVideoTrackGroups.clear()
                 videoPlayerViewModel.mutableSetOfTextTrackGroups.clear()
+
+                // 检测是否有SRT字幕轨道被选中
+                var hasSrtTrackSelected = false
+
                 for (trackGroup in trackGroups) {
                     // Group level information.
                     val trackType = trackGroup.type
@@ -85,25 +89,29 @@ fun BuilderMzPlayer(context: Context, smbUri: String, exoPlayer: ExoPlayer) {
                     // 字幕轨
                     if (trackType == C.TRACK_TYPE_TEXT) {
                         videoPlayerViewModel.mutableSetOfTextTrackGroups.add(trackGroup)
-                        val trackGroup = trackGroup.mediaTrackGroup
-                        // 遍历轨道组中的每个轨道
-                        for (i in 0 until trackGroup.length) {
-                            val format: Format = trackGroup.getFormat(i)
-                            // 检查 MIME 类型是否为 SRT
-                            if (mimeTypeSRT == format.codecs) {
-                                isSrtTrackSelected = true
-                                break // 找到一个 SRT 轨道就够了
+
+                        if (trackGroup.isSelected) {
+                            // 获取被选中轨道的格式 (循环轨道组)
+                            for (i in 0 until trackGroup.length) {
+                                if (trackGroup.isTrackSelected(i)) {
+                                    val format = trackGroup.getTrackFormat(i)
+                                    // 检查是否是SRT格式
+                                    if (format.codecs == mimeTypeSRT) {
+                                        hasSrtTrackSelected = true
+                                        break // 找到一个SRT轨道就足够
+                                    }
+                                }
                             }
                         }
                     }
                     // 根据是否选中了 SRT 轨道来设置可见性
-                    if (isSrtTrackSelected) {
-                        Log.d("SD", "SubtitleView set to GONE because SRT track is selected.")
+                    if (hasSrtTrackSelected) {
+                        Log.d("SDS1", "SubtitleView set to GONE because SRT track is selected.")
                         videoPlayerViewModel.updateSubtitleVisibility(View.GONE)
 
                     } else {
                         Log.d(
-                            "SD", "SubtitleView set to VISIBLE because no SRT track is selected."
+                            "SDS1", "SubtitleView set to VISIBLE because no SRT track is selected."
                         )
                         videoPlayerViewModel.updateSubtitleVisibility (View.VISIBLE)
 
