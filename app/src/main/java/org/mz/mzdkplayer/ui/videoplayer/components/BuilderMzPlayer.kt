@@ -2,6 +2,7 @@ package org.mz.mzdkplayer.ui.videoplayer.components
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.net.Uri
 import android.view.View
 import androidx.annotation.OptIn
 import androidx.compose.runtime.Composable
@@ -36,17 +37,18 @@ import kotlinx.coroutines.delay
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 
 import kotlin.time.Duration.Companion.microseconds
+import androidx.core.net.toUri
 
 @OptIn(UnstableApi::class)
 @SuppressLint("SuspiciousIndentation")
 @Composable
-fun BuilderMzPlayer(context: Context, smbUri: String, exoPlayer: ExoPlayer) {
+fun BuilderMzPlayer(context: Context, mediaUri: String, exoPlayer: ExoPlayer) {
     //val pathStr = LocalContext.current.filesDir.toString()
     val videoPlayerViewModel: VideoPlayerViewModel = viewModel()
 
     LaunchedEffect(Unit) {
 
-        Log.d("播放器uri", smbUri)
+        Log.d("播放器uri", mediaUri)
 //        exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
 //            .buildUpon()
 //            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true) // 禁用文本轨道
@@ -57,10 +59,24 @@ fun BuilderMzPlayer(context: Context, smbUri: String, exoPlayer: ExoPlayer) {
 
         // SRT 字幕的 MIME 类型
         val mimeTypeSRT = "application/x-subrip"
-        var isSrtTrackSelected = false
 
         //exoPlayer.trackSelectionParameters = trackSelectionParameters
-        exoPlayer.setMediaItem(MediaItem.fromUri(smbUri))
+
+        // 根据 URI 类型处理 MediaItem 创建
+        val mediaItem = if (mediaUri.startsWith("smb://") || mediaUri.startsWith("http://") || mediaUri.startsWith("https://")) {
+            MediaItem.fromUri(mediaUri)
+        } else {
+            // 处理本地文件路径
+            val uri = if (mediaUri.startsWith("file://")) {
+                mediaUri.toUri()
+            } else {
+                // 假设是文件路径，添加 file:// 前缀
+                "file://$mediaUri".toUri()
+            }
+            MediaItem.fromUri(uri)
+        }
+
+        exoPlayer.setMediaItem(mediaItem)
         exoPlayer.prepare()
         exoPlayer.addListener(object : Player.Listener {
             override fun onTracksChanged(tracks: Tracks) {
@@ -161,7 +177,7 @@ fun BuilderMzPlayer(context: Context, smbUri: String, exoPlayer: ExoPlayer) {
 
 @OptIn(UnstableApi::class)
 @Composable
-fun rememberPlayer(context: Context) = remember {
+fun rememberPlayer(context: Context,mediaUri: String) = remember (mediaUri){
 
     // 创建针对 Amlogic 芯片的 MediaCodecSelector
 //    val amlogicAwareCodecSelector =
@@ -184,7 +200,17 @@ fun rememberPlayer(context: Context) = remember {
         //setMediaCodecSelector(amlogicAwareCodecSelector)
         setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
     }
-    val dataSourceFactory = SmbDataSourceFactory()
+    // 根据 URI 协议选择合适的数据源工厂
+    val dataSourceFactory = if (mediaUri.startsWith("smb://")) {
+        // SMB 协议
+        SmbDataSourceFactory()
+    } else if (mediaUri.startsWith("file://") || mediaUri.startsWith("/")) {
+        // 本地文件协议或绝对路径
+        DefaultDataSource.Factory(context)
+    } else {
+        // 其他情况（如 http/https），使用默认的 HTTP 数据源
+        DefaultHttpDataSource.Factory()
+    }
 
     ExoPlayer.Builder(context).setSeekForwardIncrementMs(10000).setSeekBackIncrementMs(10000)
         .setMediaSourceFactory(

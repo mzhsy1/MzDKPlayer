@@ -1,6 +1,7 @@
-package org.mz.mzdkplayer.ui.screen
+package org.mz.mzdkplayer.ui.screen.smbfile
 
 import android.util.Log
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -32,7 +33,6 @@ import org.mz.mzdkplayer.tool.Tools.containsVideoFormat
 import org.mz.mzdkplayer.ui.style.myListItemColor
 import java.net.URLDecoder
 import java.net.URLEncoder
-import java.util.Locale
 
 @Composable
 fun SMBFileListScreen(path: String?, navController: NavHostController) {
@@ -62,7 +62,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
         }
     }
 
-    LazyColumn {
+    LazyColumn(modifier = Modifier.padding(16.dp).fillMaxSize()) {
         items(files) { file ->
             ListItem(
                 selected = false,

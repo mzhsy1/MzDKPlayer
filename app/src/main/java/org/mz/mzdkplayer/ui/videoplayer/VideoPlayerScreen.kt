@@ -104,9 +104,9 @@ var atpFocus by mutableStateOf(false)
 
 @OptIn(UnstableApi::class)
 @Composable
-fun VideoPlayerScreen(smbUri: String) {
+fun VideoPlayerScreen(mediaUri: String) {
     val context = LocalContext.current
-    val exoPlayer = rememberPlayer(context)
+    val exoPlayer = rememberPlayer(context,mediaUri)
     val videoPlayerState = rememberVideoPlayerState(hideSeconds = 6)
     val videoPlayerViewModel: VideoPlayerViewModel = viewModel()
     var showToast by remember { mutableStateOf(false) }
@@ -123,7 +123,7 @@ fun VideoPlayerScreen(smbUri: String) {
 
     //var isVisSub: Int by remember { mutableIntStateOf(0) }
     var playerView by remember { mutableStateOf<PlayerView?>(null) }
-    BuilderMzPlayer(context, smbUri, exoPlayer)
+    BuilderMzPlayer(context, mediaUri, exoPlayer)
     DisposableEffect(Unit) {
 
         onDispose {

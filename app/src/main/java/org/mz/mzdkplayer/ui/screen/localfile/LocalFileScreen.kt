@@ -1,9 +1,10 @@
-package org.mz.mzdkplayer.ui.screen
+package org.mz.mzdkplayer.ui.screen.localfile
 
 import android.content.Context
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,7 +29,7 @@ import java.net.URLDecoder
 import java.net.URLEncoder
 
 @Composable
-fun FileScreen(path: String?, navController: NavHostController) {
+fun LocalFileScreen(path: String?, navController: NavHostController) {
     val context = LocalContext.current
     val files = remember { mutableStateListOf<File>() }
 
@@ -55,14 +56,16 @@ fun FileScreen(path: String?, navController: NavHostController) {
         }
     }
 
-    LazyColumn {
+    LazyColumn(modifier = Modifier.padding(16.dp).fillMaxSize()) {
         items(files) { file ->
             ListItem(
                 selected = false,
                 onClick = {
                     if (file.isDirectory) {
                         val encoded = URLEncoder.encode(file.path, "UTF-8")
-                        navController.navigate("FilePage/$encoded")
+                        navController.navigate("LocalFileScreen/$encoded")
+                    }else{
+                        navController.navigate("VideoPlayer/${URLEncoder.encode(file.path, "UTF-8")}")
                     }
                 },
                 colors = myListItemColor(),
@@ -105,7 +108,7 @@ private fun queryMediaStore(context: Context, path: String): List<File> {
         null
     )?.use { cursor ->
         generateSequence { if (cursor.moveToNext()) cursor.getString(0) else null }
-            .mapNotNull { File(it).takeIf { it.exists() } }
+            .mapNotNull { it -> File(it).takeIf { it.exists() } }
             .toList()
     } ?: emptyList()
 }

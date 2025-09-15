@@ -2,6 +2,7 @@ package org.mz.mzdkplayer.ui.screen
 
 
 import android.os.Environment
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +31,7 @@ import org.mz.mzdkplayer.ui.theme.FilePermissionScreen
 
 import org.mz.mzdkplayer.ui.style.myListItemBorder
 import org.mz.mzdkplayer.ui.style.myListItemColor
+import java.io.File
 import java.net.URLEncoder
 
 
@@ -57,10 +59,13 @@ fun HomeScreen(mainNavController: NavHostController) {
                     ListItem(
                         selected = selectPanel == item,
                         onClick = {
-                            val primaryStoragePath = Environment.getExternalStorageDirectory().absolutePath
+                            //val primaryStoragePath = Environment.getExternalStorageState(File("/storage/emulated"))
+                            //Log.d("primaryStoragePath",primaryStoragePath.toString())
                             selectPanel = item;when (item) {
                             "local" -> mainNavController.navigate(
-                                "FilePage/${URLEncoder.encode(primaryStoragePath,"UTF-8")}")
+                                "LocalFileTypeScreen"
+                            )
+
                             "smb" -> mainNavController.navigate("SMBListScreen")
                         };
                         },

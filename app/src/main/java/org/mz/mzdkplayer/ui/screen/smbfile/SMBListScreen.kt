@@ -1,11 +1,10 @@
-package org.mz.mzdkplayer.ui.screen
+package org.mz.mzdkplayer.ui.screen.smbfile
 
 import android.annotation.SuppressLint
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -34,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 
@@ -52,8 +50,6 @@ import org.mz.mzdkplayer.ui.theme.MyIconButton
 import org.mz.mzdkplayer.ui.theme.myCardBorderStyle
 import org.mz.mzdkplayer.ui.theme.myCardColor
 import org.mz.mzdkplayer.ui.theme.myCardScaleStyle
-import org.mz.mzdkplayer.ui.style.myListItemBorder
-import org.mz.mzdkplayer.ui.style.myListItemColor
 import org.mz.mzdkplayer.ui.style.myListItemCoverColor
 import java.net.URLEncoder
 
@@ -100,7 +96,7 @@ fun SMBListScreen(mainNavController: NavHostController) {
         Column(
             modifier = Modifier
                 .padding(20.dp)
-                .focusRequester(listFocusRequester)
+
         ) {
             // 添加新连接按钮
             MyIconButton(
@@ -112,7 +108,7 @@ fun SMBListScreen(mainNavController: NavHostController) {
                 Text("没有SMB连接", color = Color.White, fontSize = 20.sp, modifier = Modifier.padding(10.dp),)
             } else {
                 // 连接卡片列表
-                LazyColumn(state = listState) {
+                LazyColumn(state = listState, modifier = Modifier.focusRequester(listFocusRequester)) {
                     itemsIndexed(connections) { index, conn ->
                         ConnectionCard(
                             index = index,

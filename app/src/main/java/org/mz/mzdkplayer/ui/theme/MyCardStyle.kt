@@ -34,9 +34,17 @@ fun myCardBorderStyle(): CardBorder {
             shape = RoundedCornerShape(5),
         ),
     )
-}@Composable
+}
+@Composable
 fun myCardScaleStyle(): CardScale {
     return CardDefaults.scale(
         focusedScale = 1.03f,
     )
 }
+@Composable
+fun myFileTypeCardScaleStyle(): CardScale {
+    return CardDefaults.scale(
+        focusedScale = 1.02f,
+    )
+}
+

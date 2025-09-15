@@ -1,4 +1,4 @@
-package org.mz.mzdkplayer.ui.screen
+package org.mz.mzdkplayer.ui.screen.smbfile
 
 import android.util.Log
 import android.widget.Toast
