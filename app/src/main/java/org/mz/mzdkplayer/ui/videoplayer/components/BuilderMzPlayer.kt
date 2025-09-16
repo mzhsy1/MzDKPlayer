@@ -2,7 +2,6 @@ package org.mz.mzdkplayer.ui.videoplayer.components
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.net.Uri
 import android.view.View
 import androidx.annotation.OptIn
 import androidx.compose.runtime.Composable
@@ -10,15 +9,12 @@ import androidx.compose.runtime.LaunchedEffect
 
 import androidx.compose.runtime.remember
 
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 import androidx.media3.common.C
-import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
-import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
@@ -26,17 +22,12 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
-import com.yourpackage.smbplayer.SmbDataSource
-import com.yourpackage.smbplayer.SmbDataSourceFactory
+import org.mz.mzdkplayer.tool.SmbDataSourceFactory
 import io.github.peerless2012.ass.media.kt.buildWithAssSupport
 import io.github.peerless2012.ass.media.type.AssRenderType
-import kotlinx.coroutines.delay
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 
-import kotlin.time.Duration.Companion.microseconds
 import androidx.core.net.toUri
 
 @OptIn(UnstableApi::class)

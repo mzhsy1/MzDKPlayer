@@ -1,6 +1,5 @@
-package com.yourpackage.smbplayer
+package org.mz.mzdkplayer.tool
 
-import android.annotation.SuppressLint
 import android.net.Uri
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
@@ -15,6 +14,7 @@ import com.hierynomus.smbj.auth.AuthenticationContext
 import com.hierynomus.smbj.connection.Connection
 import com.hierynomus.smbj.session.Session
 import com.hierynomus.smbj.share.DiskShare
+import com.hierynomus.smbj.share.File
 import okio.IOException
 import java.io.EOFException
 import java.io.InputStream
@@ -25,7 +25,7 @@ class SmbDataSource : DataSource {
     private var connection: Connection? = null
     private var session: Session? = null
     private var share: DiskShare? = null
-    private var file: com.hierynomus.smbj.share.File? = null
+    private var file: File? = null
     private var inputStream: InputStream? = null
     private var bytesRemaining: Long = 0
     private var opened = false

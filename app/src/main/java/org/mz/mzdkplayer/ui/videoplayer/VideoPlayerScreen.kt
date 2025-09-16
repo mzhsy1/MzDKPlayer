@@ -1,7 +1,6 @@
 package org.mz.mzdkplayer.ui.videoplayer
 
 import CustomSubtitleView
-import android.view.View
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
@@ -12,7 +11,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,21 +23,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -49,12 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.media3.common.C
-import androidx.media3.common.Format
 import androidx.media3.common.Player
-import androidx.media3.common.Tracks
-import androidx.media3.common.VideoSize
-import androidx.media3.common.text.Cue
 import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
@@ -65,7 +54,6 @@ import androidx.tv.material3.Text
 import com.kuaishou.akdanmaku.DanmakuConfig
 import com.kuaishou.akdanmaku.data.DanmakuItemData
 import com.kuaishou.akdanmaku.ecs.DanmakuEngine
-import com.kuaishou.akdanmaku.ext.RETAINER_BILIBILI
 import com.kuaishou.akdanmaku.render.SimpleRenderer
 import com.kuaishou.akdanmaku.ui.DanmakuPlayer
 import com.kuaishou.akdanmaku.ui.DanmakuView
@@ -79,7 +67,6 @@ import org.mz.mzdkplayer.ui.videoplayer.components.BuilderMzPlayer
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerOverlay
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulseState
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerState
-import kotlin.to
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulse.Type.BACK
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulse.Type.FORWARD
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerPulseState
@@ -91,11 +78,17 @@ import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerMainFrame
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerMediaTitle
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerMediaTitleType
 import org.mz.mzbi.ui.videoplayer.components.VideoTrackPanel
-import org.mz.mzdkplayer.tool.handleDPadKeyEvents
+import org.mz.mzdkplayer.danmaku.DanmakuResponse
+import org.mz.mzdkplayer.danmaku.getDanmakuXmlFromFile
+import org.mz.mzdkplayer.tool.SmbUtils
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberPlayer
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 import org.mz.mzdkplayer.ui.videoplayer.components.SubtitleTrackPanel
+import java.io.InputStream
+import java.net.URL
 import kotlin.time.Duration.Companion.milliseconds
+import androidx.core.net.toUri
+import org.mz.mzdkplayer.danmaku.DanmakuData
 
 var atpVisibility by mutableStateOf(false)
 var atpFocus by mutableStateOf(false)
@@ -118,9 +111,12 @@ fun VideoPlayerScreen(mediaUri: String) {
     var danmakuView: DanmakuView? by remember { mutableStateOf(null) }
     var mDanmakuPlayer: DanmakuPlayer = remember { DanmakuPlayer(SimpleRenderer()) }
     var danmakuEngine: DanmakuEngine? by remember { mutableStateOf(null) }
-
+    val danmakuUri = SmbUtils.getDanmakuSmbUri(mediaUri.toUri())
     var currentCueGroup: CueGroup? by remember { mutableStateOf<CueGroup?>(null) }
 
+    // 弹幕数据
+    var danmakuDataList by remember { mutableStateOf<List<DanmakuData>?>(null) }
+    var isDanmakuLoaded by remember { mutableStateOf(false) }
     //var isVisSub: Int by remember { mutableIntStateOf(0) }
     var playerView by remember { mutableStateOf<PlayerView?>(null) }
     BuilderMzPlayer(context, mediaUri, exoPlayer)
@@ -130,8 +126,88 @@ fun VideoPlayerScreen(mediaUri: String) {
             atpVisibility = false
             atpFocus = false
             exoPlayer.release()
+            mDanmakuPlayer.release() // 释放弹幕播放器
         }
     }
+    // 加载弹幕数据
+    LaunchedEffect(danmakuUri) {
+        try {
+            val inputStream: InputStream? = when (danmakuUri.scheme?.lowercase()) {
+                "smb" -> {
+                    // 使用 SMB 工具打开输入流
+                    SmbUtils.openSmbFileInputStream(danmakuUri)
+
+                }
+                "http", "https" -> {
+                    // 打开 HTTP 输入流
+                    URL(danmakuUri.toString()).openStream()
+                }
+                "file" -> {
+                    // 打开本地文件输入流
+                    context.contentResolver.openInputStream(danmakuUri) ?: throw java.io.IOException("Could not open file input stream for $danmakuUri")
+                }
+                else -> {
+                    // 不支持的 scheme
+                    Log.w("VideoPlayerScreen", "Unsupported scheme for danmaku URI: $danmakuUri")
+                    null
+                }
+            }
+
+            inputStream.use { stream ->
+                val danmakuResponse: DanmakuResponse = getDanmakuXmlFromFile(stream)
+                danmakuDataList = danmakuResponse.data
+                isDanmakuLoaded = true
+                Log.i("VideoPlayerScreen", "Loaded ${danmakuDataList?.size ?: 0} danmaku items from $danmakuUri")
+            }
+        } catch (e: Exception) {
+            Log.e("VideoPlayerScreen", "Failed to load danmaku from $danmakuUri", e)
+            isDanmakuLoaded = false // 标记加载失败
+            // 可以在这里设置一个状态变量来在UI上显示加载失败
+        }
+    }
+
+    // 将加载的弹幕数据发送到播放器
+    // 监听播放器状态变化来启动/暂停弹幕
+    var hasSentDanmaku by remember { mutableStateOf(false) }
+    LaunchedEffect(isDanmakuLoaded, danmakuDataList, isPlaying, contentCurrentPosition) {
+        if (isDanmakuLoaded && !hasSentDanmaku && danmakuDataList != null) {
+            // 发送所有弹幕数据到播放器
+            danmakuDataList?.forEach { danmakuData ->
+                Log.d("danmakuData",danmakuData.toString())
+                val itemData = DanmakuItemData(
+                    danmakuId = if(danmakuData.rowId.toInt() !=0) danmakuData.rowId else(Math.random() * 100000000).toInt().toLong(), // 使用解析的ID或生成随机ID
+                    position = (danmakuData.time * 1000).toLong(), // 使用解析的时间戳
+                    content = danmakuData.content, // 使用解析的文本
+                    mode = when (danmakuData.mode) { // 映射模式
+                        4 -> DanmakuItemData.DANMAKU_MODE_CENTER_TOP
+                        5 -> DanmakuItemData.DANMAKU_MODE_CENTER_BOTTOM
+                        else -> DanmakuItemData.DANMAKU_MODE_ROLLING
+                    },
+                    textSize = danmakuData.size, // 使用解析的大小或默认值
+                    textColor = danmakuData.color, // 使用解析的颜色或默认白色
+                    // 可以根据 DanmakuData 的其他字段设置更多属性
+                )
+                mDanmakuPlayer.send(itemData)
+            }
+            hasSentDanmaku = true
+            Log.i("VideoPlayerScreen", "Sent ${danmakuDataList?.size ?: 0} danmaku items to player.")
+        }
+
+//        // 同步播放/暂停状态
+//        if (isPlaying && hasSentDanmaku) {
+//            // 确保弹幕播放器启动，传入配置和当前播放位置
+//            if (!mDanmakuPlayer.isPlaying()) { // 检查是否已在播放
+//                mDanmakuPlayer.start(danmakuConfig)
+//                // 可能需要 seek 到正确位置，如果弹幕播放器支持的话
+//                // mDanmakuPlayer.seekTo(contentCurrentPosition)
+//            }
+//        } else if (!isPlaying && hasSentDanmaku) {
+//            if (mDanmakuPlayer.isPlaying()) { // 检查是否正在播放
+//                mDanmakuPlayer.pause()
+//            }
+//        }
+    }
+
 
     //exoPlayer.setMediaItem(MediaItem.fromUri("http://127.0.0.1:13656/27137672496.mpd"))
     danmakuConfig.copy(
@@ -177,26 +253,26 @@ fun VideoPlayerScreen(mediaUri: String) {
 
 
     }
-    // 模拟接收弹幕
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(1000) // 每秒添加一条弹幕
-            val data: DanmakuItemData = DanmakuItemData(
-                danmakuId = (Math.random() * 1000000).toInt().toLong(),
-                position = (mDanmakuPlayer.getCurrentTimeMs().plus(500)),
-                content = "sdsaaddsadsadd",
-                mode = DanmakuItemData.DANMAKU_MODE_ROLLING,
-                textSize = 50,
-                textColor = Color.White.toArgb()
-
-            )  // 数据解析
-
-            // mDanmakuPlayer.send(data)
-            //Log.d("DanmakuItemData",data.toString())
-
-        }
-
-    }
+//    // 模拟接收弹幕
+//    LaunchedEffect(Unit) {
+//        while (true) {
+//            delay(1000) // 每秒添加一条弹幕
+//            val data: DanmakuItemData = DanmakuItemData(
+//                danmakuId = (Math.random() * 1000000).toInt().toLong(),
+//                position = (mDanmakuPlayer.getCurrentTimeMs().plus(500)),
+//                content = "sdsaaddsadsadd",
+//                mode = DanmakuItemData.DANMAKU_MODE_ROLLING,
+//                textSize = 50,
+//                textColor = Color.White.toArgb()
+//
+//            )  // 数据解析
+//
+//            // mDanmakuPlayer.send(data)
+//            //Log.d("DanmakuItemData",data.toString())
+//
+//        }
+//
+//    }
     // 状态管理
     var resizeMode by remember {
         mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT)
@@ -207,11 +283,11 @@ fun VideoPlayerScreen(mediaUri: String) {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             super.onIsPlayingChanged(isPlaying)
             if (isPlaying) {
-
                 mDanmakuPlayer.start(danmakuConfig)
+                mDanmakuPlayer.seekTo(contentCurrentPosition)
+
             } else {
                 mDanmakuPlayer.pause()
-
             }
         }
 
