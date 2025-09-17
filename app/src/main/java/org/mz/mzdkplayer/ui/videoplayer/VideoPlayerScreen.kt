@@ -92,8 +92,7 @@ import com.kuaishou.akdanmaku.ext.RETAINER_AKDANMAKU
 import com.kuaishou.akdanmaku.ext.RETAINER_BILIBILI
 import org.mz.mzdkplayer.danmaku.DanmakuData
 
-var atpVisibility by mutableStateOf(false)
-var atpFocus by mutableStateOf(false)
+
 //var selectedAorV by mutableStateOf("A")
 
 
@@ -110,9 +109,10 @@ fun VideoPlayerScreen(mediaUri: String) {
     var isPlaying: Boolean by remember { mutableStateOf(exoPlayer.isPlaying) }
 
 
-    var danmakuView: DanmakuView? by remember { mutableStateOf(null) }
-    var mDanmakuPlayer: DanmakuPlayer = remember { DanmakuPlayer(SimpleRenderer()) }
-    var danmakuEngine: DanmakuEngine? by remember { mutableStateOf(null) }
+
+    val mDanmakuPlayer: DanmakuPlayer = remember { DanmakuPlayer(SimpleRenderer()) }
+
+
     val danmakuUri = SmbUtils.getDanmakuSmbUri(mediaUri.toUri())
     var currentCueGroup: CueGroup? by remember { mutableStateOf<CueGroup?>(null) }
     var danmakuConfig by remember { mutableStateOf(DanmakuConfig()) }
@@ -120,14 +120,11 @@ fun VideoPlayerScreen(mediaUri: String) {
     // 弹幕数据
     var danmakuDataList by remember { mutableStateOf<List<DanmakuData>?>(null) }
     var isDanmakuLoaded by remember { mutableStateOf(false) }
-    //var isVisSub: Int by remember { mutableIntStateOf(0) }
-    var playerView by remember { mutableStateOf<PlayerView?>(null) }
+
     BuilderMzPlayer(context, mediaUri, exoPlayer)
     DisposableEffect(Unit) {
 
         onDispose {
-            atpVisibility = false
-            atpFocus = false
             exoPlayer.release()
             mDanmakuPlayer.release() // 释放弹幕播放器
         }
@@ -211,9 +208,10 @@ fun VideoPlayerScreen(mediaUri: String) {
 
             hasSentDanmaku = true
             danmakuConfig = danmakuConfig.copy(
-                retainerPolicy = RETAINER_AKDANMAKU,
+                retainerPolicy = RETAINER_BILIBILI,
                 textSizeScale = 1.0f,
                 screenPart = 0.12f,
+
 //                durationMs = 5000L,
 //                rollingDurationMs = 24000L
 
@@ -314,12 +312,15 @@ fun VideoPlayerScreen(mediaUri: String) {
     exoPlayer.addListener(object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             super.onIsPlayingChanged(isPlaying)
-            if (isPlaying) {
-                mDanmakuPlayer.start(danmakuConfig)
-                mDanmakuPlayer.seekTo(contentCurrentPosition)
+            if (videoPlayerViewModel.danmakuVisibility) {
+                if (isPlaying) {
 
-            } else {
-                mDanmakuPlayer.pause()
+                    mDanmakuPlayer.start(danmakuConfig)
+                    mDanmakuPlayer.seekTo(contentCurrentPosition)
+
+                } else {
+                    mDanmakuPlayer.pause()
+                }
             }
         }
 
@@ -330,7 +331,8 @@ fun VideoPlayerScreen(mediaUri: String) {
             .dPadEvents(
                 exoPlayer,
                 videoPlayerState,
-                pulseState
+                pulseState,
+                videoPlayerViewModel
             )
             .background(Color(0, 0, 0))
             .focusable()
@@ -374,7 +376,7 @@ fun VideoPlayerScreen(mediaUri: String) {
             },
             update = { view ->
                 view.player = exoPlayer
-
+                danmakuConfig.updateCache()
                 view.subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
                 view.resizeMode = resizeMode
             },
@@ -425,7 +427,7 @@ fun VideoPlayerScreen(mediaUri: String) {
                 )
 
             },
-            atpFocus = atpFocus
+            atpFocus = videoPlayerViewModel.atpFocus
         )
 
         if (showToast) {
@@ -446,7 +448,7 @@ fun VideoPlayerScreen(mediaUri: String) {
             showToast = true
         }
         AnimatedVisibility(
-            atpVisibility,
+            videoPlayerViewModel.atpVisibility,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier
@@ -460,16 +462,16 @@ fun VideoPlayerScreen(mediaUri: String) {
                 .handleDPadKeyEvents(
                     onRight = {
                         if (!videoPlayerState.controlsVisible) {
-                            atpVisibility = false
+                            videoPlayerViewModel.atpVisibility = false
                         }
                     },
                 )
                 .onFocusChanged {
                     if (it.isFocused) {
-                        atpFocus = it.isFocused
+                        videoPlayerViewModel.atpFocus = it.isFocused
                     } else {
                         videoPlayerState.hideControls()
-                        atpFocus = it.isFocused
+                        videoPlayerViewModel.atpFocus = it.isFocused
                     }
                 }) {
             when (videoPlayerViewModel.selectedAorVorS) {
@@ -494,7 +496,7 @@ fun VideoPlayerScreen(mediaUri: String) {
                 }
             }
             BackHandler(true) {
-                atpVisibility = false
+                videoPlayerViewModel.atpVisibility = false
             }
         }
 
@@ -508,7 +510,8 @@ fun VideoPlayerScreen(mediaUri: String) {
 private fun Modifier.dPadEvents(
     exoPlayer: ExoPlayer,
     videoPlayerState: VideoPlayerState,
-    pulseState: VideoPlayerPulseState
+    pulseState: VideoPlayerPulseState,
+    videoPlayerViewModel: VideoPlayerViewModel
 ): Modifier = this.handleDPadKeyEvents(
     onLeft = {
         if (!videoPlayerState.controlsVisible) {
@@ -522,8 +525,8 @@ private fun Modifier.dPadEvents(
             pulseState.setType(FORWARD)
         }
     },
-    onUp = { if (atpFocus) videoPlayerState.showControls() },
-    onDown = { if (atpFocus) videoPlayerState.showControls(); },
+    onUp = { if (videoPlayerViewModel.atpFocus) videoPlayerState.showControls() },
+    onDown = { if (videoPlayerViewModel.atpFocus) videoPlayerState.showControls(); },
     onEnter = {
         exoPlayer.pause()
         videoPlayerState.showControls()
@@ -574,7 +577,7 @@ fun VideoPlayerControls(
                     isPlaying = isPlaying,
                     onClick = {
                         videoPlayerViewModel.selectedAorVorS = "V"
-                        atpVisibility = !atpVisibility;focusRequester.requestFocus()
+                        videoPlayerViewModel.atpVisibility = !videoPlayerViewModel.atpVisibility;focusRequester.requestFocus()
                     }
                 )
                 VideoPlayerControlsIcon(
@@ -584,7 +587,7 @@ fun VideoPlayerControls(
                     isPlaying = isPlaying,
                     onClick = {
                         videoPlayerViewModel.selectedAorVorS = "A"
-                        atpVisibility = !atpVisibility;focusRequester.requestFocus()
+                        videoPlayerViewModel.atpVisibility = !videoPlayerViewModel.atpVisibility;focusRequester.requestFocus()
 
                     }
 
@@ -596,7 +599,7 @@ fun VideoPlayerControls(
                     isPlaying = isPlaying,
                     onClick = {
                         videoPlayerViewModel.selectedAorVorS = "S"
-                        atpVisibility = !atpVisibility;
+                        videoPlayerViewModel.atpVisibility = !videoPlayerViewModel.atpVisibility;
                         focusRequester.requestFocus()
 //                        videoPlayerViewModel.textSize += 0.05f
 //                        Log.d("textSizeScale", videoPlayerViewModel.textSize.toString())
@@ -610,6 +613,31 @@ fun VideoPlayerControls(
 //                        )
 
                     }
+                )
+
+                VideoPlayerControlsIcon(
+                    modifier = Modifier.padding(start = 12.dp),
+                    icon = if (videoPlayerViewModel.danmakuVisibility) painterResource(id = R.drawable.dmaopen) else painterResource(id = R.drawable.damclose) ,
+                    state = state,
+                    isPlaying = isPlaying,
+                    onClick = {
+//                        videoPlayerViewModel.selectedAorVorS = "A"
+//                        videoPlayerViewModel.atpVisibility = !videoPlayerViewModel.atpVisibility;
+//                        focusRequester.requestFocus()
+                        videoPlayerViewModel.danmakuVisibility = !videoPlayerViewModel.danmakuVisibility
+                        danmakuPlayer.updateConfig(
+                            danmakuConfig.copy(
+                                visibility = videoPlayerViewModel.danmakuVisibility,
+                            ))
+                        if (!videoPlayerViewModel.danmakuVisibility){
+                            danmakuPlayer.stop()
+                        }else{
+                            danmakuPlayer.start(danmakuConfig)
+                            danmakuPlayer.seekTo(contentCurrentPosition)
+                        }
+//                        )
+                    }
+
                 )
             }
         },

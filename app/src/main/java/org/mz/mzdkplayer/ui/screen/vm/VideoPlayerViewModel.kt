@@ -17,7 +17,7 @@ import androidx.media3.common.Tracks
 
 class VideoPlayerViewModel:ViewModel() {
     private val getUpVideoDataLiveData = MutableLiveData<Map<String,String>>()
-    var atpVisibility = false
+
 
 
     fun getUpVideoDetailsData(map: Map<String, String>){
@@ -39,6 +39,10 @@ class VideoPlayerViewModel:ViewModel() {
 
     var selectedAorVorS by mutableStateOf("A")
 
+    var atpVisibility by mutableStateOf(false)
+    var atpFocus by mutableStateOf(false)
+
+    var danmakuVisibility by mutableStateOf(true)
     fun updateSubtitleVisibility(visible: Int) {
         isSubtitleViewVis = visible
     }
