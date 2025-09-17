@@ -88,6 +88,8 @@ import java.io.InputStream
 import java.net.URL
 import kotlin.time.Duration.Companion.milliseconds
 import androidx.core.net.toUri
+import com.kuaishou.akdanmaku.ext.RETAINER_AKDANMAKU
+import com.kuaishou.akdanmaku.ext.RETAINER_BILIBILI
 import org.mz.mzdkplayer.danmaku.DanmakuData
 
 var atpVisibility by mutableStateOf(false)
@@ -99,20 +101,21 @@ var atpFocus by mutableStateOf(false)
 @Composable
 fun VideoPlayerScreen(mediaUri: String) {
     val context = LocalContext.current
-    val exoPlayer = rememberPlayer(context,mediaUri)
+    val exoPlayer = rememberPlayer(context, mediaUri)
     val videoPlayerState = rememberVideoPlayerState(hideSeconds = 6)
     val videoPlayerViewModel: VideoPlayerViewModel = viewModel()
     var showToast by remember { mutableStateOf(false) }
     var backPressState by remember { mutableStateOf<BackPress>(BackPress.Idle) }
     var contentCurrentPosition by remember { mutableLongStateOf(0L) }
     var isPlaying: Boolean by remember { mutableStateOf(exoPlayer.isPlaying) }
-    val danmakuConfig by remember { mutableStateOf(DanmakuConfig()) }
+
 
     var danmakuView: DanmakuView? by remember { mutableStateOf(null) }
     var mDanmakuPlayer: DanmakuPlayer = remember { DanmakuPlayer(SimpleRenderer()) }
     var danmakuEngine: DanmakuEngine? by remember { mutableStateOf(null) }
     val danmakuUri = SmbUtils.getDanmakuSmbUri(mediaUri.toUri())
     var currentCueGroup: CueGroup? by remember { mutableStateOf<CueGroup?>(null) }
+    var danmakuConfig by remember { mutableStateOf(DanmakuConfig()) }
 
     // 弹幕数据
     var danmakuDataList by remember { mutableStateOf<List<DanmakuData>?>(null) }
@@ -131,21 +134,29 @@ fun VideoPlayerScreen(mediaUri: String) {
     }
     // 加载弹幕数据
     LaunchedEffect(danmakuUri) {
+        Log.d("danmakuUri",danmakuUri.toString())
+        Log.d("mediaUri",mediaUri.toString())
         try {
+            Log.d("danmakuUriScheme", danmakuUri.scheme?.lowercase().toString())
             val inputStream: InputStream? = when (danmakuUri.scheme?.lowercase()) {
+
                 "smb" -> {
                     // 使用 SMB 工具打开输入流
                     SmbUtils.openSmbFileInputStream(danmakuUri)
 
                 }
+
                 "http", "https" -> {
                     // 打开 HTTP 输入流
                     URL(danmakuUri.toString()).openStream()
                 }
+
                 "file" -> {
                     // 打开本地文件输入流
-                    context.contentResolver.openInputStream(danmakuUri) ?: throw java.io.IOException("Could not open file input stream for $danmakuUri")
+                    context.contentResolver.openInputStream(danmakuUri)
+                        ?: throw java.io.IOException("Could not open file input stream for $danmakuUri")
                 }
+
                 else -> {
                     // 不支持的 scheme
                     Log.w("VideoPlayerScreen", "Unsupported scheme for danmaku URI: $danmakuUri")
@@ -157,7 +168,10 @@ fun VideoPlayerScreen(mediaUri: String) {
                 val danmakuResponse: DanmakuResponse = getDanmakuXmlFromFile(stream)
                 danmakuDataList = danmakuResponse.data
                 isDanmakuLoaded = true
-                Log.i("VideoPlayerScreen", "Loaded ${danmakuDataList?.size ?: 0} danmaku items from $danmakuUri")
+                Log.i(
+                    "VideoPlayerScreen",
+                    "Loaded ${danmakuDataList?.size ?: 0} danmaku items from $danmakuUri"
+                )
             }
         } catch (e: Exception) {
             Log.e("VideoPlayerScreen", "Failed to load danmaku from $danmakuUri", e)
@@ -171,11 +185,12 @@ fun VideoPlayerScreen(mediaUri: String) {
     var hasSentDanmaku by remember { mutableStateOf(false) }
     LaunchedEffect(isDanmakuLoaded, danmakuDataList, isPlaying, contentCurrentPosition) {
         if (isDanmakuLoaded && !hasSentDanmaku && danmakuDataList != null) {
+            Log.d("danmakuData", "状态弹幕")
             // 发送所有弹幕数据到播放器
-            danmakuDataList?.forEach { danmakuData ->
-                Log.d("danmakuData",danmakuData.toString())
-                val itemData = DanmakuItemData(
-                    danmakuId = if(danmakuData.rowId.toInt() !=0) danmakuData.rowId else(Math.random() * 100000000).toInt().toLong(), // 使用解析的ID或生成随机ID
+            val danmakuItemDataList = danmakuDataList?.map { danmakuData ->
+
+                DanmakuItemData(
+                    danmakuId = if (danmakuData.rowId != 0L) danmakuData.rowId else (Math.random() * 100000000).toLong(), // 使用解析的ID或生成随机ID
                     position = (danmakuData.time * 1000).toLong(), // 使用解析的时间戳
                     content = danmakuData.content, // 使用解析的文本
                     mode = when (danmakuData.mode) { // 映射模式
@@ -187,10 +202,29 @@ fun VideoPlayerScreen(mediaUri: String) {
                     textColor = danmakuData.color, // 使用解析的颜色或默认白色
                     // 可以根据 DanmakuData 的其他字段设置更多属性
                 )
-                mDanmakuPlayer.send(itemData)
+
+
             }
+            if (danmakuItemDataList != null) {
+                mDanmakuPlayer.updateData(danmakuItemDataList)
+            }
+
             hasSentDanmaku = true
-            Log.i("VideoPlayerScreen", "Sent ${danmakuDataList?.size ?: 0} danmaku items to player.")
+            danmakuConfig = danmakuConfig.copy(
+                retainerPolicy = RETAINER_AKDANMAKU,
+                textSizeScale = 1.0f,
+                screenPart = 0.12f,
+//                durationMs = 5000L,
+//                rollingDurationMs = 24000L
+
+            )
+            //danmakuConfig.updateFilter()
+            //logger.info { "Init danmaku config: $danmakuConfig" }
+            mDanmakuPlayer.updateConfig(danmakuConfig)
+            Log.i(
+                "VideoPlayerScreen",
+                "Sent ${danmakuDataList?.size ?: 0} danmaku items to player."
+            )
         }
 
 //        // 同步播放/暂停状态
@@ -210,9 +244,6 @@ fun VideoPlayerScreen(mediaUri: String) {
 
 
     //exoPlayer.setMediaItem(MediaItem.fromUri("http://127.0.0.1:13656/27137672496.mpd"))
-    danmakuConfig.copy(
-        textSizeScale = 3.0f
-    )
 //    LaunchedEffect(Unit) {
 //        val playerListener = object : Player.Listener {
 //            override fun onTracksChanged(tracks: Tracks) {
@@ -227,7 +258,7 @@ fun VideoPlayerScreen(mediaUri: String) {
     // 每隔100毫秒获取字幕
     LaunchedEffect(Unit) {
         while (true) {
-            delay(100)
+            delay(200)
             currentCueGroup = exoPlayer.currentCues
         }
 
@@ -245,9 +276,10 @@ fun VideoPlayerScreen(mediaUri: String) {
         )
     LaunchedEffect(Unit) {
         while (true) {
-            delay(300)
+            delay(500)
             contentCurrentPosition = exoPlayer.currentPosition
             isPlaying = exoPlayer.isPlaying
+            // Log.d("isPlay",isPlaying.toString())
         }
         // 4. 启动一个协程来定期检查字幕
 
@@ -332,14 +364,17 @@ fun VideoPlayerScreen(mediaUri: String) {
         AndroidView(
             factory = { context ->
                 PlayerView(context).apply {
+
                     useController = false // 如果你不需要控制器
                     player = exoPlayer
                     subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
+
 
                 }
             },
             update = { view ->
                 view.player = exoPlayer
+
                 view.subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
                 view.resizeMode = resizeMode
             },
@@ -382,6 +417,7 @@ fun VideoPlayerScreen(mediaUri: String) {
                     focusRequester,
                     "asasas",
                     "sdssdsd",
+
                     "2022/1/20",
                     videoPlayerViewModel,
                     danmakuConfig,
@@ -442,11 +478,13 @@ fun VideoPlayerScreen(mediaUri: String) {
                     onSelectedIndexChange = { videoPlayerViewModel.selectedAtIndex = it },
                     videoPlayerViewModel.mutableSetOfAudioTrackGroups, exoPlayer
                 )
+
                 "V" -> VideoTrackPanel(
                     videoPlayerViewModel.selectedVtIndex,
                     onSelectedIndexChange = { videoPlayerViewModel.selectedVtIndex = it },
                     videoPlayerViewModel.mutableSetOfVideoTrackGroups, exoPlayer
                 )
+
                 else -> {
                     SubtitleTrackPanel(
                         videoPlayerViewModel.selectedStIndex,

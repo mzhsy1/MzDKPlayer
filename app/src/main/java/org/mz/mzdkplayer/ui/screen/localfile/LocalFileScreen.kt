@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
@@ -65,7 +66,7 @@ fun LocalFileScreen(path: String?, navController: NavHostController) {
                         val encoded = URLEncoder.encode(file.path, "UTF-8")
                         navController.navigate("LocalFileScreen/$encoded")
                     }else{
-                        navController.navigate("VideoPlayer/${URLEncoder.encode(file.path, "UTF-8")}")
+                        navController.navigate("VideoPlayer/${URLEncoder.encode("file://${file.path}", "UTF-8")}")
                     }
                 },
                 colors = myListItemColor(),

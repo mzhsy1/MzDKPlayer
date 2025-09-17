@@ -29,6 +29,13 @@ import io.github.peerless2012.ass.media.type.AssRenderType
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 
 import androidx.core.net.toUri
+import androidx.media3.datasource.DataSink
+import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.cache.CacheDataSink
+import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.datasource.cache.CacheSpan
+import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
+import org.mz.mzdkplayer.MzDkPlayerApplication
 
 @OptIn(UnstableApi::class)
 @SuppressLint("SuspiciousIndentation")
@@ -64,6 +71,7 @@ fun BuilderMzPlayer(context: Context, mediaUri: String, exoPlayer: ExoPlayer) {
                 // 假设是文件路径，添加 file:// 前缀
                 "file://$mediaUri".toUri()
             }
+            Log.d("MediaItemUri",uri.toString())
             MediaItem.fromUri(uri)
         }
 
@@ -186,15 +194,71 @@ fun rememberPlayer(context: Context,mediaUri: String) = remember (mediaUri){
 //            Log.d("amlogicDecoders",amlogicDecoders.toString())
 //            return@MediaCodecSelector amlogicDecoders.ifEmpty { allDecoders }
 //        }
+    // 创建针对雷鸟鹤6 Pro (联发科MT9653平台) 的MediaCodecSelector
+    val mediaTekAwareCodecSelector =
+        MediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunnelingDecoder ->
+            val allDecoders = MediaCodecSelector.DEFAULT.getDecoderInfos(
+                mimeType,
+                requiresSecureDecoder,
+                requiresTunnelingDecoder
+            )
+
+            // 首先过滤出所有硬件解码器
+            val hardwareDecoders = allDecoders.filter { info ->
+                info.hardwareAccelerated // 系统标识的硬件解码器
+            }
+
+            // 优先选择联发科（MediaTek）的硬件解码器，特别是支持杜比视界的
+            val mediaTekDecoders = hardwareDecoders.filter { info ->
+                // 联发科解码器在名称中通常包含 "mediatek", "mtk", 或芯片型号如 "mt9653", "pentonic"
+                info.name.contains("mediatek", ignoreCase = true) ||
+                        info.name.contains("mtk", ignoreCase = true) ||
+                        info.name.contains("mt9653", ignoreCase = true) ||
+                        info.name.contains("pentonic", ignoreCase = true) ||
+                        // 同时保留之前针对杜比视界的筛选逻辑（如果仍需特定格式优先）
+                        (mimeType.startsWith("video/") && info.name.contains(
+                            "dolby",
+                            ignoreCase = true
+                        ))
+            }
+
+            Log.d("MediaCodecSelector", "For MIME type: $mimeType")
+            Log.d(
+                "MediaCodecSelector",
+                "All hardware decoders: ${hardwareDecoders.map { it.name }}"
+            )
+            Log.d(
+                "MediaCodecSelector",
+                "MediaTek prioritized decoders: ${mediaTekDecoders.map { it.name }}"
+            )
+
+            // 优先返回联发科解码器，如果没有则返回所有硬件解码器，最后再fallback到所有解码器
+            return@MediaCodecSelector when {
+                mediaTekDecoders.isNotEmpty() -> mediaTekDecoders
+                hardwareDecoders.isNotEmpty() -> hardwareDecoders
+                else -> allDecoders // 最终回退到所有解码器（理论上应该总有软件解码器）
+            }
+        }
     // 配置 RenderersFactory
     val renderersFactory = DefaultRenderersFactory(context).apply {
         //setMediaCodecSelector(amlogicAwareCodecSelector)
-        setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+        setMediaCodecSelector(mediaTekAwareCodecSelector)
     }
     // 根据 URI 协议选择合适的数据源工厂
     val dataSourceFactory = if (mediaUri.startsWith("smb://")) {
         // SMB 协议
-        SmbDataSourceFactory()
+
+
+        val cache = MzDkPlayerApplication.downloadCache
+
+         CacheDataSource.Factory()
+            .setCache(cache)
+            .setUpstreamDataSourceFactory( SmbDataSourceFactory())
+            .setCacheWriteDataSinkFactory(
+                CacheDataSink.Factory().setCache(cache)
+                .setFragmentSize(10 * 1024 * 1024)
+                .setBufferSize(64 * 1024)) // 使用默认
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
     } else if (mediaUri.startsWith("file://") || mediaUri.startsWith("/")) {
         // 本地文件协议或绝对路径
         DefaultDataSource.Factory(context)
@@ -208,7 +272,8 @@ fun rememberPlayer(context: Context,mediaUri: String) = remember (mediaUri){
             DefaultMediaSourceFactory(
                 dataSourceFactory
             )
-        ).setRenderersFactory(renderersFactory).buildWithAssSupport( //配置ass字幕显示 LEGACY
+        ).setRenderersFactory(renderersFactory)
+        .buildWithAssSupport( //配置ass字幕显示 LEGACY
             context,
             AssRenderType.LEGACY,
             dataSourceFactory = dataSourceFactory,
@@ -217,5 +282,4 @@ fun rememberPlayer(context: Context,mediaUri: String) = remember (mediaUri){
             playWhenReady = true
             repeatMode = Player.REPEAT_MODE_ONE
         }
-
 }
