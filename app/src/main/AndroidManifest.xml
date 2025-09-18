@@ -21,7 +21,7 @@
     <application
         android:allowBackup="true"
         android:name=".MzDkPlayerApplication"
-        android:banner="@mipmap/ic_launcher"
+        android:banner="@mipmap/ic_banner"
         android:icon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true"
         android:windowSoftInputMode="stateAlwaysHidden"
