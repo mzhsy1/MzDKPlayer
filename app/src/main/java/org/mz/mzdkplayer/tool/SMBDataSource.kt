@@ -7,6 +7,7 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.TransferListener
 import com.hierynomus.msdtyp.AccessMask
+import com.hierynomus.msfscc.fileinformation.FileStandardInformation
 import com.hierynomus.mssmb2.SMB2CreateDisposition
 import com.hierynomus.mssmb2.SMB2ShareAccess
 import com.hierynomus.smbj.SMBClient
@@ -15,141 +16,306 @@ import com.hierynomus.smbj.connection.Connection
 import com.hierynomus.smbj.session.Session
 import com.hierynomus.smbj.share.DiskShare
 import com.hierynomus.smbj.share.File
+import okio.Buffer // 使用 Okio 的 Buffer 进行高效字节处理
 import okio.IOException
 import java.io.EOFException
-import java.io.InputStream
+import java.util.concurrent.atomic.AtomicBoolean
 
+/**
+ * 自定义的 SMB 数据源，用于 ExoPlayer 通过 SMB 协议读取文件。
+ * 此实现针对大文件（如 80GB MKV 视频）进行了优化，特别是随机访问（seeking）性能。
+ * 主要优化点：
+ * 1. 使用 File.read() 直接从指定偏移量读取，避免 InputStream.skip() 的低效。
+ * 2. 引入 Okio Buffer 进行内部缓冲，减少 SMB 网络请求次数。
+ */
 @UnstableApi
 class SmbDataSource : DataSource {
-    private var dataSpec: DataSpec? = null
-    private var connection: Connection? = null
-    private var session: Session? = null
-    private var share: DiskShare? = null
-    private var file: File? = null
-    private var inputStream: InputStream? = null
-    private var bytesRemaining: Long = 0
-    private var opened = false
-    override fun addTransferListener(transferListener: TransferListener) {
+    // --- 成员变量 ---
 
+    private var dataSpec: DataSpec? = null // 当前打开的数据规范
+    private var connection: Connection? = null // SMB 连接
+    private var session: Session? = null // SMB 会话
+    private var share: DiskShare? = null // SMB 共享
+    private var file: File? = null // 打开的 SMB 文件
+    private var smbClient: SMBClient? = null // SMB 客户端实例
+
+    // 使用 Okio 的 Buffer 作为内部缓冲区，提高读取效率
+    private val readBuffer = Buffer()
+    // 跟踪当前在 SMB 文件中的逻辑读取位置（相对于文件开头）
+    private var currentFileOffset: Long = 0
+    // 剩余待读取的字节数
+    private var bytesRemaining: Long = 0
+    // 使用原子布尔值确保 opened 状态的线程安全
+    private val opened = AtomicBoolean(false)
+
+    // --- 配置参数 ---
+    // 内部缓冲区大小，可根据网络和文件特性调整（例如 256KB 到 1MB）
+    private val bufferSize = 256 * 1024
+    // --- 配置结束 ---
+
+    /**
+     * 添加传输监听器（如果需要监控传输过程）
+     */
+    override fun addTransferListener(transferListener: TransferListener) {
+        // 根据具体需求实现传输监控逻辑
     }
 
+    /**
+     * 打开数据源，准备读取指定 URI 和范围的数据。
+     * @param dataSpec 包含 URI、起始位置、长度等信息的数据规范
+     * @return 实际可读取的字节数
+     * @throws IOException 打开过程中发生错误
+     */
     @Throws(IOException::class)
     override fun open(dataSpec: DataSpec): Long {
+        // 确保数据源未被打开，保证线程安全
+        if (!opened.compareAndSet(false, true)) {
+            throw IOException("SmbDataSource 已经被打开。")
+        }
+
         this.dataSpec = dataSpec
         val uri = dataSpec.uri
-        val host = uri.host ?: throw IOException("Invalid SMB URI: no host")
-        val path = uri.path ?: throw IOException("Invalid SMB URI: no path")
-        val shareName = path.split("/").getOrNull(1) ?: throw IOException("Invalid SMB URI: could not extract share name")
-        val filePath = path.substringAfter(shareName).trimStart('/')
+        val host = uri.host ?: throw IOException("无效的 SMB URI: 缺少主机名")
+        val path = uri.path ?: throw IOException("无效的 SMB URI: 缺少路径")
+        // 分割路径以获取共享名和文件路径
+        val pathSegments = path.split("/").filter { it.isNotEmpty() }
+        if (pathSegments.size < 2) {
+            throw IOException("无效的 SMB URI: 无法提取共享名和文件路径")
+        }
+        val shareName = pathSegments[0] // 第一个非空段是共享名
+        val filePath = pathSegments.drop(1).joinToString("/") // 剩余部分是文件在共享中的路径
 
-        // 从 URI 或其他地方获取凭证信息（注意安全！）
-        // 示例：假设用户信息通过 URI 的 userInfo 部分传递（不安全，仅作示例）
-        val username = uri.userInfo?.split(":")?.getOrNull(0) ?: "guest"
-        val password = uri.userInfo?.split(":")?.getOrNull(1) ?: ""
-        val domain = "" // 如果需要域名
+        // --- 安全警告 ---
+        // 从 URI 的 userInfo 部分提取凭证是不安全的。
+        // 在生产环境中应使用更安全的方法（如 Android Keystore）。
+        val (username, password) = uri.userInfo?.split(":")?.let {
+            if (it.size == 2) Pair(it[0], it[1]) else Pair("guest", "")
+        } ?: Pair("guest", "")
 
-        val client = SMBClient()
-        connection = client.connect(host)
-        val authContext = AuthenticationContext(username, password.toCharArray(), domain)
-        session = connection!!.authenticate(authContext)
-        share = session!!.connectShare(shareName) as DiskShare
+        val domain = "" // 如需域名支持可在此添加
 
-        // 打开文件
-        file = share!!.openFile(
-            filePath,
-            setOf(AccessMask.GENERIC_READ),
-            null,
-            SMB2ShareAccess.ALL,
-            SMB2CreateDisposition.FILE_OPEN,
-            null
-        )
+        try {
+            // 创建 SMB 客户端并连接（考虑复用客户端实例以优化性能）
+            smbClient = SMBClient()
+            connection = smbClient?.connect(host)
+                ?: throw IOException("无法创建 SMB 连接")
 
-        inputStream = file!!.inputStream
+            // 认证会话
+            val authContext = AuthenticationContext(username, password.toCharArray(), domain)
+            session = connection?.authenticate(authContext)
+                ?: throw IOException("会话认证失败")
 
-        // 处理随机访问 (seeking)
-        val position = dataSpec.position
-        if (position > 0) {
-            // SMBJ 的 InputStream 可能不支持 skip，或者效率不高。可以使用 readAndDiscard。
-            var skipped: Long = 0
-            while (skipped < position) {
-                val skipBytes = inputStream!!.skip(position - skipped)
-                if (skipBytes <= 0) {
-                    throw EOFException("Unexpected end of stream while skipping")
-                }
-                skipped += skipBytes
+            // 连接到指定的共享
+            share = session?.connectShare(shareName) as? DiskShare
+                ?: throw IOException("连接共享失败或共享不是磁盘共享")
+
+            // 以只读方式打开文件
+            file = share?.openFile(
+                filePath,
+                setOf(AccessMask.GENERIC_READ), // 读取权限
+                null, // 文件属性
+                SMB2ShareAccess.ALL, // 共享访问模式
+                SMB2CreateDisposition.FILE_OPEN, // 打开已存在文件
+                null // 创建选项
+            ) ?: throw IOException("打开文件失败")
+
+            // 获取文件总大小信息
+            val fileInfo = file?.fileInformation?.getStandardInformation()
+                ?: throw IOException("获取文件信息失败")
+            val fileLength = fileInfo.endOfFile
+
+            // 验证请求的数据范围是否有效
+            val startPosition = dataSpec.position
+            if (startPosition < 0 || startPosition > fileLength) {
+                throw IOException("无效的起始位置: $startPosition")
             }
-        }
 
-        val length = file!!.fileInformation.standardInformation.endOfFile
-        bytesRemaining = if (dataSpec.length != C.LENGTH_UNSET.toLong()) {
-            dataSpec.length
-        } else {
-            length - dataSpec.position
-        }
-        if (bytesRemaining < 0) {
-            throw IOException("Length is negative: $bytesRemaining")
-        }
+            // 计算实际需要读取的字节数
+            bytesRemaining = if (dataSpec.length != C.LENGTH_UNSET.toLong()) {
+                dataSpec.length
+            } else {
+                fileLength - startPosition
+            }
 
-        opened = true
-        // 通知监听器打开完成（如果有）
-        // transferStarted(dataSpec, ...) 如果需要可以调用
+            // 再次验证计算后的长度
+            if (bytesRemaining < 0 || startPosition + bytesRemaining > fileLength) {
+                throw IOException("无效的数据长度: $bytesRemaining")
+            }
 
-        return bytesRemaining
+            // 初始化内部缓冲区状态，为指定的起始位置做准备
+            currentFileOffset = startPosition
+            readBuffer.clear() // 确保缓冲区在首次读取前是空的
+
+            // 注意：这里并未立即从网络读取数据，只是设置了初始状态。
+            // 第一次 read() 调用才会触发实际的数据获取。
+
+            return bytesRemaining // 返回可读取的总字节数
+
+        } catch (e: Exception) {
+            // 如果在打开过程中发生任何错误，确保已分配的资源被释放
+            closeQuietly()
+            throw IOException("打开 SMB 文件时出错: ${e.message}", e)
+        }
     }
 
+    /**
+     * 从数据源读取数据到指定的缓冲区。
+     * @param buffer 目标缓冲区
+     * @param offset 缓冲区中的起始写入偏移量
+     * @param readLength 尝试读取的最大字节数
+     * @return 实际读取的字节数，或 C.RESULT_END_OF_INPUT 表示结束
+     * @throws IOException 读取过程中发生错误
+     */
     @Throws(IOException::class)
     override fun read(buffer: ByteArray, offset: Int, readLength: Int): Int {
+        // 检查数据源是否已打开
+        if (!opened.get()) {
+            throw IOException("数据源未打开")
+        }
+
+        // 如果没有剩余数据可读，则返回结束标志
         if (bytesRemaining == 0L) {
             return C.RESULT_END_OF_INPUT
         }
-        val bytesToRead = minOf(readLength.coerceAtLeast(0), bytesRemaining.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+
+        // 计算本次实际尝试读取的字节数（不超过剩余量和请求量）
+        val bytesToRead = minOf(readLength.toLong(), bytesRemaining).toInt().coerceAtLeast(0)
+
         if (bytesToRead == 0) {
-            return 0
+            return 0 // 请求读取 0 字节，直接返回
         }
-        val bytesRead = inputStream!!.read(buffer, offset, bytesToRead)
-        if (bytesRead == -1) {
-            if (bytesRemaining != C.LENGTH_UNSET.toLong()) {
-                throw EOFException("Unexpected end of stream")
+
+        try {
+            // 循环检查内部缓冲区是否有足够数据满足本次请求
+            // 如果没有，则从 SMB 网络读取更多数据填充缓冲区
+            while (readBuffer.size < bytesToRead) {
+                // 计算本次从 SMB 文件读取的块大小
+                val chunkSize = minOf(bufferSize.toLong(), bytesRemaining - readBuffer.size).toInt()
+                if (chunkSize <= 0) break // 没有更多数据可读或达到请求范围末尾
+
+                // 创建临时字节数组用于接收从 SMB 读取的块
+                val tempBuffer = ByteArray(chunkSize)
+
+                // --- 修正后的关键优化：直接从文件偏移量读取 ---
+                // 使用正确的 File.read() 方法签名:
+                // fun read(buffer: ByteArray!, fileOffset: Long): Int
+                // 它会尝试读取 buffer.size (即 chunkSize) 个字节。
+                val bytesReadFromFile = file?.read(tempBuffer, currentFileOffset) ?: -1
+
+                if (bytesReadFromFile == -1) {
+                    // 从 SMB 读取时意外遇到文件结束
+                    if (bytesRemaining != C.LENGTH_UNSET.toLong()) {
+                        throw EOFException("从 SMB 读取时意外遇到文件结束")
+                    }
+                    // 如果长度未设置，且缓冲区也空，则视为输入结束
+                    if(readBuffer.size == 0L) {
+                        return C.RESULT_END_OF_INPUT
+                    }
+                    // 否则，继续处理缓冲区中已有的数据
+                    break
+                }
+
+                // 将从 SMB 读取到的字节块写入内部的 Okio 缓冲区
+                // 注意：只写入实际读取到的字节数 bytesReadFromFile
+                readBuffer.write(tempBuffer, 0, bytesReadFromFile)
+
+                // 更新我们在 SMB 文件中的逻辑位置
+                currentFileOffset += bytesReadFromFile.toLong()
+
+                // 如果读取的字节少于请求的块大小(chunkSize)，可能已到达范围末尾或文件末尾
+                if (bytesReadFromFile < chunkSize) {
+                    break
+                }
             }
-            return C.RESULT_END_OF_INPUT
+
+            // 现在从内部缓冲区 readBuffer 中复制数据到调用者的 buffer
+            val bytesToCopy = minOf(bytesToRead.toLong(), readBuffer.size).toInt()
+            if (bytesToCopy > 0) {
+                // --- 修正类型不匹配错误 ---
+                // 使用 read 方法，它可以指定目标数组、偏移量和要读取的字节数
+                // fun read(sink: ByteArray, offset: Int, byteCount: Int): Long
+                // 返回实际读取的字节数 (Long)
+                val bytesRead: Int = readBuffer.read(buffer, offset, bytesToCopy)
+                // 将 bytesToCopy 转换为 Long 以进行比较
+                if (bytesRead.toLong() != bytesToCopy.toLong()) {
+                    // 这种情况理论上不应该发生，因为我们在循环中确保了 readBuffer 有足够的数据
+                    // 但如果发生，抛出异常是合理的
+                    throw IOException("从内部缓冲区读取时发生错误：期望读取 $bytesToCopy 字节，实际读取 $bytesRead 字节")
+                }
+                bytesRemaining -= bytesRead // 更新剩余字节数 (Long)
+                return bytesRead // 返回实际读取的字节数 (Int)
+            } else {
+                // 缓冲区为空且无法再读取更多数据，视为结束
+                return C.RESULT_END_OF_INPUT
+            }
+
+        } catch (e: Exception) {
+            throw IOException("从 SMB 文件读取时出错: ${e.message}", e)
         }
-        if (bytesRemaining != C.LENGTH_UNSET.toLong()) {
-            bytesRemaining -= bytesRead
-        }
-        // 通知监听器数据传输（如果有）
-        // bytesTransferred(bytesRead) 如果需要可以调用
-        return bytesRead
     }
 
+    /**
+     * 获取当前打开的数据源 URI。
+     * @return 当前 URI 或 null
+     */
     override fun getUri(): Uri? {
         return dataSpec?.uri
     }
 
+    /**
+     * 关闭数据源，释放所有资源。
+     */
     override fun close() {
-        opened = false
-        inputStream?.close()
-        file?.close()
-        share?.close()
-        session?.close()
-        connection?.close()
-        inputStream = null
+        // 原子性地将 opened 状态从 true 设置为 false
+        if (opened.compareAndSet(true, false)) {
+            closeQuietly() // 执行实际的资源关闭操作
+        }
+        // 重置内部状态
+        dataSpec = null
+        bytesRemaining = 0
+        currentFileOffset = 0
+        readBuffer.clear() // 清空内部缓冲区
+    }
+
+    /**
+     * 辅助方法：静默关闭所有资源，即使发生异常也忽略。
+     * 确保在 open 失败或 close 时资源得到释放。
+     */
+    private fun closeQuietly() {
+        try {
+            file?.close()
+        } catch (ignored: Exception) { /* 忽略关闭文件时的异常 */ }
+        try {
+            share?.close()
+        } catch (ignored: Exception) { /* 忽略关闭共享时的异常 */ }
+        try {
+            session?.close()
+        } catch (ignored: Exception) { /* 忽略关闭会话时的异常 */ }
+        try {
+            connection?.close()
+        } catch (ignored: Exception) { /* 忽略关闭连接时的异常 */ }
+        try {
+            smbClient?.close() // 如果 SMBClient 需要显式关闭（取决于 SMBJ 版本）
+        } catch (ignored: Exception) { /* 忽略关闭客户端时的异常 */ }
+
+        // 清空引用
         file = null
         share = null
         session = null
         connection = null
-        dataSpec = null
-        bytesRemaining = 0
+        smbClient = null
     }
-
-
-
-
 }
 
-// 还需要一个 Factory 来创建 DataSource
+/**
+ * SmbDataSource 的工厂类，用于创建 SmbDataSource 实例。
+ */
 @UnstableApi
 class SmbDataSourceFactory : DataSource.Factory {
     override fun createDataSource(): DataSource {
         return SmbDataSource()
     }
 }
+
+
+

@@ -17,7 +17,7 @@
     <!-- 外部存储写入权限 -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
-
+    <!--  android:largeHeap="true" 增加Android应用的堆内存限制 -->
     <application
         android:allowBackup="true"
         android:name=".MzDkPlayerApplication"

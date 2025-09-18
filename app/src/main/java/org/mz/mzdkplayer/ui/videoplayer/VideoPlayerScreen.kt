@@ -1,6 +1,7 @@
 package org.mz.mzdkplayer.ui.videoplayer
 
 import CustomSubtitleView
+import android.view.LayoutInflater
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
@@ -365,20 +366,28 @@ fun VideoPlayerScreen(mediaUri: String) {
 
         AndroidView(
             factory = { context ->
-                PlayerView(context).apply {
+                PlayerView(context).apply{
+                 //LayoutInflater.from(context).inflate(R.layout.player_view, null).findViewById<PlayerView>(R.id.player_view).apply {
+                     useController = false // 如果你不需要控制器
+                     player = exoPlayer
+                     subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
+                 }
 
-                    useController = false // 如果你不需要控制器
-                    player = exoPlayer
-                    subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
+//                    val field = PlayerView::class.java.getDeclaredField("surfaceType")
+//                    fieldp.isAccessible = true
+//                    field.setInt(this, 4) // 2 可能对应 TEXTURE_VIEW，但需要查看源码确认
+                    //useController = false // 如果你不需要控制器
+                   // playView.player = exoPlayer
+                //playView.subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
 
 
-                }
+
             },
-            update = { view ->
-                view.player = exoPlayer
+            update = { playView ->
+                playView.player = exoPlayer
                 danmakuConfig.updateCache()
-                view.subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
-                view.resizeMode = resizeMode
+                playView.subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
+                playView.resizeMode = resizeMode
             },
             modifier = Modifier.fillMaxSize(),
             onRelease = {

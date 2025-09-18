@@ -2,6 +2,7 @@ package org.mz.mzdkplayer.ui.videoplayer.components
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.media.MediaCodecList
 import android.view.View
 import androidx.annotation.OptIn
 import androidx.compose.runtime.Composable
@@ -34,6 +35,7 @@ import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.CacheDataSink
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheSpan
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
 import androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
 import androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
@@ -180,7 +182,16 @@ fun BuilderMzPlayer(context: Context, mediaUri: String, exoPlayer: ExoPlayer) {
 @OptIn(UnstableApi::class)
 @Composable
 fun rememberPlayer(context: Context,mediaUri: String) = remember (mediaUri){
-
+    val codecInfos = MediaCodecList(MediaCodecList.ALL_CODECS)
+    for (info in codecInfos.codecInfos) {
+        if (info.isEncoder) continue
+        for (type in info.supportedTypes) {
+            if (type.contains("avc")) {
+                Log.i("CODEC", "Name: ${info.name}, Type: $type")
+                // 进一步可以查询 Capabilities
+            }
+        }
+    }
     // 创建针对 Amlogic 芯片的 MediaCodecSelector
 //    val amlogicAwareCodecSelector =
 //        MediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunnelingDecoder ->
@@ -242,87 +253,88 @@ fun rememberPlayer(context: Context,mediaUri: String) = remember (mediaUri){
 //                else -> allDecoders // 最终回退到所有解码器（理论上应该总有软件解码器）
 //            }
 //        }
-    Log.e("AVCDecoderSelector", "==============================================")
-    val avcAwareCodecSelector =
-        MediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunnelingDecoder ->
-            // 获取所有支持当前MIME类型的解码器信息
-            val allDecoders = MediaCodecSelector.DEFAULT.getDecoderInfos(
-                mimeType,
-                requiresSecureDecoder,
-                requiresTunnelingDecoder
-            )
-
-            // 首先，详细记录所有解码器信息
-            Log.i("AVCDecoderSelector", "==============================================")
-            Log.i("AVCDecoderSelector", "Querying decoders for MIME type: '$mimeType'")
-            Log.i("AVCDecoderSelector", "Requires Secure: $requiresSecureDecoder, Requires Tunneling: $requiresTunnelingDecoder")
-            Log.i("AVCDecoderSelector", "All available decoders (${allDecoders.size} found):")
-            allDecoders.forEachIndexed { index, decoderInfo ->
-                Log.i("AVCDecoderSelector", "  [$index] Name: '${decoderInfo.name}', " +
-                        "HardwareAccelerated: ${decoderInfo.hardwareAccelerated}, " +
-                        "CodecMimeType: '${decoderInfo.codecMimeType}', " +
-                        "Capabilities: ${decoderInfo.capabilities}")
-            }
-
-            // 特别关注 video/avc (H.264) 的情况
-            if (mimeType.startsWith("video/avc") || mimeType.startsWith("video/avc")) {
-                // 分离硬件和软件解码器以便分析
-                val hardwareDecoders = allDecoders.filter { it.hardwareAccelerated }
-                val softwareDecoders = allDecoders.filterNot { it.hardwareAccelerated }
-
-                Log.i("AVCDecoderSelector", "--- H.264/AVC Specific Analysis ---")
-                Log.i("AVCDecoderSelector", "Total Hardware decoders: ${hardwareDecoders.size}")
-                hardwareDecoders.forEachIndexed { index, decoderInfo ->
-                    Log.i("AVCDecoderSelector", "  Hardware [$index]: '${decoderInfo.name}'")
-                }
-                Log.i("AVCDecoderSelector", "Total Software decoders: ${softwareDecoders.size}")
-                softwareDecoders.forEachIndexed { index, decoderInfo ->
-                    Log.i("AVCDecoderSelector", "  Software [$index]: '${decoderInfo.name}'")
-                }
-
-                // 在这里，我们可以自定义优先级逻辑。例如，优先选择硬件解码器：
-                val prioritizedList = if (hardwareDecoders.isNotEmpty()) {
-                    Log.i("AVCDecoderSelector", "Prioritizing hardware decoders.")
-                    hardwareDecoders
-                } else {
-                    Log.i("AVCDecoderSelector", "No hardware decoder found, falling back to software decoders.")
-                    softwareDecoders
-                }
-
-                // 如果你想强制使用某个特定的解码器（用于测试），可以在这里操作：
-                // val forcedDecoderName = "OMX.MS.AVC.Decoder" // 示例
-                //OMX.google.h264.decoder 软件
-                // val forcedDecoder = allDecoders.find { it.name == forcedDecoderName }
-                // val finalList = forcedDecoder?.let { listOf(it) } ?: prioritizedList
-
-                Log.i("AVCDecoderSelector", "Final list of decoders to use (${prioritizedList.size}): ${prioritizedList.map { it.name }}")
-                prioritizedList // 返回优先选择的列表
-            } else {
-                // 对于非AVC格式，可以返回所有解码器或应用其他逻辑
-                Log.i("AVCDecoderSelector", "Non-AVC MIME type, returning all decoders.")
-                allDecoders
-            }
-        }
+    Log.i("AVCDecoderSelector", "==============================================")
+//    val avcAwareCodecSelector =
+//        MediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunnelingDecoder ->
+//            // 获取所有支持当前MIME类型的解码器信息
+//            val allDecoders = MediaCodecSelector.DEFAULT.getDecoderInfos(
+//                mimeType,
+//                requiresSecureDecoder,
+//                requiresTunnelingDecoder
+//            )
+//
+//            // 首先，详细记录所有解码器信息
+//            Log.i("AVCDecoderSelector", "==============================================")
+//            Log.i("AVCDecoderSelector", "Querying decoders for MIME type: '$mimeType'")
+//            Log.i("AVCDecoderSelector", "Requires Secure: $requiresSecureDecoder, Requires Tunneling: $requiresTunnelingDecoder")
+//            Log.i("AVCDecoderSelector", "All available decoders (${allDecoders.size} found):")
+//            allDecoders.forEachIndexed { index, decoderInfo ->
+//                Log.i("AVCDecoderSelector", "  [$index] Name: '${decoderInfo.name}', " +
+//                        "HardwareAccelerated: ${decoderInfo.hardwareAccelerated}, " +
+//                        "CodecMimeType: '${decoderInfo.codecMimeType}', " +
+//                        "Capabilities: ${decoderInfo.capabilities}")
+//            }
+//
+//            // 特别关注 video/avc (H.264) 的情况
+//            if (mimeType.startsWith("video/avc") || mimeType.startsWith("video/avc")) {
+//                // 分离硬件和软件解码器以便分析
+//                val hardwareDecoders = allDecoders.filter { it.hardwareAccelerated }
+//                val softwareDecoders = allDecoders.filterNot { it.hardwareAccelerated }
+//
+//                Log.i("AVCDecoderSelector", "--- H.264/AVC Specific Analysis ---")
+//                Log.i("AVCDecoderSelector", "Total Hardware decoders: ${hardwareDecoders.size}")
+//                hardwareDecoders.forEachIndexed { index, decoderInfo ->
+//                    Log.i("AVCDecoderSelector", "  Hardware [$index]: '${decoderInfo.name}'")
+//                }
+//                Log.i("AVCDecoderSelector", "Total Software decoders: ${softwareDecoders.size}")
+//                softwareDecoders.forEachIndexed { index, decoderInfo ->
+//                    Log.i("AVCDecoderSelector", "  Software [$index]: '${decoderInfo.name}'")
+//                }
+//
+//                // 在这里，我们可以自定义优先级逻辑。例如，优先选择硬件解码器：
+//                val prioritizedList = if (hardwareDecoders.isNotEmpty()) {
+//                    Log.i("AVCDecoderSelector", "Prioritizing hardware decoders.")
+//                    hardwareDecoders
+//                } else {
+//                    Log.i("AVCDecoderSelector", "No hardware decoder found, falling back to software decoders.")
+//                    softwareDecoders
+//                }
+//
+//                // 如果你想强制使用某个特定的解码器（用于测试），可以在这里操作：
+//                 val forcedDecoderName = "OMX.google.h264.decoder" // 示例
+//                //OMX.google.h264.decoder 软件
+//                 val forcedDecoder = allDecoders.find { it.name == forcedDecoderName }
+//                 val finalList = forcedDecoder?.let { listOf(it) } ?: prioritizedList
+//
+//                Log.i("AVCDecoderSelector", "Final list of decoders to use (${prioritizedList.size}): ${prioritizedList.map { it.name }}")
+//                prioritizedList // 返回优先选择的列表
+//            } else {
+//                // 对于非AVC格式，可以返回所有解码器或应用其他逻辑
+//                Log.i("AVCDecoderSelector", "Non-AVC MIME type, returning all decoders.")
+//                allDecoders
+//            }
+//        }
     // 配置 RenderersFactory
     val renderersFactory = DefaultRenderersFactory(context).apply {
-        setMediaCodecSelector(avcAwareCodecSelector)
-        //setExtensionRendererMode(EXTENSION_RENDERER_MODE_PREFER)
+        //setMediaCodecSelector(avcAwareCodecSelector)
+        setExtensionRendererMode(EXTENSION_RENDERER_MODE_PREFER)
     }
+
     // 根据 URI 协议选择合适的数据源工厂
     val dataSourceFactory = if (mediaUri.startsWith("smb://")) {
         // SMB 协议
 
-        SmbDataSourceFactory()
-//        val cache = MzDkPlayerApplication.downloadCache
-//
-//         CacheDataSource.Factory()
-//            .setCache(cache)
-//            .setUpstreamDataSourceFactory( SmbDataSourceFactory())
-//            .setCacheWriteDataSinkFactory(
-//                CacheDataSink.Factory().setCache(cache)
-//                .setFragmentSize(10 * 1024 * 1024)
-//                .setBufferSize(64 * 1024)) // 使用默认
-//            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+        //SmbDataSourceFactory()
+        val cache = MzDkPlayerApplication.downloadCache
+
+         CacheDataSource.Factory()
+            .setCache(cache)
+            .setUpstreamDataSourceFactory( SmbDataSourceFactory())
+            .setCacheWriteDataSinkFactory(
+                CacheDataSink.Factory().setCache(cache)
+                .setFragmentSize(200 * 1024 * 1024)
+                .setBufferSize(16 * 1024 * 1024)) // 使用16MB缓冲
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
     } else if (mediaUri.startsWith("file://") || mediaUri.startsWith("/")) {
         // 本地文件协议或绝对路径
         DefaultDataSource.Factory(context)
@@ -330,8 +342,17 @@ fun rememberPlayer(context: Context,mediaUri: String) = remember (mediaUri){
         // 其他情况（如 http/https），使用默认的 HTTP 数据源
         DefaultHttpDataSource.Factory()
     }
-
-    ExoPlayer.Builder(context).setSeekForwardIncrementMs(10000).setSeekBackIncrementMs(10000)
+    val loadControl = DefaultLoadControl.Builder()
+        .setBufferDurationsMs(
+            120000,  // 最小缓冲时间: 120秒
+            300000,  // 最大缓冲时间: 300秒
+            5000,    // 播放开始前缓冲: 5秒
+            10000    // 重新缓冲后缓冲: 10秒
+        )
+        .setTargetBufferBytes(C.LENGTH_UNSET) // 不使用字节数限制
+        .setPrioritizeTimeOverSizeThresholds(true) // 优先时间阈值
+        .build()
+    ExoPlayer.Builder(context).setSeekForwardIncrementMs(10000).setSeekBackIncrementMs(10000).setLoadControl(loadControl)
         .setMediaSourceFactory(
             DefaultMediaSourceFactory(
                 dataSourceFactory

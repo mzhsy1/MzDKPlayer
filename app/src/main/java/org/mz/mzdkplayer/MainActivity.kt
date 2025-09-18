@@ -6,11 +6,13 @@ import android.os.Bundle
 import android.util.DisplayMetrics
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.media3.common.util.UnstableApi
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 
 import org.mz.mzdkplayer.ui.MzDKPlayerAPP
 
 
+@UnstableApi
 class MainActivity : AppCompatActivity() {
     private val dm: DisplayMetrics = MzDkPlayerApplication.context.resources.displayMetrics
     private val newDensity: Float = dm.widthPixels / 960.0.toFloat();
