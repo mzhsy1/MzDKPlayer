@@ -274,7 +274,7 @@ fun VideoPlayerScreen(mediaUri: String) {
         )
     LaunchedEffect(Unit) {
         while (true) {
-            delay(500)
+            delay(200)
             contentCurrentPosition = exoPlayer.currentPosition
             isPlaying = exoPlayer.isPlaying
             // Log.d("isPlay",isPlaying.toString())
