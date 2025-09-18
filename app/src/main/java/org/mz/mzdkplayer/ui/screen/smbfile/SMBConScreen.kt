@@ -56,9 +56,9 @@ import java.util.UUID
 fun SMBConScreen() {
     val viewModel: SMBConViewModel = viewModel()
     val smbListViewModel: SMBListViewModel = viewModel()
-    var ip by remember { mutableStateOf("192.168.1.3") }
-    var username by remember { mutableStateOf("wang") }
-    var password by remember { mutableStateOf("Wa541888") }
+    var ip by remember { mutableStateOf("192.168.1.") }
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var shareName by remember { mutableStateOf("movies") }
     var aliasName by remember { mutableStateOf("my nas") }
 
