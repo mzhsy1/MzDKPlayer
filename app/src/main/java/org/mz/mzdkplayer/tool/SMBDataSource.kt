@@ -17,9 +17,10 @@ import com.hierynomus.smbj.session.Session
 import com.hierynomus.smbj.share.DiskShare
 import com.hierynomus.smbj.share.File
 import okio.Buffer // 使用 Okio 的 Buffer 进行高效字节处理
-import okio.IOException
 import java.io.EOFException
+import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.min
 
 /**
  * 自定义的 SMB 数据源，用于 ExoPlayer 通过 SMB 协议读取文件。
@@ -27,6 +28,9 @@ import java.util.concurrent.atomic.AtomicBoolean
  * 主要优化点：
  * 1. 使用 File.read() 直接从指定偏移量读取，避免 InputStream.skip() 的低效。
  * 2. 引入 Okio Buffer 进行内部缓冲，减少 SMB 网络请求次数。
+ *
+ * 修复了读取大文件时可能出现的 `java.io.IOException: 从内部缓冲区读取时发生错误：期望读取 X 字节，实际读取 Y 字节` 错误。
+ * 原因是 `okio.Buffer.read()` 可能返回少于请求的字节数。修复方法是循环调用 read 直到读取完所需字节或遇到 EOF。
  */
 @UnstableApi
 class SmbDataSource : DataSource {
@@ -179,75 +183,93 @@ class SmbDataSource : DataSource {
         }
 
         // 计算本次实际尝试读取的字节数（不超过剩余量和请求量）
-        val bytesToRead = minOf(readLength.toLong(), bytesRemaining).toInt().coerceAtLeast(0)
+        val bytesToRead = min(readLength.toLong(), bytesRemaining).toInt().coerceAtLeast(0)
 
         if (bytesToRead == 0) {
             return 0 // 请求读取 0 字节，直接返回
         }
 
         try {
-            // 循环检查内部缓冲区是否有足够数据满足本次请求
-            // 如果没有，则从 SMB 网络读取更多数据填充缓冲区
-            while (readBuffer.size < bytesToRead) {
-                // 计算本次从 SMB 文件读取的块大小
-                val chunkSize = minOf(bufferSize.toLong(), bytesRemaining - readBuffer.size).toInt()
-                if (chunkSize <= 0) break // 没有更多数据可读或达到请求范围末尾
+            var totalBytesRead = 0
+            var currentOffset = offset
 
-                // 创建临时字节数组用于接收从 SMB 读取的块
-                val tempBuffer = ByteArray(chunkSize)
+            // --- 修复核心问题 ---
+            // 循环读取，直到满足请求的字节数或遇到 EOF
+            while (totalBytesRead < bytesToRead) {
+                val bytesNeeded = bytesToRead - totalBytesRead
 
-                // --- 修正后的关键优化：直接从文件偏移量读取 ---
-                // 使用正确的 File.read() 方法签名:
-                // fun read(buffer: ByteArray!, fileOffset: Long): Int
-                // 它会尝试读取 buffer.size (即 chunkSize) 个字节。
-                val bytesReadFromFile = file?.read(tempBuffer, currentFileOffset) ?: -1
-
-                if (bytesReadFromFile == -1) {
-                    // 从 SMB 读取时意外遇到文件结束
-                    if (bytesRemaining != C.LENGTH_UNSET.toLong()) {
-                        throw EOFException("从 SMB 读取时意外遇到文件结束")
+                // 检查缓冲区是否有数据，如果没有或不足，则从 SMB 填充
+                if (readBuffer.size == 0L) {
+                    // 计算本次从 SMB 文件读取的块大小
+                    val chunkSize = min(bufferSize.toLong(), bytesRemaining).toInt()
+                    if (chunkSize <= 0) {
+                        // 没有更多数据可读
+                        if (totalBytesRead == 0) {
+                            return C.RESULT_END_OF_INPUT // 如果还没读到任何数据，就是 EOF
+                        } else {
+                            break // 否则返回已读取的部分数据
+                        }
                     }
-                    // 如果长度未设置，且缓冲区也空，则视为输入结束
-                    if(readBuffer.size == 0L) {
+
+                    // 创建临时字节数组用于接收从 SMB 读取的块
+                    val tempBuffer = ByteArray(chunkSize)
+
+                    // --- 修正后的关键优化：直接从文件偏移量读取 ---
+                    // 使用正确的 File.read() 方法签名:
+                    // fun read(buffer: ByteArray!, fileOffset: Long): Int
+                    // 它会尝试读取 buffer.size (即 chunkSize) 个字节。
+                    val bytesReadFromFile = file?.read(tempBuffer, currentFileOffset) ?: -1
+
+                    if (bytesReadFromFile == -1) {
+                        // 从 SMB 读取时意外遇到文件结束
+                        if (bytesRemaining != C.LENGTH_UNSET.toLong()) {
+                            throw EOFException("从 SMB 读取时意外遇到文件结束")
+                        }
+                        // 如果长度未设置，且之前没读到数据，则视为输入结束
+                        if (totalBytesRead == 0) {
+                            return C.RESULT_END_OF_INPUT
+                        }
+                        // 否则，返回已读取的部分数据
+                        break
+                    }
+
+                    // 将从 SMB 读取到的字节块写入内部的 Okio 缓冲区
+                    // 注意：只写入实际读取到的字节数 bytesReadFromFile
+                    readBuffer.write(tempBuffer, 0, bytesReadFromFile)
+
+                    // 更新我们在 SMB 文件中的逻辑位置
+                    currentFileOffset += bytesReadFromFile.toLong()
+
+                    // 如果读取的字节少于请求的块大小(chunkSize)，可能已到达范围末尾或文件末尾
+                    // 这没关系，下次循环会再次检查缓冲区或尝试读取
+                }
+
+
+                // 现在缓冲区中应该有数据了，从中读取
+                // readBuffer.read() 可能返回少于请求的字节数
+                val bytesReadFromBuffer: Int = readBuffer.read(
+                    buffer,
+                    currentOffset,
+                    min(bytesNeeded.toLong(), readBuffer.size).toInt()
+                )
+
+                if (bytesReadFromBuffer > 0) {
+                    totalBytesRead += bytesReadFromBuffer
+                    currentOffset += bytesReadFromBuffer
+                    bytesRemaining -= bytesReadFromBuffer.toLong()
+                } else if (bytesReadFromBuffer == -1 || (bytesReadFromBuffer == 0 && readBuffer.size == 0L)) {
+                    // 缓冲区读不到数据且自身也空了，表示 EOF
+                    if (totalBytesRead == 0) {
                         return C.RESULT_END_OF_INPUT
+                    } else {
+                        break // 返回已读取的部分数据
                     }
-                    // 否则，继续处理缓冲区中已有的数据
-                    break
                 }
-
-                // 将从 SMB 读取到的字节块写入内部的 Okio 缓冲区
-                // 注意：只写入实际读取到的字节数 bytesReadFromFile
-                readBuffer.write(tempBuffer, 0, bytesReadFromFile)
-
-                // 更新我们在 SMB 文件中的逻辑位置
-                currentFileOffset += bytesReadFromFile.toLong()
-
-                // 如果读取的字节少于请求的块大小(chunkSize)，可能已到达范围末尾或文件末尾
-                if (bytesReadFromFile < chunkSize) {
-                    break
-                }
+                // bytesReadFromBuffer == 0 但 readBuffer.size > 0 的情况理论上不应发生，但为健壮性考虑可继续循环
             }
 
-            // 现在从内部缓冲区 readBuffer 中复制数据到调用者的 buffer
-            val bytesToCopy = minOf(bytesToRead.toLong(), readBuffer.size).toInt()
-            if (bytesToCopy > 0) {
-                // --- 修正类型不匹配错误 ---
-                // 使用 read 方法，它可以指定目标数组、偏移量和要读取的字节数
-                // fun read(sink: ByteArray, offset: Int, byteCount: Int): Long
-                // 返回实际读取的字节数 (Long)
-                val bytesRead: Int = readBuffer.read(buffer, offset, bytesToCopy)
-                // 将 bytesToCopy 转换为 Long 以进行比较
-                if (bytesRead.toLong() != bytesToCopy.toLong()) {
-                    // 这种情况理论上不应该发生，因为我们在循环中确保了 readBuffer 有足够的数据
-                    // 但如果发生，抛出异常是合理的
-                    throw IOException("从内部缓冲区读取时发生错误：期望读取 $bytesToCopy 字节，实际读取 $bytesRead 字节")
-                }
-                bytesRemaining -= bytesRead // 更新剩余字节数 (Long)
-                return bytesRead // 返回实际读取的字节数 (Int)
-            } else {
-                // 缓冲区为空且无法再读取更多数据，视为结束
-                return C.RESULT_END_OF_INPUT
-            }
+            return totalBytesRead
+
 
         } catch (e: Exception) {
             throw IOException("从 SMB 文件读取时出错: ${e.message}", e)

@@ -1,7 +1,10 @@
 package org.mz.mzdkplayer.ui.videoplayer
 
 import CustomSubtitleView
-import android.view.LayoutInflater
+import android.content.Context
+import android.opengl.GLSurfaceView
+import android.view.Surface
+import android.view.View
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
@@ -35,7 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -43,55 +45,52 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.Player
 import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.video.VideoDecoderGLSurfaceView
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.Text
 import com.kuaishou.akdanmaku.DanmakuConfig
 import com.kuaishou.akdanmaku.data.DanmakuItemData
-import com.kuaishou.akdanmaku.ecs.DanmakuEngine
+import com.kuaishou.akdanmaku.ext.RETAINER_BILIBILI
 import com.kuaishou.akdanmaku.render.SimpleRenderer
 import com.kuaishou.akdanmaku.ui.DanmakuPlayer
-import com.kuaishou.akdanmaku.ui.DanmakuView
 import kotlinx.coroutines.delay
+import org.mz.mzbi.ui.videoplayer.components.VideoTrackPanel
 import org.mz.mzdkplayer.R
-
+import org.mz.mzdkplayer.danmaku.DanmakuData
+import org.mz.mzdkplayer.danmaku.DanmakuResponse
+import org.mz.mzdkplayer.danmaku.getDanmakuXmlFromFile
+import org.mz.mzdkplayer.tool.SmbUtils
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
+import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 import org.mz.mzdkplayer.ui.videoplayer.components.AkDanmakuPlayer
 import org.mz.mzdkplayer.ui.videoplayer.components.AudioTrackPanel
 import org.mz.mzdkplayer.ui.videoplayer.components.BuilderMzPlayer
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerOverlay
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulseState
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerState
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulse.Type.BACK
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulse.Type.FORWARD
-import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerPulseState
-import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerState
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulse
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerSeeker
+import org.mz.mzdkplayer.ui.videoplayer.components.SubtitleTrackPanel
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerControlsIcon
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerMainFrame
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerMediaTitle
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerMediaTitleType
-import org.mz.mzbi.ui.videoplayer.components.VideoTrackPanel
-import org.mz.mzdkplayer.danmaku.DanmakuResponse
-import org.mz.mzdkplayer.danmaku.getDanmakuXmlFromFile
-import org.mz.mzdkplayer.tool.SmbUtils
+import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerOverlay
+import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulse
+import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulse.Type.BACK
+import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulse.Type.FORWARD
+import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulseState
+import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerSeeker
+import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerState
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberPlayer
-import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
-import org.mz.mzdkplayer.ui.videoplayer.components.SubtitleTrackPanel
+import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerPulseState
+import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerState
 import java.io.InputStream
 import java.net.URL
 import kotlin.time.Duration.Companion.milliseconds
-import androidx.core.net.toUri
-import com.kuaishou.akdanmaku.ext.RETAINER_AKDANMAKU
-import com.kuaishou.akdanmaku.ext.RETAINER_BILIBILI
-import org.mz.mzdkplayer.danmaku.DanmakuData
 
 
 //var selectedAorV by mutableStateOf("A")
@@ -369,8 +368,14 @@ fun VideoPlayerScreen(mediaUri: String) {
                 PlayerView(context).apply{
                  //LayoutInflater.from(context).inflate(R.layout.player_view, null).findViewById<PlayerView>(R.id.player_view).apply {
                      useController = false // 如果你不需要控制器
+                   // exoPlayer.setVideoSurfaceView(VideoDecoderGLSurfaceView(context) )
                      player = exoPlayer
+
+                    // LINT.IfChange
+
+                      //player?.setVideoSurfaceView(VideoDecoderGLSurfaceView(context) )
                      subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
+
                  }
 
 //                    val field = PlayerView::class.java.getDeclaredField("surfaceType")
@@ -384,8 +389,11 @@ fun VideoPlayerScreen(mediaUri: String) {
 
             },
             update = { playView ->
+               // exoPlayer.setVideoSurfaceView(VideoDecoderGLSurfaceView(context) )
                 playView.player = exoPlayer
-                danmakuConfig.updateCache()
+
+                //danmakuConfig.updateCache()
+
                 playView.subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
                 playView.resizeMode = resizeMode
             },

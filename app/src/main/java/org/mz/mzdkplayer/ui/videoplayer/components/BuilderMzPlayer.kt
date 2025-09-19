@@ -332,8 +332,8 @@ fun rememberPlayer(context: Context,mediaUri: String) = remember (mediaUri){
             .setUpstreamDataSourceFactory( SmbDataSourceFactory())
             .setCacheWriteDataSinkFactory(
                 CacheDataSink.Factory().setCache(cache)
-                .setFragmentSize(200 * 1024 * 1024)
-                .setBufferSize(16 * 1024 * 1024)) // 使用16MB缓冲
+                .setFragmentSize(100 * 1024 * 1024)
+                .setBufferSize(8 * 1024 * 1024)) // 使用16MB缓冲
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
     } else if (mediaUri.startsWith("file://") || mediaUri.startsWith("/")) {
         // 本地文件协议或绝对路径
@@ -342,17 +342,17 @@ fun rememberPlayer(context: Context,mediaUri: String) = remember (mediaUri){
         // 其他情况（如 http/https），使用默认的 HTTP 数据源
         DefaultHttpDataSource.Factory()
     }
-    val loadControl = DefaultLoadControl.Builder()
-        .setBufferDurationsMs(
-            120000,  // 最小缓冲时间: 120秒
-            300000,  // 最大缓冲时间: 300秒
-            5000,    // 播放开始前缓冲: 5秒
-            10000    // 重新缓冲后缓冲: 10秒
-        )
-        .setTargetBufferBytes(C.LENGTH_UNSET) // 不使用字节数限制
-        .setPrioritizeTimeOverSizeThresholds(true) // 优先时间阈值
-        .build()
-    ExoPlayer.Builder(context).setSeekForwardIncrementMs(10000).setSeekBackIncrementMs(10000).setLoadControl(loadControl)
+//    val loadControl = DefaultLoadControl.Builder()
+//        .setBufferDurationsMs(
+//            35000,  // 最小缓冲时间: 120秒
+//            100000,  // 最大缓冲时间: 300秒
+//            3000,    // 播放开始前缓冲: 5秒
+//            6000    // 重新缓冲后缓冲: 10秒
+//        )
+//        .setTargetBufferBytes(C.LENGTH_UNSET) // 不使用字节数限制
+//        .setPrioritizeTimeOverSizeThresholds(true) // 优先时间阈值
+//        .build()
+    ExoPlayer.Builder(context).setSeekForwardIncrementMs(10000).setSeekBackIncrementMs(10000)
         .setMediaSourceFactory(
             DefaultMediaSourceFactory(
                 dataSourceFactory
