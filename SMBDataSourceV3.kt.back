@@ -1,0 +1,363 @@
+package org.mz.mzdkplayer.tool
+
+import android.net.Uri
+import android.util.Log
+import androidx.media3.common.C
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.BaseDataSource
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSpec
+import com.hierynomus.msdtyp.AccessMask
+import com.hierynomus.msfscc.fileinformation.FileStandardInformation
+import com.hierynomus.mssmb2.SMB2CreateDisposition
+import com.hierynomus.mssmb2.SMB2Dialect
+import com.hierynomus.mssmb2.SMB2ShareAccess
+import com.hierynomus.smbj.SmbConfig
+import com.hierynomus.smbj.SMBClient
+import com.hierynomus.smbj.auth.AuthenticationContext
+import com.hierynomus.smbj.connection.Connection
+import com.hierynomus.smbj.session.Session
+import com.hierynomus.smbj.share.DiskShare
+import com.hierynomus.smbj.share.File
+import java.io.IOException
+import java.util.EnumSet
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.min
+
+@UnstableApi
+class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
+    private var dataSpec: DataSpec? = null
+    private var connection: Connection? = null
+    private var session: Session? = null
+    private var share: DiskShare? = null
+    private var file: File? = null
+    private var smbClient: SMBClient? = null
+
+    private var readBuffer: ByteArray? = null
+    private var bufferPosition: Int = 0
+    private var bufferLimit: Int = 0
+    private var bufferSize: Int = DEFAULT_BUFFER_SIZE_BYTES
+
+    private var currentFileOffset: Long = 0
+    private var bytesRemaining: Long = 0
+    private val opened = AtomicBoolean(false)
+
+    // 性能监控变量
+    private var totalBytesRead: Long = 0
+    private var readStartTime: Long = 0
+    private var lastLogTime: Long = 0
+    private var readCount: Int = 0
+
+    companion object {
+        private const val TAG = "SmbDataSource"
+        // 使用更大的缓冲区大小
+        private const val DEFAULT_BUFFER_SIZE_BYTES = 8 * 1024 * 1024 // 8MB 默认缓冲区大小
+
+        private val PREFERRED_SMB_DIALECTS = EnumSet.of(
+            SMB2Dialect.SMB_3_1_1,
+            SMB2Dialect.SMB_3_0,
+            SMB2Dialect.SMB_3_0_2
+        )
+
+        // SMB 读取超时设置（毫秒）
+        private const val SMB_READ_TIMEOUT = 45000
+        // 性能日志记录间隔（毫秒）
+        private const val LOG_INTERVAL = 3000
+        // 读取统计间隔
+        private const val READ_STATS_INTERVAL = 100
+    }
+
+    @Throws(IOException::class)
+    override fun open(dataSpec: DataSpec): Long {
+        transferInitializing(dataSpec)
+
+        if (!opened.compareAndSet(false, true)) {
+            throw IOException("SmbDataSource 已经被打开。")
+        }
+
+        this.dataSpec = dataSpec
+        val uri = dataSpec.uri
+        val host = uri.host ?: throw IOException("无效的 SMB URI: 缺少主机名")
+        val path = uri.path ?: throw IOException("无效的 SMB URI: 缺少路径")
+
+        val pathSegments = path.split("/").filter { it.isNotEmpty() }
+        if (pathSegments.size < 2) {
+            throw IOException("无效的 SMB URI: 无法提取共享名和文件路径")
+        }
+
+        val shareName = pathSegments[0]
+        val filePath = pathSegments.drop(1).joinToString("/")
+
+        val (username, password) = uri.userInfo?.split(":")?.let {
+            if (it.size == 2) Pair(it[0], it[1]) else Pair("guest", "")
+        } ?: Pair("guest", "")
+
+        val domain = ""
+
+        try {
+            // 配置 SMB 客户端 - 使用更优化的参数
+            val config = SmbConfig.builder()
+                .withDialects(PREFERRED_SMB_DIALECTS)
+                .withMultiProtocolNegotiate(true)
+                .withSoTimeout(SMB_READ_TIMEOUT)
+                .withBufferSize(8 * 1024 *1024) // 增加协议缓冲区大小
+                // 增加信用数
+                .build()
+
+            smbClient = SMBClient(config)
+            connection = smbClient?.connect(host) ?: throw IOException("无法创建 SMB 连接")
+
+            val authContext = AuthenticationContext(username, password.toCharArray(), domain)
+            session = connection?.authenticate(authContext) ?: throw IOException("会话认证失败")
+
+            share = session?.connectShare(shareName) as? DiskShare
+                ?: throw IOException("连接共享失败或共享不是磁盘共享")
+
+            val negotiatedDialect = connection?.negotiatedProtocol?.dialect
+            Log.i(TAG, "协商的 SMB 协议版本: $negotiatedDialect")
+
+            // 打开文件 - 使用更优化的参数
+            file = share?.openFile(
+                filePath,
+                EnumSet.of(AccessMask.GENERIC_READ),
+                null,
+                EnumSet.of(SMB2ShareAccess.FILE_SHARE_READ),
+                SMB2CreateDisposition.FILE_OPEN,
+                null
+            ) ?: throw IOException("打开文件失败")
+
+            // 获取文件信息
+            val fileInfo = file?.fileInformation?.standardInformation
+                ?: throw IOException("获取文件信息失败")
+            val fileLength = fileInfo.endOfFile
+
+            val startPosition = dataSpec.position
+            if (startPosition < 0 || startPosition > fileLength) {
+                throw IOException("无效的起始位置: $startPosition")
+            }
+
+            bytesRemaining = if (dataSpec.length != C.LENGTH_UNSET.toLong()) {
+                dataSpec.length
+            } else {
+                fileLength - startPosition
+            }
+
+            if (bytesRemaining < 0 || startPosition + bytesRemaining > fileLength) {
+                throw IOException("无效的数据长度: $bytesRemaining")
+            }
+
+            currentFileOffset = startPosition
+            // 固定使用大缓冲区
+            bufferSize = DEFAULT_BUFFER_SIZE_BYTES
+            this.readBuffer = ByteArray(bufferSize)
+            this.bufferPosition = 0
+            this.bufferLimit = 0
+
+            // 初始化性能监控
+            totalBytesRead = 0
+            readStartTime = System.currentTimeMillis()
+            lastLogTime = readStartTime
+            readCount = 0
+
+            Log.i(TAG, "SMB数据源打开成功: 文件大小=${fileLength/1024/1024}MB, " +
+                    "起始位置=$startPosition, 读取长度=${bytesRemaining/1024/1024}MB, " +
+                    "缓冲区大小=${bufferSize/1024/1024}MB")
+
+            transferStarted(dataSpec)
+            return bytesRemaining
+
+        } catch (e: Exception) {
+            closeQuietly()
+            throw IOException("打开 SMB 文件时出错: ${e.message}", e)
+        }
+    }
+
+    @Throws(IOException::class)
+    override fun read(buffer: ByteArray, offset: Int, readLength: Int): Int {
+        if (!opened.get()) {
+            throw IOException("数据源未打开")
+        }
+
+        if (bytesRemaining == 0L) {
+            return C.RESULT_END_OF_INPUT
+        }
+
+        val bytesToRead = min(readLength.toLong(), bytesRemaining).toInt().coerceAtLeast(0)
+        if (bytesToRead == 0) {
+            return 0
+        }
+
+        try {
+            var totalBytesRead = 0
+            var currentOffset = offset
+
+            while (totalBytesRead < bytesToRead) {
+                val bytesNeeded = bytesToRead - totalBytesRead
+
+                if (bufferPosition >= bufferLimit) {
+                    refillBuffer()
+                    // 如果填充后仍然没有数据，说明到达文件末尾
+                    if (bufferPosition >= bufferLimit) {
+                        break
+                    }
+                }
+
+                val bytesAvailableInBuffer = bufferLimit - bufferPosition
+                val bytesReadFromBuffer = min(bytesNeeded, bytesAvailableInBuffer)
+
+                System.arraycopy(
+                    readBuffer!!,
+                    bufferPosition,
+                    buffer,
+                    currentOffset,
+                    bytesReadFromBuffer
+                )
+
+                bufferPosition += bytesReadFromBuffer
+                totalBytesRead += bytesReadFromBuffer
+                currentOffset += bytesReadFromBuffer
+                bytesRemaining -= bytesReadFromBuffer.toLong()
+                bytesTransferred(bytesReadFromBuffer)
+
+                // 更新性能统计
+                this.totalBytesRead += bytesReadFromBuffer
+                readCount++
+            }
+
+            // 定期记录性能日志
+            val currentTime = System.currentTimeMillis()
+            if (currentTime - lastLogTime > LOG_INTERVAL) {
+                val elapsed = currentTime - readStartTime
+                if (elapsed > 0 && this.totalBytesRead > 0) {
+                    val speed = (this.totalBytesRead * 1000.0 / elapsed / 1024 / 1024)
+                    Log.i(TAG, "性能统计: 平均速度=${"%.2f".format(speed)} MB/s, " +
+                            "总读取=${this.totalBytesRead / 1024 / 1024} MB, " +
+                            "读取次数=$readCount")
+                }
+                lastLogTime = currentTime
+            }
+
+            return totalBytesRead
+
+        } catch (e: Exception) {
+            throw IOException("从 SMB 文件读取时出错: ${e.message}", e)
+        }
+    }
+
+    @Throws(IOException::class)
+    private fun refillBuffer() {
+        val internalBuffer = readBuffer ?: throw IOException("缓冲区未初始化")
+
+        val bytesRemainingInFile = bytesRemaining
+        if (bytesRemainingInFile <= 0) {
+            bufferPosition = 0
+            bufferLimit = 0
+            return
+        }
+
+        // 使用完整的缓冲区大小进行读取
+        val chunkSize = min(bufferSize.toLong(), bytesRemainingInFile).toInt()
+
+        val startTime = System.currentTimeMillis()
+        val bytesReadFromFile = try {
+            // 使用优化的读取方法
+            file?.read(internalBuffer, currentFileOffset, 0, chunkSize) ?: -1
+        } catch (e: Exception) {
+            throw IOException("从 SMB 读取数据时发生错误", e)
+        }
+        val readTime = System.currentTimeMillis() - startTime
+
+        // 记录读取性能（只记录有意义的数据）
+        if (bytesReadFromFile > 0) {
+            val speed = if (readTime > 0) {
+                (bytesReadFromFile.toDouble() / readTime / 1024 / 1024) * 1000
+            } else {
+                0.0
+            }
+
+            if (readTime > 100 || speed < 5.0) {
+                Log.i(TAG, "读取 ${bytesReadFromFile/1024/1024}MB 耗时 ${readTime}ms, " +
+                        "速度: ${"%.2f".format(speed)} MB/s")
+            }
+        }
+
+        if (bytesReadFromFile <= 0) {
+            bufferPosition = 0
+            bufferLimit = 0
+            return
+        }
+
+        bufferPosition = 0
+        bufferLimit = bytesReadFromFile
+        currentFileOffset += bytesReadFromFile.toLong()
+    }
+
+    override fun getUri(): Uri? {
+        return dataSpec?.uri
+    }
+
+    @Throws(IOException::class)
+    override fun close() {
+        if (opened.compareAndSet(true, false)) {
+            // 记录最终性能统计
+            val elapsed = System.currentTimeMillis() - readStartTime
+            if (elapsed > 0 && totalBytesRead > 0) {
+                val speed = (totalBytesRead * 1000.0 / elapsed / 1024 / 1024)
+                Log.i(TAG, "最终统计: 平均速度=${"%.2f".format(speed)} MB/s, " +
+                        "总读取=${totalBytesRead / 1024 / 1024} MB, " +
+                        "总耗时=${elapsed/1000}s")
+            }
+
+            closeQuietly()
+        }
+        dataSpec = null
+        bytesRemaining = 0
+        currentFileOffset = 0
+        readBuffer = null
+        bufferPosition = 0
+        bufferLimit = 0
+    }
+
+    private fun closeQuietly() {
+        try {
+            file?.close()
+        } catch (ignored: Exception) {
+            Log.w(TAG, "关闭文件时出错: ${ignored.message}")
+        }
+        try {
+            share?.close()
+        } catch (ignored: Exception) {
+            Log.w(TAG, "关闭共享时出错: ${ignored.message}")
+        }
+        try {
+            session?.close()
+        } catch (ignored: Exception) {
+            Log.w(TAG, "关闭会话时出错: ${ignored.message}")
+        }
+        try {
+            connection?.close()
+        } catch (ignored: Exception) {
+            Log.w(TAG, "关闭连接时出错: ${ignored.message}")
+        }
+        try {
+            smbClient?.close()
+        } catch (ignored: Exception) {
+            Log.w(TAG, "关闭SMB客户端时出错: ${ignored.message}")
+        }
+
+        file = null
+        share = null
+        session = null
+        connection = null
+        smbClient = null
+
+        Log.i(TAG, "SMB数据源已关闭")
+    }
+}
+
+@UnstableApi
+class SmbDataSourceFactory : DataSource.Factory {
+    override fun createDataSource(): DataSource {
+        return SmbDataSource()
+    }
+}

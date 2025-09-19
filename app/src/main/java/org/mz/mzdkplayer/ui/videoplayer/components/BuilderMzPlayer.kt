@@ -324,17 +324,17 @@ fun rememberPlayer(context: Context,mediaUri: String) = remember (mediaUri){
     val dataSourceFactory = if (mediaUri.startsWith("smb://")) {
         // SMB 协议
 
-        //SmbDataSourceFactory()
-        val cache = MzDkPlayerApplication.downloadCache
+        SmbDataSourceFactory()
+        //val cache = MzDkPlayerApplication.downloadCache
 
-         CacheDataSource.Factory()
-            .setCache(cache)
-            .setUpstreamDataSourceFactory( SmbDataSourceFactory())
-            .setCacheWriteDataSinkFactory(
-                CacheDataSink.Factory().setCache(cache)
-                .setFragmentSize(100 * 1024 * 1024)
-                .setBufferSize(8 * 1024 * 1024)) // 使用16MB缓冲
-            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+//         CacheDataSource.Factory()
+//            .setCache(cache)
+//            .setUpstreamDataSourceFactory( SmbDataSourceFactory())
+//            .setCacheWriteDataSinkFactory(
+//                CacheDataSink.Factory().setCache(cache)
+//                .setFragmentSize(20 * 1024 * 1024)
+//                .setBufferSize(8 * 1024 * 1024)) // 使用16MB缓冲
+     //       .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
     } else if (mediaUri.startsWith("file://") || mediaUri.startsWith("/")) {
         // 本地文件协议或绝对路径
         DefaultDataSource.Factory(context)
@@ -342,17 +342,17 @@ fun rememberPlayer(context: Context,mediaUri: String) = remember (mediaUri){
         // 其他情况（如 http/https），使用默认的 HTTP 数据源
         DefaultHttpDataSource.Factory()
     }
-//    val loadControl = DefaultLoadControl.Builder()
-//        .setBufferDurationsMs(
-//            35000,  // 最小缓冲时间: 120秒
-//            100000,  // 最大缓冲时间: 300秒
-//            3000,    // 播放开始前缓冲: 5秒
-//            6000    // 重新缓冲后缓冲: 10秒
-//        )
-//        .setTargetBufferBytes(C.LENGTH_UNSET) // 不使用字节数限制
-//        .setPrioritizeTimeOverSizeThresholds(true) // 优先时间阈值
-//        .build()
-    ExoPlayer.Builder(context).setSeekForwardIncrementMs(10000).setSeekBackIncrementMs(10000)
+    val loadControl = DefaultLoadControl.Builder()
+        .setBufferDurationsMs(
+            15000,  // minBufferMs: 最小缓冲时间 (例如 15秒)
+            120000,  // maxBufferMs: 最大缓冲时间 (例如 60秒)
+            5000,   // bufferForPlaybackMs: 开始播放前至少要缓冲的时间 (例如 2.5秒)
+            5000    // bufferForPlaybackAfterRebufferMs: 重新缓冲后恢复播放前至少要缓冲的时间 (例如 5秒)
+        )
+        .setTargetBufferBytes(C.LENGTH_UNSET) // 不使用字节数限制
+        .setPrioritizeTimeOverSizeThresholds(true) // 优先时间阈值
+        .build()
+    ExoPlayer.Builder(context).setSeekForwardIncrementMs(10000).setSeekBackIncrementMs(10000).setLoadControl(loadControl)
         .setMediaSourceFactory(
             DefaultMediaSourceFactory(
                 dataSourceFactory

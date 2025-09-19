@@ -2,6 +2,7 @@ package org.mz.mzdkplayer.ui.videoplayer
 
 import CustomSubtitleView
 import android.content.Context
+import android.net.TrafficStats
 import android.opengl.GLSurfaceView
 import android.view.Surface
 import android.view.View
@@ -92,9 +93,7 @@ import java.io.InputStream
 import java.net.URL
 import kotlin.time.Duration.Companion.milliseconds
 
-
 //var selectedAorV by mutableStateOf("A")
-
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -108,10 +107,12 @@ fun VideoPlayerScreen(mediaUri: String) {
     var contentCurrentPosition by remember { mutableLongStateOf(0L) }
     var isPlaying: Boolean by remember { mutableStateOf(exoPlayer.isPlaying) }
 
-
+    // 网速监控相关状态
+    var networkSpeed by remember { mutableStateOf(0L) }
+    var lastTotalRxBytes by remember { mutableLongStateOf(0L) }
+    var lastTimeStamp by remember { mutableLongStateOf(0L) }
 
     val mDanmakuPlayer: DanmakuPlayer = remember { DanmakuPlayer(SimpleRenderer()) }
-
 
     val danmakuUri = SmbUtils.getDanmakuSmbUri(mediaUri.toUri())
     var currentCueGroup: CueGroup? by remember { mutableStateOf<CueGroup?>(null) }
@@ -131,8 +132,8 @@ fun VideoPlayerScreen(mediaUri: String) {
     }
     // 加载弹幕数据
     LaunchedEffect(danmakuUri) {
-        Log.d("danmakuUri",danmakuUri.toString())
-        Log.d("mediaUri",mediaUri.toString())
+        Log.d("danmakuUri", danmakuUri.toString())
+        Log.d("mediaUri", mediaUri.toString())
         try {
             Log.d("danmakuUriScheme", danmakuUri.scheme?.lowercase().toString())
             val inputStream: InputStream? = when (danmakuUri.scheme?.lowercase()) {
@@ -240,7 +241,6 @@ fun VideoPlayerScreen(mediaUri: String) {
 //        }
     }
 
-
     //exoPlayer.setMediaItem(MediaItem.fromUri("http://127.0.0.1:13656/27137672496.mpd"))
 //    LaunchedEffect(Unit) {
 //        val playerListener = object : Player.Listener {
@@ -261,6 +261,34 @@ fun VideoPlayerScreen(mediaUri: String) {
         }
 
     }
+
+    // 网速监控
+    LaunchedEffect(isPlaying) {
+        if (isPlaying) {
+            // 初始化网络统计
+            lastTotalRxBytes = TrafficStats.getTotalRxBytes()
+            lastTimeStamp = System.currentTimeMillis()
+
+            while (isPlaying) {
+                delay(1000) // 每秒更新一次
+
+                val currentRxBytes = TrafficStats.getTotalRxBytes()
+                val currentTimeStamp = System.currentTimeMillis()
+
+                // 计算网速 (bytes/second)
+                val timeDiff = currentTimeStamp - lastTimeStamp
+                if (timeDiff > 0) {
+                    val byteDiff = currentRxBytes - lastTotalRxBytes
+                    networkSpeed = (byteDiff * 1000) / timeDiff
+
+                    // 更新状态
+                    lastTotalRxBytes = currentRxBytes
+                    lastTimeStamp = currentTimeStamp
+                }
+            }
+        }
+    }
+
     // 定义自定义字幕样式
     val customSubtitleStyle = TextStyle(
         color = Color.White, // 字幕颜色为黄色
@@ -294,19 +322,19 @@ fun VideoPlayerScreen(mediaUri: String) {
 //                mode = DanmakuItemData.DANMAKU_MODE_ROLLING,
 //                textSize = 50,
 //                textColor = Color.White.toArgb()
-//
+
 //            )  // 数据解析
-//
+
 //            // mDanmakuPlayer.send(data)
 //            //Log.d("DanmakuItemData",data.toString())
-//
+
 //        }
-//
+
 //    }
     // 状态管理
-    var resizeMode by remember {
-        mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT)
-    }
+//    var resizeMode by remember {
+//      //  mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT)
+//    }
 
     val pulseState = rememberVideoPlayerPulseState()
     exoPlayer.addListener(object : Player.Listener {
@@ -366,36 +394,36 @@ fun VideoPlayerScreen(mediaUri: String) {
         AndroidView(
             factory = { context ->
                 PlayerView(context).apply{
-                 //LayoutInflater.from(context).inflate(R.layout.player_view, null).findViewById<PlayerView>(R.id.player_view).apply {
-                     useController = false // 如果你不需要控制器
-                   // exoPlayer.setVideoSurfaceView(VideoDecoderGLSurfaceView(context) )
-                     player = exoPlayer
+                    //LayoutInflater.from(context).inflate(R.layout.player_view, null).findViewById<PlayerView>(R.id.player_view).apply {
+                    useController = false // 如果你不需要控制器
+                    // exoPlayer.setVideoSurfaceView(VideoDecoderGLSurfaceView(context) )
+                    player = exoPlayer
 
                     // LINT.IfChange
 
-                      //player?.setVideoSurfaceView(VideoDecoderGLSurfaceView(context) )
-                     subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
+                    //player?.setVideoSurfaceView(VideoDecoderGLSurfaceView(context) )
+                    subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
 
-                 }
+                }
 
 //                    val field = PlayerView::class.java.getDeclaredField("surfaceType")
 //                    fieldp.isAccessible = true
 //                    field.setInt(this, 4) // 2 可能对应 TEXTURE_VIEW，但需要查看源码确认
-                    //useController = false // 如果你不需要控制器
-                   // playView.player = exoPlayer
+                //useController = false // 如果你不需要控制器
+                // playView.player = exoPlayer
                 //playView.subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
 
 
 
             },
             update = { playView ->
-               // exoPlayer.setVideoSurfaceView(VideoDecoderGLSurfaceView(context) )
+                // exoPlayer.setVideoSurfaceView(VideoDecoderGLSurfaceView(context) )
                 playView.player = exoPlayer
 
                 //danmakuConfig.updateCache()
 
                 playView.subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
-                playView.resizeMode = resizeMode
+                // playView.resizeMode = resizeMode
             },
             modifier = Modifier.fillMaxSize(),
             onRelease = {
@@ -418,6 +446,16 @@ fun VideoPlayerScreen(mediaUri: String) {
                 .align(Alignment.TopCenter),
             danmakuPlayer = mDanmakuPlayer
         )
+
+        // 实时网速显示
+        if (isPlaying) {
+            NetworkSpeedIndicator(
+                networkSpeed = networkSpeed,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+            )
+        }
 
         VideoPlayerOverlay(
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -523,6 +561,27 @@ fun VideoPlayerScreen(mediaUri: String) {
 
 }
 
+// 网速显示组件
+@Composable
+fun NetworkSpeedIndicator(networkSpeed: Long, modifier: Modifier = Modifier) {
+    val speedText = when {
+        networkSpeed < 1024 -> "${networkSpeed} B/s"
+        networkSpeed < 1024 * 1024 -> "${String.format("%.1f", networkSpeed / 1024.0)} KB/s"
+        else -> "${String.format("%.1f", networkSpeed / (1024.0 * 1024.0))} MB/s"
+    }
+
+    Box(
+        modifier = modifier
+            .background(Color.Black.copy(alpha = 0.6f), shape = RoundedCornerShape(4.dp))
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = speedText,
+            color = Color.White,
+            fontSize = 14.sp
+        )
+    }
+}
 
 private fun Modifier.dPadEvents(
     exoPlayer: ExoPlayer,
@@ -724,11 +783,11 @@ sealed class BackPress {
 //    if (isSrtTrackSelected) {
 //        Log.d("SD", "SubtitleView set to GONE because SRT track is selected.")
 //        return View.GONE
-//
+
 //    } else {
 //        Log.d("SD", "SubtitleView set to VISIBLE because no SRT track is selected.")
 //        return View.VISIBLE
-//
+
 //    }
 //
 //}
@@ -772,3 +831,6 @@ fun SimpleStrokedText(
         Text(text = text, color = textColor, fontSize = fontSize)
     }
 }
+
+
+

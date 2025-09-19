@@ -2,26 +2,23 @@ package org.mz.mzdkplayer.tool
 
 import android.net.Uri
 import androidx.media3.common.C
-import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.BaseDataSource
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.TransferListener
 import com.hierynomus.msdtyp.AccessMask
 import com.hierynomus.msfscc.fileinformation.FileStandardInformation
 import com.hierynomus.mssmb2.SMB2CreateDisposition
-import com.hierynomus.mssmb2.SMB2Dialect
 import com.hierynomus.mssmb2.SMB2ShareAccess
 import com.hierynomus.smbj.SMBClient
-import com.hierynomus.smbj.SmbConfig
 import com.hierynomus.smbj.auth.AuthenticationContext
 import com.hierynomus.smbj.connection.Connection
 import com.hierynomus.smbj.session.Session
 import com.hierynomus.smbj.share.DiskShare
 import com.hierynomus.smbj.share.File
+import okio.Buffer // 使用 Okio 的 Buffer 进行高效字节处理
 import java.io.EOFException
 import java.io.IOException
-import java.util.EnumSet
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.min
 
@@ -30,13 +27,13 @@ import kotlin.math.min
  * 此实现针对大文件（如 80GB MKV 视频）进行了优化，特别是随机访问（seeking）性能。
  * 主要优化点：
  * 1. 使用 File.read() 直接从指定偏移量读取，避免 InputStream.skip() 的低效。
- * 2. 移除 Okio Buffer，改用内部 ByteArray 进行缓冲，减少 SMB 网络请求次数。
+ * 2. 引入 Okio Buffer 进行内部缓冲，减少 SMB 网络请求次数。
  *
  * 修复了读取大文件时可能出现的 `java.io.IOException: 从内部缓冲区读取时发生错误：期望读取 X 字节，实际读取 Y 字节` 错误。
- * 通过循环读取确保满足请求的字节数。
+ * 原因是 `okio.Buffer.read()` 可能返回少于请求的字节数。修复方法是循环调用 read 直到读取完所需字节或遇到 EOF。
  */
 @UnstableApi
-class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
+class SmbDataSource : DataSource {
     // --- 成员变量 ---
 
     private var dataSpec: DataSpec? = null // 当前打开的数据规范
@@ -46,16 +43,8 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
     private var file: File? = null // 打开的 SMB 文件
     private var smbClient: SMBClient? = null // SMB 客户端实例
 
-    // 使用 ByteArray 作为内部缓冲区，替代 Okio Buffer
-    private var readBuffer: ByteArray? = null // 内部缓冲区
-    private var bufferPosition: Int = 0       // 缓冲区中当前读取位置
-    private var bufferLimit: Int = 0          // 缓冲区中实际填充的数据大小
-    private var bufferSize: Int = DEFAULT_BUFFER_SIZE_BYTES // 缓冲区大小
-    private val PREFERRED_SMB_DIALECTS = EnumSet.of(
-        SMB2Dialect.SMB_3_1_1,
-        SMB2Dialect.SMB_3_0,
-        SMB2Dialect.SMB_3_0_2
-    )
+    // 使用 Okio 的 Buffer 作为内部缓冲区，提高读取效率
+    private val readBuffer = Buffer()
     // 跟踪当前在 SMB 文件中的逻辑读取位置（相对于文件开头）
     private var currentFileOffset: Long = 0
     // 剩余待读取的字节数
@@ -65,10 +54,15 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
 
     // --- 配置参数 ---
     // 内部缓冲区大小，可根据网络和文件特性调整（例如 256KB 到 1MB）
-    companion object {
-        private const val DEFAULT_BUFFER_SIZE_BYTES = 2 * 1024 * 1024 // 2MB 默认缓冲区大小
-    }
+    private val bufferSize = 2 * 1024 * 1024
     // --- 配置结束 ---
+
+    /**
+     * 添加传输监听器（如果需要监控传输过程）
+     */
+    override fun addTransferListener(transferListener: TransferListener) {
+        // 根据具体需求实现传输监控逻辑
+    }
 
     /**
      * 打开数据源，准备读取指定 URI 和范围的数据。
@@ -78,9 +72,6 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
      */
     @Throws(IOException::class)
     override fun open(dataSpec: DataSpec): Long {
-        // 通知监听器数据传输正在初始化
-        transferInitializing(dataSpec)
-
         // 确保数据源未被打开，保证线程安全
         if (!opened.compareAndSet(false, true)) {
             throw IOException("SmbDataSource 已经被打开。")
@@ -108,15 +99,8 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
         val domain = "" // 如需域名支持可在此添加
 
         try {
-            // 配置 SMB 客户端 - 使用更优化的参数
-            val config = SmbConfig.builder()
-                .withDialects(PREFERRED_SMB_DIALECTS)
-                .withMultiProtocolNegotiate(true)
-                .withBufferSize(8 * 1024 *1024) // 增加协议缓冲区大小
-                // 增加信用数
-                .build()
             // 创建 SMB 客户端并连接（考虑复用客户端实例以优化性能）
-            smbClient = SMBClient(config)
+            smbClient = SMBClient()
             connection = smbClient?.connect(host)
                 ?: throw IOException("无法创建 SMB 连接")
 
@@ -138,8 +122,6 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
                 SMB2CreateDisposition.FILE_OPEN, // 打开已存在文件
                 null // 创建选项
             ) ?: throw IOException("打开文件失败")
-            val negotiatedDialect = connection?.negotiatedProtocol?.dialect
-            Log.i("SmbDataSource", "协商的 SMB 协议版本: $negotiatedDialect")
 
             // 获取文件总大小信息
             val fileInfo = file?.fileInformation?.standardInformation
@@ -166,13 +148,10 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
 
             // 初始化内部缓冲区状态，为指定的起始位置做准备
             currentFileOffset = startPosition
-            // 初始化缓冲区
-            this.readBuffer = ByteArray(bufferSize)
-            this.bufferPosition = 0
-            this.bufferLimit = 0
+            readBuffer.clear() // 确保缓冲区在首次读取前是空的
 
-            // 通知监听器数据传输已开始
-            transferStarted(dataSpec)
+            // 注意：这里并未立即从网络读取数据，只是设置了初始状态。
+            // 第一次 read() 调用才会触发实际的数据获取。
 
             return bytesRemaining // 返回可读取的总字节数
 
@@ -219,40 +198,74 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
             while (totalBytesRead < bytesToRead) {
                 val bytesNeeded = bytesToRead - totalBytesRead
 
-                // 检查内部缓冲区是否有数据，如果没有或不足，则从 SMB 填充
-                if (bufferPosition >= bufferLimit) {
-                    refillBuffer()
+                // 检查缓冲区是否有数据，如果没有或不足，则从 SMB 填充
+                if (readBuffer.size == 0L) {
+                    // 计算本次从 SMB 文件读取的块大小
+                    val chunkSize = min(bufferSize.toLong(), bytesRemaining).toInt()
+                    if (chunkSize <= 0) {
+                        // 没有更多数据可读
+                        if (totalBytesRead == 0) {
+                            return C.RESULT_END_OF_INPUT // 如果还没读到任何数据，就是 EOF
+                        } else {
+                            break // 否则返回已读取的部分数据
+                        }
+                    }
+
+                    // 创建临时字节数组用于接收从 SMB 读取的块
+                    val tempBuffer = ByteArray(chunkSize)
+
+                    // --- 修正后的关键优化：直接从文件偏移量读取 ---
+                    // 使用正确的 File.read() 方法签名:
+                    // fun read(buffer: ByteArray!, fileOffset: Long): Int
+                    // 它会尝试读取 buffer.size (即 chunkSize) 个字节。
+                    val bytesReadFromFile = file?.read(tempBuffer, currentFileOffset) ?: -1
+
+                    if (bytesReadFromFile == -1) {
+                        // 从 SMB 读取时意外遇到文件结束
+                        if (bytesRemaining != C.LENGTH_UNSET.toLong()) {
+                            throw EOFException("从 SMB 读取时意外遇到文件结束")
+                        }
+                        // 如果长度未设置，且之前没读到数据，则视为输入结束
+                        if (totalBytesRead == 0) {
+                            return C.RESULT_END_OF_INPUT
+                        }
+                        // 否则，返回已读取的部分数据
+                        break
+                    }
+
+                    // 将从 SMB 读取到的字节块写入内部的 Okio 缓冲区
+                    // 注意：只写入实际读取到的字节数 bytesReadFromFile
+                    readBuffer.write(tempBuffer, 0, bytesReadFromFile)
+
+                    // 更新我们在 SMB 文件中的逻辑位置
+                    currentFileOffset += bytesReadFromFile.toLong()
+
+                    // 如果读取的字节少于请求的块大小(chunkSize)，可能已到达范围末尾或文件末尾
+                    // 这没关系，下次循环会再次检查缓冲区或尝试读取
                 }
 
-                // 再次检查缓冲区状态
-                if (bufferPosition >= bufferLimit) {
-                    if (totalBytesRead == 0) {
-                        return C.RESULT_END_OF_INPUT // 如果还没读到任何数据，就是 EOF
-                    } else {
-                        break // 否则返回已读取的部分数据
-                    }
-                }
 
                 // 现在缓冲区中应该有数据了，从中读取
-                val bytesAvailableInBuffer = bufferLimit - bufferPosition
-                val bytesReadFromBuffer = min(bytesNeeded, bytesAvailableInBuffer)
-
-                // 将数据从内部缓冲区复制到输出缓冲区
-                System.arraycopy(
-                    readBuffer!!, // Smart cast to non-null
-                    bufferPosition,
+                // readBuffer.read() 可能返回少于请求的字节数
+                val bytesReadFromBuffer: Int = readBuffer.read(
                     buffer,
                     currentOffset,
-                    bytesReadFromBuffer
+                    min(bytesNeeded.toLong(), readBuffer.size).toInt()
                 )
 
-                // 更新缓冲区内部状态
-                bufferPosition += bytesReadFromBuffer
-                totalBytesRead += bytesReadFromBuffer
-                currentOffset += bytesReadFromBuffer
-                bytesRemaining -= bytesReadFromBuffer.toLong()
-                // 通知基类已传输的字节数
-                bytesTransferred(bytesReadFromBuffer)
+                if (bytesReadFromBuffer > 0) {
+                    totalBytesRead += bytesReadFromBuffer
+                    currentOffset += bytesReadFromBuffer
+                    bytesRemaining -= bytesReadFromBuffer.toLong()
+                } else if (bytesReadFromBuffer == -1 || (bytesReadFromBuffer == 0 && readBuffer.size == 0L)) {
+                    // 缓冲区读不到数据且自身也空了，表示 EOF
+                    if (totalBytesRead == 0) {
+                        return C.RESULT_END_OF_INPUT
+                    } else {
+                        break // 返回已读取的部分数据
+                    }
+                }
+                // bytesReadFromBuffer == 0 但 readBuffer.size > 0 的情况理论上不应发生，但为健壮性考虑可继续循环
             }
 
             return totalBytesRead
@@ -262,66 +275,6 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
             throw IOException("从 SMB 文件读取时出错: ${e.message}", e)
         }
     }
-
-    /**
-     * 通过从 SMB 文件读取数据来填充内部缓冲区。
-     *
-     * @throws IOException 如果读取操作期间发生错误。
-     */
-    @Throws(IOException::class)
-    private fun refillBuffer() {
-        val internalBuffer = readBuffer ?: return // 再次检查缓冲区是否已初始化
-        val startTime = System.currentTimeMillis()
-        // 计算文件中剩余的字节数
-        val bytesRemainingInFile = bytesRemaining
-        if (bytesRemainingInFile <= 0) {
-            // 文件结束，重置缓冲区状态
-            bufferPosition = 0
-            bufferLimit = 0
-            return
-        }
-
-        // 确定这次要读取的块大小（不超过缓冲区大小和文件剩余大小）
-        val chunkSize = min(bufferSize.toLong(), bytesRemainingInFile).toInt()
-
-        // 执行从 SMB 文件的实际读取操作
-        // 使用 smbj 的 read 方法: read(buffer: ByteArray, fileOffset: Long): Int
-        // 返回实际读取的字节数
-        val bytesReadFromFile = try {
-            file?.read(internalBuffer, currentFileOffset, 0, chunkSize) ?: -1
-        } catch (e: Exception) {
-            // 捕获可能的 SMB 读取异常并包装为 IOException
-            throw IOException("从 SMB 读取数据时发生错误", e)
-        }
-        val readTime = System.currentTimeMillis() - startTime
-
-        // 记录读取性能（只记录有意义的数据）
-        if (bytesReadFromFile > 0) {
-            val speed = if (readTime > 0) {
-                (bytesReadFromFile.toDouble() / readTime / 1024 / 1024) * 1000
-            } else {
-                0.0
-            }
-
-            if (readTime > 100 || speed < 5.0) {
-                Log.i("SmbDataSource", "读取 ${bytesReadFromFile/1024/1024}MB 耗时 ${readTime}ms, " +
-                        "速度: ${"%.2f".format(speed)} MB/s")
-            }
-        }
-
-        if (bytesReadFromFile <= 0) {
-            // 读取失败或到达文件末尾，重置缓冲区状态
-            bufferPosition = 0
-            bufferLimit = 0
-            return
-        }
-
-        // 成功读取后，更新缓冲区状态
-        bufferPosition = 0           // 重置缓冲区读取位置到开头
-        bufferLimit = bytesReadFromFile // 设置缓冲区有效数据长度
-        currentFileOffset += bytesReadFromFile.toLong() // 更新文件读取位置
-    }
-
 
     /**
      * 获取当前打开的数据源 URI。
@@ -334,7 +287,6 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
     /**
      * 关闭数据源，释放所有资源。
      */
-    @Throws(IOException::class)
     override fun close() {
         // 原子性地将 opened 状态从 true 设置为 false
         if (opened.compareAndSet(true, false)) {
@@ -344,9 +296,7 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
         dataSpec = null
         bytesRemaining = 0
         currentFileOffset = 0
-        readBuffer = null // 清空缓冲区引用
-        bufferPosition = 0
-        bufferLimit = 0
+        readBuffer.clear() // 清空内部缓冲区
     }
 
     /**
