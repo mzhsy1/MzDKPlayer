@@ -38,12 +38,12 @@ import java.net.URLEncoder
 @Composable
 fun HomeScreen(mainNavController: NavHostController) {
     var selectPanel by remember { mutableStateOf("local") }
-    val items by remember { mutableStateOf(listOf("local", "smb", "ftp", "WebDav")) }
+    val items by remember { mutableStateOf(listOf("local", "SMB", "WebDav", "FTP")) }
     val iconList = listOf<Int>(
         R.drawable.localfile,
         R.drawable.smb,
-        R.drawable.ftp,
-        R.drawable.dolby_vision_seeklogo
+        R.drawable.dolby_vision_seeklogo,
+        R.drawable.ftp
     )
     Box(modifier = Modifier.fillMaxSize()) {
         Column {
@@ -66,7 +66,8 @@ fun HomeScreen(mainNavController: NavHostController) {
                                 "LocalFileTypeScreen"
                             )
 
-                            "smb" -> mainNavController.navigate("SMBListScreen")
+                            "SMB" -> mainNavController.navigate("SMBListScreen")
+                            "WebDav" -> mainNavController.navigate("WebDavListScreen")
                         };
                         },
                         modifier = Modifier.padding(top = 2.dp),
@@ -78,7 +79,14 @@ fun HomeScreen(mainNavController: NavHostController) {
                                 contentDescription = item
                             )
                         },
-                        headlineContent = { Text(item) },
+                        headlineContent = {
+                            Text(
+                                text = when (item) {
+                                    "local" -> "本地文件"
+                                    else -> item
+                                }
+                            )
+                        },
                         trailingContent = {
 
                         }

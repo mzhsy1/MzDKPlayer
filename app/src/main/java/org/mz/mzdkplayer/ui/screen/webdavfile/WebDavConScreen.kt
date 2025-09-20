@@ -228,6 +228,7 @@ fun WebDavConScreen(
                                     } else {
                                         "${currentPath}/$resourceName"
                                     }
+                                    Log.d("newPath",newPath)
                                     webDavConViewModel.listFiles(newPath)
                                 } else {
                                     // 点击文件：可以触发下载或其他操作

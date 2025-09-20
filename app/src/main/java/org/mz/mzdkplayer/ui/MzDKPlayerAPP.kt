@@ -31,15 +31,19 @@ import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.NavigationDrawer
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.logic.model.WebDavConnection
 
 
 import org.mz.mzdkplayer.ui.screen.HomeScreen
 import org.mz.mzdkplayer.ui.screen.localfile.LocalFileScreen
 import org.mz.mzdkplayer.ui.screen.localfile.LocalFileTypeScreen
+import org.mz.mzdkplayer.ui.screen.smbfile.SMBConListScreen
 import org.mz.mzdkplayer.ui.screen.smbfile.SMBConScreen
 import org.mz.mzdkplayer.ui.screen.smbfile.SMBFileListScreen
 
-import org.mz.mzdkplayer.ui.screen.smbfile.SMBListScreen
+import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavConScreen
+import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavFileListScreen
+import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavListScreen
 import org.mz.mzdkplayer.ui.videoplayer.VideoPlayerScreen
 import java.net.URLDecoder
 
@@ -174,11 +178,28 @@ fun MzDKPlayerAPP() {
                 SMBFileListScreen(path, mainNavController)
             }
         }
+        composable("WebDavFileListScreen/{path}/{username}/{pw}") { backStackEntry ->
+            val encodedPath = backStackEntry.arguments?.getString("path")
+            val username = backStackEntry.arguments?.getString("username")
+            val pw = backStackEntry.arguments?.getString("pw")
+            if (encodedPath != null&&username!=null&&pw!=null) {
+
+                val path = URLDecoder.decode(encodedPath, "UTF-8")
+                Log.d("encodedPath", path)
+                WebDavFileListScreen(path, mainNavController, WebDavConnection("1","webdav",path,username,pw,))
+            }
+        }
         composable("SMBListScreen") {
-            SMBListScreen(mainNavController)
+            SMBConListScreen(mainNavController)
         }
         composable("SMBConScreen") {
             SMBConScreen()
+        }
+        composable("WebDavConScreen") {
+            WebDavConScreen()
+        }
+        composable("WebDavListScreen") {
+            WebDavListScreen(mainNavController)
         }
     }
 

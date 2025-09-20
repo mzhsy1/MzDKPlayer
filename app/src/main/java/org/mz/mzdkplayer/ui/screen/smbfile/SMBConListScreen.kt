@@ -59,7 +59,7 @@ import java.net.URLEncoder
 @SuppressLint("StateFlowValueCalledInComposition")
 @Composable
 
-fun SMBListScreen(mainNavController: NavHostController) {
+fun SMBConListScreen(mainNavController: NavHostController) {
     val smbListViewModel: SMBListViewModel = viewModel()
     val connections by smbListViewModel.connections.collectAsState()
     val isOPanelShow by smbListViewModel.isOPanelShow.collectAsState()

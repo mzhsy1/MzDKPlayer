@@ -76,11 +76,13 @@ class WebDavConViewModel : ViewModel() {
                         sardine = OkHttpSardine(okHttpClient)
                         // 设置认证信息
                         sardine?.setCredentials(username, password)
-
+                        Log.d("connectToWebDav",baseUrl)
+                        Log.d("connectToWebDav",username)
+                        Log.d("connectToWebDav",password)
                         // 验证连接 - 尝试列出根目录
                         val trimmedBaseUrl = baseUrl.trimEnd('/')
                         this@WebDavConViewModel.baseUrl = trimmedBaseUrl
-                        val rootResources = sardine?.list("$trimmedBaseUrl/") ?: throw Exception("无法列出根目录")
+                        val rootResources = sardine?.list(trimmedBaseUrl) ?: throw Exception("无法列出根目录")
 
                         _fileList.value = rootResources.filter { it.name != ".." } // 过滤掉 ..
                     }
@@ -128,6 +130,7 @@ class WebDavConViewModel : ViewModel() {
             mutex.withLock {
                 try {
                     withContext(Dispatchers.IO) {
+
                         val resources = sardine?.list(fullUrl) ?: throw Exception("Sardine 未初始化或连接失败")
                         // 过滤掉 "." 和 ".."
                         val filteredResources = resources.filter { it.name != "." && it.name != ".." }

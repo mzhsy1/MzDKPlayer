@@ -232,15 +232,3 @@ private fun testSMBConnection(config: SMBConfig): Boolean {
 }
 
 
-
-//                            when (Tools.extractFileExtension(file.name)) {
-//                                "mp4" -> painterResource(R.drawable.mp4icon)
-//                                "mkv" -> painterResource(R.drawable.smb)
-//                                "m2ts" -> painterResource(R.drawable.aviicon)
-//                                "3gp" -> painterResource(R.drawable.aviicon)
-//                                "avi" -> painterResource(R.drawable.aviicon)
-//                                "mov" -> painterResource(R.drawable.movicon)
-//                                "ts" -> painterResource(R.drawable.tsicon)
-//                                "flv" -> painterResource(R.drawable.flvicon)
-//                                else -> painterResource(R.drawable.baseline_insert_drive_file_24)
-//                            }
