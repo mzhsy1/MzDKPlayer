@@ -14,11 +14,13 @@ appcompat = "1.7.1"
 composeBom = "2025.09.00"
 logbackAndroid = "3.0.0"
 material3 = "1.3.2"
+sardineAndroid = "0.8"
+sardineAndroidVersion = "0.9"
 smbj = "0.14.0"
 tvFoundation = "1.0.0-alpha12"
 tvMaterial = "1.0.1"
 media3Ui = "1.8.0"
-lifecycleRuntimeKtx = "2.9.3"
+lifecycleRuntimeKtx = "2.9.4"
 activityCompose = "1.11.0"
 datastorePreferences = "1.1.7"
 navigationCompose = "2.9.4"
@@ -53,7 +55,9 @@ ass-media = { module = "io.github.peerless2012:ass-media", version.ref = "assMed
 
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 logback-android = { module = "com.github.tony19:logback-android", version.ref = "logbackAndroid" }
+sardine-android = { module = "com.github.sardine:sardine-android", version.ref = "sardineAndroid" }
 smbj = { module = "com.hierynomus:smbj", version.ref = "smbj" }
+thegrizzlylabs-sardine-android = { module = "com.github.thegrizzlylabs:sardine-android", version.ref = "sardineAndroidVersion" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

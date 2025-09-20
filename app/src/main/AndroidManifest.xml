@@ -23,6 +23,8 @@
         android:name=".MzDkPlayerApplication"
         android:banner="@mipmap/ic_banner"
         android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true"
+
         android:largeHeap="true"
         android:requestLegacyExternalStorage="true"
         android:windowSoftInputMode="stateAlwaysHidden"

@@ -27,6 +27,7 @@ dependencyResolutionManagement {
         // 腾讯云镜像（可选）
         // maven { url = uri("https://mirrors.cloud.tencent.com/nexus/repository/maven-public/") }
         google()
+        maven { url = uri("https://jitpack.io") }
         mavenCentral()
 
 

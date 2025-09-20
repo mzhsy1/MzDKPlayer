@@ -66,6 +66,9 @@ dependencies {
     implementation(libs.logback.android)
     implementation(libs.gson)
     implementation(libs.ass.media)
+    implementation(libs.thegrizzlylabs.sardine.android)
+
+// 请检查最新版本
     //implementation(libs.ass.kt)
     //implementation(libs.ass.media.v030beta02)
     //implementation(libs.androidx.material3)

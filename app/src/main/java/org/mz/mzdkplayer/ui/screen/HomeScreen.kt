@@ -38,7 +38,7 @@ import java.net.URLEncoder
 @Composable
 fun HomeScreen(mainNavController: NavHostController) {
     var selectPanel by remember { mutableStateOf("local") }
-    val items by remember { mutableStateOf(listOf("local", "smb", "ftp", "项目4")) }
+    val items by remember { mutableStateOf(listOf("local", "smb", "ftp", "WebDav")) }
     val iconList = listOf<Int>(
         R.drawable.localfile,
         R.drawable.smb,
