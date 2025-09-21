@@ -81,7 +81,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                     } else {
                         // 处理文件点击，比如播放视频
                         Log.d("file.fullPath",file.fullPath)
-                         navController.navigate("VideoPlayer/${URLEncoder.encode("smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}", "UTF-8")}")
+                         navController.navigate("VideoPlayer/${URLEncoder.encode("smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}", "UTF-8")}/SMB")
                     }
                 },
                 colors = myListItemColor(),

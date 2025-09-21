@@ -158,15 +158,16 @@ fun MzDKPlayerAPP() {
 
             }
         }
-        composable("VideoPlayer/{smburi}") { backStackEntry ->
-            //val bvid = backStackEntry.arguments?.getString("smburi")
-            //页面路由对应的页面组件
-            val smburi = backStackEntry.arguments?.getString("smburi")
+        composable("VideoPlayer/{sourceUri}/{dataSourceType}") { backStackEntry ->
 
+            //页面路由对应的页面组件
+            val sourceUri = backStackEntry.arguments?.getString("sourceUri")
+            val dataSourceType = backStackEntry.arguments?.getString("dataSourceType")
             // 检查参数是否不为空，并渲染屏幕
-            if (smburi != null) {
-                Log.d("smburi", smburi)
-                VideoPlayerScreen(URLDecoder.decode(smburi, "UTF-8"))
+            if (sourceUri != null&&dataSourceType != null) {
+                Log.d("sourceUri", sourceUri)
+                Log.d("dataSourceType", dataSourceType)
+                VideoPlayerScreen(URLDecoder.decode(sourceUri, "UTF-8"),dataSourceType)
             }
         }
         composable("SMBFileListScreen/{path}") { backStackEntry ->

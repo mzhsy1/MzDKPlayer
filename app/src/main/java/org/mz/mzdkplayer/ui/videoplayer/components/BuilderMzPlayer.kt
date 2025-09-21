@@ -30,22 +30,20 @@ import io.github.peerless2012.ass.media.type.AssRenderType
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 
 import androidx.core.net.toUri
-import androidx.media3.datasource.DataSink
-import androidx.media3.datasource.cache.Cache
-import androidx.media3.datasource.cache.CacheDataSink
-import androidx.media3.datasource.cache.CacheDataSource
-import androidx.media3.datasource.cache.CacheSpan
 import androidx.media3.exoplayer.DefaultLoadControl
-import androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
-import androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
 import androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
-import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
-import org.mz.mzdkplayer.MzDkPlayerApplication
+import org.mz.mzdkplayer.tool.WebDavDataSource
+import org.mz.mzdkplayer.tool.WebDavDataSourceFactory
 
 @OptIn(UnstableApi::class)
 @SuppressLint("SuspiciousIndentation")
 @Composable
-fun BuilderMzPlayer(context: Context, mediaUri: String, exoPlayer: ExoPlayer) {
+fun BuilderMzPlayer(
+    context: Context,
+    mediaUri: String,
+    exoPlayer: ExoPlayer,
+    dataSourceType: String
+) {
     //val pathStr = LocalContext.current.filesDir.toString()
     val videoPlayerViewModel: VideoPlayerViewModel = viewModel()
 
@@ -181,7 +179,7 @@ fun BuilderMzPlayer(context: Context, mediaUri: String, exoPlayer: ExoPlayer) {
 
 @OptIn(UnstableApi::class)
 @Composable
-fun rememberPlayer(context: Context,mediaUri: String) = remember (mediaUri){
+fun rememberPlayer(context: Context,mediaUri: String,dataSourceType: String) = remember (mediaUri){
     val codecInfos = MediaCodecList(MediaCodecList.ALL_CODECS)
     for (info in codecInfos.codecInfos) {
         if (info.isEncoder) continue
@@ -321,7 +319,7 @@ fun rememberPlayer(context: Context,mediaUri: String) = remember (mediaUri){
     }
 
     // 根据 URI 协议选择合适的数据源工厂
-    val dataSourceFactory = if (mediaUri.startsWith("smb://")) {
+    val dataSourceFactory = if (mediaUri.startsWith("smb://")&& dataSourceType =="SMB") {
         // SMB 协议
 
         SmbDataSourceFactory()
@@ -335,10 +333,12 @@ fun rememberPlayer(context: Context,mediaUri: String) = remember (mediaUri){
 //                .setFragmentSize(20 * 1024 * 1024)
 //                .setBufferSize(8 * 1024 * 1024)) // 使用16MB缓冲
      //       .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
-    } else if (mediaUri.startsWith("file://") || mediaUri.startsWith("/")) {
+    } else if ((mediaUri.startsWith("file://") || mediaUri.startsWith("/"))&&dataSourceType =="LOCAL") {
         // 本地文件协议或绝对路径
         DefaultDataSource.Factory(context)
-    } else {
+    } else if ((mediaUri.startsWith("http://") || mediaUri.startsWith("https://"))&& dataSourceType =="WEBDAV") {
+        WebDavDataSourceFactory()
+    } else{
         // 其他情况（如 http/https），使用默认的 HTTP 数据源
         DefaultHttpDataSource.Factory()
     }

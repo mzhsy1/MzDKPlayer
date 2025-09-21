@@ -64,7 +64,7 @@ fun LocalFileScreen(path: String?, navController: NavHostController) {
                 onClick = {
                     if (file.isDirectory) {
                         val encoded = URLEncoder.encode(file.path, "UTF-8")
-                        navController.navigate("LocalFileScreen/$encoded")
+                        navController.navigate("LocalFileScreen/$encoded/LOCAL")
                     }else{
                         navController.navigate("VideoPlayer/${URLEncoder.encode("file://${file.path}", "UTF-8")}")
                     }

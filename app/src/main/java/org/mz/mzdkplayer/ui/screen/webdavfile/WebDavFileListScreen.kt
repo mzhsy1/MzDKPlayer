@@ -2,6 +2,7 @@
 
 package org.mz.mzdkplayer.ui.screen.webdavfile
 
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
@@ -29,6 +30,7 @@ import org.mz.mzdkplayer.ui.screen.vm.WebDavConViewModel
 import org.mz.mzdkplayer.ui.screen.vm.WebDavConnectionStatus // 导入状态类
 import org.mz.mzdkplayer.ui.style.myListItemColor
 import java.net.URLEncoder
+import androidx.core.net.toUri
 
 @Composable
 fun WebDavFileListScreen(
@@ -170,14 +172,26 @@ fun WebDavFileListScreen(
                                             // 处理文件点击 - 导航到 VideoPlayer
                                             // 需要获取文件的完整 URL
                                             // 注意：getResourceFullUrl 应该基于当前 path 和 filename 计算
-                                            // 确保 ViewModel 的逻辑正确
+                                            // 确保 ViewModel 的逻辑正确 https://<username>:<password>@192.168.1.4:5006/movies/as.mkv
                                             val fullFileUrl = viewModel.getResourceFullUrl(fileName) // 假设内部处理了 path
-                                            val encodedFileUrl = URLEncoder.encode(fullFileUrl, "UTF-8")
+                                            val userInfo = "${webDavConnection.username}:${webDavConnection.password}"
+                                            val uri = fullFileUrl.toUri()
+                                            val newAuthority = "$userInfo@${uri.authority}" // 👈 关键！加上 @ 和原始 host:port
+
+                                            val authenticatedUrl = uri.buildUpon()
+                                                .encodedAuthority(newAuthority) // 👈 设置完整的 authority（含 userinfo@host:port）
+                                                .build()
+
+                                            Log.d("WebDavFileListScreen", "Full file URL: $fullFileUrl")
+                                            Log.d("WebDavFileListScreen", "Encoded file URL: $fileName")
+                                            Log.d("WebDavFileListScreen","authenticatedUrl $authenticatedUrl")
+                                            Log.d("WebDavFileListScreen","authenticatedUrl ${authenticatedUrl.authority},${authenticatedUrl.userInfo}")
+                                            val encodedFileUrl = URLEncoder.encode(authenticatedUrl.toString(), "UTF-8")
                                             Log.d(
                                                 "WebDavFileListScreen",
                                                 "Navigating to video player: $fullFileUrl (encoded: $encodedFileUrl)"
                                             )
-                                            navController.navigate("VideoPlayer/$encodedFileUrl")
+                                            navController.navigate("VideoPlayer/$encodedFileUrl/WEBDAV")
                                         }
                                     }
                                 },
@@ -217,3 +231,11 @@ fun WebDavFileListScreen(
         }
     }
 }
+
+//private fun buildAuthenticatedUrl(baseUrl: String, username: String, password: String): String {
+//    val uri = baseUrl.toUri()
+//    return uri.buildUpon()
+//        .encodedUserInfo("$username:$password")
+//        .build()
+//        .toString()
+//}

@@ -53,7 +53,7 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
     // --- 配置参数 ---
     companion object {
         private const val TAG = "WebDavDataSource"
-        private const val DEFAULT_BUFFER_SIZE_BYTES = 2 * 1024 * 1024 // 2MB 默认缓冲区大小
+        private const val DEFAULT_BUFFER_SIZE_BYTES = 5 * 1024 * 1024 // 2MB 默认缓冲区大小
         // 用于信任所有证书的 OkHttpClient
         private val unsafeOkHttpClient: OkHttpClient by lazy {
             try {
@@ -109,12 +109,30 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
         } ?: Pair("", "")
 
         try {
+            val trustAllCerts = arrayOf<TrustManager>(@SuppressLint("CustomX509TrustManager")
+            object : X509TrustManager {
+                @SuppressLint("TrustAllX509TrustManager")
+                override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+                @SuppressLint("TrustAllX509TrustManager")
+                override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+                override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+            })
+
+            // 配置 OkHttpClient 忽略 SSL 验证
+            val sslContext = SSLContext.getInstance("SSL")
+            sslContext.init(null, trustAllCerts, SecureRandom())
+
+            val okHttpClient = OkHttpClient.Builder()
+                .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
+                .hostnameVerifier { _, _ -> true } // 忽略主机名验证
+                .build()
             // 初始化 Sardine 客户端
             // 使用预配置的不安全 OkHttpClient 实例
-            sardine = OkHttpSardine(unsafeOkHttpClient)
+            sardine = OkHttpSardine(okHttpClient)
             if (username.isNotBlank() || password.isNotBlank()) {
                 sardine?.setCredentials(username, password)
             }
+            Log.d(TAG,"$username $password")
             // 方法 1: 使用 Uri.Builder (推荐，因为它处理编码等细节)
              val cleanUriString = Uri.Builder()
                 .scheme(uri.scheme) // "https"
@@ -124,9 +142,9 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
                 .encodedFragment(uri.encodedFragment) // 如果有片段 (#section)
                 .build()
                 .toString()
-
+            Log.d(TAG,cleanUriString)
             // 获取文件大小（HEAD 请求）
-            val davResources = sardine?.list(cleanUriString, 0, false) // Depth 0, 不获取属性
+            val davResources = sardine?.list(cleanUriString) // Depth 0, 不获取属性
             if (davResources.isNullOrEmpty()) {
                 throw IOException("无法获取文件信息或文件不存在: $urlString")
             }

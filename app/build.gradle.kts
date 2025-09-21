@@ -67,7 +67,7 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.ass.media)
     implementation(libs.thegrizzlylabs.sardine.android)
-
+    implementation(libs.commons.net)
 // 请检查最新版本
     //implementation(libs.ass.kt)
     //implementation(libs.ass.media.v030beta02)

@@ -1,11 +1,7 @@
 package org.mz.mzdkplayer.ui.videoplayer
 
 import CustomSubtitleView
-import android.content.Context
 import android.net.TrafficStats
-import android.opengl.GLSurfaceView
-import android.view.Surface
-import android.view.View
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
@@ -28,7 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,8 +48,6 @@ import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.video.VideoDecoderGLSurfaceView
-import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.Text
 import com.kuaishou.akdanmaku.DanmakuConfig
@@ -97,9 +90,9 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(UnstableApi::class)
 @Composable
-fun VideoPlayerScreen(mediaUri: String) {
+fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
     val context = LocalContext.current
-    val exoPlayer = rememberPlayer(context, mediaUri)
+    val exoPlayer = rememberPlayer(context, mediaUri,dataSourceType)
     val videoPlayerState = rememberVideoPlayerState(hideSeconds = 6)
     val videoPlayerViewModel: VideoPlayerViewModel = viewModel()
     var showToast by remember { mutableStateOf(false) }
@@ -108,7 +101,7 @@ fun VideoPlayerScreen(mediaUri: String) {
     var isPlaying: Boolean by remember { mutableStateOf(exoPlayer.isPlaying) }
 
     // 网速监控相关状态
-    var networkSpeed by remember { mutableStateOf(0L) }
+    var networkSpeed by remember { mutableLongStateOf(0L) }
     var lastTotalRxBytes by remember { mutableLongStateOf(0L) }
     var lastTimeStamp by remember { mutableLongStateOf(0L) }
 
@@ -122,7 +115,7 @@ fun VideoPlayerScreen(mediaUri: String) {
     var danmakuDataList by remember { mutableStateOf<List<DanmakuData>?>(null) }
     var isDanmakuLoaded by remember { mutableStateOf(false) }
 
-    BuilderMzPlayer(context, mediaUri, exoPlayer)
+    BuilderMzPlayer(context, mediaUri, exoPlayer,dataSourceType)
     DisposableEffect(Unit) {
 
         onDispose {
@@ -146,7 +139,11 @@ fun VideoPlayerScreen(mediaUri: String) {
 
                 "http", "https" -> {
                     // 打开 HTTP 输入流
-                    URL(danmakuUri.toString()).openStream()
+                    if (dataSourceType=="WEBDAV"){
+                        SmbUtils.openWebDavFileInputStream(danmakuUri)
+                    }else {
+                        URL(danmakuUri.toString()).openStream()
+                    }
                 }
 
                 "file" -> {
