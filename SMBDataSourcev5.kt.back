@@ -66,7 +66,7 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
     // --- 配置参数 ---
     // 内部缓冲区大小，可根据网络和文件特性调整（例如 256KB 到 1MB）
     companion object {
-        private const val DEFAULT_BUFFER_SIZE_BYTES = 8 * 1024 * 1024 // 2MB 默认缓冲区大小
+        private const val DEFAULT_BUFFER_SIZE_BYTES = 2 * 1024 * 1024 // 2MB 默认缓冲区大小
     }
     // --- 配置结束 ---
 
