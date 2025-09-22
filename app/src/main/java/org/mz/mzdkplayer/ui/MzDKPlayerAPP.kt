@@ -31,21 +31,27 @@ import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.NavigationDrawer
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.logic.model.FTPConnection
 import org.mz.mzdkplayer.logic.model.WebDavConnection
 
 
 import org.mz.mzdkplayer.ui.screen.HomeScreen
+import org.mz.mzdkplayer.ui.screen.ftp.FTPConListScreen
+import org.mz.mzdkplayer.ui.screen.ftp.FTPConScreen
+import org.mz.mzdkplayer.ui.screen.ftpfile.FTPFileListScreen
 import org.mz.mzdkplayer.ui.screen.localfile.LocalFileScreen
 import org.mz.mzdkplayer.ui.screen.localfile.LocalFileTypeScreen
 import org.mz.mzdkplayer.ui.screen.smbfile.SMBConListScreen
 import org.mz.mzdkplayer.ui.screen.smbfile.SMBConScreen
 import org.mz.mzdkplayer.ui.screen.smbfile.SMBFileListScreen
+import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavConListScreen
 
 import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavConScreen
 import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavFileListScreen
-import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavListScreen
+
 import org.mz.mzdkplayer.ui.videoplayer.VideoPlayerScreen
 import java.net.URLDecoder
+import java.net.URLEncoder
 
 @Composable
 fun MzDKPlayerAPP() {
@@ -154,7 +160,7 @@ fun MzDKPlayerAPP() {
             if (encodedPath != null) {
                 val path = URLDecoder.decode(encodedPath, "UTF-8")
                 Log.d("encodedPath", path)
-                LocalFileScreen(path,mainNavController)
+                LocalFileScreen(path, mainNavController)
 
             }
         }
@@ -164,10 +170,10 @@ fun MzDKPlayerAPP() {
             val sourceUri = backStackEntry.arguments?.getString("sourceUri")
             val dataSourceType = backStackEntry.arguments?.getString("dataSourceType")
             // 检查参数是否不为空，并渲染屏幕
-            if (sourceUri != null&&dataSourceType != null) {
+            if (sourceUri != null && dataSourceType != null) {
                 Log.d("sourceUri", sourceUri)
                 Log.d("dataSourceType", dataSourceType)
-                VideoPlayerScreen(URLDecoder.decode(sourceUri, "UTF-8"),dataSourceType)
+                VideoPlayerScreen(URLDecoder.decode(sourceUri, "UTF-8"), dataSourceType)
             }
         }
         composable("SMBFileListScreen/{path}") { backStackEntry ->
@@ -183,11 +189,40 @@ fun MzDKPlayerAPP() {
             val encodedPath = backStackEntry.arguments?.getString("path")
             val username = backStackEntry.arguments?.getString("username")
             val pw = backStackEntry.arguments?.getString("pw")
-            if (encodedPath != null&&username!=null&&pw!=null) {
+            if (encodedPath != null && username != null && pw != null) {
 
                 val path = URLDecoder.decode(encodedPath, "UTF-8")
                 Log.d("encodedPath", path)
-                WebDavFileListScreen(path, mainNavController, WebDavConnection("1","webdav",path,username,pw,))
+                WebDavFileListScreen(
+                    path,
+                    mainNavController,
+                    WebDavConnection("1", "webdav", path, username, pw)
+                )
+            }
+        }
+        composable("FTPFileListScreen/{encodedIp}/{encodedUsername}/{encodedPassword}/{port}/{encodedShareName}") { backStackEntry ->
+            val encodedIp = backStackEntry.arguments?.getString("encodedIp")
+            val encodedUsername = backStackEntry.arguments?.getString("encodedUsername")
+            val encodedPassword = backStackEntry.arguments?.getString("encodedPassword")
+            val encodedShareName = backStackEntry.arguments?.getString("encodedShareName")
+            //URLEncoder.encode(conn.shareName, "UTF-8")
+            if (encodedIp != null) {
+
+                val path = URLDecoder.decode(URLDecoder.decode(encodedIp, "UTF-8"), "UTF-8")
+                Log.d("encodedPath", "${URLDecoder.decode(encodedUsername, "UTF-8")}${URLDecoder.decode(encodedPassword, "UTF-8")}${URLDecoder.decode(encodedShareName, "UTF-8")}",)
+                FTPFileListScreen(
+                    URLDecoder.decode(encodedShareName, "UTF-8"),
+                    mainNavController,
+                    FTPConnection(
+                        "1",
+                        "ftp",
+                        ip=encodedIp,
+                        21,
+                        URLDecoder.decode(encodedUsername, "UTF-8"),
+                        URLDecoder.decode(encodedPassword, "UTF-8"),
+                        shareName = URLDecoder.decode(encodedShareName, "UTF-8"),
+                    )
+                )
             }
         }
         composable("SMBListScreen") {
@@ -200,7 +235,13 @@ fun MzDKPlayerAPP() {
             WebDavConScreen()
         }
         composable("WebDavListScreen") {
-            WebDavListScreen(mainNavController)
+            WebDavConListScreen(mainNavController)
+        }
+        composable("FTPConScreen") {
+            FTPConScreen()
+        }
+        composable("FTPConListScreen") {
+            FTPConListScreen(mainNavController)
         }
     }
 

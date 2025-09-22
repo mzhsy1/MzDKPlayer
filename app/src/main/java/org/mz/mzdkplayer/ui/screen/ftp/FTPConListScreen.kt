@@ -1,4 +1,6 @@
-package org.mz.mzdkplayer.ui.screen.webdavfile
+// File: FTPConListScreen.kt
+
+package org.mz.mzdkplayer.ui.screen.ftp // 请根据你的实际包名修改
 
 import android.annotation.SuppressLint
 import android.util.Log
@@ -43,8 +45,10 @@ import androidx.tv.material3.Card
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import org.mz.mzdkplayer.logic.model.WebDavConnection // 使用新的数据模型
-import org.mz.mzdkplayer.ui.screen.vm.WebDavListViewModel // 使用新的 ViewModel
+// --- 导入 FTP 相关的模型和 ViewModel ---
+import org.mz.mzdkplayer.logic.model.FTPConnection // 使用 FTP 数据模型
+import org.mz.mzdkplayer.ui.screen.vm.FTPListViewModel // 使用 FTP ViewModel
+// --- ---
 import org.mz.mzdkplayer.ui.theme.MyIconButton
 import org.mz.mzdkplayer.ui.theme.myCardBorderStyle
 import org.mz.mzdkplayer.ui.theme.myCardColor
@@ -53,26 +57,26 @@ import org.mz.mzdkplayer.ui.style.myListItemCoverColor
 import java.net.URLEncoder
 
 /**
- * WebDav连接列表屏幕
+ * FTP连接列表屏幕
  */
 @SuppressLint("StateFlowValueCalledInComposition")
 @Composable
-fun WebDavConListScreen(mainNavController: NavHostController) {
-    // 使用 WebDavListViewModel
-    val webDavListViewModel: WebDavListViewModel = viewModel()
-    val connections by webDavListViewModel.connections.collectAsState()
-    val isOPanelShow by webDavListViewModel.isOPanelShow.collectAsState()
+fun FTPConListScreen(mainNavController: NavHostController) {
+    // 使用 FTPListViewModel
+    val ftpListViewModel: FTPListViewModel = viewModel()
+    val connections by ftpListViewModel.connections.collectAsState()
+    val isOPanelShow by ftpListViewModel.isOPanelShow.collectAsState()
     // isLongPressInProgress 可能未在此处直接使用，但保留以匹配原始逻辑结构
-    val isLongPressInProgress by webDavListViewModel.isLongPressInProgress.collectAsState()
+    val isLongPressInProgress by ftpListViewModel.isLongPressInProgress.collectAsState()
 
     LaunchedEffect(isOPanelShow) {
-        Log.d("WebDavList", "isOPanelShow changed: $isOPanelShow")
+        Log.d("FTPList", "isOPanelShow changed: $isOPanelShow")
     }
 
     val panelFocusRequester = remember { FocusRequester() }
     val listFocusRequester = remember { FocusRequester() }
-    val selectedIndex by webDavListViewModel.selectedIndex.collectAsState()
-    val selectedId by webDavListViewModel.selectedId.collectAsState()
+    val selectedIndex by ftpListViewModel.selectedIndex.collectAsState()
+    val selectedId by ftpListViewModel.selectedId.collectAsState()
     val listState = rememberLazyListState()
 
     // 焦点管理：面板显示/隐藏时切换焦点
@@ -86,7 +90,7 @@ fun WebDavConListScreen(mainNavController: NavHostController) {
 
     // 当操作面板显示时，按下返回键隐藏面板
     BackHandler(enabled = isOPanelShow) {
-        webDavListViewModel.closeOPanel()
+        ftpListViewModel.closeOPanel()
     }
 
     // 面板关闭时，如果之前有选中项，则滚动到该项并请求焦点
@@ -104,15 +108,15 @@ fun WebDavConListScreen(mainNavController: NavHostController) {
         ) {
             // 添加新连接按钮
             MyIconButton(
-                "添加新WebDav链接",
+                "添加新FTP链接",
                 Icons.Outlined.Add,
                 Modifier.padding(10.dp),
-                onClick = { mainNavController.navigate("WebDavConScreen") } // 导航到添加连接屏幕
+                onClick = { mainNavController.navigate("FTPConScreen") } // 导航到添加FTP连接屏幕
             )
 
             if (connections.isEmpty()) {
                 Text(
-                    "没有WebDav连接",
+                    "没有FTP连接",
                     color = Color.White,
                     fontSize = 20.sp,
                     modifier = Modifier.padding(10.dp),
@@ -124,47 +128,48 @@ fun WebDavConListScreen(mainNavController: NavHostController) {
                     modifier = Modifier.focusRequester(listFocusRequester)
                 ) {
                     itemsIndexed(connections) { index, conn ->
-                        WebDavConnectionCard(
+                        FTPConnectionCard(
                             index = index,
                             connection = conn,
                             onClick = {
-                                // 构建带认证信息的 URL 用于导航
-                                // 注意：在实际应用中，直接在 URL 中暴露密码可能不安全。
-                                // 更好的做法是在 ViewModel 或 Repository 中处理认证。
+                                // 构建用于导航到 FTP 文件列表的参数
+                                // 注意：在实际应用中，直接传递密码可能不安全。
+                                // 更好的做法是在 ViewModel 或 Repository 中处理认证，
+                                // 或者使用更安全的令牌机制。
                                 // 这里为了简化导航示例，暂时采用此方式。
-                                val authPart = if (conn.username.isNotBlank() && conn.password.isNotBlank()) {
-                                    "${conn.username}:${conn.password}@"
-                                } else {
-                                    ""
-                                }
-                                // 假设 baseUrl 已经是完整的路径 (e.g., https://example.com/webdav/)
-                                // 如果 baseUrl 不包含协议，需要预先添加
-                                val fullUrl = if (conn.baseUrl.startsWith("http")) {
-                                    conn.baseUrl
-                                } else {
-                                    "http://$authPart${conn.baseUrl}" // 或 https，根据实际情况
-                                }
-
                                 try {
-                                    val encodedUrl = URLEncoder.encode(fullUrl, "UTF-8")
-                                    Log.d("WebDavList", "Navigating to WebDavFileListScreen with URL: $encodedUrl")
-                                    mainNavController.navigate("WebDavFileListScreen/$encodedUrl/${conn.username}/${conn.password}")
+                                    // 对参数进行 URL 编码以处理特殊字符
+                                    val encodedIp = URLEncoder.encode(conn.ip, "UTF-8")
+                                    val encodedUsername = URLEncoder.encode(conn.username, "UTF-8")
+                                    val encodedPassword = URLEncoder.encode(conn.password, "UTF-8")
+                                    val encodedShareName = URLEncoder.encode(conn.shareName, "UTF-8")
+
+                                    Log.d(
+                                        "FTPList", "Navigating to FTPFileListScreen with " +
+                                                "IP: $encodedIp, User: $encodedUsername, " +
+                                                "Share: $encodedShareName"
+                                    )
+                                    // 导航到 FTP 文件列表屏幕，传递编码后的参数
+                                    mainNavController.navigate(
+                                        "FTPFileListScreen/$encodedIp/" +
+                                                "$encodedUsername/$encodedPassword/${conn.port}/$encodedShareName"
+                                    )
                                 } catch (e: Exception) {
-                                    Log.e("WebDavList", "Error encoding URL: ${e.message}")
+                                    Log.e("FTPList", "Error encoding navigation parameters: ${e.message}")
                                     // 可以添加错误提示 UI
                                 }
                             },
                             onLogClick = {
                                 // 触发长按逻辑（尽管这里用的是 onClick，但可能是模拟长按或不同交互）
-                                webDavListViewModel.setIsLongPressInProgress(true)
-                                webDavListViewModel.openOPlane()
-                                webDavListViewModel.setSelectedIndex(index)
-                                webDavListViewModel.setSelectedId(conn.id)
-                                Log.d("WebDavList", "Operation panel opened for index: $index, id: ${conn.id}")
-                                webDavListViewModel.setIsLongPressInProgress(false)
+                                ftpListViewModel.setIsLongPressInProgress(true)
+                                ftpListViewModel.openOPlane()
+                                ftpListViewModel.setSelectedIndex(index)
+                                ftpListViewModel.setSelectedId(conn.id)
+                                Log.d("FTPList", "Operation panel opened for index: $index, id: ${conn.id}")
+                                ftpListViewModel.setIsLongPressInProgress(false)
                             },
                             onDelete = { /* 删除逻辑通常在 ViewModel 或操作面板中处理 */ },
-                            viewModel = webDavListViewModel,
+                            viewModel = ftpListViewModel,
                             isOPanelShow = isOPanelShow
                         )
                     }
@@ -214,11 +219,11 @@ fun WebDavConListScreen(mainNavController: NavHostController) {
                             .width(230.dp),
                         selected = false,
                         onClick = {
-                            Log.d("WebDavList", "Delete button pressed: isPressed=$isPressed")
+                            Log.d("FTPList", "Delete button pressed: isPressed=$isPressed")
                             if (isPressed) {
-                                webDavListViewModel.closeOPanel()
-                                webDavListViewModel.deleteConnection(selectedId)
-                                Log.d("WebDavList", "Deleting connection with id: $selectedId")
+                                ftpListViewModel.closeOPanel()
+                                ftpListViewModel.deleteConnection(selectedId)
+                                Log.d("FTPList", "Deleting connection with id: $selectedId")
                             }
                         },
                         interactionSource = interactionSource,
@@ -240,9 +245,9 @@ fun WebDavConListScreen(mainNavController: NavHostController) {
                         selected = false,
                         onClick = {
                             // TODO: 实现编辑功能或导航到编辑屏幕
-                            // 例如: mainNavController.navigate("EditWebDavScreen/$selectedId")
-                            Log.d("WebDavList", "Edit button clicked for id: $selectedId")
-                            webDavListViewModel.closeOPanel() // 操作后关闭面板
+                            // 例如: mainNavController.navigate("EditFTPScreen/$selectedId")
+                            Log.d("FTPList", "Edit button clicked for id: $selectedId")
+                            ftpListViewModel.closeOPanel() // 操作后关闭面板
                         },
                         colors = myListItemCoverColor(),
                         headlineContent = {
@@ -260,8 +265,8 @@ fun WebDavConListScreen(mainNavController: NavHostController) {
                             .width(230.dp),
                         selected = false,
                         onClick = {
-                            Log.d("WebDavList", "Return button clicked")
-                            webDavListViewModel.closeOPanel() // 关闭面板
+                            Log.d("FTPList", "Return button clicked")
+                            ftpListViewModel.closeOPanel() // 关闭面板
                         },
                         colors = myListItemCoverColor(),
                         headlineContent = {
@@ -279,16 +284,16 @@ fun WebDavConListScreen(mainNavController: NavHostController) {
 }
 
 /**
- * 单个 WebDav 连接卡片
+ * 单个 FTP 连接卡片
  */
 @Composable
-fun WebDavConnectionCard(
+fun FTPConnectionCard(
     index: Int,
-    connection: WebDavConnection,
+    connection: FTPConnection,
     onClick: () -> Unit,
     onDelete: () -> Unit,
     onLogClick: () -> Unit, // 这个回调现在用于触发操作面板
-    viewModel: WebDavListViewModel,
+    viewModel: FTPListViewModel,
     isOPanelShow: Boolean
 ) {
     val focusRequester = remember { FocusRequester() }
@@ -296,7 +301,7 @@ fun WebDavConnectionCard(
     // 当操作面板显示/隐藏状态改变时，如果当前卡片是选中的，则请求焦点
     LaunchedEffect(isOPanelShow) {
         if (viewModel.selectedIndex.value == index && !isOPanelShow) {
-            Log.d("WebDavCard", "Requesting focus for selected card at index: $index")
+            Log.d("FTPCard", "Requesting focus for selected card at index: $index")
             focusRequester.requestFocus()
         }
     }
@@ -320,9 +325,10 @@ fun WebDavConnectionCard(
             ) {
                 Text(connection.name, style = MaterialTheme.typography.titleMedium)
             }
-            // 根据 WebDavConnection 数据模型显示信息
-            Text("URL: ${connection.baseUrl}")
+            // 根据 FTPConnection 数据模型显示信息
+            Text("IP: ${connection.ip}")
             Text("用户: ${connection.username}")
+            Text("共享: ${connection.shareName}")
             // 密码通常不显示
         }
     }

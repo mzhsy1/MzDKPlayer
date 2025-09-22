@@ -68,6 +68,7 @@ fun HomeScreen(mainNavController: NavHostController) {
 
                             "SMB" -> mainNavController.navigate("SMBListScreen")
                             "WebDav" -> mainNavController.navigate("WebDavListScreen")
+                            "FTP" ->mainNavController.navigate("FTPConListScreen")
                         };
                         },
                         modifier = Modifier.padding(top = 2.dp),

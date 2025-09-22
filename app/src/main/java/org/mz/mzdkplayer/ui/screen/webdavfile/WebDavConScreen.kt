@@ -248,7 +248,7 @@ fun WebDavConScreen(
                                 if (isDirectory) R.drawable.localfile else R.drawable.baseline_insert_drive_file_24 // 替换为您的图标资源
                             ),
                             contentDescription = if (isDirectory) "Folder" else "File",
-                            tint = if (isDirectory) Color.Yellow else Color.White
+                            tint = if (isDirectory) Color.White else Color.White
                         )
                         // 名称
                         Text(

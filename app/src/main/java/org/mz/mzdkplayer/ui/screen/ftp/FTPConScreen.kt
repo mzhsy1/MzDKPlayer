@@ -46,6 +46,7 @@ import org.mz.mzdkplayer.ui.screen.vm.FTPListViewModel // 引入 FTP List ViewMo
 import org.mz.mzdkplayer.ui.style.myTTFColor
 import org.mz.mzdkplayer.ui.theme.MyIconButton
 import org.mz.mzdkplayer.ui.theme.TvTextField
+import java.util.Locale
 
 import java.util.UUID
 
@@ -72,7 +73,7 @@ fun FTPConScreen(
     var username by remember { mutableStateOf("wang") }
     var password by remember { mutableStateOf("Wa541888") }
     var aliasName by remember { mutableStateOf("My FTP Server") } // 连接别名
-    var shareName by remember { mutableStateOf("") } // FTP 共享文件夹名称
+    var shareName by remember { mutableStateOf("movies") } // FTP 共享文件夹名称
 
     // 用于控制键盘
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -83,7 +84,7 @@ fun FTPConScreen(
         Column(
             modifier = Modifier
                 .padding(16.dp)
-                .fillMaxHeight(),
+                .fillMaxHeight().fillMaxWidth(0.5f),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // 连接状态显示
@@ -107,36 +108,37 @@ fun FTPConScreen(
                     }
                 )
             }
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(),) {
+                // 输入字段 - FTP 服务器地址
+                TvTextField(
+                    value = server,
+                    onValueChange = { server = it },
+                    modifier = Modifier.weight(0.6f),
+                    placeholder = "FTP Server (e.g., 192.168.1.4)",
+                    colors = myTTFColor(),
+                    textStyle = TextStyle(color = Color.White),
+                )
 
-            // 输入字段 - FTP 服务器地址
-            TvTextField(
-                value = server,
-                onValueChange = { server = it },
-                modifier = Modifier.fillMaxWidth(0.5f),
-                placeholder = "FTP Server (e.g., 192.168.1.4)",
-                colors = myTTFColor(),
-                textStyle = TextStyle(color = Color.White),
-            )
-
-            // 输入字段 - FTP 端口
-            TvTextField(
-                value = port,
-                onValueChange = { newValue ->
-                    // 简单校验端口号为数字
-                    if (newValue.all { it.isDigit() } || newValue.isEmpty()) {
-                        port = newValue
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(0.5f),
-                placeholder = "Port (e.g., 21)",
-                colors = myTTFColor(),
-                textStyle = TextStyle(color = Color.White),
-            )
+                // 输入字段 - FTP 端口
+                TvTextField(
+                    value = port,
+                    modifier = Modifier.weight(0.4f).padding(start = 8.dp),
+                    onValueChange = { newValue ->
+                        // 简单校验端口号为数字
+                        if (newValue.all { it.isDigit() } || newValue.isEmpty()) {
+                            port = newValue
+                        }
+                    },
+                    placeholder = "Port (e.g., 21)",
+                    colors = myTTFColor(),
+                    textStyle = TextStyle(color = Color.White),
+                )
+            }
 
             TvTextField(
                 value = username,
                 onValueChange = { username = it },
-                modifier = Modifier.fillMaxWidth(0.5f),
+                modifier = Modifier.fillMaxWidth(),
                 placeholder = "Username",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
@@ -145,7 +147,7 @@ fun FTPConScreen(
             TvTextField(
                 value = password,
                 onValueChange = { password = it },
-                modifier = Modifier.fillMaxWidth(0.5f),
+                modifier = Modifier.fillMaxWidth(),
                 colors = myTTFColor(),
                 placeholder = "Password",
                 textStyle = TextStyle(color = Color.White),
@@ -156,8 +158,8 @@ fun FTPConScreen(
             // 输入字段 - 连接别名
             TvTextField(
                 value = aliasName,
+                modifier = Modifier.fillMaxWidth(),
                 onValueChange = { aliasName = it },
-                modifier = Modifier.fillMaxWidth(0.5f),
                 placeholder = "Connection Name (Alias)",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
@@ -167,57 +169,61 @@ fun FTPConScreen(
             TvTextField(
                 value = shareName,
                 onValueChange = { shareName = it },
-                modifier = Modifier.fillMaxWidth(0.5f),
+                modifier = Modifier.fillMaxWidth(),
                 placeholder = "Initial Share Folder (Optional)",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween, // 可选：让两个按钮之间有间距
+                        modifier = Modifier.fillMaxWidth(),
+            ) {
+                // 操作按钮
+                MyIconButton(
+                    text = "测试连接",
+                    imageVector = Icons.Outlined.Check,
+                    modifier = Modifier.weight(1f) .padding(end = 8.dp), // 可选：加点右边距，避免贴太紧,// ⬅️ 平分宽度,
+                    enabled = connectionStatus != FTPConnectionStatus.Connecting, // 连接中时禁用
+                    onClick = {
+                        keyboardController?.hide() // 隐藏键盘
+                        val portInt = port.toIntOrNull() ?: 21 // 转换端口，失败则默认 21
+                        ftpConViewModel.connectToFTP(server, portInt, username, password, shareName)
+                    },
+                )
 
-            // 操作按钮
-            MyIconButton(
-                text = "测试连接",
-                imageVector = Icons.Outlined.Check,
-                modifier = Modifier.fillMaxWidth(0.5f),
-                enabled = connectionStatus != FTPConnectionStatus.Connecting, // 连接中时禁用
-                onClick = {
-                    keyboardController?.hide() // 隐藏键盘
-                    val portInt = port.toIntOrNull() ?: 21 // 转换端口，失败则默认 21
-                    ftpConViewModel.connectToFTP(server, portInt, username, password)
-                },
-            )
-
-            MyIconButton(
-                text = "保存连接",
-                imageVector = Icons.Outlined.Star,
-                modifier = Modifier.fillMaxWidth(0.5f),
-                // 只有在已连接时才允许保存
-                enabled = connectionStatus is FTPConnectionStatus.Connected,
-                onClick = {
-                    keyboardController?.hide()
-                    val portInt = port.toIntOrNull() ?: 21 // 保存时也转换端口
-                    // 创建 FTPConnection 数据对象
-                    val newConnection = FTPConnection(
-                        id = UUID.randomUUID().toString(),
-                        name = aliasName,
-                        ip = server, // 使用 ip 字段存储服务器地址
-                        username = username,
-                        password = password, // 再次提醒：明文存储不安全
-                        shareName = shareName // 存储共享文件夹名称
-                    )
-                    if (ftpListViewModel.addConnection(newConnection)) {
-                        Toast.makeText(context, "FTP 连接已保存", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(context, "保存失败，连接可能已存在", Toast.LENGTH_SHORT)
-                            .show()
-                    }
-                    Log.d("FtpConScreen", "保存连接: $aliasName")
-                },
-            )
-
+                MyIconButton(
+                    text = "保存连接",
+                    imageVector = Icons.Outlined.Star,
+                    modifier = Modifier.weight(1f).padding(start = 8.dp), // 可选：加点右边距，避免贴太紧 ,// ⬅️ 平分宽度,
+                    // 只有在已连接时才允许保存
+                   // enabled = connectionStatus is FTPConnectionStatus.Connected,
+                    onClick = {
+                        keyboardController?.hide()
+                        val portInt = port.toIntOrNull() ?: 21 // 保存时也转换端口
+                        // 创建 FTPConnection 数据对象
+                        val newConnection = FTPConnection(
+                            id = UUID.randomUUID().toString(),
+                            name = aliasName,
+                            ip = server, // 使用 ip 字段存储服务器地址
+                            username = username,
+                            password = password, // 再次提醒：明文存储不安全
+                            shareName = shareName ,// 存储共享文件夹名称
+                            port = port.toInt()
+                        )
+                        if (ftpListViewModel.addConnection(newConnection)) {
+                            Toast.makeText(context, "FTP 连接已保存", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "保存失败，连接可能已存在", Toast.LENGTH_SHORT)
+                                .show()
+                        }
+                        Log.d("FtpConScreen", "保存连接: $aliasName")
+                    },
+                )
+            }
             MyIconButton(
                 text = "断开连接",
                 imageVector = Icons.Outlined.Delete,
-                modifier = Modifier.fillMaxWidth(0.5f),
+                modifier = Modifier.fillMaxWidth(),
                 // 只有在已连接或连接出错时才允许断开
                 enabled = connectionStatus is FTPConnectionStatus.Connected ||
                         connectionStatus is FTPConnectionStatus.Error ||
@@ -232,6 +238,7 @@ fun FTPConScreen(
             Text(
                 text = "当前路径: /$currentPath",
                 color = Color.LightGray,
+
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 8.dp)
             )
@@ -242,7 +249,7 @@ fun FTPConScreen(
         if (connectionStatus is FTPConnectionStatus.Connected && fileList.isNotEmpty()) {
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxHeight()
+                    .fillMaxHeight().fillMaxWidth(0.5f)
                     .weight(1f) // 占据剩余空间
             ) {
                 // 文件/文件夹列表项
@@ -286,7 +293,7 @@ fun FTPConScreen(
                                     if (isDirectory) R.drawable.localfile else R.drawable.baseline_insert_drive_file_24 // 替换为您的图标资源
                                 ),
                                 contentDescription = if (isDirectory) "Folder" else "File",
-                                tint = if (isDirectory) Color.Yellow else Color.White
+                                tint = if (isDirectory) Color.White else Color.White
                             )
                             // 名称
                             Text(
@@ -299,9 +306,28 @@ fun FTPConScreen(
                             )
                             // 大小 (可选) - FTPFile 使用 getSize()
                             val size = ftpFile.size
+
                             if (size >= 0) { // getSize() 返回 -1 表示大小未知
+                                val sizeText = when {
+                                    size >= 1024 * 1024 * 1024 -> {
+                                        // GB
+                                        String.format(Locale.US,"%.1f GB", size.toDouble() / (1024 * 1024 * 1024))
+                                    }
+                                    size >= 1024 * 1024 -> {
+                                        // MB
+                                        String.format(Locale.US,"%.1f MB", size.toDouble() / (1024 * 1024))
+                                    }
+                                    size >= 1024 -> {
+                                        // KB
+                                        String.format(Locale.US,"%.1f KB", size.toDouble() / 1024)
+                                    }
+                                    else -> {
+                                        // Bytes
+                                        "$size B"
+                                    }
+                                }
                                 Text(
-                                    text = "${size / 1024} KB", // 简单转换为 KB
+                                    text = sizeText, // 简单转换为 KB
                                     color = Color.Gray,
                                     style = MaterialTheme.typography.bodySmall
                                 )

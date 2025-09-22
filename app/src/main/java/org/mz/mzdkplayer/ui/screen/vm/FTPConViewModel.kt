@@ -43,7 +43,14 @@ class FTPConViewModel : ViewModel() {
      * @param username 用户名
      * @param password 密码
      */
-    fun connectToFTP(server: String, port: Int, username: String, password: String) {
+    fun connectToFTP(
+        server: String,
+        port: Int,
+        username: String,
+        password: String,
+        shareName: String, // 例如 "movies" 或 "documents/shared"
+    ) {
+        Log.d("path", "$server:$port")
         viewModelScope.launch {
             mutex.withLock {
                 _connectionStatus.value = FTPConnectionStatus.Connecting
@@ -51,6 +58,7 @@ class FTPConViewModel : ViewModel() {
                     withContext(Dispatchers.IO) {
                         // 初始化 FTPClient
                         ftpClient = FTPClient()
+                        ftpClient?.controlEncoding = "UTF-8" //ftpClient.sendSiteCommand("OPTS UTF8 ON")
                         this@FTPConViewModel.username = username
                         this@FTPConViewModel.password = password
                         this@FTPConViewModel.server = server // 仅用于显示或构建完整 URL
@@ -67,13 +75,22 @@ class FTPConViewModel : ViewModel() {
                         // 进入被动模式 (PASV) - 通常对客户端防火墙更友好
                         ftpClient?.enterLocalPassiveMode()
 
-                        // 尝试列出根目录内容以验证连接
-                        val rootFiles = ftpClient?.listFiles("/") ?: throw IOException("无法列出根目录")
-                        _fileList.value = rootFiles.toList()
+                        // --- 修改部分开始 ---
+                        // 确保 shareName 以 '/' 开头，便于构建路径
+                        val initialPath = if (shareName.startsWith("/")) shareName else "/$shareName"
+                        // 确保路径以 '/' 结尾，以便正确列出目录内容 (如果它是目录的话)
+                        val initialDirPath = if (initialPath.endsWith("/")) initialPath else "$initialPath/"
+
+                        // 尝试列出 shareName 指定的目录内容
+                        val initialFiles = ftpClient?.listFiles(initialDirPath) ?: throw IOException("无法列出初始目录: $initialDirPath")
+                        _fileList.value = initialFiles.toList()
+                        // 更新当前路径为 shareName (去除开头的 '/' 以便于后续路径拼接)
+                        _currentPath.value = initialPath.removePrefix("/")
+                        // --- 修改部分结束 ---
                     }
-                    _currentPath.value = "" // 重置路径到根目录
+                    // _currentPath 已在 IO 线程中设置
                     _connectionStatus.value = FTPConnectionStatus.Connected
-                    Log.d("FTPConViewModel", "连接成功到 $server:$port")
+                    Log.d("FTPConViewModel", "连接成功到 $server:$port, 初始路径: ${_currentPath.value}")
                 } catch (e: Exception) {
                     Log.e("FTPConViewModel", "连接失败", e)
                     _connectionStatus.value = FTPConnectionStatus.Error("连接失败: ${e.message}")

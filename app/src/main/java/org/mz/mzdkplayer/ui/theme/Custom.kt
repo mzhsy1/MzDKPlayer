@@ -19,11 +19,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -68,7 +70,7 @@ fun TvTextField(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         colors = colors,
         interactionSource = interactionSource,
-        border =ClickableSurfaceDefaults.border(
+        border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
                 border = BorderStroke(
                     width = if (isTfFocused) 2.dp else 1.dp,
@@ -79,7 +81,7 @@ fun TvTextField(
                     ).value
                 ),
             ),
-            pressedBorder= Border(
+            pressedBorder = Border(
                 border = BorderStroke(
                     width = if (isTfFocused) 2.dp else 1.dp,
                     color = animateColorAsState(
@@ -97,9 +99,12 @@ fun TvTextField(
         BasicTextField(
             value = value,
             textStyle = textStyle.copy(color = Color.White),
-            onValueChange =onValueChange,
+            onValueChange = onValueChange,
+            // --- 修改部分：添加 cursorBrush 参数 ---
+            cursorBrush = SolidColor(Color.White), // 设置光标颜色为白色
+            // --- 修改部分结束 ---
             modifier = Modifier
-                .fillMaxWidth(0.49f)
+                .fillMaxWidth(1f)
                 .padding(
                     vertical = 4.dp,
                     horizontal = 8.dp
@@ -130,15 +135,21 @@ fun TvTextField(
             visualTransformation = VisualTransformation.None,
             decorationBox = { innerTextField ->
                 if (value.isEmpty()) {
-                    Text(
-                        text = placeholder,
-                       color = Color.White
-                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(start = 15.dp)
+                            .align(Alignment.CenterStart),
+                    ) {
+                        Text(
+                            text = placeholder,
+                            color = Color.Gray
+                        )
+                    }
                 }
                 Box(
                     modifier = Modifier
                         .padding(vertical = 16.dp)
-                        .padding(start = 20.dp),
+                        .padding(start = 15.dp),
                 ) {
                     innerTextField()
                 }
@@ -148,9 +159,7 @@ fun TvTextField(
     }
 }
 
-
-
-
+// MyIconButton 代码保持不变
 @Composable
 fun MyIconButton(
     text: String,
@@ -159,17 +168,17 @@ fun MyIconButton(
     onClick: () -> Unit,
     enabled: Boolean = true,
 ) {
-    Button(
+    androidx.tv.material3.Button( // 明确指定是 Tv Material3 的 Button
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
         contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
         shape = ButtonDefaults.shape(shape = ShapeDefaults.ExtraSmall),
         colors = ButtonDefaults.colors(
-            ComposeColor.White,
-            ComposeColor.Black,
-            ComposeColor.White,
-            ComposeColor.Black
+            Color.White, // background
+            Color.Black, // content
+            Color.White, // disabled background
+            Color.Black  // disabled content
         )
 
     ) {
@@ -184,3 +193,7 @@ fun MyIconButton(
         )
     }
 }
+
+
+
+
