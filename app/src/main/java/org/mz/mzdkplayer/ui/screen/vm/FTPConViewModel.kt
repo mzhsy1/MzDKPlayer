@@ -50,7 +50,8 @@ class FTPConViewModel : ViewModel() {
         password: String,
         shareName: String, // 例如 "movies" 或 "documents/shared"
     ) {
-        Log.d("path", "$server:$port")
+       // Log.d("path", "$server:$port")
+        Log.d("shareName", shareName)
         viewModelScope.launch {
             mutex.withLock {
                 _connectionStatus.value = FTPConnectionStatus.Connecting

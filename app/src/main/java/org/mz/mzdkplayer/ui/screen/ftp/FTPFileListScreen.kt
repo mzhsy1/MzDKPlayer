@@ -10,9 +10,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Icon
@@ -23,6 +26,7 @@ import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.FTPConnection
 import org.mz.mzdkplayer.tool.Tools
+import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.vm.FTPConViewModel
 import org.mz.mzdkplayer.ui.screen.vm.FTPConnectionStatus // 导入状态类
 import org.mz.mzdkplayer.ui.style.myListItemColor
@@ -47,7 +51,10 @@ fun FTPFileListScreen(
 
     // 当传入的 path 参数变化时，或者首次进入时，尝试加载文件列表
     LaunchedEffect(path) { // 依赖 path
-        Log.d("FTPFileListScreen", "LaunchedEffect triggered with path: $path, status: $connectionStatus")
+        Log.d(
+            "FTPFileListScreen",
+            "LaunchedEffect triggered with path: $path, status: $connectionStatus"
+        )
 
         when (connectionStatus) {
             is FTPConnectionStatus.Connected -> {
@@ -55,6 +62,7 @@ fun FTPFileListScreen(
                 Log.d("FTPFileListScreen", "Already connected, listing files for path: $path")
                 viewModel.listFiles(path ?: "")
             }
+
             is FTPConnectionStatus.Disconnected -> {
                 // 未连接，尝试连接
                 Log.d("FTPFileListScreen", "Disconnected. Attempting to connect.")
@@ -66,10 +74,12 @@ fun FTPFileListScreen(
                     ftpConnection.shareName // 传递共享名称
                 )
             }
+
             is FTPConnectionStatus.Connecting -> {
                 // 正在连接，等待...
                 Log.d("FTPFileListScreen", "Connecting...")
             }
+
             is FTPConnectionStatus.Error -> {
                 // 连接或列表错误
                 val errorMessage = (connectionStatus as FTPConnectionStatus.Error).message
@@ -88,22 +98,69 @@ fun FTPFileListScreen(
     }
 
     // 根据连接状态渲染 UI
-    Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
         when (connectionStatus) {
             is FTPConnectionStatus.Connecting -> {
                 // 显示加载指示器
-                Text("正在连接 FTP...", modifier = Modifier.align(Alignment.Center))
+//                Text(
+//                    "正在连接 FTP...",
+//                    modifier = Modifier.align(Alignment.Center),
+//                    color = Color.White,
+//                    fontWeight = FontWeight.Bold,
+//                    fontSize = 24.sp
+//                )
+                LoadingScreen()
             }
+
             is FTPConnectionStatus.Error -> {
                 // 显示错误信息
                 val errorMessage = (connectionStatus as FTPConnectionStatus.Error).message
-                Text("加载失败: $errorMessage", modifier = Modifier.align(Alignment.Center))
+                Text(
+                    "加载失败: $errorMessage",
+                    modifier = Modifier.align(Alignment.Center),
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 24.sp
+                )
                 // 可以添加一个重试按钮
             }
+
             is FTPConnectionStatus.Connected -> {
-                // 已连接，显示文件列表
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    // 添加返回上一级目录的按钮
+                if (fileList.isEmpty()) {
+
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.baseline_folder_off_24),
+                                contentDescription = null,
+                                tint = Color.Gray,
+                                modifier = Modifier.size(64.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                "此目录为空",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 24.sp
+                            )
+                        }
+                    }
+
+
+                } else {
+                    // 已连接，显示文件列表
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        // 添加返回上一级目录的按钮
 //                    if (path != null && path.isNotEmpty()) {
 //                        item {
 //                            ListItem(
@@ -129,12 +186,8 @@ fun FTPFileListScreen(
 //                            )
 //                        }
 //                    }
+                        Log.d("fileList", fileList.toString())
 
-                    if (fileList.isEmpty()) {
-                        item {
-                            Text("此目录为空", modifier = Modifier.align(Alignment.Center).padding(16.dp))
-                        }
-                    } else {
                         items(fileList) { file ->
                             // FTPFile 使用 isDirectory 方法
                             val isDirectory = file.isDirectory
@@ -152,8 +205,12 @@ fun FTPFileListScreen(
                                                 "${path.trimEnd('/')}/$fileName"
                                             }
                                             // 对路径进行编码，空路径特殊处理
-                                            val encodedNewPath = URLEncoder.encode(newPath.ifEmpty { " " }, "UTF-8")
-                                            Log.d("FTPFileListScreen", "Navigating to subdirectory: $newPath (encoded: $encodedNewPath)")
+                                            val encodedNewPath =
+                                                URLEncoder.encode(newPath.ifEmpty { " " }, "UTF-8")
+                                            Log.d(
+                                                "FTPFileListScreen",
+                                                "Navigating to subdirectory: $newPath (encoded: $encodedNewPath)"
+                                            )
                                             // 导航到子目录，传递连接信息
                                             navController.navigate("FTPFileListScreen/${ftpConnection.ip}/${ftpConnection.username}/${ftpConnection.password}/${ftpConnection.port}/$encodedNewPath")
                                         } else {
@@ -174,7 +231,12 @@ fun FTPFileListScreen(
                                     Icon(
                                         painter = if (isDirectory) {
                                             painterResource(R.drawable.baseline_folder_24)
-                                        } else if (Tools.containsVideoFormat(Tools.extractFileExtension(fileName))) {
+                                        } else if (Tools.containsVideoFormat(
+                                                Tools.extractFileExtension(
+                                                    fileName
+                                                )
+                                            )
+                                        ) {
                                             painterResource(R.drawable.baseline_video_file_24)
                                         } else {
                                             painterResource(R.drawable.baseline_insert_drive_file_24)
@@ -187,11 +249,15 @@ fun FTPFileListScreen(
                             )
                         }
                     }
-                }
+                    }
+
             }
             is FTPConnectionStatus.Disconnected -> {
                 // 显示未连接提示
-                Column(modifier = Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Text("未连接到 FTP 服务器")
                     // 可以添加一个按钮来触发连接
                 }
