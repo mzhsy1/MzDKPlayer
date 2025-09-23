@@ -15,6 +15,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
@@ -53,8 +54,10 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
     // --- 配置参数 ---
     companion object {
         private const val TAG = "WebDavDataSource"
-        private const val DEFAULT_BUFFER_SIZE_BYTES = 5 * 1024 * 1024 // 2MB 默认缓冲区大小
-        // 用于信任所有证书的 OkHttpClient
+        // 增大缓冲区大小
+        private const val DEFAULT_BUFFER_SIZE_BYTES = 8 * 1024 * 1024 // 2MB 默认缓冲区大小
+
+        // 用于信任所有证书的 OkHttpClient，并配置超时
         private val unsafeOkHttpClient: OkHttpClient by lazy {
             try {
                 // Create a trust manager that does not validate certificate chains
@@ -73,6 +76,12 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
                 OkHttpClient.Builder()
                     .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
                     .hostnameVerifier { _, _ -> true }
+                    // --- 添加超时配置 ---
+                    .connectTimeout(10, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS) // 根据需要调整
+                    .writeTimeout(10, TimeUnit.SECONDS)
+                    // --- 可选：配置连接池 ---
+                    // .connectionPool(ConnectionPool(5, 5, TimeUnit.MINUTES))
                     .build()
             } catch (e: Exception) {
                 throw RuntimeException(e)
@@ -109,32 +118,18 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
         } ?: Pair("", "")
 
         try {
-            val trustAllCerts = arrayOf<TrustManager>(@SuppressLint("CustomX509TrustManager")
-            object : X509TrustManager {
-                @SuppressLint("TrustAllX509TrustManager")
-                override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
-                @SuppressLint("TrustAllX509TrustManager")
-                override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
-                override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-            })
+            // 直接使用预配置的不安全 OkHttpClient 实例
+            val okHttpClient = unsafeOkHttpClient
 
-            // 配置 OkHttpClient 忽略 SSL 验证
-            val sslContext = SSLContext.getInstance("SSL")
-            sslContext.init(null, trustAllCerts, SecureRandom())
-
-            val okHttpClient = OkHttpClient.Builder()
-                .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
-                .hostnameVerifier { _, _ -> true } // 忽略主机名验证
-                .build()
             // 初始化 Sardine 客户端
-            // 使用预配置的不安全 OkHttpClient 实例
             sardine = OkHttpSardine(okHttpClient)
             if (username.isNotBlank() || password.isNotBlank()) {
                 sardine?.setCredentials(username, password)
             }
             Log.d(TAG,"$username $password")
+
             // 方法 1: 使用 Uri.Builder (推荐，因为它处理编码等细节)
-             val cleanUriString = Uri.Builder()
+            val cleanUriString = Uri.Builder()
                 .scheme(uri.scheme) // "https"
                 .encodedAuthority(uri.authority?.substringAfter('@') ?: uri.authority) // 移除 userInfo 部分 ("192.168.1.4:5006")
                 .encodedPath(uri.encodedPath) // "/movies/as.mkv" (保持编码)
@@ -143,6 +138,7 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
                 .build()
                 .toString()
             Log.d(TAG,cleanUriString)
+
             // 获取文件大小（HEAD 请求）
             val davResources = sardine?.list(cleanUriString) // Depth 0, 不获取属性
             if (davResources.isNullOrEmpty()) {
@@ -285,7 +281,7 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
             // 构造 Range 请求头: "bytes=startOffset-endOffset"
             val endOffset = currentFileOffset + chunkSize.toLong() - 1
             val rangeHeader = "bytes=$currentFileOffset-$endOffset"
-            Log.v(TAG, "请求 Range: $rangeHeader")
+            Log.i(TAG, "请求 Range: $rangeHeader")
 
             // 使用 Sardine 获取带有 Range 头的 InputStream
             // 注意：这依赖于 OkHttpSardine 的内部实现，它会将 headers 传递给 OkHttpClient
@@ -318,7 +314,8 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
                 } else {
                     0.0
                 }
-                if (readTime > 100 || speed < 5.0) {
+                // 可以调整这里的阈值来更敏感地记录慢速读取
+                if (readTime > 200 || speed < 3.0) {
                     Log.i(
                         TAG, "读取 ${totalBytesReadFromStream / 1024 / 1024}MB 耗时 ${readTime}ms, " +
                                 "速度: ${"%.2f".format(speed)} MB/s"
@@ -397,3 +394,6 @@ class WebDavDataSourceFactory : DataSource.Factory {
         return WebDavDataSource()
     }
 }
+
+
+

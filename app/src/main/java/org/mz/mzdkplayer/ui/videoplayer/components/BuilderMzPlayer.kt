@@ -352,8 +352,8 @@ fun rememberPlayer(context: Context, mediaUri: String, dataSourceType: String) =
         }
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                15000,  // minBufferMs: 最小缓冲时间 (例如 15秒)
-                120000,  // maxBufferMs: 最大缓冲时间 (例如 60秒)
+                30000,  // minBufferMs: 最小缓冲时间 (例如 15秒)
+                150000,  // maxBufferMs: 最大缓冲时间 (例如 60秒)
                 5000,   // bufferForPlaybackMs: 开始播放前至少要缓冲的时间 (例如 2.5秒)
                 5000    // bufferForPlaybackAfterRebufferMs: 重新缓冲后恢复播放前至少要缓冲的时间 (例如 5秒)
             )
@@ -361,7 +361,7 @@ fun rememberPlayer(context: Context, mediaUri: String, dataSourceType: String) =
             .setPrioritizeTimeOverSizeThresholds(true) // 优先时间阈值
             .build()
         ExoPlayer.Builder(context).setSeekForwardIncrementMs(10000).setSeekBackIncrementMs(10000)
-            .setLoadControl(loadControl)
+            //.setLoadControl(loadControl)
             .setMediaSourceFactory(
                 DefaultMediaSourceFactory(
                     dataSourceFactory

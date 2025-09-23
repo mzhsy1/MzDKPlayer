@@ -1,0 +1,305 @@
+package org.mz.mzdkplayer.tool
+
+import android.net.Uri
+import android.util.Log // 添加日志导入
+import androidx.media3.common.C
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.BaseDataSource // 更改继承自 BaseDataSource
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.TransferListener
+import com.hierynomus.msdtyp.AccessMask
+import com.hierynomus.mssmb2.SMB2CreateDisposition
+import com.hierynomus.mssmb2.SMB2ShareAccess
+import com.hierynomus.smbj.SMBClient
+import com.hierynomus.smbj.auth.AuthenticationContext
+import com.hierynomus.smbj.connection.Connection
+import com.hierynomus.smbj.session.Session
+import com.hierynomus.smbj.share.DiskShare
+import com.hierynomus.smbj.share.File
+import java.io.EOFException
+import java.io.IOException
+import java.io.InputStream
+import java.util.concurrent.atomic.AtomicBoolean // 用于线程安全的状态
+
+@UnstableApi
+class SmbDataSource : BaseDataSource(/* isNetwork= */ true) { // 继承 BaseDataSource 并标记为网络源
+    private var dataSpec: DataSpec? = null
+    private var connection: Connection? = null
+    private var session: Session? = null
+    private var share: DiskShare? = null
+    private var file: File? = null
+    private var inputStream: InputStream? = null
+    private var bytesRemaining: Long = 0
+
+    // 使用 AtomicBoolean 确保 opened 状态的线程安全，类似 FtpDataSource
+    private val opened = AtomicBoolean(false)
+
+    companion object {
+        private const val TAG = "SmbDataSource" // 日志标签
+    }
+
+    // transferListener 由 BaseDataSource 处理，可以移除空实现或保留为空
+    override fun addTransferListener(transferListener: TransferListener) {
+        // BaseDataSource 会处理监听器的添加和通知
+        // super.addTransferListener(transferListener) // 如果需要调用父类方法
+    }
+
+    @Throws(IOException::class)
+    override fun open(dataSpec: DataSpec): Long {
+        // 通知监听器数据传输正在初始化 (来自 BaseDataSource)
+        transferInitializing(dataSpec)
+
+        // 确保数据源未被打开，保证线程安全
+        if (!opened.compareAndSet(false, true)) {
+            throw IOException("SmbDataSource is already opened.")
+        }
+
+        this.dataSpec = dataSpec
+        val uri = dataSpec.uri
+        val host = uri.host ?: throw IOException("Invalid SMB URI: no host")
+        val path = uri.path ?: throw IOException("Invalid SMB URI: no path")
+        val pathSegments = path.split("/").filter { it.isNotEmpty() }
+        if (pathSegments.isEmpty()) {
+             throw IOException("Invalid SMB URI: could not extract share name and file path")
+        }
+        val shareName = pathSegments[0]
+        val filePath = pathSegments.drop(1).joinToString("/")
+
+
+        // --- 安全警告 ---
+        // 从 URI 的 userInfo 部分提取凭证是不安全的。
+        // 在生产环境中应使用更安全的方法。
+        val (username, password) = uri.userInfo?.split(":")?.let {
+            if (it.size == 2) Pair(it[0], it[1]) else Pair("guest", "")
+        } ?: Pair("guest", "")
+        val domain = "" // 如果需要域名
+
+        Log.d(TAG, "Attempting to connect to SMB server: $host, Share: $shareName, File: $filePath, User: $username")
+
+        try {
+            val client = SMBClient()
+            connection = client.connect(host)
+            val authContext = AuthenticationContext(username, password.toCharArray(), domain)
+            session = connection!!.authenticate(authContext)
+            share = session!!.connectShare(shareName) as DiskShare
+
+            // 打开文件
+            file = share!!.openFile(
+                filePath,
+                setOf(AccessMask.GENERIC_READ),
+                null, // attributes
+                SMB2ShareAccess.ALL,
+                SMB2CreateDisposition.FILE_OPEN,
+                null // createOptions
+            )
+
+            inputStream = file!!.inputStream
+
+            // 处理随机访问 (seeking)
+            val position = dataSpec.position
+            if (position > 0) {
+                Log.d(TAG, "Seeking to position: $position")
+                // SMBJ 的 InputStream 可能不支持高效的 skip。
+                // readAndDiscard 或循环 skip 是常见做法。
+                var skipped: Long = 0
+                while (skipped < position) {
+                    // 使用 available() 可能不准确，但可以作为尝试读取大小的参考
+                    val bufferSize = (position - skipped).coerceAtMost(8192L).toInt() // 限制单次读取大小
+                    val skipBuffer = ByteArray(bufferSize)
+                    val bytesRead = inputStream!!.read(skipBuffer)
+                    if (bytesRead == -1) {
+                        throw EOFException("Unexpected end of stream while seeking to position $position. Only skipped $skipped bytes.")
+                    }
+                    skipped += bytesRead.toLong()
+                }
+                Log.d(TAG, "Successfully skipped/seeked to position: $position")
+            }
+
+            val length = file!!.fileInformation.standardInformation.endOfFile
+            bytesRemaining = if (dataSpec.length != C.LENGTH_UNSET.toLong()) {
+                dataSpec.length
+            } else {
+                length - dataSpec.position
+            }
+            if (bytesRemaining < 0) {
+                throw IOException("Calculated length is negative: $bytesRemaining")
+            }
+
+            Log.d(TAG, "SMB file opened successfully. Bytes available to read: $bytesRemaining")
+
+            // 通知监听器打开完成 (来自 BaseDataSource)
+            transferStarted(dataSpec)
+
+            return bytesRemaining
+        } catch (e: Exception) {
+            // 如果在打开过程中发生任何错误，确保已分配的资源被释放
+            closeQuietly()
+            throw IOException("Error opening SMB file: ${e.message}", e)
+        }
+    }
+
+    /**
+     * 从 SMB 数据源读取数据。
+     * 此方法现在更健壮，处理了空安全、EOF 和潜在的 IO 异常。
+     * @param buffer 目标缓冲区
+     * @param offset 缓冲区中的起始写入偏移量
+     * @param readLength 尝试读取的最大字节数
+     * @return 实际读取的字节数，或 C.RESULT_END_OF_INPUT 表示结束
+     * @throws IOException 读取过程中发生错误
+     */
+    @Throws(IOException::class)
+    override fun read(buffer: ByteArray, offset: Int, readLength: Int): Int {
+        // 检查数据源是否已打开
+        if (!opened.get()) {
+             throw IOException("SmbDataSource is not opened.")
+        }
+
+        // 检查是否已到达文件末尾
+        if (bytesRemaining == 0L) {
+            Log.d(TAG, "Read requested, but bytesRemaining is 0. Returning END_OF_INPUT.")
+            return C.RESULT_END_OF_INPUT
+        }
+
+        // 确定本次实际需要读取的字节数
+        val bytesToRead = minOf(readLength.coerceAtLeast(0), bytesRemaining.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+        if (bytesToRead == 0) {
+             Log.d(TAG, "Read requested with bytesToRead=0. Returning 0.")
+            return 0
+        }
+
+        // 获取输入流引用
+        val currentInputStream = inputStream ?: throw IOException("Internal input stream is null")
+
+        try {
+            // --- 关键修改点：使用改进的读取逻辑 ---
+            // 循环读取直到满足 bytesToRead 或遇到 EOF/错误
+            var totalBytesRead = 0
+            while (totalBytesRead < bytesToRead) {
+                val bytesRead = currentInputStream.read(buffer, offset + totalBytesRead, bytesToRead - totalBytesRead)
+                if (bytesRead == -1) {
+                    // EOF reached before reading the requested amount
+                    // 如果 bytesRemaining 不为 0 但遇到 EOF，则视为异常
+                    if (bytesRemaining != C.LENGTH_UNSET.toLong()) {
+                         Log.w(TAG, "Unexpected EOF: Expected $bytesRemaining more bytes, but only read $totalBytesRead.")
+                         // 可选：严格模式下抛出 EOFException
+                         // throw EOFException("Unexpected end of stream: Expected $bytesRemaining more bytes, but only read $totalBytesRead.")
+                         // 宽松模式下：记录日志并返回已读取的字节
+                         break // 退出循环，返回已读取的部分数据
+                    } else {
+                        // bytesRemaining 为 UNSET，EOF 是预期的结束标志
+                        Log.d(TAG, "EOF reached as expected (bytesRemaining was UNSET). Total read: $totalBytesRead")
+                        break
+                    }
+                }
+                totalBytesRead += bytesRead
+            }
+
+            // 更新剩余字节数
+            if (bytesRemaining != C.LENGTH_UNSET.toLong()) {
+                bytesRemaining -= totalBytesRead.toLong()
+            }
+
+            // 通知监听器数据传输（来自 BaseDataSource）
+            if (totalBytesRead > 0) {
+                 bytesTransferred(totalBytesRead)
+            }
+
+            Log.v(TAG, "Successfully read $totalBytesRead bytes. Bytes remaining: $bytesRemaining")
+
+            // 如果没有读取到任何字节（可能是 EOF），则返回 END_OF_INPUT
+            return if (totalBytesRead == 0) C.RESULT_END_OF_INPUT else totalBytesRead
+
+
+        } catch (e: IOException) {
+            Log.e(TAG, "IOException occurred while reading from SMB stream", e)
+            throw IOException("Error reading from SMB file: ${e.message}", e)
+        } catch (e: Exception) { // 捕获其他非IO异常
+             Log.e(TAG, "Unexpected exception occurred while reading from SMB stream", e)
+             throw IOException("Unexpected error reading from SMB file: ${e.message}", e)
+        }
+    }
+
+    override fun getUri(): Uri? {
+        return dataSpec?.uri
+    }
+
+    /**
+     * 关闭 SMB 数据源，释放所有资源。
+     * 实现了更健壮的资源清理逻辑。
+     */
+    @Throws(IOException::class)
+    override fun close() {
+        // 原子性地将 opened 状态从 true 设置为 false
+         if (opened.compareAndSet(true, false)) {
+             Log.d(TAG, "close() called, starting resource cleanup...")
+             try {
+                 // 按照依赖顺序逆序关闭资源
+                 inputStream?.close()
+                 Log.d(TAG, "InputStream closed.")
+                 file?.close()
+                 Log.d(TAG, "File handle closed.")
+                 share?.close()
+                 Log.d(TAG, "Share closed.")
+                 session?.close()
+                 Log.d(TAG, "Session closed.")
+                 connection?.close()
+                 Log.d(TAG, "Connection closed.")
+
+                 // 清空引用
+                 inputStream = null
+                 file = null
+                 share = null
+                 session = null
+                 connection = null
+                 dataSpec = null
+                 bytesRemaining = 0
+                 Log.d(TAG, "All resources cleared and state reset.")
+             } catch (e: IOException) {
+                 Log.w(TAG, "IOException during resource cleanup in close()", e)
+                 // 重新抛出 IOException，符合 close() 方法签名
+                 throw e
+             } catch (e: Exception) {
+                 Log.e(TAG, "Unexpected exception during resource cleanup in close()", e)
+                 // 将非 IOException 包装成 IOException 抛出
+                 throw IOException("Error closing SMB resources", e)
+             } finally {
+                 // 确保状态被重置，即使发生异常
+                 // 引用清空已在 try 块中完成
+                 Log.d(TAG, "Resource cleanup finally block executed.")
+             }
+         } else {
+             Log.d(TAG, "close() called, but data source is not open or already closing.")
+         }
+    }
+
+    /**
+     * 辅助方法：静默关闭所有资源，即使发生异常也忽略。
+     * 确保在 open 失败时资源得到释放。
+     */
+    private fun closeQuietly() {
+        Log.d(TAG, "closeQuietly() called")
+        try {
+            // 直接调用主 close 方法，它会处理 opened 状态和异常
+            close()
+        } catch (ignored: IOException) {
+            // close() 方法本身声明抛出 IOException，但 closeQuietly 通常不希望抛出
+            Log.w(TAG, "closeQuietly: Ignoring IOException during close", ignored)
+        } catch (ignored: Exception) {
+            Log.w(TAG, "closeQuietly: Ignoring unexpected exception during close", ignored)
+        }
+        // 重置 opened 状态以防万一 close() 没有执行（虽然不太可能，因为 opened.compareAndSet 在 close 中处理了）
+        // opened.set(false) // 通常由 close() 内部的 compareAndSet 处理
+    }
+}
+
+// Factory 类保持不变
+@UnstableApi
+class SmbDataSourceFactory : DataSource.Factory {
+    override fun createDataSource(): DataSource {
+        return SmbDataSource()
+    }
+}
+
+
+

@@ -68,6 +68,7 @@ dependencies {
     implementation(libs.ass.media)
     implementation(libs.thegrizzlylabs.sardine.android)
     implementation(libs.commons.net)
+    implementation("org.codelibs:jcifs:2.1.40")
 // 请检查最新版本
     //implementation(libs.ass.kt)
     //implementation(libs.ass.media.v030beta02)

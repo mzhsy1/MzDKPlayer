@@ -262,7 +262,7 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
             Log.i(
                 TAG,
                 "读取速度统计 - 已用时: ${String.format("%.2f", elapsedSeconds)}s, " +
-                        "总读取: ${totalBytesRead} bytes, " +
+                        "总读取: $totalBytesRead bytes, " +
                         "平均速度: ${String.format("%.2f", averageSpeedBps)} B/s " +
                         "(${String.format("%.2f", averageSpeedKbps)} KB/s) " +
                         "(${String.format("%.2f", averageSpeedMbps)} MB/s)"
