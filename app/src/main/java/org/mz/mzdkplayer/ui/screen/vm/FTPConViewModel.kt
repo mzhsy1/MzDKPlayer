@@ -74,6 +74,7 @@ class FTPConViewModel : ViewModel() {
                         // 设置文件类型为二进制 (推荐用于兼容性)
                         ftpClient?.setFileType(FTP.BINARY_FILE_TYPE)
                         // 进入被动模式 (PASV) - 通常对客户端防火墙更友好
+
                         ftpClient?.enterLocalPassiveMode()
 
                         // --- 修改部分开始 ---

@@ -151,6 +151,11 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
                     context.contentResolver.openInputStream(danmakuUri)
                         ?: throw java.io.IOException("Could not open file input stream for $danmakuUri")
                 }
+                "ftp" -> {
+                    // 使用 SMB 工具打开输入流
+                    SmbUtils.openFtpFileInputStream(danmakuUri)
+
+                }
 
                 else -> {
                     // 不支持的 scheme

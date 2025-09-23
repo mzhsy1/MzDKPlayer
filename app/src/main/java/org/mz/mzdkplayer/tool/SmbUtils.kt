@@ -18,6 +18,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import okhttp3.OkHttpClient
 import okio.IOException
+import org.apache.commons.net.ftp.FTP
+import org.apache.commons.net.ftp.FTPClient
 import java.io.InputStream
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
@@ -178,6 +180,178 @@ object SmbUtils {
             // 它的 OkHttpClient 也会被垃圾回收，其连接池中的空闲连接最终也会被清理。
         }
     }
+
+
+
+    /**
+     * 根据完整的 FTP URI 打开文件并返回 InputStream
+     * 示例 URI: ftp://user:pass@host:port/path/to/file.xml
+     */
+    @Throws(IOException::class)
+    suspend fun openFtpFileInputStream(ftpUri: Uri): InputStream {
+        return withContext(Dispatchers.IO) {
+            val host = ftpUri.host ?: throw IOException("Invalid FTP URI: no host")
+            val port = ftpUri.port.takeIf { it != -1 } ?: 21 // 默认 FTP 端口
+            val path = ftpUri.path ?: throw IOException("Invalid FTP URI: no path")
+
+            // 从 URI 获取用户凭证
+            val userInfo = ftpUri.userInfo
+            val username = userInfo?.split(":")?.getOrNull(0) ?: "anonymous"
+            val password = userInfo?.split(":")?.getOrNull(1) ?: ""
+
+            val ftpClient = FTPClient()
+            // 应用优化：设置编码、缓冲区大小和超时
+            ftpClient.controlEncoding = "UTF-8"
+            ftpClient.bufferSize = 8192 // BUFFER_SIZE
+            ftpClient.connectTimeout = 10000 // CONNECTION_TIMEOUT_MS
+            // ftpClient.soTimeout = 10000 // SOCKET_TIMEOUT_MS (可选)
+
+            var success = false // 标记是否成功登录
+            var inputStream: InputStream? = null
+            try {
+                // 连接到服务器
+                ftpClient.connect(host, port)
+
+                // 登录
+                val loginSuccess = ftpClient.login(username, password)
+                if (!loginSuccess) {
+                    throw IOException("FTP 登录失败 for user: $username")
+                }
+                success = true // 标记登录成功
+
+                // 设置传输模式和被动模式
+                ftpClient.setFileType(FTP.BINARY_FILE_TYPE)
+                ftpClient.enterLocalPassiveMode()
+
+                // 打开文件输入流
+                inputStream = ftpClient.retrieveFileStream(path)
+                if (inputStream == null) {
+                    throw IOException("无法打开 FTP 文件输入流: $path. 服务器回复: ${ftpClient.replyString}")
+                }
+
+                // 返回一个包装的 InputStream，在关闭时也处理 FTP 连接
+                object : InputStream() {
+                    private var isClosed = false // 防止重复关闭
+
+                    override fun read(): Int {
+                        check(!isClosed) { "Stream is closed" }
+                        return inputStream.read()
+                    }
+
+                    override fun read(b: ByteArray): Int {
+                        check(!isClosed) { "Stream is closed" }
+                        return inputStream.read(b)
+                    }
+
+                    override fun read(b: ByteArray, off: Int, len: Int): Int {
+                        check(!isClosed) { "Stream is closed" }
+                        return inputStream.read(b, off, len)
+                    }
+
+                    override fun close() {
+                        if (isClosed) return
+                        isClosed = true
+
+                        var completeOk = false
+                        var inputStreamException: Throwable? = null
+                        var completeCommandException: Throwable? = null
+                        var logoutException: Throwable? = null
+                        var disconnectException: Throwable? = null
+
+                        try {
+                            // 1. 首先关闭输入流
+                            try {
+                                inputStream.close()
+                            } catch (e: Exception) {
+                                inputStreamException = e
+                            }
+
+                            // 2. 然后完成 FTP 命令序列
+                            try {
+                                completeOk = ftpClient.completePendingCommand()
+                                if (!completeOk) {
+                                    // 可以记录警告日志，但不一定抛异常
+                                    // Log.w("FTP", "completePendingCommand failed: ${ftpClient.replyString}")
+                                }
+                            } catch (e: Exception) {
+                                completeCommandException = e
+                                // Log.e("FTP", "Exception in completePendingCommand", e)
+                            }
+
+                            // 3. 最后注销和断开连接
+                            try {
+                                if (success) { // 只有成功登录才尝试注销
+                                    ftpClient.logout()
+                                }
+                            } catch (e: Exception) {
+                                logoutException = e
+                                // Log.w("FTP", "Exception during logout", e)
+                            }
+
+                            try {
+                                if (ftpClient.isConnected) {
+                                    ftpClient.disconnect()
+                                }
+                            } catch (e: Exception) {
+                                disconnectException = e
+                                // Log.w("FTP", "Exception during disconnect", e)
+                            }
+
+                            // 如果关闭输入流或完成命令时发生严重错误，则抛出
+                            if (inputStreamException != null) {
+                                throw IOException("Error closing FTP input stream", inputStreamException)
+                            }
+                            if (completeCommandException != null) {
+                                // 如果 completePendingCommand 失败，可能连接已损坏，但仍需确保连接关闭
+                                // 这里选择将它作为警告处理，除非它导致了关键问题
+                                // 或者，如果这是关键错误，可以抛出：
+                                // throw IOException("Error completing FTP command", completeCommandException)
+                                // 当前选择记录但不中断调用者（假设数据已读取完毕）
+                                // Log.w("FTP", "FTP command completion error (ignoring if data read OK)", completeCommandException)
+                            }
+
+
+                        } finally {
+                            // 确保所有资源尝试都被释放，即使前面有异常
+                            // 注意：FTPClient 的 logout 和 disconnect 通常内部有 isConnected 检查，
+                            // 但我们显式检查以避免不必要的调用或潜在问题。
+                            // 上面的 try-catch 已经处理了这些，这里的 finally 主要是为了极端情况下的兜底。
+                            // 在当前结构下，这里的 finally 可能是多余的，因为上面已经处理了。
+                            // 保留注释说明意图。
+                        }
+                    }
+                }
+
+            } catch (e: Exception) {
+                // 在初始化或打开流阶段发生异常，需要清理资源
+                try {
+                    inputStream?.close() // 尝试关闭可能已打开的流
+                } catch (closeEx: Exception) {
+                    // 忽略关闭异常
+                }
+
+                if (success) { // 只有成功登录才尝试注销
+                    try {
+                        ftpClient.logout()
+                    } catch (logoutEx: Exception) {
+                        // 忽略注销异常
+                    }
+                }
+                try {
+                    if (ftpClient.isConnected) {
+                        ftpClient.disconnect()
+                    }
+                } catch (disconnectEx: Exception) {
+                    // 忽略断开异常
+                }
+                throw IOException("Failed to open FTP file: $ftpUri", e)
+            }
+        }
+    }
+
+
+
+
 
 
 

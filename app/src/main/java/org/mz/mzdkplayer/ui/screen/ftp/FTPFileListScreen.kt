@@ -215,12 +215,22 @@ fun FTPFileListScreen(
                                             navController.navigate("FTPFileListScreen/${ftpConnection.ip}/${ftpConnection.username}/${ftpConnection.password}/${ftpConnection.port}/$encodedNewPath")
                                         } else {
                                             // 处理文件点击 - 导航到 VideoPlayer
-//                                            val fullFileUrl = viewModel.getResourceFullUrl(fileName)
-//                                            Log.d("FTPFileListScreen", "Full file URL: $fullFileUrl")
-//                                            val encodedFileUrl = URLEncoder.encode(fullFileUrl, "UTF-8")
-//                                            Log.d("FTPFileListScreen", "Navigating to video player: $fullFileUrl (encoded: $encodedFileUrl)")
+                                            val fullFileUrl = viewModel.getResourceFullUrl(fileName)
+                                            Log.d(
+                                                "FTPFileListScreen",
+                                                "Full file URL: $fullFileUrl"
+                                            )
+//                                            val encodedFileUrl = URLEncoder.encode(
+//                                                "ftp://${ftpConnection.username}:${ftpConnection.password}@${ftpConnection.ip}:${ftpConnection.port}/",
+//                                                "UTF-8"
+//                                            )
+                                            val encodedFileUrl = URLEncoder.encode(
+                                                fullFileUrl,
+                                                "UTF-8"
+                                            )
+                                            //Log.d("FTPFileListScreen", "Navigating to video player: $fullFileUrl (encoded: $encodedFileUrl)")
 //                                            // 导航到视频播放器
-//                                            navController.navigate("VideoPlayer/$encodedFileUrl/FTP")
+                                            navController.navigate("VideoPlayer/$encodedFileUrl/FTP")
                                         }
                                     }
                                 },
@@ -249,9 +259,10 @@ fun FTPFileListScreen(
                             )
                         }
                     }
-                    }
+                }
 
             }
+
             is FTPConnectionStatus.Disconnected -> {
                 // 显示未连接提示
                 Column(

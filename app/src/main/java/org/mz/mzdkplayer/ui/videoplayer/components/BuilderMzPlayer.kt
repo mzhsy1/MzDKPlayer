@@ -32,6 +32,7 @@ import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 import androidx.core.net.toUri
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
+import org.mz.mzdkplayer.tool.FtpDataSourceFactory
 import org.mz.mzdkplayer.tool.WebDavDataSource
 import org.mz.mzdkplayer.tool.WebDavDataSourceFactory
 
@@ -64,19 +65,23 @@ fun BuilderMzPlayer(
         //exoPlayer.trackSelectionParameters = trackSelectionParameters
 
         // 根据 URI 类型处理 MediaItem 创建
-        val mediaItem = if (mediaUri.startsWith("smb://") || mediaUri.startsWith("http://") || mediaUri.startsWith("https://")) {
-            MediaItem.fromUri(mediaUri)
-        } else {
-            // 处理本地文件路径
-            val uri = if (mediaUri.startsWith("file://")) {
-                mediaUri.toUri()
+        val mediaItem =
+            if (mediaUri.startsWith("smb://") || mediaUri.startsWith("http://") || mediaUri.startsWith(
+                    "https://"
+                ) || mediaUri.startsWith("ftp://")
+            ) {
+                MediaItem.fromUri(mediaUri)
             } else {
-                // 假设是文件路径，添加 file:// 前缀
-                "file://$mediaUri".toUri()
+                // 处理本地文件路径
+                val uri = if (mediaUri.startsWith("file://")) {
+                    mediaUri.toUri()
+                } else {
+                    // 假设是文件路径，添加 file:// 前缀
+                    "file://$mediaUri".toUri()
+                }
+                Log.d("MediaItemUri", uri.toString())
+                MediaItem.fromUri(uri)
             }
-            Log.d("MediaItemUri",uri.toString())
-            MediaItem.fromUri(uri)
-        }
         Log.e("AVCDecoderSelector", "==============================================")
         exoPlayer.setMediaItem(mediaItem)
         exoPlayer.prepare()
@@ -131,7 +136,7 @@ fun BuilderMzPlayer(
                         Log.d(
                             "SDS1", "SubtitleView set to VISIBLE because no SRT track is selected."
                         )
-                        videoPlayerViewModel.updateSubtitleVisibility (View.VISIBLE)
+                        videoPlayerViewModel.updateSubtitleVisibility(View.VISIBLE)
 
                     }
                 }
@@ -154,7 +159,7 @@ fun BuilderMzPlayer(
                 for ((index, atGroup) in videoPlayerViewModel.mutableSetOfAudioTrackGroups.withIndex()) {
                     Log.d("VideoTrackGroupsID", atGroup.getTrackFormat(0).id.toString())
                     if (atGroup.isTrackSelected(0)) {
-                        Log.d("sindex",index.toString())
+                        Log.d("sindex", index.toString())
                         videoPlayerViewModel.selectedAtIndex = index
                     }
                 }
@@ -179,18 +184,19 @@ fun BuilderMzPlayer(
 
 @OptIn(UnstableApi::class)
 @Composable
-fun rememberPlayer(context: Context,mediaUri: String,dataSourceType: String) = remember (mediaUri){
-    val codecInfos = MediaCodecList(MediaCodecList.ALL_CODECS)
-    for (info in codecInfos.codecInfos) {
-        if (info.isEncoder) continue
-        for (type in info.supportedTypes) {
-            if (type.contains("avc")) {
-                Log.i("CODEC", "Name: ${info.name}, Type: $type")
-                // 进一步可以查询 Capabilities
+fun rememberPlayer(context: Context, mediaUri: String, dataSourceType: String) =
+    remember(mediaUri) {
+        val codecInfos = MediaCodecList(MediaCodecList.ALL_CODECS)
+        for (info in codecInfos.codecInfos) {
+            if (info.isEncoder) continue
+            for (type in info.supportedTypes) {
+                if (type.contains("avc")) {
+                    Log.i("CODEC", "Name: ${info.name}, Type: $type")
+                    // 进一步可以查询 Capabilities
+                }
             }
         }
-    }
-    // 创建针对 Amlogic 芯片的 MediaCodecSelector
+        // 创建针对 Amlogic 芯片的 MediaCodecSelector
 //    val amlogicAwareCodecSelector =
 //        MediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunnelingDecoder ->
 //            val allDecoders = MediaCodecSelector.DEFAULT.getDecoderInfos(
@@ -206,7 +212,7 @@ fun rememberPlayer(context: Context,mediaUri: String,dataSourceType: String) = r
 //            Log.d("amlogicDecoders",amlogicDecoders.toString())
 //            return@MediaCodecSelector amlogicDecoders.ifEmpty { allDecoders }
 //        }
-    // 创建针对雷鸟鹤6 Pro (联发科MT9653平台) 的MediaCodecSelector
+        // 创建针对雷鸟鹤6 Pro (联发科MT9653平台) 的MediaCodecSelector
 //    val mediaTekAwareCodecSelector =
 //        MediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunnelingDecoder ->
 //            val allDecoders = MediaCodecSelector.DEFAULT.getDecoderInfos(
@@ -251,7 +257,7 @@ fun rememberPlayer(context: Context,mediaUri: String,dataSourceType: String) = r
 //                else -> allDecoders // 最终回退到所有解码器（理论上应该总有软件解码器）
 //            }
 //        }
-    Log.i("AVCDecoderSelector", "==============================================")
+        Log.i("AVCDecoderSelector", "==============================================")
 //    val avcAwareCodecSelector =
 //        MediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunnelingDecoder ->
 //            // 获取所有支持当前MIME类型的解码器信息
@@ -312,18 +318,18 @@ fun rememberPlayer(context: Context,mediaUri: String,dataSourceType: String) = r
 //                allDecoders
 //            }
 //        }
-    // 配置 RenderersFactory
-    val renderersFactory = DefaultRenderersFactory(context).apply {
-        //setMediaCodecSelector(avcAwareCodecSelector)
-        setExtensionRendererMode(EXTENSION_RENDERER_MODE_PREFER)
-    }
+        // 配置 RenderersFactory
+        val renderersFactory = DefaultRenderersFactory(context).apply {
+            //setMediaCodecSelector(avcAwareCodecSelector)
+            setExtensionRendererMode(EXTENSION_RENDERER_MODE_PREFER)
+        }
 
-    // 根据 URI 协议选择合适的数据源工厂
-    val dataSourceFactory = if (mediaUri.startsWith("smb://")&& dataSourceType =="SMB") {
-        // SMB 协议
+        // 根据 URI 协议选择合适的数据源工厂
+        val dataSourceFactory = if (mediaUri.startsWith("smb://") && dataSourceType == "SMB") {
+            // SMB 协议
 
-        SmbDataSourceFactory()
-        //val cache = MzDkPlayerApplication.downloadCache
+            SmbDataSourceFactory()
+            //val cache = MzDkPlayerApplication.downloadCache
 
 //         CacheDataSource.Factory()
 //            .setCache(cache)
@@ -332,39 +338,42 @@ fun rememberPlayer(context: Context,mediaUri: String,dataSourceType: String) = r
 //                CacheDataSink.Factory().setCache(cache)
 //                .setFragmentSize(20 * 1024 * 1024)
 //                .setBufferSize(8 * 1024 * 1024)) // 使用16MB缓冲
-     //       .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
-    } else if ((mediaUri.startsWith("file://") || mediaUri.startsWith("/"))&&dataSourceType =="LOCAL") {
-        // 本地文件协议或绝对路径
-        DefaultDataSource.Factory(context)
-    } else if ((mediaUri.startsWith("http://") || mediaUri.startsWith("https://"))&& dataSourceType =="WEBDAV") {
-        WebDavDataSourceFactory()
-    } else{
-        // 其他情况（如 http/https），使用默认的 HTTP 数据源
-        DefaultHttpDataSource.Factory()
-    }
-    val loadControl = DefaultLoadControl.Builder()
-        .setBufferDurationsMs(
-            15000,  // minBufferMs: 最小缓冲时间 (例如 15秒)
-            120000,  // maxBufferMs: 最大缓冲时间 (例如 60秒)
-            5000,   // bufferForPlaybackMs: 开始播放前至少要缓冲的时间 (例如 2.5秒)
-            5000    // bufferForPlaybackAfterRebufferMs: 重新缓冲后恢复播放前至少要缓冲的时间 (例如 5秒)
-        )
-        .setTargetBufferBytes(C.LENGTH_UNSET) // 不使用字节数限制
-        .setPrioritizeTimeOverSizeThresholds(true) // 优先时间阈值
-        .build()
-    ExoPlayer.Builder(context).setSeekForwardIncrementMs(10000).setSeekBackIncrementMs(10000).setLoadControl(loadControl)
-        .setMediaSourceFactory(
-            DefaultMediaSourceFactory(
-                dataSourceFactory
-            )
-        ).setRenderersFactory(renderersFactory)
-        .buildWithAssSupport( //配置ass字幕显示 LEGACY
-            context,
-            AssRenderType.LEGACY,
-            dataSourceFactory = dataSourceFactory,
-            renderersFactory = renderersFactory
-        ).apply {
-            playWhenReady = true
-            repeatMode = Player.REPEAT_MODE_ONE
+            //       .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+        } else if ((mediaUri.startsWith("file://") || mediaUri.startsWith("/")) && dataSourceType == "LOCAL") {
+            // 本地文件协议或绝对路径
+            DefaultDataSource.Factory(context)
+        } else if ((mediaUri.startsWith("http://") || mediaUri.startsWith("https://")) && dataSourceType == "WEBDAV") {
+            WebDavDataSourceFactory()
+        } else if ((mediaUri.startsWith("ftp://")) && dataSourceType == "FTP") {
+            FtpDataSourceFactory()
+        } else {
+            // 其他情况（如 http/https），使用默认的 HTTP 数据源
+            DefaultHttpDataSource.Factory()
         }
-}
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                15000,  // minBufferMs: 最小缓冲时间 (例如 15秒)
+                120000,  // maxBufferMs: 最大缓冲时间 (例如 60秒)
+                5000,   // bufferForPlaybackMs: 开始播放前至少要缓冲的时间 (例如 2.5秒)
+                5000    // bufferForPlaybackAfterRebufferMs: 重新缓冲后恢复播放前至少要缓冲的时间 (例如 5秒)
+            )
+            .setTargetBufferBytes(C.LENGTH_UNSET) // 不使用字节数限制
+            .setPrioritizeTimeOverSizeThresholds(true) // 优先时间阈值
+            .build()
+        ExoPlayer.Builder(context).setSeekForwardIncrementMs(10000).setSeekBackIncrementMs(10000)
+            .setLoadControl(loadControl)
+            .setMediaSourceFactory(
+                DefaultMediaSourceFactory(
+                    dataSourceFactory
+                )
+            ).setRenderersFactory(renderersFactory)
+            .buildWithAssSupport( //配置ass字幕显示 LEGACY
+                context,
+                AssRenderType.LEGACY,
+                dataSourceFactory = dataSourceFactory,
+                renderersFactory = renderersFactory
+            ).apply {
+                playWhenReady = true
+                repeatMode = Player.REPEAT_MODE_ONE
+            }
+    }
