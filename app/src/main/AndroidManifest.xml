@@ -33,6 +33,7 @@
         android:theme="@style/Theme.MzDKPlayer">
         <activity
             android:name=".MainActivity"
+            android:banner="@mipmap/ic_banner"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

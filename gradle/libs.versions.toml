@@ -9,6 +9,7 @@ assMedia = "0.3.0-rc03"
 
 commonsNet = "3.12.0"
 gson = "2.13.2"
+jcifs = "2.1.40"
 kotlin = "2.2.20"
 coreKtx = "1.17.0"
 appcompat = "1.7.1"
@@ -56,6 +57,7 @@ ass-media = { module = "io.github.peerless2012:ass-media", version.ref = "assMed
 
 commons-net = { module = "commons-net:commons-net", version.ref = "commonsNet" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+jcifs = { module = "org.codelibs:jcifs", version.ref = "jcifs" }
 logback-android = { module = "com.github.tony19:logback-android", version.ref = "logbackAndroid" }
 sardine-android = { module = "com.github.sardine:sardine-android", version.ref = "sardineAndroid" }
 smbj = { module = "com.hierynomus:smbj", version.ref = "smbj" }

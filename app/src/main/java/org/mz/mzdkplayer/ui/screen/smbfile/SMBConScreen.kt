@@ -33,6 +33,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
@@ -56,9 +57,9 @@ import java.util.UUID
 fun SMBConScreen() {
     val viewModel: SMBConViewModel = viewModel()
     val smbListViewModel: SMBListViewModel = viewModel()
-    var ip by remember { mutableStateOf("192.168.1.") }
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    var ip by remember { mutableStateOf("192.168.1.4") }
+    var username by remember { mutableStateOf("wang") }
+    var password by remember { mutableStateOf("Wa541888") }
     var shareName by remember { mutableStateOf("movies") }
     var aliasName by remember { mutableStateOf("my nas") }
 
@@ -193,7 +194,9 @@ fun SMBConScreen() {
                     Text(
                         text = fileName,
                         modifier = Modifier.fillMaxWidth(),
-                        color = Color.White
+                        color = Color.White,
+                        fontSize = 20.sp,
+
                     )
 
                 }

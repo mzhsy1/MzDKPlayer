@@ -88,15 +88,21 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                 modifier = Modifier.padding(10.dp),
                 scale = ListItemDefaults.scale(scale = 1.0f, focusedScale = 1.02f),
                 leadingContent = {
+                    Log.d("SMBSc",Tools.extractFileExtension(file.name))
                     Icon(
                         painter = if (file.isDirectory) {
                             painterResource(R.drawable.baseline_folder_24)
-                        } else if (containsVideoFormat(Tools.extractFileExtension(file.name))) {
-                            painterResource(R.drawable.baseline_video_file_24)
-                        } else {
+                        }  else if (Tools.extractFileExtension(file.name)=="mkv") {
+                            Log.d("SMBSc","R.drawable.mkv")
+                            painterResource(R.drawable.mkv)
+                        }
+//                        else if (containsVideoFormat(Tools.extractFileExtension(file.name))) {
+//                            painterResource(R.drawable.baseline_video_file_24)
+else {
                             painterResource(R.drawable.baseline_insert_drive_file_24)
                         },
-                        contentDescription = null
+                        contentDescription = null,
+
                     )
                 },
                 headlineContent = { Text(file.name) }

@@ -40,9 +40,9 @@ fun HomeScreen(mainNavController: NavHostController) {
     var selectPanel by remember { mutableStateOf("local") }
     val items by remember { mutableStateOf(listOf("local", "SMB", "WebDav", "FTP")) }
     val iconList = listOf<Int>(
-        R.drawable.localfile,
+        R.drawable.svglocal,
         R.drawable.smb,
-        R.drawable.dolby_vision_seeklogo,
+        R.drawable.svgwebdavsvg,
         R.drawable.ftp
     )
     Box(modifier = Modifier.fillMaxSize()) {

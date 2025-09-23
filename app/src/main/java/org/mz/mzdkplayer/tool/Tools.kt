@@ -25,7 +25,7 @@ object Tools {
     }
 
     fun containsVideoFormat(input: String): Boolean {
-        val videoFormats = listOf("MP4", "MKV", "M2TS", "3GP", "AVI", "MOV", "TS", "FLV")
+        val videoFormats = listOf("MP4", "M2TS", "3GP", "AVI", "MOV", "TS", "FLV")
         return videoFormats.any { format ->
             input.contains(format, ignoreCase = true)
         }
