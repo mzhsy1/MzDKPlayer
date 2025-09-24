@@ -567,7 +567,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
 @Composable
 fun NetworkSpeedIndicator(networkSpeed: Long, modifier: Modifier = Modifier) {
     val speedText = when {
-        networkSpeed < 1024 -> "${networkSpeed} B/s"
+        networkSpeed < 1024 -> "$networkSpeed B/s"
         networkSpeed < 1024 * 1024 -> "${String.format("%.1f", networkSpeed / 1024.0)} KB/s"
         else -> "${String.format("%.1f", networkSpeed / (1024.0 * 1024.0))} MB/s"
     }

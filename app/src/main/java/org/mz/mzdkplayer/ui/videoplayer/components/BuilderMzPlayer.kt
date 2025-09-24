@@ -151,13 +151,21 @@ fun BuilderMzPlayer(
                                 0
                             )
                         ).build()
-                    exoPlayer.trackSelectionParameters.buildUpon().setOverrideForType(
+//                    exoPlayer.trackSelectionParameters =exoPlayer.trackSelectionParameters.buildUpon().setOverrideForType(
+//                        TrackSelectionOverride(
+//                            videoPlayerViewModel.mutableSetOfAudioTrackGroups[0].mediaTrackGroup,
+//                            0
+//                        )
+//                    ).build()
+
+                    exoPlayer.trackSelectionParameters =exoPlayer.trackSelectionParameters.buildUpon().setOverrideForType(
                         TrackSelectionOverride(
-                            videoPlayerViewModel.mutableSetOfAudioTrackGroups[0].mediaTrackGroup,
+                            videoPlayerViewModel.mutableSetOfTextTrackGroups[0].mediaTrackGroup,
                             0
                         )
                     ).build()
                 }
+
 
                 for ((index, atGroup) in videoPlayerViewModel.mutableSetOfAudioTrackGroups.withIndex()) {
                     Log.d("VideoTrackGroupsID", atGroup.getTrackFormat(0).id.toString())
@@ -171,6 +179,13 @@ fun BuilderMzPlayer(
                         videoPlayerViewModel.selectedVtIndex = index
                     }
                 }
+
+                for ((index, vtGroup) in videoPlayerViewModel.mutableSetOfTextTrackGroups.withIndex()) {
+                    if (vtGroup.isTrackSelected(0)) {
+                        videoPlayerViewModel.selectedStIndex = index
+                    }
+                }
+
                 videoPlayerViewModel.onTracksChangedState = 1
             }
 
