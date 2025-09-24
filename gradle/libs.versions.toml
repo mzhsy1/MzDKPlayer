@@ -16,6 +16,7 @@ appcompat = "1.7.1"
 composeBom = "2025.09.00"
 logbackAndroid = "3.0.0"
 material3 = "1.3.2"
+nfsClient = "1.1.0"
 sardineAndroid = "0.8"
 sardineAndroidVersion = "0.9"
 smbj = "0.14.0"
@@ -59,6 +60,7 @@ commons-net = { module = "commons-net:commons-net", version.ref = "commonsNet" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 jcifs = { module = "org.codelibs:jcifs", version.ref = "jcifs" }
 logback-android = { module = "com.github.tony19:logback-android", version.ref = "logbackAndroid" }
+nfs-client = { module = "com.emc.ecs:nfs-client", version.ref = "nfsClient" }
 sardine-android = { module = "com.github.sardine:sardine-android", version.ref = "sardineAndroid" }
 smbj = { module = "com.hierynomus:smbj", version.ref = "smbj" }
 thegrizzlylabs-sardine-android = { module = "com.github.thegrizzlylabs:sardine-android", version.ref = "sardineAndroidVersion" }

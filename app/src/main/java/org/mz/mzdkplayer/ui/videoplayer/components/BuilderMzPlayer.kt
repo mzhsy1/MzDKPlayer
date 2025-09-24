@@ -33,6 +33,9 @@ import androidx.core.net.toUri
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
 import org.mz.mzdkplayer.tool.FtpDataSourceFactory
+import org.mz.mzdkplayer.tool.NFSDataSource
+import org.mz.mzdkplayer.tool.NFSDataSourceFactory
+
 import org.mz.mzdkplayer.tool.WebDavDataSource
 import org.mz.mzdkplayer.tool.WebDavDataSourceFactory
 
@@ -68,7 +71,7 @@ fun BuilderMzPlayer(
         val mediaItem =
             if (mediaUri.startsWith("smb://") || mediaUri.startsWith("http://") || mediaUri.startsWith(
                     "https://"
-                ) || mediaUri.startsWith("ftp://")
+                ) || mediaUri.startsWith("ftp://") || mediaUri.startsWith("nfs://")
             ) {
                 MediaItem.fromUri(mediaUri)
             } else {
@@ -346,6 +349,8 @@ fun rememberPlayer(context: Context, mediaUri: String, dataSourceType: String) =
             WebDavDataSourceFactory()
         } else if ((mediaUri.startsWith("ftp://")) && dataSourceType == "FTP") {
             FtpDataSourceFactory()
+        } else if ((mediaUri.startsWith("nfs://")) && dataSourceType == "NFS") {
+            NFSDataSourceFactory()
         } else {
             // 其他情况（如 http/https），使用默认的 HTTP 数据源
             DefaultHttpDataSource.Factory()

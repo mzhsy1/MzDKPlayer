@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,6 +32,7 @@ import org.mz.mzdkplayer.ui.theme.FilePermissionScreen
 
 import org.mz.mzdkplayer.ui.style.myListItemBorder
 import org.mz.mzdkplayer.ui.style.myListItemColor
+import org.mz.mzdkplayer.ui.style.myListItemCoverColor
 import java.io.File
 import java.net.URLEncoder
 
@@ -38,22 +40,24 @@ import java.net.URLEncoder
 @Composable
 fun HomeScreen(mainNavController: NavHostController) {
     var selectPanel by remember { mutableStateOf("local") }
-    val items by remember { mutableStateOf(listOf("local", "SMB", "WebDav", "FTP")) }
+    val items by remember { mutableStateOf(listOf("local", "SMB", "WebDav", "FTP","NFS","HTTP")) }
     val iconList = listOf<Int>(
         R.drawable.svglocal,
         R.drawable.smb,
         R.drawable.svgwebdavsvg,
-        R.drawable.ftp
+        R.drawable.ftp,
+        R.drawable.svgnfs,
+        R.drawable.svghttp
     )
     Box(modifier = Modifier.fillMaxSize()) {
         Column {
             LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(90.dp)
-                    .padding(10.dp)
+                    .fillMaxHeight()
+                    .padding(20.dp)
             ) {
                 itemsIndexed(items) { index, item ->
                     ListItem(
@@ -69,11 +73,12 @@ fun HomeScreen(mainNavController: NavHostController) {
                             "SMB" -> mainNavController.navigate("SMBListScreen")
                             "WebDav" -> mainNavController.navigate("WebDavListScreen")
                             "FTP" ->mainNavController.navigate("FTPConListScreen")
+                            "NFS" -> mainNavController.navigate("NFSConListScreen")
                         };
                         },
-                        modifier = Modifier.padding(top = 2.dp),
-                        colors = myListItemColor(),
-                        border = myListItemBorder(),
+                        modifier = Modifier.padding(top = 20.dp),
+                        colors = myListItemCoverColor(),
+                        //border = myListItemBorder(),
                         leadingContent = {
                             Icon(
                                 painter = painterResource(id = iconList[index]),
@@ -95,7 +100,7 @@ fun HomeScreen(mainNavController: NavHostController) {
                 }
 
             }
-            FilePermissionScreen()
+            //FilePermissionScreen()
 
         }
     }

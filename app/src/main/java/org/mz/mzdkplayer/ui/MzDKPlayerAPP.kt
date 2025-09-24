@@ -32,15 +32,19 @@ import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.NavigationDrawer
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.FTPConnection
+import org.mz.mzdkplayer.logic.model.NFSConnection
 import org.mz.mzdkplayer.logic.model.WebDavConnection
 
 
 import org.mz.mzdkplayer.ui.screen.HomeScreen
 import org.mz.mzdkplayer.ui.screen.ftp.FTPConListScreen
 import org.mz.mzdkplayer.ui.screen.ftp.FTPConScreen
-import org.mz.mzdkplayer.ui.screen.ftpfile.FTPFileListScreen
+import org.mz.mzdkplayer.ui.screen.ftp.FTPFileListScreen
 import org.mz.mzdkplayer.ui.screen.localfile.LocalFileScreen
 import org.mz.mzdkplayer.ui.screen.localfile.LocalFileTypeScreen
+import org.mz.mzdkplayer.ui.screen.nfs.NFSConListScreen
+import org.mz.mzdkplayer.ui.screen.nfs.NFSConScreen
+import org.mz.mzdkplayer.ui.screen.nfs.NFSFileListScreen
 import org.mz.mzdkplayer.ui.screen.smbfile.SMBConListScreen
 import org.mz.mzdkplayer.ui.screen.smbfile.SMBConScreen
 import org.mz.mzdkplayer.ui.screen.smbfile.SMBFileListScreen
@@ -51,7 +55,6 @@ import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavFileListScreen
 
 import org.mz.mzdkplayer.ui.videoplayer.VideoPlayerScreen
 import java.net.URLDecoder
-import java.net.URLEncoder
 
 @Composable
 fun MzDKPlayerAPP() {
@@ -225,6 +228,28 @@ fun MzDKPlayerAPP() {
                 )
             }
         }
+        composable("NFSFileListScreen/{encodedIp}/{encodedShareName}/{newSubPath}") { backStackEntry ->
+            val encodedIp = backStackEntry.arguments?.getString("encodedIp")
+            val encodedShareName = backStackEntry.arguments?.getString("encodedShareName")
+            val newSubPath = backStackEntry.arguments?.getString("newSubPath")
+            //URLEncoder.encode(conn.shareName, "UTF-8")
+            if (encodedIp != null) {
+
+                //val path = URLDecoder.decode(URLDecoder.decode(encodedIp, "UTF-8"), "UTF-8")
+                Log.d("encodedPath", "${URLDecoder.decode(newSubPath, "UTF-8")}",)
+                NFSFileListScreen(
+                    URLDecoder.decode(newSubPath, "UTF-8"),
+                    mainNavController,
+                    NFSConnection(
+                        "1",
+                        "ftp",
+
+                        URLDecoder.decode(encodedIp, "UTF-8"),
+                        URLDecoder.decode(encodedShareName, "UTF-8"),
+                    )
+                )
+            }
+        }
         composable("SMBListScreen") {
             SMBConListScreen(mainNavController)
         }
@@ -242,6 +267,12 @@ fun MzDKPlayerAPP() {
         }
         composable("FTPConListScreen") {
             FTPConListScreen(mainNavController)
+        }
+        composable("NFSConScreen") {
+            NFSConScreen()
+        }
+        composable("NFSConListScreen") {
+            NFSConListScreen(mainNavController)
         }
     }
 

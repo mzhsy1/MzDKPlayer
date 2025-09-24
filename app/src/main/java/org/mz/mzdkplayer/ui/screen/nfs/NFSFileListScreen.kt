@@ -1,6 +1,6 @@
-// 文件路径: package org.mz.mzdkplayer.ui.screen.ftpfile (请根据你的实际包名修改)
+// 文件路径: package org.mz.mzdkplayer.ui.screen.nfs (请根据你的实际包名修改)
 
-package org.mz.mzdkplayer.ui.screen.ftp
+package org.mz.mzdkplayer.ui.screen.nfs
 
 import android.util.Log
 import android.widget.Toast
@@ -24,76 +24,83 @@ import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.R
-import org.mz.mzdkplayer.logic.model.FTPConnection
+import org.mz.mzdkplayer.logic.model.NFSConnection
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
-import org.mz.mzdkplayer.ui.screen.vm.FTPConViewModel
-import org.mz.mzdkplayer.ui.screen.vm.FTPConnectionStatus // 导入状态类
+import org.mz.mzdkplayer.ui.screen.vm.NFSConViewModel
+import org.mz.mzdkplayer.ui.screen.vm.NFSConnectionStatus // 假设存在对应的状态类
 import org.mz.mzdkplayer.ui.style.myListItemColor
 import java.net.URLEncoder
 
+/**
+ * NFS 文件列表屏幕
+ *
+ * @param sharePath NFS 共享的根路径 (e.g., "/shared/videos")
+ * @param subPath 当前浏览的子路径，相对于共享根路径 (e.g., "movies/action")
+ * @param navController 导航控制器
+ * @param nfsConnection NFS 连接信息数据类
+ */
 @Composable
-fun FTPFileListScreen(
-    // path 现在是相对于 FTP 共享根目录的路径
-    path: String?, // e.g., "folder1/subfolder"
+fun NFSFileListScreen(
+    sharePath: String, // NFS 共享的根路径/movies
+
     navController: NavHostController,
-    ftpConnection: FTPConnection
+    nfsConnection: NFSConnection
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     // 使用 Hilt 注入 ViewModel
-    val viewModel: FTPConViewModel = viewModel()
+    val viewModel: NFSConViewModel = viewModel()
 
     // 收集 ViewModel 中的状态
     val fileList by viewModel.fileList.collectAsState()
     val connectionStatus by viewModel.connectionStatus.collectAsState()
-    val currentPath by viewModel.currentPath.collectAsState()
+    // ViewModel 内部可能需要维护当前完整路径或子路径，这里假设它维护的是相对于共享根的子路径
+    //val currentSubPath by viewModel.currentSubPath.collectAsState()
 
-    // 当传入的 path 参数变化时，或者首次进入时，尝试加载文件列表
-    LaunchedEffect(path) { // 依赖 path
+    // 当传入的 subPath 参数变化时，或者首次进入时，尝试加载文件列表
+    LaunchedEffect(sharePath,connectionStatus) { // 依赖 subPath
         Log.d(
-            "FTPFileListScreen",
-            "LaunchedEffect triggered with path: $path, status: $connectionStatus"
+            "NFSFileListScreen",
+            "LaunchedEffect triggered with subPath: $sharePath, status: $connectionStatus"
         )
 
         when (connectionStatus) {
-            is FTPConnectionStatus.Connected -> {
+            is NFSConnectionStatus.Connected -> {
                 // 已连接，可以安全地列出文件
-                Log.d("FTPFileListScreen", "Already connected, listing files for path: $path")
-                viewModel.listFiles(path ?: "")
+                //Log.d("NFSFileListScreen", "Already connected, listing files for subPath: $subPath")
+                Log.d("sharePath",sharePath)
+                viewModel.listFiles(sharePath)
             }
 
-            is FTPConnectionStatus.Disconnected -> {
+            is NFSConnectionStatus.Disconnected -> {
                 // 未连接，尝试连接
-                Log.d("FTPFileListScreen", "Disconnected. Attempting to connect.")
-                viewModel.connectToFTP(
-                    ftpConnection.ip,
-                    ftpConnection.port,
-                    ftpConnection.username,
-                    ftpConnection.password,
-                    ftpConnection.shareName // 传递共享名称
+                Log.d("NFSFileListScreen", "Disconnected. Attempting to connect.")
+                Log.d("sharePath",sharePath)
+                viewModel.connectToNFS(
+                 nfsConnection
                 )
             }
 
-            is FTPConnectionStatus.Connecting -> {
+            is NFSConnectionStatus.Connecting -> {
                 // 正在连接，等待...
-                Log.d("FTPFileListScreen", "Connecting...")
+                Log.d("NFSFileListScreen", "Connecting...")
             }
 
-            is FTPConnectionStatus.Error -> {
+            is NFSConnectionStatus.Error -> {
                 // 连接或列表错误
-                val errorMessage = (connectionStatus as FTPConnectionStatus.Error).message
-                Log.e("FTPFileListScreen", "Error state: $errorMessage")
-                Toast.makeText(context, "FTP 错误: $errorMessage", Toast.LENGTH_LONG).show()
+                val errorMessage = (connectionStatus as NFSConnectionStatus.Error).message
+                Log.e("NFSFileListScreen", "Error state: $errorMessage")
+                Toast.makeText(context, "NFS 错误: $errorMessage", Toast.LENGTH_LONG).show()
             }
         }
     }
 
     DisposableEffect(Unit) {
         onDispose {
-            // 可选：在离开屏幕时断开连接
-            // viewModel.disconnectFTP()
-            Log.d("FTPFileListScreen", "销毁")
+            // 可选：在离开屏幕时断开连接或清理资源
+            // viewModel.disconnectNFS()
+            Log.d("NFSFileListScreen", "销毁")
         }
     }
 
@@ -104,21 +111,13 @@ fun FTPFileListScreen(
             .padding(16.dp)
     ) {
         when (connectionStatus) {
-            is FTPConnectionStatus.Connecting -> {
-                // 显示加载指示器
-//                Text(
-//                    "正在连接 FTP...",
-//                    modifier = Modifier.align(Alignment.Center),
-//                    color = Color.White,
-//                    fontWeight = FontWeight.Bold,
-//                    fontSize = 24.sp
-//                )
+            is NFSConnectionStatus.Connecting -> {
                 LoadingScreen()
             }
 
-            is FTPConnectionStatus.Error -> {
+            is NFSConnectionStatus.Error -> {
                 // 显示错误信息
-                val errorMessage = (connectionStatus as FTPConnectionStatus.Error).message
+                val errorMessage = (connectionStatus as NFSConnectionStatus.Error).message
                 Text(
                     "加载失败: $errorMessage",
                     modifier = Modifier.align(Alignment.Center),
@@ -129,9 +128,8 @@ fun FTPFileListScreen(
                 // 可以添加一个重试按钮
             }
 
-            is FTPConnectionStatus.Connected -> {
+            is NFSConnectionStatus.Connected -> {
                 if (fileList.isEmpty()) {
-
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -155,41 +153,15 @@ fun FTPFileListScreen(
                             )
                         }
                     }
-
-
                 } else {
                     // 已连接，显示文件列表
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        // 添加返回上一级目录的按钮
-//                    if (path != null && path.isNotEmpty()) {
-//                        item {
-//                            ListItem(
-//                                selected = false,
-//                                onClick = {
-////                                    val parentPath = viewModel.getParentPath()
-////                                    // 对路径进行编码，空路径特殊处理
-////                                    val encodedParentPath = URLEncoder.encode(parentPath.ifEmpty { " " }, "UTF-8")
-////                                    Log.d("FTPFileListScreen", "Navigating to parent: '$parentPath' (encoded: '$encodedParentPath')")
-////                                    // 导航到父目录，传递连接信息
-////                                    navController.navigate("FTPFileListScreen/$encodedParentPath/${ftpConnection.username}/${ftpConnection.password}/${ftpConnection.ip}/${ftpConnection.port}/${ftpConnection.shareName}")
-//                                },
-//                                colors = myListItemColor(),
-//                                modifier = Modifier.padding(10.dp),
-//                                scale = ListItemDefaults.scale(scale = 1.0f, focusedScale = 1.02f),
-//                                leadingContent = {
-//                                    Icon(
-//                                        painter = painterResource(R.drawable.baseline_arrow_back_24),
-//                                        contentDescription = "返回上一级"
-//                                    )
-//                                },
-//                                headlineContent = { Text("...") }
-//                            )
-//                        }
-//                    }
-                        Log.d("fileList", fileList.toString())
+
+                        Log.d("NFSFileListScreen", "Displaying fileList: $fileList")
 
                         items(fileList) { file ->
-                            // FTPFile 使用 isDirectory 方法
+                            // 假设有一个类似 FTPFile 的 NFSFile 类，或使用通用文件信息类
+                            // 这里假设 file 有 isDirectory: Boolean 和 name: String? 属性
                             val isDirectory = file.isDirectory
                             val fileName = file.name ?: "Unknown"
 
@@ -197,40 +169,42 @@ fun FTPFileListScreen(
                                 selected = false,
                                 onClick = {
                                     coroutineScope.launch {
+                                        val newSubPath = file.path
+
+                                        // 对新路径进行编码
+                                        val encodedNewSubPath =
+                                            URLEncoder.encode(newSubPath.ifEmpty { " " }, "UTF-8")
                                         if (isDirectory) {
-                                            // 构建子目录路径
-                                            val newPath = if (path.isNullOrEmpty()) {
-                                                fileName
-                                            } else {
-                                                "${path.trimEnd('/')}/$fileName"
-                                            }
-                                            // 对路径进行编码，空路径特殊处理
-                                            val encodedNewPath =
-                                                URLEncoder.encode(newPath.ifEmpty { " " }, "UTF-8")
+                                            // 构建新的子路径
+
                                             Log.d(
-                                                "FTPFileListScreen",
-                                                "Navigating to subdirectory: $newPath (encoded: $encodedNewPath)"
+                                                "NFSFileListScreen",
+                                                "Navigating to subdirectory: ${file.path} (encoded: $fileName$fileName)"
                                             )
-                                            // 导航到子目录，传递连接信息
-                                            navController.navigate("FTPFileListScreen/${ftpConnection.ip}/${ftpConnection.username}/${ftpConnection.password}/${ftpConnection.port}/$encodedNewPath")
+                                            // 导航到子目录，传递连接信息和新的子路径
+                                            // 注意 URL 路径结构可能需要根据你的导航图调整
+                                            navController.navigate("NFSFileListScreen/${nfsConnection.serverAddress}/${URLEncoder.encode(nfsConnection.shareName,"UTF-8")}/$encodedNewSubPath")
                                         } else {
                                             // 处理文件点击 - 导航到 VideoPlayer
-                                            val fullFileUrl = viewModel.getResourceFullUrl(fileName)
+                                            // 构造完整的 NFS URL 或文件系统路径
+                                            // 例如: nfs://<ip>/<sharePath>/<subPath>/<fileName>
+                                            // 或者如果已挂载:nfs://192.168.1.4:/fs/1000/nfs/:/moves/as.mkv
                                             Log.d(
-                                                "FTPFileListScreen",
+                                                "NFSFileListScreen",
+                                                "Navigating to subdirectory: ${file.path} (encoded: $fileName$fileName)"
+                                            )
+                                            val fullFileUrl = "nfs://${nfsConnection.serverAddress}:${URLEncoder.encode(nfsConnection.shareName,"UTF-8")}:${URLEncoder.encode(newSubPath.ifEmpty { " " }, "UTF-8")}"
+                                            Log.d(
+                                                "NFSFileListScreen",
                                                 "Full file URL: $fullFileUrl"
                                             )
-//                                            val encodedFileUrl = URLEncoder.encode(
-//                                                "ftp://${ftpConnection.username}:${ftpConnection.password}@${ftpConnection.ip}:${ftpConnection.port}/",
-//                                                "UTF-8"
-//                                            )
+
                                             val encodedFileUrl = URLEncoder.encode(
                                                 fullFileUrl,
                                                 "UTF-8"
                                             )
-                                            //Log.d("FTPFileListScreen", "Navigating to video player: $fullFileUrl (encoded: $encodedFileUrl)")
-//                                            // 导航到视频播放器
-                                            navController.navigate("VideoPlayer/$encodedFileUrl/FTP")
+                                            // 导航到视频播放器
+                                            navController.navigate("VideoPlayer/$encodedFileUrl/NFS")
                                         }
                                     }
                                 },
@@ -260,16 +234,15 @@ fun FTPFileListScreen(
                         }
                     }
                 }
-
             }
 
-            is FTPConnectionStatus.Disconnected -> {
+            is NFSConnectionStatus.Disconnected -> {
                 // 显示未连接提示
                 Column(
                     modifier = Modifier.align(Alignment.Center),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("未连接到 FTP 服务器")
+                    Text("未连接到 NFS 服务器")
                     // 可以添加一个按钮来触发连接
                 }
             }

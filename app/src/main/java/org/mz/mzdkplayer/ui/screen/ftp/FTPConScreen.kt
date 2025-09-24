@@ -54,9 +54,9 @@ import java.util.UUID
  * FTP 连接界面
  */
 @Composable
-@Preview(showBackground = true)
+
 fun FTPConScreen(
-    // 允许外部传入 ViewModel，便于测试和依赖注入
+
 ) {
     // 使用 FTP 的 ViewModel
     val ftpConViewModel: FTPConViewModel = viewModel()

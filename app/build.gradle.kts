@@ -74,6 +74,8 @@ dependencies {
     //implementation(libs.ass.media.v030beta02)
     //implementation(libs.androidx.material3)
     implementation(libs.androidx.datastore.preferences)
+    // https://mvnrepository.com/artifact/com.emc.ecs/nfs-client
+    implementation(libs.nfs.client)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     implementation(libs.androidx.ui.tooling)
