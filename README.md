@@ -98,12 +98,12 @@
 ## 应用演示
 
 ### 主界面
-[主界面截图](screenshots/Screenshot_20250918_142308.png)  
-[主界面截图](screenshots/Screenshot_20250918_142046.png)
+![主界面截图](screenshots/Screenshot_20250925_183027.png))  
+![主界面截图](screenshots/Screenshot_20250918_142046.png)
 
 ### 播放界面与弹幕效果
-[播放界面截图](screenshots/Screenshot_20250918_142126.png)  
-[播放界面截图](screenshots/Screenshot_20250918_142237.png)
+![播放界面截图](screenshots/Screenshot_20250918_142126.png)  
+![播放界面截图](screenshots/Screenshot_20250918_142237.png)
 
 ---
 
@@ -169,9 +169,9 @@
 
 ### 近期开发计划
 - [x] FTP协议支持
-- [ x ] WebDAV协议支持
-- [ x ] NFS协议支持
-- [ x ] 音频文件，图片文件支持
+- [x] WebDAV协议支持
+- [x] NFS协议支持
+- [x] 音频文件，图片文件支持
 - [ ] 播放列表管理
 - [ ] 网络弹幕加载功能
 - [ ] 设置界面优化
