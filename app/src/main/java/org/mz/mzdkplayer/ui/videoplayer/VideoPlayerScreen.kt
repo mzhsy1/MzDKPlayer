@@ -107,7 +107,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
 
     val mDanmakuPlayer: DanmakuPlayer = remember { DanmakuPlayer(SimpleRenderer()) }
 
-    val danmakuUri = SmbUtils.getDanmakuSmbUri(mediaUri.toUri())
+    val danmakuUri = if(dataSourceType=="NFS")SmbUtils.getDanmakuNfsUri(mediaUri.toUri()) else SmbUtils.getDanmakuSmbUri(mediaUri.toUri())
     var currentCueGroup: CueGroup? by remember { mutableStateOf<CueGroup?>(null) }
     var danmakuConfig by remember { mutableStateOf(DanmakuConfig()) }
 
@@ -126,7 +126,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
     // 加载弹幕数据
     LaunchedEffect(danmakuUri) {
         Log.d("danmakuUri", danmakuUri.toString())
-        Log.d("mediaUri", mediaUri.toString())
+        Log.d("mediaUri", mediaUri.toUri().toString())
         try {
             Log.d("danmakuUriScheme", danmakuUri.scheme?.lowercase().toString())
             val inputStream: InputStream? = when (danmakuUri.scheme?.lowercase()) {
@@ -155,6 +155,9 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
                     // 使用 SMB 工具打开输入流
                     SmbUtils.openFtpFileInputStream(danmakuUri)
 
+                }
+                "nfs" ->{
+                    SmbUtils.openNfsFileInputStream(danmakuUri)
                 }
 
                 else -> {

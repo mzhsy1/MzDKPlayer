@@ -144,48 +144,55 @@ fun BuilderMzPlayer(
                     }
                 }
                 if (videoPlayerViewModel.onTracksChangedState == 0) {
-                    exoPlayer.trackSelectionParameters =
-                        exoPlayer.trackSelectionParameters.buildUpon().setOverrideForType(
-                            TrackSelectionOverride(
-                                videoPlayerViewModel.mutableSetOfVideoTrackGroups[0].mediaTrackGroup,
-                                0
-                            )
-                        ).build()
+                    if (videoPlayerViewModel.mutableSetOfVideoTrackGroups.isNotEmpty()) {
+                        exoPlayer.trackSelectionParameters =
+                            exoPlayer.trackSelectionParameters.buildUpon().setOverrideForType(
+                                TrackSelectionOverride(
+                                    videoPlayerViewModel.mutableSetOfVideoTrackGroups[0].mediaTrackGroup,
+                                    0
+                                )
+                            ).build()
+                    }
 //                    exoPlayer.trackSelectionParameters =exoPlayer.trackSelectionParameters.buildUpon().setOverrideForType(
 //                        TrackSelectionOverride(
 //                            videoPlayerViewModel.mutableSetOfAudioTrackGroups[0].mediaTrackGroup,
 //                            0
 //                        )
 //                    ).build()
-
-                    exoPlayer.trackSelectionParameters =exoPlayer.trackSelectionParameters.buildUpon().setOverrideForType(
-                        TrackSelectionOverride(
-                            videoPlayerViewModel.mutableSetOfTextTrackGroups[0].mediaTrackGroup,
-                            0
-                        )
-                    ).build()
-                }
-
-
-                for ((index, atGroup) in videoPlayerViewModel.mutableSetOfAudioTrackGroups.withIndex()) {
-                    Log.d("VideoTrackGroupsID", atGroup.getTrackFormat(0).id.toString())
-                    if (atGroup.isTrackSelected(0)) {
-                        Log.d("sindex", index.toString())
-                        videoPlayerViewModel.selectedAtIndex = index
-                    }
-                }
-                for ((index, vtGroup) in videoPlayerViewModel.mutableSetOfVideoTrackGroups.withIndex()) {
-                    if (vtGroup.isTrackSelected(0)) {
-                        videoPlayerViewModel.selectedVtIndex = index
+                    if (videoPlayerViewModel.mutableSetOfTextTrackGroups.isNotEmpty()) {
+                        exoPlayer.trackSelectionParameters =
+                            exoPlayer.trackSelectionParameters.buildUpon().setOverrideForType(
+                                TrackSelectionOverride(
+                                    videoPlayerViewModel.mutableSetOfTextTrackGroups[0].mediaTrackGroup,
+                                    0
+                                )
+                            ).build()
                     }
                 }
 
-                for ((index, vtGroup) in videoPlayerViewModel.mutableSetOfTextTrackGroups.withIndex()) {
-                    if (vtGroup.isTrackSelected(0)) {
-                        videoPlayerViewModel.selectedStIndex = index
+                if (videoPlayerViewModel.mutableSetOfAudioTrackGroups.isNotEmpty()) {
+                    for ((index, atGroup) in videoPlayerViewModel.mutableSetOfAudioTrackGroups.withIndex()) {
+                        Log.d("VideoTrackGroupsID", atGroup.getTrackFormat(0).id.toString())
+                        if (atGroup.isTrackSelected(0)) {
+                            Log.d("sindex", index.toString())
+                            videoPlayerViewModel.selectedAtIndex = index
+                        }
                     }
                 }
-
+                if (videoPlayerViewModel.mutableSetOfVideoTrackGroups.isNotEmpty()) {
+                    for ((index, vtGroup) in videoPlayerViewModel.mutableSetOfVideoTrackGroups.withIndex()) {
+                        if (vtGroup.isTrackSelected(0)) {
+                            videoPlayerViewModel.selectedVtIndex = index
+                        }
+                    }
+                }
+                if (videoPlayerViewModel.mutableSetOfTextTrackGroups.isNotEmpty()) {
+                    for ((index, vtGroup) in videoPlayerViewModel.mutableSetOfTextTrackGroups.withIndex()) {
+                        if (vtGroup.isTrackSelected(0)) {
+                            videoPlayerViewModel.selectedStIndex = index
+                        }
+                    }
+                }
                 videoPlayerViewModel.onTracksChangedState = 1
             }
 

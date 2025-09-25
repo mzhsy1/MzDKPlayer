@@ -72,7 +72,7 @@ fun SubtitleTrackPanel(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "该视频无字幕",
+                        text = "该文件无字幕轨道",
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         fontSize = 20.sp

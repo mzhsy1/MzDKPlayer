@@ -69,7 +69,7 @@ fun AudioTrackPanel(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "该视频无音频",
+                        text = "该文件无音频轨道",
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         fontSize = 20.sp

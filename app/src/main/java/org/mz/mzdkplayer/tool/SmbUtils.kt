@@ -4,6 +4,10 @@ package org.mz.mzdkplayer.tool
 
 import android.annotation.SuppressLint
 import android.net.Uri
+import android.util.Log
+import com.emc.ecs.nfsclient.nfs.io.Nfs3File
+import com.emc.ecs.nfsclient.nfs.nfs3.Nfs3
+import com.emc.ecs.nfsclient.rpc.CredentialUnix
 import com.hierynomus.msdtyp.AccessMask
 import com.hierynomus.mssmb2.SMB2CreateDisposition
 import com.hierynomus.mssmb2.SMB2ShareAccess
@@ -26,6 +30,7 @@ import java.security.cert.X509Certificate
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
+import androidx.core.net.toUri
 
 object SmbUtils {
 
@@ -349,14 +354,186 @@ object SmbUtils {
         }
     }
 
+    /**
+     * 根据完整的 NFS URI 打开文件并返回 InputStream
+     * 示例 URI: nfs://host:/exported_path:path_within_export
+     * 例如: nfs://192.168.1.4:/fs/1000/nfs:/xml/danmaku.xml
+     * 注意: URI 格式解析依赖于 NFSDataSource 中的逻辑
+     */
+    @Throws(IOException::class)
+    suspend fun openNfsFileInputStream(nfsUri: Uri): InputStream {
+        return withContext(Dispatchers.IO) {
+            // --- 解析 NFS URI ---
+            if (nfsUri.scheme?.lowercase() != "nfs") {
+                throw IOException("Invalid NFS URI scheme: ${nfsUri.scheme}")
+            }
 
+            val serverAddress = nfsUri.host ?: throw IOException("Invalid NFS URI: no host")
+            val path = nfsUri.path ?: throw IOException("Invalid NFS URI: no path")
+
+            // --- 修正 URI 解析逻辑 ---
+            // 从 path 中解析 exported_path 和 path_within_export
+            // path 格式应为: /<exported_path>:<path_within_export>
+            if (!path.startsWith("/")) {
+                throw IOException("Invalid NFS URI path: '$path'. Must start with '/'.")
+            }
+            val colonIndexInPath = path.indexOf(':', 1) // 从索引1开始查找，确保不是开头的斜杠
+            if (colonIndexInPath == -1) {
+                throw IOException("Invalid NFS URI path: '$path'. Missing colon ':' separating exported_path and path_within_export.")
+            }
+
+            // exported_path 是从第一个 '/' 到第一个冒号 ':' 之间的部分
+            val exportedPath = path.substring(1, colonIndexInPath) // substring(1, ...) 排除开头的 '/'
+            if (exportedPath.isEmpty()) {
+                throw IOException("Invalid NFS URI path: '$path'. exported_path is empty.")
+            }
+
+            // path_within_export 是冒号 ':' 之后的部分
+            val pathWithinExport = path.substring(colonIndexInPath + 1)
+            if (pathWithinExport.isEmpty()) {
+                Log.w("openNfsFileInputStream", "Warning: NFS URI path: '$path'. path_within_export is empty. Using root path '/'.")
+                // 可以选择抛出异常或使用根路径，这里选择使用根路径
+            }
+            // --- URI 解析逻辑修正结束 ---
+
+            Log.d("openNfsFileInputStream", "Connecting to NFS server: $serverAddress, export: $exportedPath")
+            Log.d("openNfsFileInputStream", "Opening file path: $pathWithinExport")
+
+            // 准备认证信息 (使用默认 UID/GID 0)
+            val credential = CredentialUnix()
+
+            var nfsClient: Nfs3? = null
+            var nfsFile: Nfs3File? = null
+
+            try {
+                // 创建 NFS 客户端并连接/挂载
+                val client = Nfs3(serverAddress, exportedPath, credential, 3)
+                nfsClient = client
+
+                // 构造 NFS 文件路径 (相对于挂载点)
+                val nfsFilePath = if (pathWithinExport.startsWith("/")) {
+                    pathWithinExport
+                } else {
+                    "/$pathWithinExport"
+                }
+
+                // 打开 NFS 文件
+                val file = Nfs3File(client, nfsFilePath)
+                if (!file.exists()) {
+                    throw IOException("NFS file does not exist: $nfsFilePath")
+                }
+                if (!file.isFile) {
+                    throw IOException("NFS path is not a file: $nfsFilePath")
+                }
+                nfsFile = file
+
+                // 直接返回文件的 InputStream
+                // 注意: Nfs3File 可能没有直接的 inputStream 属性。
+                // 需要根据 NFS 客户端库的实际 API 来实现。
+                // 如果库不直接提供，可能需要创建一个包装类。
+                // 但根据你的要求，假设库提供了类似的方法或我们可以创建一个。
+                // 例如，如果库提供了一个方法来获取一个 InputStream 包装器。
+                // 这里我们直接使用 file.inputStream (假设存在或通过其他方式创建)
+                // 如果库没有直接提供，可能需要像之前那样创建一个基于 Nfs3File 的 InputStream 包装器。
+                // 但根据你的简化要求和对 SMB 的类比，我们尝试直接返回。
+                // 由于 Nfs3File 本身通常不直接是 InputStream，我们需要创建一个。
+                // 这里提供一个基于 Nfs3File.read 方法的简单包装。
+                // 这个包装器需要实现 InputStream 的 read 方法，内部调用 file.read(offset, length, buffer, offset_in_buffer)
+                // 为了简化，我们创建一个匿名内部类 InputStream，持有 file 引用。
+
+                // 创建一个基于 Nfs3File 的简单 InputStream 包装器
+                val inputStream = object : InputStream() {
+                    private var filePointer: Long = 0
+                    private val fileLength = file.length()
+                    private var closed = false // 添加关闭标志
+
+                    override fun read(): Int {
+                        if (closed) throw IOException("Stream is closed")
+                        if (filePointer >= fileLength) return -1 // EOF
+
+                        val buffer = ByteArray(1)
+                        val response = file.read(filePointer, 1, buffer, 0)
+                        val bytesRead = response.bytesRead
+                        if (bytesRead <= 0) {
+                            return -1 // EOF or error
+                        }
+                        filePointer++
+                        return buffer[0].toInt() and 0xFF // Convert byte to int, masking sign
+                    }
+
+                    override fun read(b: ByteArray, off: Int, len: Int): Int {
+                        if (closed) throw IOException("Stream is closed")
+                        if (off < 0 || len < 0 || off + len > b.size) {
+                            throw IndexOutOfBoundsException()
+                        }
+                        if (len == 0) return 0
+                        if (filePointer >= fileLength) return -1 // EOF
+
+                        val bytesToRead = minOf(len.toLong(), fileLength - filePointer).toInt()
+                        if (bytesToRead <= 0) return -1
+
+                        val response = file.read(filePointer, bytesToRead, b, off)
+                        val bytesRead = response.bytesRead
+                        if (bytesRead <= 0) {
+                            return -1 // EOF or error
+                        }
+                        filePointer += bytesRead
+                        return bytesRead
+                    }
+
+                    override fun skip(n: Long): Long {
+                        if (closed) throw IOException("Stream is closed")
+                        if (n <= 0) return 0
+                        val bytesSkippable = minOf(n, fileLength - filePointer)
+                        filePointer += bytesSkippable
+                        return bytesSkippable
+                    }
+
+                    override fun available(): Int {
+                        if (closed) throw IOException("Stream is closed")
+                        return minOf(fileLength - filePointer, Int.MAX_VALUE.toLong()).toInt()
+                    }
+
+                    override fun close() {
+                        if (!closed) {
+                            closed = true
+                            // 在流关闭时，标记资源需要被清理
+                            // 实际清理发生在外部函数的 finally 块中
+                            // 或者在这里直接尝试清理（如果 Nfs3File 有 close 方法）
+                            // nfsFile?.close() // 如果 Nfs3File 有此方法
+                            // nfsClient?.close() // 如果 Nfs3 有此方法
+                            // 但通常依赖外部清理或 GC
+                        }
+                    }
+                }
+
+                return@withContext inputStream
+
+            } catch (e: Exception) {
+                // 清理资源
+                try {
+                    // 如果 Nfs3File 有 close 方法，尝试关闭它
+                    // nfsFile?.close() // Uncomment if Nfs3File has a close method
+                } catch (closeException: Exception) {
+                    Log.w("openNfsFileInputStream", "Error closing NFS file during error handling", closeException)
+                }
+                try {
+                    // Nfs3 客户端通常没有显式关闭方法，置为 null 即可
+                    nfsClient = null
+                } catch (closeException: Exception) {
+                    Log.w("openNfsFileInputStream", "Error closing NFS client during error handling", closeException)
+                }
+                throw IOException("Failed to open NFS file: $nfsUri", e)
+            }
+        }
+    }
 
 
 
 
 
     /**
-     * 根据视频的 SMB URI，构造同名弹幕 XML 文件的 SMB URI
+     * 根据视频的 video URI，构造同名弹幕 XML 文件的 SMB URI
      * 例如: smb://host/share/movie.mp4 → smb://host/share/movie.xml
      */
     fun getDanmakuSmbUri(videoSmbUri: Uri): Uri {
@@ -366,4 +543,92 @@ object SmbUtils {
 
         return videoSmbUri.buildUpon().path(danmakuPath).build()
     }
+
+
+
+
+
+    /**
+     * 根据视频的 NFS video URI，构造同名弹幕 XML 文件的 NFS URI
+     * NFS URI 格式: nfs://host:/exported_path:path_within_export
+     * 例如: nfs://192.168.1.4:/fs/1000/nfs:/movies/movie.mp4
+     *      -> nfs://192.168.1.4:/fs/1000/nfs:/movies/movie.xml
+     * 注意: 修正了 Uri.buildUpon().path() 会编码冒号 ':' 的问题。
+     */
+    fun getDanmakuNfsUri(videoNfsUri: Uri): Uri {
+        // 验证 scheme
+        if (videoNfsUri.scheme?.lowercase() != "nfs") {
+            throw IllegalArgumentException("Invalid NFS video URI scheme: ${videoNfsUri.scheme}")
+        }
+
+        val originalPath = videoNfsUri.path ?: throw IllegalArgumentException("Invalid NFS video URI: no path")
+
+        // --- 修正 URI 解析逻辑 (与 openNfsFileInputStream 和 NFSDataSource 保持一致) ---
+        if (!originalPath.startsWith("/")) {
+            throw IllegalArgumentException("Invalid NFS video URI path: '$originalPath'. Must start with '/'.")
+        }
+        val colonIndexInPath = originalPath.indexOf(':', 1) // 从索引1开始查找
+        if (colonIndexInPath == -1) {
+            throw IllegalArgumentException("Invalid NFS video URI path: '$originalPath'. Missing colon ':' separating exported_path and path_within_export.")
+        }
+
+        // exported_path 是从第一个 '/' 到第一个冒号 ':' 之间的部分
+        val exportedPath = originalPath.substring(1, colonIndexInPath)
+        if (exportedPath.isEmpty()) {
+            throw IllegalArgumentException("Invalid NFS video URI path: '$originalPath'. exported_path is empty.")
+        }
+
+        // path_within_export 是冒号 ':' 之后的部分
+        val pathWithinExport = originalPath.substring(colonIndexInPath + 1)
+        if (pathWithinExport.isEmpty()) {
+            throw IllegalArgumentException("Invalid NFS video URI path: '$originalPath'. path_within_export is empty.")
+        }
+        // --- 解析逻辑结束 ---
+
+        // 从 path_within_export 中提取基础路径和文件名
+        val lastSlashIndex = pathWithinExport.lastIndexOf('/')
+        val directoryPath = if (lastSlashIndex != -1) {
+            pathWithinExport.substring(0, lastSlashIndex + 1) // 包含最后的 '/'
+        } else {
+            "" // 文件在导出根目录下
+        }
+        val fileName = if (lastSlashIndex != -1) {
+            pathWithinExport.substring(lastSlashIndex + 1)
+        } else {
+            pathWithinExport // 整个 pathWithinExport 就是文件名
+        }
+
+        // 替换文件扩展名
+        val baseName = fileName.substringBeforeLast(".", "")
+        if (baseName.isEmpty()) {
+            // 如果文件名没有扩展名前的部分（例如 ".xml" 或 "file"），则认为 baseName 为空是不合理的
+            // 或者可以考虑直接在原文件名后加 .xml
+            // 这里选择抛出异常，因为通常视频文件都有名称部分
+            throw IllegalArgumentException("Invalid file name in NFS video URI path: '$fileName'. No name part before extension.")
+        }
+        val danmakuFileName = "$baseName.xml"
+
+        // 组合新的 path_within_export
+        val danmakuPathWithinExport = "$directoryPath$danmakuFileName"
+
+        // 组合完整的 NFS 弹幕 URI 路径: /<exported_path>:<danmaku_path_within_export>
+        val danmakuNfsPath = "/$exportedPath:$danmakuPathWithinExport"
+
+        // 获取 host
+        val host = videoNfsUri.host ?: throw IllegalArgumentException("Invalid NFS video URI: no host")
+
+        // 手动构建最终的 URI 字符串，避免 Uri.Builder 对 ':' 进行编码
+        val danmakuUriString = "nfs://$host:$danmakuNfsPath"
+
+        // 使用 Uri.parse 解析构建好的字符串
+        return danmakuUriString.toUri()
+    }
+
+
+
+
+
+
+
+
 }
