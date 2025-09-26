@@ -92,7 +92,7 @@ fun FTPFileListScreen(
     DisposableEffect(Unit) {
         onDispose {
             // 可选：在离开屏幕时断开连接
-            // viewModel.disconnectFTP()
+             viewModel.disconnectFTP()
             Log.d("FTPFileListScreen", "销毁")
         }
     }
