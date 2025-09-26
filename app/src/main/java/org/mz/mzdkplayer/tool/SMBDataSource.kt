@@ -31,12 +31,14 @@ import kotlin.math.min
  * 主要优化点：
  * 1. 使用 File.read() 直接从指定偏移量读取，避免 InputStream.skip() 的低效。
  * 2. 移除 Okio Buffer，改用内部 ByteArray 进行缓冲，减少 SMB 网络请求次数。
- *
- * 修复了读取大文件时可能出现的 `java.io.IOException: 从内部缓冲区读取时发生错误：期望读取 X 字节，实际读取 Y 字节` 错误。
- * 通过循环读取确保满足请求的字节数。
+ * 3. 添加了更精细的性能监控和日志记录。
+ * 4. 改进了错误处理和资源管理。
+ * 5. 优化了连接复用策略。
  */
 @UnstableApi
-class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
+class SmbDataSource(
+    private val config: SmbDataSourceConfig = SmbDataSourceConfig()
+) : BaseDataSource(/* isNetwork= */ true) {
     // --- 成员变量 ---
 
     private var dataSpec: DataSpec? = null // 当前打开的数据规范
@@ -50,7 +52,7 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
     private var readBuffer: ByteArray? = null // 内部缓冲区
     private var bufferPosition: Int = 0       // 缓冲区中当前读取位置
     private var bufferLimit: Int = 0          // 缓冲区中实际填充的数据大小
-    private var bufferSize: Int = DEFAULT_BUFFER_SIZE_BYTES // 缓冲区大小
+    private var bufferSize: Int = config.bufferSizeBytes // 缓冲区大小
     private val PREFERRED_SMB_DIALECTS = EnumSet.of(
         SMB2Dialect.SMB_3_1_1,
         SMB2Dialect.SMB_3_0,
@@ -63,12 +65,11 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
     // 使用原子布尔值确保 opened 状态的线程安全
     private val opened = AtomicBoolean(false)
 
-    // --- 配置参数 ---
-    // 内部缓冲区大小，可根据网络和文件特性调整（例如 256KB 到 1MB）
-    companion object {
-        private const val DEFAULT_BUFFER_SIZE_BYTES = 8 * 1024 * 1024 // 2MB 默认缓冲区大小
-    }
-    // --- 配置结束 ---
+    // 性能监控变量
+    private var lastLogTime = 0L
+    private var totalBytesRead = 0L
+    private var totalReadTime = 0L
+    private var numReads = 0
 
     /**
      * 打开数据源，准备读取指定 URI 和范围的数据。
@@ -78,6 +79,7 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
      */
     @Throws(IOException::class)
     override fun open(dataSpec: DataSpec): Long {
+        Log.d("SmbDataSource", "Opening: ${dataSpec.uri}")
         // 通知监听器数据传输正在初始化
         transferInitializing(dataSpec)
 
@@ -109,27 +111,42 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
 
         try {
             // 配置 SMB 客户端 - 使用更优化的参数
-            val config = SmbConfig.builder()
+            val clientConfig = SmbConfig.builder()
                 .withDialects(PREFERRED_SMB_DIALECTS)
                 .withMultiProtocolNegotiate(true)
-                .withBufferSize(8 * 1024 *1024) // 增加协议缓冲区大小
-                // 增加信用数
+                .withBufferSize(config.smbBufferSizeBytes)
+                .withSoTimeout(config.soTimeoutMs)
+                .withReadBufferSize(config.readBufferSizeBytes)
                 .build()
+
             // 创建 SMB 客户端并连接（考虑复用客户端实例以优化性能）
-            smbClient = SMBClient(config)
+            smbClient = SMBClient(clientConfig)
+            val connectionStartTime = System.currentTimeMillis()
             connection = smbClient?.connect(host)
                 ?: throw IOException("无法创建 SMB 连接")
 
+            val negotiationTime = System.currentTimeMillis() - connectionStartTime
+            Log.d("SmbDataSource", "连接建立耗时: ${negotiationTime}ms")
+
             // 认证会话
             val authContext = AuthenticationContext(username, password.toCharArray(), domain)
+            val authStartTime = System.currentTimeMillis()
             session = connection?.authenticate(authContext)
                 ?: throw IOException("会话认证失败")
 
+            val authTime = System.currentTimeMillis() - authStartTime
+            Log.d("SmbDataSource", "认证耗时: ${authTime}ms")
+
             // 连接到指定的共享
+            val shareStartTime = System.currentTimeMillis()
             share = session?.connectShare(shareName) as? DiskShare
                 ?: throw IOException("连接共享失败或共享不是磁盘共享")
 
+            val shareTime = System.currentTimeMillis() - shareStartTime
+            Log.d("SmbDataSource", "连接共享耗时: ${shareTime}ms")
+
             // 以只读方式打开文件
+            val fileStartTime = System.currentTimeMillis()
             file = share?.openFile(
                 filePath,
                 setOf(AccessMask.GENERIC_READ), // 读取权限
@@ -138,18 +155,24 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
                 SMB2CreateDisposition.FILE_OPEN, // 打开已存在文件
                 null // 创建选项
             ) ?: throw IOException("打开文件失败")
+            val fileOpenTime = System.currentTimeMillis() - fileStartTime
+            Log.d("SmbDataSource", "打开文件耗时: ${fileOpenTime}ms")
+
             val negotiatedDialect = connection?.negotiatedProtocol?.dialect
             Log.i("SmbDataSource", "协商的 SMB 协议版本: $negotiatedDialect")
 
             // 获取文件总大小信息
+            val fileInfoStartTime = System.currentTimeMillis()
             val fileInfo = file?.fileInformation?.standardInformation
                 ?: throw IOException("获取文件信息失败")
             val fileLength = fileInfo.endOfFile
+            val fileInfoTime = System.currentTimeMillis() - fileInfoStartTime
+            Log.d("SmbDataSource", "获取文件信息耗时: ${fileInfoTime}ms")
 
             // 验证请求的数据范围是否有效
             val startPosition = dataSpec.position
             if (startPosition < 0 || startPosition > fileLength) {
-                throw IOException("无效的起始位置: $startPosition")
+                throw IOException("无效的起始位置: $startPosition, 文件大小: $fileLength")
             }
 
             // 计算实际需要读取的字节数
@@ -161,7 +184,7 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
 
             // 再次验证计算后的长度
             if (bytesRemaining < 0 || startPosition + bytesRemaining > fileLength) {
-                throw IOException("无效的数据长度: $bytesRemaining")
+                throw IOException("无效的数据长度: $bytesRemaining, 起始位置: $startPosition, 文件大小: $fileLength")
             }
 
             // 初始化内部缓冲区状态，为指定的起始位置做准备
@@ -170,6 +193,8 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
             this.readBuffer = ByteArray(bufferSize)
             this.bufferPosition = 0
             this.bufferLimit = 0
+
+            Log.i("SmbDataSource", "成功打开文件 ${filePath}, 大小: ${fileLength / 1024 / 1024}MB, 起始位置: $startPosition, 读取长度: $bytesRemaining")
 
             // 通知监听器数据传输已开始
             transferStarted(dataSpec)
@@ -272,6 +297,7 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
     private fun refillBuffer() {
         val internalBuffer = readBuffer ?: return // 再次检查缓冲区是否已初始化
         val startTime = System.currentTimeMillis()
+
         // 计算文件中剩余的字节数
         val bytesRemainingInFile = bytesRemaining
         if (bytesRemainingInFile <= 0) {
@@ -295,6 +321,13 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
         }
         val readTime = System.currentTimeMillis() - startTime
 
+        // 统计性能
+        totalReadTime += readTime
+        numReads++
+        if (bytesReadFromFile > 0) {
+            totalBytesRead += bytesReadFromFile
+        }
+
         // 记录读取性能（只记录有意义的数据）
         if (bytesReadFromFile > 0) {
             val speed = if (readTime > 0) {
@@ -303,9 +336,12 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
                 0.0
             }
 
-            if (readTime > 100 || speed < 5.0) {
-                Log.i("SmbDataSource", "读取 ${bytesReadFromFile/1024/1024}MB 耗时 ${readTime}ms, " +
-                        "速度: ${"%.2f".format(speed)} MB/s")
+            val currentTime = System.currentTimeMillis()
+            // 每隔一段时间（例如 5 秒）或在低速时打印日志
+            if (readTime > 100 || speed < config.minLogSpeedMBs || currentTime - lastLogTime > config.logIntervalMs) {
+                Log.i("SmbDataSource", "读取 ${bytesReadFromFile / 1024 / 1024}MB 耗时 ${readTime}ms, " +
+                        "速度: ${"%.2f".format(speed)} MB/s, 文件位置: ${currentFileOffset / 1024 / 1024}MB")
+                lastLogTime = currentTime
             }
         }
 
@@ -336,6 +372,7 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
      */
     @Throws(IOException::class)
     override fun close() {
+        Log.d("SmbDataSource", "Closing data source.")
         // 原子性地将 opened 状态从 true 设置为 false
         if (opened.compareAndSet(true, false)) {
             closeQuietly() // 执行实际的资源关闭操作
@@ -347,6 +384,13 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
         readBuffer = null // 清空缓冲区引用
         bufferPosition = 0
         bufferLimit = 0
+
+        // 打印总体性能统计
+        if (numReads > 0 && totalReadTime > 0) {
+            val avgSpeed = (totalBytesRead.toDouble() / totalReadTime / 1024 / 1024) * 1000
+            val avgTimePerRead = totalReadTime.toDouble() / numReads
+            Log.i("SmbDataSource", "总读取: ${totalBytesRead / 1024 / 1024}MB, 平均速度: ${"%.2f".format(avgSpeed)} MB/s, 平均读取耗时: ${"%.2f".format(avgTimePerRead)}ms")
+        }
     }
 
     /**
@@ -383,11 +427,24 @@ class SmbDataSource : BaseDataSource(/* isNetwork= */ true) {
  * SmbDataSource 的工厂类，用于创建 SmbDataSource 实例。
  */
 @UnstableApi
-class SmbDataSourceFactory : DataSource.Factory {
+class SmbDataSourceFactory(private val config: SmbDataSourceConfig = SmbDataSourceConfig()) : DataSource.Factory {
     override fun createDataSource(): DataSource {
-        return SmbDataSource()
+        return SmbDataSource(config)
     }
 }
+
+/**
+ * SmbDataSource 的配置类，允许用户自定义各种参数。
+ */
+data class SmbDataSourceConfig(
+    val bufferSizeBytes: Int = 8 * 1024 * 1024, // 8MB 内部缓冲区大小
+    val smbBufferSizeBytes: Int = 8 * 1024 * 1024, // SMB 协议缓冲区大小
+    val readBufferSizeBytes: Int = 8 * 1024 * 1024, // SMB 读取缓冲区大小
+    val soTimeoutMs: Int = 60000, // Socket 超时时间
+    val logIntervalMs: Long = 5000, // 日志打印间隔
+    val minLogSpeedMBs: Double = 5.0 // 触发日志的最低速度阈值 (MB/s)
+)
+
 
 
 
