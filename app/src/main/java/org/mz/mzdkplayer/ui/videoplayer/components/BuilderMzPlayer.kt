@@ -373,6 +373,8 @@ fun rememberPlayer(context: Context, mediaUri: String, dataSourceType: String) =
             FtpDataSourceFactory()
         } else if ((mediaUri.startsWith("nfs://")) && dataSourceType == "NFS") {
             NFSDataSourceFactory()
+        } else if ((mediaUri.startsWith("http://") || mediaUri.startsWith("https://")) && dataSourceType == "HTTP") {
+            DefaultHttpDataSource.Factory()
         } else {
             // 其他情况（如 http/https），使用默认的 HTTP 数据源
             DefaultHttpDataSource.Factory()

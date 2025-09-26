@@ -139,10 +139,16 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
 
                 "http", "https" -> {
                     // 打开 HTTP 输入流
-                    if (dataSourceType=="WEBDAV"){
-                        SmbUtils.openWebDavFileInputStream(danmakuUri)
-                    }else {
-                        URL(danmakuUri.toString()).openStream()
+                    when (dataSourceType) {
+                        "WEBDAV" -> {
+                            SmbUtils.openWebDavFileInputStream(danmakuUri)
+                        }
+                        "HTTP" -> {
+                            SmbUtils.openHTTPLinkXmlInputStream(danmakuUri.toString())
+                        }
+                        else -> {
+                            URL(danmakuUri.toString()).openStream()
+                        }
                     }
                 }
 

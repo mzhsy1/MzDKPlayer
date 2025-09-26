@@ -40,8 +40,12 @@ import org.mz.mzdkplayer.ui.screen.HomeScreen
 import org.mz.mzdkplayer.ui.screen.ftp.FTPConListScreen
 import org.mz.mzdkplayer.ui.screen.ftp.FTPConScreen
 import org.mz.mzdkplayer.ui.screen.ftp.FTPFileListScreen
+import org.mz.mzdkplayer.ui.screen.http.HTTPLinkFileListScreen
+import org.mz.mzdkplayer.ui.screen.httplink.HTTPLinkConListScreen
+
 import org.mz.mzdkplayer.ui.screen.localfile.LocalFileScreen
 import org.mz.mzdkplayer.ui.screen.localfile.LocalFileTypeScreen
+import org.mz.mzdkplayer.ui.screen.nfs.HTTPLinkConScreen
 import org.mz.mzdkplayer.ui.screen.nfs.NFSConListScreen
 import org.mz.mzdkplayer.ui.screen.nfs.NFSConScreen
 import org.mz.mzdkplayer.ui.screen.nfs.NFSFileListScreen
@@ -250,6 +254,22 @@ fun MzDKPlayerAPP() {
                 )
             }
         }
+        composable("HTTPLinkFileListScreen/{encodedIp}/{newSubPath}") { backStackEntry ->
+            val encodedIp = backStackEntry.arguments?.getString("encodedIp")
+            val encodedShareName = backStackEntry.arguments?.getString("encodedShareName")
+            val newSubPath = backStackEntry.arguments?.getString("newSubPath")
+            //URLEncoder.encode(conn.shareName, "UTF-8")
+            if (encodedIp != null) {
+
+                //val path = URLDecoder.decode(URLDecoder.decode(encodedIp, "UTF-8"), "UTF-8")
+                Log.d("encodedPath", "${URLDecoder.decode(newSubPath, "UTF-8")}",)
+                HTTPLinkFileListScreen(
+                    URLDecoder.decode(encodedIp, "UTF-8"),
+                    URLDecoder.decode(newSubPath, "UTF-8"),
+                    mainNavController
+                )
+            }
+        }
         composable("SMBListScreen") {
             SMBConListScreen(mainNavController)
         }
@@ -273,6 +293,12 @@ fun MzDKPlayerAPP() {
         }
         composable("NFSConListScreen") {
             NFSConListScreen(mainNavController)
+        }
+        composable("HTTPLinkConScreen") {
+            HTTPLinkConScreen()
+        }
+        composable("HTTPLinkConListScreen") {
+            HTTPLinkConListScreen(mainNavController)
         }
     }
 

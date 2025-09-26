@@ -31,6 +31,8 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 import androidx.core.net.toUri
+import okhttp3.Request
+import okhttp3.Response
 
 object SmbUtils {
 
@@ -530,6 +532,65 @@ object SmbUtils {
 
 
 
+    /**
+     * 根据完整的 HTTP Link URL 打开 XML 弹幕文件并返回 InputStream
+     * 示例 URL: http://host:port/path/to/danmaku.xml
+     * @param xmlUrl HTTP Link 上 XML 文件的完整 URL
+     * @param okHttpClient 用于发起请求的 OkHttpClient 实例
+     * @return 用于读取 XML 文件的 InputStream
+     * @throws IOException 如果连接失败或无法打开流
+     */
+    @Throws(IOException::class)
+    suspend fun openHTTPLinkXmlInputStream(xmlUrl: String): InputStream {
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val okHttpClient = OkHttpClient()
+            val request = Request.Builder().url(xmlUrl).build()
+            val call = okHttpClient.newCall(request)
+            val response: okhttp3.Response = call.execute() // 同步执行，因为我们需要 Response 对象
+
+            if (!response.isSuccessful) {
+                throw IOException("HTTP error code: ${response.code}, message: ${response.message}")
+            }
+
+            val responseBody = response.body
+            if (responseBody == null) {
+                throw IOException("Response body is null for URL: $xmlUrl")
+            }
+
+            // 获取输入流
+            val inputStream = responseBody.byteStream()
+
+            // 返回一个包装的 InputStream，在关闭时也处理 HTTP 响应
+            object : InputStream() {
+                private var isClosed = false // 防止重复关闭
+
+                override fun read(): Int {
+                    check(!isClosed) { "Stream is closed" }
+                    return inputStream.read()
+                }
+
+                override fun read(b: ByteArray): Int {
+                    check(!isClosed) { "Stream is closed" }
+                    return inputStream.read(b)
+                }
+
+                override fun read(b: ByteArray, off: Int, len: Int): Int {
+                    check(!isClosed) { "Stream is closed" }
+                    return inputStream.read(b, off, len)
+                }
+
+                override fun close() {
+                    if (isClosed) return
+                    isClosed = true
+                    // 关闭输入流，OkHttp 会自动管理连接的释放
+                    inputStream.close()
+                    // Response 对象在 inputStream 关闭后通常也应被关闭
+                    // 虽然 byteStream() 后 body 可能已被消耗，但显式关闭是好习惯
+                    response.close()
+                }
+            }
+        }
+    }
 
 
     /**

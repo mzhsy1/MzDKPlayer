@@ -40,7 +40,7 @@ class HTTPLinkConViewModel : ViewModel() {
 
     /**
      * 连接到 HTTP Link 服务器
-     * @param baseUrl HTTP Link 服务器的基础 URL (e.g., "http://192.168.1.4:81/movies/")
+     * @param baseUrl HTTP Link 服务器的基础 URL (e.g., "http://192.168.1.4:81/nas/")
      */
     fun connectToHTTPLink(baseUrl: String) {
         viewModelScope.launch {
@@ -49,14 +49,15 @@ class HTTPLinkConViewModel : ViewModel() {
                 try {
                     withContext(Dispatchers.IO) {
                         val trimmedBaseUrl = baseUrl.trimEnd('/')
-                        this@HTTPLinkConViewModel.baseUrl = trimmedBaseUrl
+                        Log.d("HTTPLinkConViewModel", "连接到: $trimmedBaseUrl")
+                        this@HTTPLinkConViewModel.baseUrl = "$trimmedBaseUrl/"
                         // 尝试访问根目录以验证连接
-                        val rootResources = listDirectoryFromUrl(trimmedBaseUrl)
+                        val rootResources = listDirectoryFromUrl(this@HTTPLinkConViewModel.baseUrl)
                         _fileList.value = rootResources.filter { it.name != ".." && it.name != "." }
                     }
                     _currentPath.value = "" // 重置路径
                     _connectionStatus.value = HTTPLinkConnectionStatus.Connected
-                    Log.d("HTTPLinkConViewModel", "连接成功到 $baseUrl")
+                    Log.d("HTTPLinkConViewModel", "连接成功到 ${this@HTTPLinkConViewModel.baseUrl}")
                 } catch (e: Exception) {
                     Log.e("HTTPLinkConViewModel", "连接失败", e)
                     _connectionStatus.value = HTTPLinkConnectionStatus.Error("连接失败: ${e.message}")
@@ -72,9 +73,9 @@ class HTTPLinkConViewModel : ViewModel() {
     fun listFiles(path: String = "") {
         val effectivePath = path.trimStart('/')
         val fullUrl = if (effectivePath.isEmpty()) {
-            "$baseUrl/"
+            baseUrl
         } else {
-            "$baseUrl/$effectivePath/"
+            "$baseUrl$effectivePath/"
         }
 
         viewModelScope.launch {
@@ -85,15 +86,18 @@ class HTTPLinkConViewModel : ViewModel() {
             }
 
             mutex.withLock {
+                // 添加日志来确认调用时的路径
+                Log.d("HTTPLinkConViewModel", "listFiles called. Connected: ${isConnected()}. Current path (${_currentPath.value}) differs from target ($effectivePath), listing target path.")
                 try {
                     withContext(Dispatchers.IO) {
                         val resources = listDirectoryFromUrl(fullUrl)
                         // 过滤掉 "." 和 ".."
                         val filteredResources = resources.filter { it.name != "." && it.name != ".." }
                         _fileList.value = filteredResources
-                        _currentPath.value = effectivePath // 更新当前路径
+                        // 更新当前路径为相对于 baseUrl 的路径
+                        _currentPath.value = effectivePath
                     }
-                    Log.d("HTTPLinkConViewModel", "列出文件成功: $fullUrl")
+                    Log.d("HTTPLinkConViewModel", "列出文件成功: $fullUrl, 更新当前路径为: $effectivePath")
                 } catch (e: Exception) {
                     Log.e("HTTPLinkConViewModel", "获取文件列表失败: $fullUrl", e)
                     _connectionStatus.value = HTTPLinkConnectionStatus.Error("获取文件失败: ${e.message}")
@@ -134,14 +138,29 @@ class HTTPLinkConViewModel : ViewModel() {
     }
 
     /**
+     * 计算新的子路径
+     */
+    fun calculateNewSubPath(currentPath: String, clickedDirName: String): String {
+        val cleanCurrentPath = currentPath.removeSuffix("/")
+        // --- 仅从 href 提取名称后，UI 上显示的名称应该就是正确的 ---
+        // 但仍然清理一下，以防万一有其他来源的脏数据
+        val cleanDirName = clickedDirName.trim()
+        return if (cleanCurrentPath.isEmpty()) {
+            cleanDirName // 如果当前在根路径或空路径，新路径就是点击的目录名
+        } else {
+            "$cleanCurrentPath/$cleanDirName" // 否则，拼接清理后的当前路径和点击的目录名
+        }
+    }
+
+    /**
      * 获取当前完整的工作目录 URL
      */
     fun getCurrentFullUrl(): String {
         val effectivePath = _currentPath.value.trimStart('/')
         return if (effectivePath.isEmpty()) {
-            "$baseUrl/"
+            baseUrl
         } else {
-            "$baseUrl/$effectivePath/"
+            "$baseUrl$effectivePath/"
         }
     }
 
@@ -168,9 +187,8 @@ class HTTPLinkConViewModel : ViewModel() {
      */
     fun getResourceFullUrl(resourceName: String): String {
         val currentFullUrl = getCurrentFullUrl()
-        // 确保 URL 以 '/' 结尾
-        val baseUrlWithSlash = if (currentFullUrl.endsWith("/")) currentFullUrl else "$currentFullUrl/"
-        return "$baseUrlWithSlash$resourceName"
+        // URL 已确保以 '/' 结尾
+        return "$currentFullUrl${resourceName}"
     }
 
     /**
@@ -203,11 +221,6 @@ class HTTPLinkConViewModel : ViewModel() {
      */
     private fun parseHtmlDirectoryListing(html: String, baseUrl: String): List<HTTPLinkResource> {
         val resources = mutableListOf<HTTPLinkResource>()
-        val baseUrlObj = java.net.URL(baseUrl)
-        val protocol = baseUrlObj.protocol
-        val host = baseUrlObj.host
-        val port = if (baseUrlObj.port != -1) baseUrlObj.port else baseUrlObj.defaultPort
-        val baseDir = baseUrlObj.path
 
         // 正则表达式匹配 href 属性和链接文本
         // 匹配 <a> 标签内的 href 和文本内容
@@ -219,41 +232,66 @@ class HTTPLinkConViewModel : ViewModel() {
 
         while (matcher.find()) {
             var href = matcher.group(1)
-            var linkText = matcher.group(2)?.trim() ?: ""
+            // var linkText = matcher.group(2)?.trim() ?: "" // 不再使用 linkText
 
-            // 解码 URL 编码的 href 和 linkText
+            // 解码 URL 编码的 href
             href = URLDecoder.decode(href, StandardCharsets.UTF_8.name())
-            linkText = URLDecoder.decode(linkText, StandardCharsets.UTF_8.name())
 
             if (href != null && !href.startsWith("#") && !href.startsWith("javascript:") && !href.startsWith("mailto:")) {
+                // 构建完整 URL 以进行比较和解析
                 val fullHref = resolveUrl(href, baseUrl)
-                if (fullHref.startsWith("$protocol://$host:$port") && fullHref.startsWith(baseUrl)) {
+                //Log.d("HTTPLinkConViewModel", "解析到链接: href='$href', fullHref='$fullHref'")
+
+                // 检查是否为当前目录的子项
+                if (isSubPathOf(fullHref, baseUrl)) {
                     // 计算相对于 baseUrl 的路径
                     val relativePath = fullHref.substring(baseUrl.length).trim('/')
 
-                    // 判断是否为目录：href 以 '/' 结尾，或者在 linkText 中有明显的目录标记（如 / 或 >）
-                    val isDirectory = href.endsWith("/") || linkText.endsWith("/") || linkText.contains(">")
+                    // 判断是否为目录：href 以 '/' 结尾
+                    val isDirectory = href.endsWith("/")
 
-                    // 提取显示名称
-                    var name = linkText
-                    // 如果 linkText 为空或与 href 相同，使用 href 的最后部分作为名称
-                    if (name.isEmpty() || name == href) {
-                        name = href.substringAfterLast("/", href).trimEnd('/')
-                    }
-                    // 如果名称过长，截取一部分（例如，保留前 50 个字符并添加省略号）
-                    if (name.length > 50) {
-                        name = name.take(50) + "..."
-                    }
+                    // --- 修改开始：仅从 href 提取 name ---
+                    // 从 href 提取名称，必须先去除末尾的 '/'，否则 substringAfterLast 会返回空字符串
+                    val cleanHref = href.trimEnd('/')
+                    val name = cleanHref.substringAfterLast("/", cleanHref)
+
+                    // 确保最终名称不以 / 结尾（避免目录名被误处理）
+                    val finalName = name.trimEnd('/')
+                    // --- 修改结束 ---
 
                     // 过滤掉 "../" 这种导航链接
                     if (relativePath != ".." && href != "../") {
-                        resources.add(HTTPLinkResource(name, isDirectory, relativePath))
+                        Log.d("HTTPLinkConViewModel", "添加资源: name='$finalName', isDir=$isDirectory, path='$relativePath'")
+                        resources.add(HTTPLinkResource(finalName, isDirectory, relativePath))
                     }
                 }
             }
         }
 
-        return resources.distinctBy { it.name } // 去重
+        // 去重并返回
+        val distinctResources = resources.distinctBy { it.path } // 根据路径去重更可靠
+        Log.d("HTTPLinkConViewModel", "解析完成，共 ${distinctResources.size} 个项目")
+        return distinctResources
+    }
+
+
+    /**
+     * 检查一个 URL 是否是另一个 URL 的子路径
+     * @param url 要检查的 URL
+     * @param baseUrl 基础 URL
+     * @return 如果 url 是 baseUrl 的子路径，则返回 true
+     */
+    private fun isSubPathOf(url: String, baseUrl: String): Boolean {
+        val baseUrlObj = java.net.URL(baseUrl)
+        val urlObj = java.net.URL(url)
+
+        // 检查协议、主机、端口是否相同
+        if (urlObj.protocol != baseUrlObj.protocol || urlObj.host != baseUrlObj.host || urlObj.port != baseUrlObj.port) {
+            return false
+        }
+
+        // 检查路径是否以 baseUrl 的路径开头
+        return urlObj.path.startsWith(baseUrlObj.path)
     }
 
     /**
