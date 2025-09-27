@@ -56,8 +56,9 @@ class SMBConViewModel : ViewModel() {
 
                     }
 
-                    //listSMBFiles(SMBConfig(ip, shareName, "", username, password)) // 获取文件列表
+
                     _connectionStatus.value = SMBConnectionStatus.Connected
+                    Log.d("_connectionStatus1", _connectionStatus.value.toString())
                 } catch (e: Exception) {
                     Log.e("SMB", "连接失败$e", e)
                     _connectionStatus.value = SMBConnectionStatus.Error("连接失败: ${e.message}")
@@ -67,41 +68,61 @@ class SMBConViewModel : ViewModel() {
         }
     }
 
-    // 列出文件
-//    fun listFiles() {
-//        viewModelScope.launch {
-//            try {
-//                withContext(Dispatchers.IO) {
-//                    if (isConnected()) {  // 检查连接状态
-//                        val files = share!!.list("")
-//                        _fileList.value = files.map { it.fileName }
-//                    } else {
-//                        _connectionStatus.value = SMBConnectionStatus.Disconnected
-//                    }
-//                }
-//            } catch (e: TransportException) {
-//                _connectionStatus.value = SMBConnectionStatus.Error("连接失败: ${e.message}")
-//                disconnectSMB()
-//            } catch (e: Exception) {
-//                _connectionStatus.value = SMBConnectionStatus.Error("连接失败: ${e.message}")
-//            }
-//        }
-//    }
-    fun listSMBFiles(config: SMBConfig) {
+    fun testConnectSMB(ip: String, username: String, password: String, shareName: String) {
+
         viewModelScope.launch {
-            if (_connectionStatus.value != SMBConnectionStatus.Connected) {
-                _connectionStatus.value = SMBConnectionStatus.Error("未连接到服务器")
-                return@launch
-            }
+            disconnectSMB()  // 先清理旧连接
+//            withContext(Dispatchers.Main) {
+//                _connectionStatus.value = "正在尝试连接"
+//            }
             mutex.withLock {
                 try {
 
                     withContext(Dispatchers.IO) {
 
+                        if (!isConnected()) {  // 避免重复连接
+                            client = SMBClient()
+
+                            connection = client?.connect(ip)
+                            val auth = AuthenticationContext(username, password.toCharArray(), null)
+                            session = connection!!.authenticate(auth)
+                            share = session!!.connectShare(shareName) as DiskShare
+                        }
+
+                    }
+
+
+                    _connectionStatus.value = SMBConnectionStatus.Connected
+                    listSMBFiles(SMBConfig(ip, shareName, "/", username, password)) // 获取文件列表
+                    Log.d("_connectionStatus1", _connectionStatus.value.toString())
+                } catch (e: Exception) {
+                    Log.e("SMB", "连接失败$e", e)
+                    _connectionStatus.value = SMBConnectionStatus.Error("连接失败: ${e.message}")
+                    //disconnectSMB()
+                }
+            }
+        }
+    }
+
+    fun listSMBFiles(config: SMBConfig) {
+        Log.d("listSMBFiles", config.toString())
+        Log.d("_connectionStatus2", _connectionStatus.value.toString())
+        viewModelScope.launch {
+            if (_connectionStatus.value != SMBConnectionStatus.Connected) {
+                //Log.d("listSMBFiles", _connectionStatus.value.toString())
+                _connectionStatus.value = SMBConnectionStatus.Error("未连接到服务器")
+                return@launch
+            }
+            Log.d("listSMBFiles", "正在列出文件")
+            mutex.withLock {
+                try {
+
+                    withContext(Dispatchers.IO) {
 
                         try {
 
                             try {
+                                _connectionStatus.value = SMBConnectionStatus.LoadingFile
                                 // 确保路径以/开头且不以/结尾（除了根路径）
                                 val cleanPath = config.path.let {
                                     if (it == "/") "\\" else it.replace("/", "\\").trimEnd('\\')
@@ -136,6 +157,7 @@ class SMBConViewModel : ViewModel() {
                                     } ?: throw Exception("SMB 客户端未初始化或连接失败")
 
                                 _fileList.value = files.sortedBy { it.name }
+                                _connectionStatus.value = SMBConnectionStatus.LoadingFiled
                             } finally {
                                 share?.close()
                             }
@@ -144,7 +166,7 @@ class SMBConViewModel : ViewModel() {
                         }
                     }
                 } catch (e: Exception) {
-                    Log.e("FTPConViewModel", "连接失败", e)
+                    Log.e("SMBConViewModel", "连接失败", e)
                     _connectionStatus.value = SMBConnectionStatus.Error("连接失败: ${e.message}")
                     // 连接失败时清理
                     disconnectSMB()
@@ -154,13 +176,6 @@ class SMBConViewModel : ViewModel() {
     }
 
 
-    fun changeSMBTest() {
-        viewModelScope.launch(Dispatchers.IO) {
-            withContext(Dispatchers.Main) {
-                _connectionStatus.value = SMBConnectionStatus.Connecting
-            }
-        }
-    }
 
     // 断开连接
     fun disconnectSMB() {
@@ -253,6 +268,8 @@ sealed class SMBConnectionStatus {
     object Disconnected : SMBConnectionStatus()
     object Connecting : SMBConnectionStatus()
     object Connected : SMBConnectionStatus()
+    object LoadingFile : SMBConnectionStatus()
+    object LoadingFiled : SMBConnectionStatus()
     data class Error(val message: String) : SMBConnectionStatus()
 
     // 添加一个用于 UI 显示的描述方法
@@ -261,6 +278,8 @@ sealed class SMBConnectionStatus {
             Disconnected -> "已断开"
             Connecting -> "连接中..."
             Connected -> "已连接"
+            LoadingFile -> "正在加载文件"
+            LoadingFiled -> "加载文件完成"
             is Error -> "错误: $message"
         }
     }

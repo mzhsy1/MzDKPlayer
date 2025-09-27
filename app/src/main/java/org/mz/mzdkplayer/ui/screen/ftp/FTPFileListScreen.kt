@@ -1,5 +1,3 @@
-
-
 package org.mz.mzdkplayer.ui.screen.ftp
 
 import android.util.Log
@@ -26,6 +24,7 @@ import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.FTPConnection
 import org.mz.mzdkplayer.tool.Tools
+import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.vm.FTPConViewModel
 import org.mz.mzdkplayer.ui.screen.vm.FTPConnectionStatus // 导入状态类
@@ -92,7 +91,7 @@ fun FTPFileListScreen(
     DisposableEffect(Unit) {
         onDispose {
             // 可选：在离开屏幕时断开连接
-             viewModel.disconnectFTP()
+            viewModel.disconnectFTP()
             Log.d("FTPFileListScreen", "销毁")
         }
     }
@@ -106,14 +105,7 @@ fun FTPFileListScreen(
         when (connectionStatus) {
             is FTPConnectionStatus.Connecting -> {
                 // 显示加载指示器
-//                Text(
-//                    "正在连接 FTP...",
-//                    modifier = Modifier.align(Alignment.Center),
-//                    color = Color.White,
-//                    fontWeight = FontWeight.Bold,
-//                    fontSize = 24.sp
-//                )
-                LoadingScreen()
+                LoadingScreen("正在连接FTP服务器")
             }
 
             is FTPConnectionStatus.Error -> {
@@ -131,31 +123,7 @@ fun FTPFileListScreen(
 
             is FTPConnectionStatus.Connected -> {
                 if (fileList.isEmpty()) {
-
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.baseline_folder_off_24),
-                                contentDescription = null,
-                                tint = Color.Gray,
-                                modifier = Modifier.size(64.dp)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                "此目录为空",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 24.sp
-                            )
-                        }
-                    }
-
+                    FileEmptyScreen("此目录为空")
 
                 } else {
                     // 已连接，显示文件列表

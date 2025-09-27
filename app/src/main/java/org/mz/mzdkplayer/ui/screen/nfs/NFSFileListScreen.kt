@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.NFSConnection
 import org.mz.mzdkplayer.tool.Tools
+import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.vm.NFSConViewModel
 import org.mz.mzdkplayer.ui.screen.vm.NFSConnectionStatus // 假设存在对应的状态类
@@ -112,7 +113,7 @@ fun NFSFileListScreen(
     ) {
         when (connectionStatus) {
             is NFSConnectionStatus.Connecting -> {
-                LoadingScreen()
+                LoadingScreen("正在连接NFS服务器")
             }
 
             is NFSConnectionStatus.Error -> {
@@ -130,29 +131,7 @@ fun NFSFileListScreen(
 
             is NFSConnectionStatus.Connected -> {
                 if (fileList.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.baseline_folder_off_24),
-                                contentDescription = null,
-                                tint = Color.Gray,
-                                modifier = Modifier.size(64.dp)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                "此目录为空",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 24.sp
-                            )
-                        }
-                    }
+                    FileEmptyScreen("此目录为空")
                 } else {
                     // 已连接，显示文件列表
                     LazyColumn(modifier = Modifier.fillMaxSize()) {

@@ -45,6 +45,7 @@ import org.mz.mzdkplayer.ui.screen.vm.FTPConnectionStatus
 import org.mz.mzdkplayer.ui.theme.TvTextField
 
 import org.mz.mzdkplayer.ui.screen.vm.SMBConViewModel
+import org.mz.mzdkplayer.ui.screen.vm.SMBConfig
 import org.mz.mzdkplayer.ui.screen.vm.SMBConnectionStatus
 import org.mz.mzdkplayer.ui.screen.vm.SMBListViewModel
 import org.mz.mzdkplayer.ui.style.myTTFColor
@@ -94,6 +95,8 @@ fun SMBConScreen() {
                         is SMBConnectionStatus.Connected -> Color.Green
                         is SMBConnectionStatus.Connecting -> Color.Yellow
                         is SMBConnectionStatus.Error -> Color.Red
+                        is SMBConnectionStatus.LoadingFile -> Color.Yellow
+                        is SMBConnectionStatus.LoadingFiled -> Color.Green
                         else -> Color.Gray // Disconnected
                     }
                 )
@@ -151,7 +154,8 @@ fun SMBConScreen() {
                 modifier = Modifier.fillMaxWidth(0.5f),
                 enabled = true,
                 onClick = {
-                    viewModel.connectToSMB(ip, username, password, shareName);viewModel.changeSMBTest()
+                    viewModel.testConnectSMB(ip, username, password, shareName);
+                    //viewModel.listSMBFiles(config = SMBConfig(ip,shareName,"/",username,password))
                 },
             )
 
@@ -174,7 +178,7 @@ fun SMBConScreen() {
                         Toast.makeText(context, "添加成功", Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(context, "添加失败", Toast.LENGTH_SHORT).show()
-                    };Log.d("as", "K")
+                    };
                 },
             )
 

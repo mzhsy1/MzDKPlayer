@@ -25,6 +25,7 @@ import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.tool.Tools
+import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.vm.HTTPLinkConViewModel
 import org.mz.mzdkplayer.ui.screen.vm.HTTPLinkConnectionStatus
@@ -134,7 +135,7 @@ fun HTTPLinkFileListScreen(
     ) {
         when (connectionStatus) {
             is HTTPLinkConnectionStatus.Connecting -> {
-                LoadingScreen()
+                LoadingScreen("正在链接HTTP服务器")
             }
 
             is HTTPLinkConnectionStatus.Error -> {
@@ -181,29 +182,7 @@ fun HTTPLinkFileListScreen(
 
             is HTTPLinkConnectionStatus.Connected -> {
                 if (fileList.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.baseline_folder_off_24),
-                                contentDescription = null,
-                                tint = Color.Gray,
-                                modifier = Modifier.size(64.dp)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                if (effectiveSubPath.isNotEmpty()) "目录 '$effectiveSubPath' 为空或不存在" else "根目录为空",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 24.sp
-                            )
-                        }
-                    }
+                    FileEmptyScreen("此目录为空")
                 } else {
                     // 已连接，显示文件列表
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
