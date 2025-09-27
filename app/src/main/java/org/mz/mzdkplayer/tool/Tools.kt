@@ -2,9 +2,15 @@ package org.mz.mzdkplayer.tool
 
 
 import androidx.annotation.OptIn
+import androidx.compose.foundation.Image
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 
 import androidx.media3.common.Format
+import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
+
 
 import org.mz.mzdkplayer.R
 import java.util.Locale
@@ -24,8 +30,51 @@ object Tools {
 
     }
 
+    @OptIn(UnstableApi::class)
+    @Composable
+    fun VideoBigIcon(focusedIsDir: Boolean, fileName: String?, modifier: Modifier) {
+
+//        Icon(
+//            modifier = modifier,
+//            painter = painterResource(R.drawable.pcm_seeklogo__1_),
+//            tint = Color.White,
+//            contentDescription = null,
+//        )
+        Log.d("fileName", fileName.toString())
+        Log.d("eFileName", extractFileExtension(fileName))
+        if (focusedIsDir) {
+            Image(
+                modifier = modifier,
+                painter = painterResource(R.drawable.folderbig),
+                // tint = Color.White,
+                contentDescription = null,
+            )
+        } else {
+            when (extractFileExtension(fileName)) {
+                "mkv" -> Image(
+                    modifier = modifier,
+                    painter = painterResource(R.drawable.mkvtype),
+                    // tint = Color.White,
+                    contentDescription = null,
+                )
+
+                "mp4" -> Image(
+                    modifier = modifier,
+                    painter = painterResource(R.drawable.mp4type),
+                    contentDescription = null,
+                )
+
+                else -> Image(
+                    modifier = modifier,
+                    painter = painterResource(R.drawable.file1),
+                    contentDescription = null,
+                )
+            }
+        }
+    }
+
     fun containsVideoFormat(input: String): Boolean {
-        val videoFormats = listOf("MP4", "M2TS", "3GP", "AVI", "MOV", "TS", "FLV")
+        val videoFormats = listOf("MP4", "MKV","M2TS", "3GP", "AVI", "MOV", "TS", "FLV")
         return videoFormats.any { format ->
             input.contains(format, ignoreCase = true)
         }

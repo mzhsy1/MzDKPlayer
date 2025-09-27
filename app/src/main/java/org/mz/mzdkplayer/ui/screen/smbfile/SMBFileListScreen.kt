@@ -5,11 +5,13 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -17,13 +19,18 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -35,8 +42,8 @@ import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
 
 import org.mz.mzdkplayer.R
-import org.mz.mzdkplayer.tool.SmbMediaInfoExtractor
 import org.mz.mzdkplayer.tool.Tools
+import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 
@@ -53,7 +60,9 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
     val viewModel: SMBConViewModel = viewModel()
     val files by viewModel.fileList.collectAsState()
     val connectionStatus by viewModel.connectionStatus.collectAsState()
-    LaunchedEffect(path,connectionStatus) {
+    var focusedFileName by remember { mutableStateOf<String?>(null) }
+    var focusedIsDir by remember { mutableStateOf(false) }
+    LaunchedEffect(path, connectionStatus) {
 
         val decodedPath = URLDecoder.decode(path ?: "", "UTF-8")
         if (decodedPath.isEmpty()) return@LaunchedEffect
@@ -94,6 +103,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
             SMBConnectionStatus.LoadingFile -> {
 
             }
+
             SMBConnectionStatus.LoadingFiled -> {
 
 
@@ -117,67 +127,121 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                 LoadingScreen("正在连接SMB服务器")
             }
 
-            is SMBConnectionStatus.Connected , is SMBConnectionStatus.LoadingFiled -> {
+            is SMBConnectionStatus.Connected, is SMBConnectionStatus.LoadingFiled -> {
                 if (files.isEmpty()) {
 
                     FileEmptyScreen("此目录为空")
 
 
                 } else {
-                    LazyColumn(modifier = Modifier
-                        .padding(16.dp)
-                        .fillMaxSize()) {
-                        items(files) { file ->
-                            ListItem(
-                                selected = false,
+                    Row(Modifier.fillMaxSize(),  verticalAlignment = Alignment.CenterVertically ) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxHeight()
+                                .weight(0.7f)
+                        ) {
+                            items(files) { file ->
+                                ListItem(
+                                    selected = false,
 
-                                onClick = {
+                                    onClick = {
 
-                                    if (file.isDirectory) {
-                                        val newPath = viewModel.buildSMBPath(
-                                            file.server,
-                                            file.share,
-                                            file.fullPath,
-                                            file.username,
-                                            file.password
-                                        )
-                                        val encoded = URLEncoder.encode(newPath, "UTF-8")
-                                        navController.navigate("SMBFileListScreen/$encoded")
-                                    } else {
-                                        // 处理文件点击，比如播放视频
-                                        Log.d("file.fullPath",file.fullPath)
-                                        //val  smbMediaInfoExtractor = SmbMediaInfoExtractor(context)
-                                        // smbMediaInfoExtractor.extractMetadata(mediaUri = "smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}".toUri())
-                                        navController.navigate("VideoPlayer/${URLEncoder.encode("smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}", "UTF-8")}/SMB")
-                                    }
-                                },
-                                colors = myListItemColor(),
-                                modifier = Modifier.padding(10.dp),
-                                scale = ListItemDefaults.scale(scale = 1.0f, focusedScale = 1.02f),
-                                leadingContent = {
-                                    Log.d("SMBSc",Tools.extractFileExtension(file.name))
-                                    Icon(
-                                        painter = if (file.isDirectory) {
-                                            painterResource(R.drawable.baseline_folder_24)
-                                        }  else if (Tools.extractFileExtension(file.name)=="mkv") {
-                                            Log.d("SMBSc","R.drawable.mkv")
-                                            painterResource(R.drawable.mkv)
+                                        if (file.isDirectory) {
+                                            val newPath = viewModel.buildSMBPath(
+                                                file.server,
+                                                file.share,
+                                                file.fullPath,
+                                                file.username,
+                                                file.password
+                                            )
+                                            val encoded = URLEncoder.encode(newPath, "UTF-8")
+                                            navController.navigate("SMBFileListScreen/$encoded")
+                                        } else {
+                                            // 处理文件点击，比如播放视频
+                                            Log.d("file.fullPath", file.fullPath)
+                                            //val  smbMediaInfoExtractor = SmbMediaInfoExtractor(context)
+                                            // smbMediaInfoExtractor.extractMetadata(mediaUri = "smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}".toUri())
+                                            navController.navigate(
+                                                "VideoPlayer/${
+                                                    URLEncoder.encode(
+                                                        "smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}",
+                                                        "UTF-8"
+                                                    )
+                                                }/SMB"
+                                            )
                                         }
+                                    },
+                                    colors = myListItemColor(),
+                                    modifier = Modifier
+                                        .padding(10.dp)
+                                        .onFocusChanged {
+                                            if (it.isFocused) focusedFileName =
+                                                file.name;focusedIsDir =
+                                            file.isDirectory
+                                        },
+                                    scale = ListItemDefaults.scale(
+                                        scale = 1.0f,
+                                        focusedScale = 1.02f
+                                    ),
+                                    leadingContent = {
+                                        //Log.d("SMBSc", Tools.extractFileExtension(file.name))
+                                        Icon(
+                                            painter = if (file.isDirectory) {
+                                                painterResource(R.drawable.baseline_folder_24)
+                                            } else if (Tools.containsVideoFormat(
+                                                    Tools.extractFileExtension(file.name)
+                                                )
+                                            ) {
+                                                // Log.d("SMBSc", "R.drawable.mkv")
+                                                painterResource(R.drawable.moviefileicon)
+                                            }
 //                        else if (containsVideoFormat(Tools.extractFileExtension(file.name))) {
 //                            painterResource(R.drawable.baseline_video_file_24)
-                                        else {
-                                            painterResource(R.drawable.baseline_insert_drive_file_24)
-                                        },
-                                        contentDescription = null,
+                                            else {
+                                                painterResource(R.drawable.baseline_insert_drive_file_24)
+                                            },
+                                            contentDescription = null,
 
-                                        )
-                                },
-                                headlineContent = { Text(file.name) }
+                                            )
+                                    },
+                                    headlineContent = { Text(file.name) }
+                                )
+                            }
+
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .weight(0.3f),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            VideoBigIcon(
+                                focusedIsDir,
+                                focusedFileName,
+                                modifier = Modifier
+                                    .height(200.dp)
+                                    .fillMaxWidth()
                             )
+                            focusedFileName?.let {
+                                Text(
+                                    it,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 20.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(start = 8.dp)
+                                )
+                            }
                         }
                     }
+
                 }
             }
+
             SMBConnectionStatus.Disconnected -> {
                 // 显示未连接提示
                 Column(
@@ -188,6 +252,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                     // 可以添加一个按钮来触发连接
                 }
             }
+
             is SMBConnectionStatus.Error -> {
                 // 显示错误信息
                 val errorMessage = (connectionStatus as SMBConnectionStatus.Error).message

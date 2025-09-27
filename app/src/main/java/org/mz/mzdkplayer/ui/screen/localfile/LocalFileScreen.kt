@@ -23,6 +23,7 @@ import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.tool.Tools
 
 import org.mz.mzdkplayer.ui.style.myListItemColor
 import java.io.File
@@ -75,7 +76,14 @@ fun LocalFileScreen(path: String?, navController: NavHostController) {
                 leadingContent = {
                     Icon(
                         painter = if (file.isDirectory) {
-                            painterResource(R.drawable.localfile)
+                            painterResource(R.drawable.baseline_folder_24)
+                        } else if (Tools.containsVideoFormat(
+                                Tools.extractFileExtension(
+                                    file.name
+                                )
+                            )
+                        ) {
+                            painterResource(R.drawable.moviefileicon)
                         } else {
                             painterResource(R.drawable.baseline_insert_drive_file_24)
                         },

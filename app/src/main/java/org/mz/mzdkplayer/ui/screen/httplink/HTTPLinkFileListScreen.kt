@@ -246,7 +246,7 @@ fun HTTPLinkFileListScreen(
                                                 Tools.extractFileExtension(resourceName)
                                             )
                                         ) {
-                                            painterResource(R.drawable.baseline_video_file_24)
+                                            painterResource(R.drawable.moviefileicon)
                                         } else {
                                             painterResource(R.drawable.baseline_insert_drive_file_24)
                                         },
