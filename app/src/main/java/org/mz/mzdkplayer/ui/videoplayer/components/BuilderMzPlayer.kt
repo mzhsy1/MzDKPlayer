@@ -211,16 +211,16 @@ fun BuilderMzPlayer(
 @Composable
 fun rememberPlayer(context: Context, mediaUri: String, dataSourceType: String) =
     remember(mediaUri) {
-        val codecInfos = MediaCodecList(MediaCodecList.ALL_CODECS)
-        for (info in codecInfos.codecInfos) {
-            if (info.isEncoder) continue
-            for (type in info.supportedTypes) {
-                if (type.contains("avc")) {
-                    Log.i("CODEC", "Name: ${info.name}, Type: $type")
-                    // 进一步可以查询 Capabilities
-                }
-            }
-        }
+//        val codecInfos = MediaCodecList(MediaCodecList.ALL_CODECS)
+//        for (info in codecInfos.codecInfos) {
+//            if (info.isEncoder) continue
+//            for (type in info.supportedTypes) {
+//                if (type.contains("avc")) {
+//                    Log.i("CODEC", "Name: ${info.name}, Type: $type")
+//                    // 进一步可以查询 Capabilities
+//                }
+//            }
+//        }
         // 创建针对 Amlogic 芯片的 MediaCodecSelector
 //    val amlogicAwareCodecSelector =
 //        MediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunnelingDecoder ->

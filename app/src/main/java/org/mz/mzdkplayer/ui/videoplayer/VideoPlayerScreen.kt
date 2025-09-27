@@ -86,7 +86,6 @@ import java.io.InputStream
 import java.net.URL
 import kotlin.time.Duration.Companion.milliseconds
 
-//var selectedAorV by mutableStateOf("A")
 
 @OptIn(UnstableApi::class)
 @Composable

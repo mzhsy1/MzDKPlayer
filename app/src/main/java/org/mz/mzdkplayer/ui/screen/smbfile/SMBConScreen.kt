@@ -41,9 +41,11 @@ import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 
 import org.mz.mzdkplayer.logic.model.SMBConnection
+import org.mz.mzdkplayer.ui.screen.vm.FTPConnectionStatus
 import org.mz.mzdkplayer.ui.theme.TvTextField
 
 import org.mz.mzdkplayer.ui.screen.vm.SMBConViewModel
+import org.mz.mzdkplayer.ui.screen.vm.SMBConnectionStatus
 import org.mz.mzdkplayer.ui.screen.vm.SMBListViewModel
 import org.mz.mzdkplayer.ui.style.myTTFColor
 import org.mz.mzdkplayer.ui.theme.MyIconButton
@@ -84,7 +86,17 @@ fun SMBConScreen() {
                     modifier = Modifier.widthIn(100.dp,400.dp),
                     maxLines = 2
                 )
-                Icon(painter = painterResource( R.drawable.baseline_circle_24),contentDescription = null,tint=if (connectionStatus=="已连接") Color.Green else Color.Red)
+                // 状态指示灯
+                Icon(
+                    painter = painterResource(R.drawable.baseline_circle_24), // 确保有此图标资源
+                    contentDescription = null,
+                    tint = when (connectionStatus) {
+                        is SMBConnectionStatus.Connected -> Color.Green
+                        is SMBConnectionStatus.Connecting -> Color.Yellow
+                        is SMBConnectionStatus.Error -> Color.Red
+                        else -> Color.Gray // Disconnected
+                    }
+                )
             }
 
 
@@ -192,7 +204,7 @@ fun SMBConScreen() {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = fileName,
+                        text = fileName.name,
                         modifier = Modifier.fillMaxWidth(),
                         color = Color.White,
                         fontSize = 20.sp,
