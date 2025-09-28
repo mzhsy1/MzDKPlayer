@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -24,12 +25,14 @@ import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.FTPConnection
 import org.mz.mzdkplayer.tool.Tools
+import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.vm.FTPConViewModel
 import org.mz.mzdkplayer.ui.screen.vm.FTPConnectionStatus // 导入状态类
 import org.mz.mzdkplayer.ui.style.myListItemColor
 import java.net.URLEncoder
+import kotlin.text.ifEmpty
 
 @Composable
 fun FTPFileListScreen(
@@ -47,7 +50,9 @@ fun FTPFileListScreen(
     val fileList by viewModel.fileList.collectAsState()
     val connectionStatus by viewModel.connectionStatus.collectAsState()
     val currentPath by viewModel.currentPath.collectAsState()
-
+    var focusedFileName by remember { mutableStateOf<String?>(null) }
+    var focusedIsDir by remember { mutableStateOf(false) }
+    var focusedMediaUri by remember { mutableStateOf("") }
     // 当传入的 path 参数变化时，或者首次进入时，尝试加载文件列表
     LaunchedEffect(path) { // 依赖 path
         Log.d(
@@ -127,8 +132,12 @@ fun FTPFileListScreen(
 
                 } else {
                     // 已连接，显示文件列表
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        // 添加返回上一级目录的按钮
+                    Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                        LazyColumn(modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxHeight()
+                            .weight(0.7f)) {
+                            // 添加返回上一级目录的按钮
 //                    if (path != null && path.isNotEmpty()) {
 //                        item {
 //                            ListItem(
@@ -154,77 +163,115 @@ fun FTPFileListScreen(
 //                            )
 //                        }
 //                    }
-                        Log.d("fileList", fileList.toString())
+                            Log.d("fileList", fileList.toString())
 
-                        items(fileList) { file ->
-                            // FTPFile 使用 isDirectory 方法
-                            val isDirectory = file.isDirectory
-                            val fileName = file.name ?: "Unknown"
+                            items(fileList) { file ->
+                                // FTPFile 使用 isDirectory 方法
+                                val isDirectory = file.isDirectory
+                                val fileName = file.name ?: "Unknown"
 
-                            ListItem(
-                                selected = false,
-                                onClick = {
-                                    coroutineScope.launch {
-                                        if (isDirectory) {
-                                            // 构建子目录路径
-                                            val newPath = if (path.isNullOrEmpty()) {
-                                                fileName
+                                ListItem(
+                                    selected = false,
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            if (isDirectory) {
+                                                // 构建子目录路径
+                                                val newPath = if (path.isNullOrEmpty()) {
+                                                    fileName
+                                                } else {
+                                                    "${path.trimEnd('/')}/$fileName"
+                                                }
+                                                // 对路径进行编码，空路径特殊处理
+                                                val encodedNewPath =
+                                                    URLEncoder.encode(
+                                                        newPath.ifEmpty { " " },
+                                                        "UTF-8"
+                                                    )
+                                                Log.d(
+                                                    "FTPFileListScreen",
+                                                    "Navigating to subdirectory: $newPath (encoded: $encodedNewPath)"
+                                                )
+                                                // 导航到子目录，传递连接信息
+                                                navController.navigate("FTPFileListScreen/${ftpConnection.ip}/${ftpConnection.username}/${ftpConnection.password}/${ftpConnection.port}/$encodedNewPath")
                                             } else {
-                                                "${path.trimEnd('/')}/$fileName"
-                                            }
-                                            // 对路径进行编码，空路径特殊处理
-                                            val encodedNewPath =
-                                                URLEncoder.encode(newPath.ifEmpty { " " }, "UTF-8")
-                                            Log.d(
-                                                "FTPFileListScreen",
-                                                "Navigating to subdirectory: $newPath (encoded: $encodedNewPath)"
-                                            )
-                                            // 导航到子目录，传递连接信息
-                                            navController.navigate("FTPFileListScreen/${ftpConnection.ip}/${ftpConnection.username}/${ftpConnection.password}/${ftpConnection.port}/$encodedNewPath")
-                                        } else {
-                                            // 处理文件点击 - 导航到 VideoPlayer
-                                            val fullFileUrl = viewModel.getResourceFullUrl(fileName)
-                                            Log.d(
-                                                "FTPFileListScreen",
-                                                "Full file URL: $fullFileUrl"
-                                            )
+                                                // 处理文件点击 - 导航到 VideoPlayer
+                                                val fullFileUrl =
+                                                    viewModel.getResourceFullUrl(fileName)
+                                                Log.d(
+                                                    "FTPFileListScreen",
+                                                    "Full file URL: $fullFileUrl"
+                                                )
 //                                            val encodedFileUrl = URLEncoder.encode(
 //                                                "ftp://${ftpConnection.username}:${ftpConnection.password}@${ftpConnection.ip}:${ftpConnection.port}/",
 //                                                "UTF-8"
 //                                            )
-                                            val encodedFileUrl = URLEncoder.encode(
-                                                fullFileUrl,
-                                                "UTF-8"
-                                            )
-                                            //Log.d("FTPFileListScreen", "Navigating to video player: $fullFileUrl (encoded: $encodedFileUrl)")
-//                                            // 导航到视频播放器
-                                            navController.navigate("VideoPlayer/$encodedFileUrl/FTP")
-                                        }
-                                    }
-                                },
-                                colors = myListItemColor(),
-                                modifier = Modifier.padding(10.dp),
-                                scale = ListItemDefaults.scale(scale = 1.0f, focusedScale = 1.02f),
-                                leadingContent = {
-                                    Icon(
-                                        painter = if (isDirectory) {
-                                            painterResource(R.drawable.baseline_folder_24)
-                                        } else if (Tools.containsVideoFormat(
-                                                Tools.extractFileExtension(
-                                                    fileName
+                                                val encodedFileUrl = URLEncoder.encode(
+                                                    fullFileUrl,
+                                                    "UTF-8"
                                                 )
-                                            )
-                                        ) {
-                                            painterResource(R.drawable.moviefileicon)
-                                        } else {
-                                            painterResource(R.drawable.baseline_insert_drive_file_24)
-                                        },
-                                        contentDescription = null
-                                    )
-                                },
-                                headlineContent = { Text(fileName) }
-                                // supportingContent = { Text(file.rawListing ?: "") } // 可以显示原始信息
+                                                //Log.d("FTPFileListScreen", "Navigating to video player: $fullFileUrl (encoded: $encodedFileUrl)")
+//                                            // 导航到视频播放器
+                                                navController.navigate("VideoPlayer/$encodedFileUrl/FTP")
+                                            }
+                                        }
+                                    },
+                                    colors = myListItemColor(),
+                                    modifier = Modifier.padding(10.dp).onFocusChanged {
+                                        if (it.isFocused) {
+                                            focusedFileName = file.name;
+                                            focusedIsDir = file.isDirectory
+                                            focusedMediaUri = viewModel.getResourceFullUrl(fileName)
+                                        }
+                                    },
+                                    scale = ListItemDefaults.scale(
+                                        scale = 1.0f,
+                                        focusedScale = 1.02f
+                                    ),
+                                    leadingContent = {
+                                        Icon(
+                                            painter = if (isDirectory) {
+                                                painterResource(R.drawable.baseline_folder_24)
+                                            } else if (Tools.containsVideoFormat(
+                                                    Tools.extractFileExtension(
+                                                        fileName
+                                                    )
+                                                )
+                                            ) {
+                                                painterResource(R.drawable.moviefileicon)
+                                            } else {
+                                                painterResource(R.drawable.baseline_insert_drive_file_24)
+                                            },
+                                            contentDescription = null
+                                        )
+                                    },
+                                    headlineContent = { Text(fileName) }
+                                    // supportingContent = { Text(file.rawListing ?: "") } // 可以显示原始信息
+                                )
+                            }
+                        }
+                        Column(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .weight(0.3f),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            VideoBigIcon(
+                                focusedIsDir,
+                                focusedFileName,
+                                modifier = Modifier
+                                    .height(200.dp)
+                                    .fillMaxWidth()
                             )
+                            focusedFileName?.let {
+                                Text(
+                                    it,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                    modifier = Modifier.padding(start = 8.dp)
+                                )
+                            }
                         }
                     }
                 }

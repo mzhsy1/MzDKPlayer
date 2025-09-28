@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
@@ -42,14 +43,19 @@ import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
 
 import org.mz.mzdkplayer.R
+
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
+import org.mz.mzdkplayer.tool.builderPlayer
+import org.mz.mzdkplayer.tool.setupPlayer
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 
 import org.mz.mzdkplayer.ui.screen.vm.SMBConViewModel
 import org.mz.mzdkplayer.ui.screen.vm.SMBConnectionStatus
 import org.mz.mzdkplayer.ui.style.myListItemColor
+import org.mz.mzdkplayer.ui.videoplayer.components.BuilderMzPlayer
+import org.mz.mzdkplayer.ui.videoplayer.components.rememberPlayer
 import java.net.URLDecoder
 import java.net.URLEncoder
 
@@ -61,7 +67,9 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
     val files by viewModel.fileList.collectAsState()
     val connectionStatus by viewModel.connectionStatus.collectAsState()
     var focusedFileName by remember { mutableStateOf<String?>(null) }
-    var focusedIsDir by remember { mutableStateOf(false) }
+    var focusedIsDir by remember { mutableStateOf(true) }
+    var focusedMediaUri by remember { mutableStateOf("") }
+    var exoPlayer: ExoPlayer? by remember { mutableStateOf(null) }
     LaunchedEffect(path, connectionStatus) {
 
         val decodedPath = URLDecoder.decode(path ?: "", "UTF-8")
@@ -99,20 +107,29 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                 Log.e("SMBFileListScreen", "Error state: $errorMessage")
                 Toast.makeText(context, "SMB 错误: $errorMessage", Toast.LENGTH_LONG).show()
             }
-
             SMBConnectionStatus.LoadingFile -> {
-
             }
-
             SMBConnectionStatus.LoadingFiled -> {
-
-
             }
+        }
+    }
+    LaunchedEffect(focusedFileName, focusedIsDir) {
+        exoPlayer?.release()
+
+
+        if (!focusedIsDir&&Tools.containsVideoFormat(
+                Tools.extractFileExtension(focusedFileName)
+            )) {
+            Log.d("focusedIsDir", false.toString())
+            Log.d("focusedIsDir","获取媒体信息")
+            exoPlayer = builderPlayer(mediaUri = focusedMediaUri,context, dataSourceType = "SMB")
+            setupPlayer(exoPlayer!!,focusedMediaUri,"SMB",context)
         }
     }
     DisposableEffect(Unit) {
         onDispose {
             // 可选：在离开屏幕时断开连接
+            exoPlayer?.release()
             viewModel.disconnectSMB()
             Log.d("SMBFileListScreen", "销毁")
         }
@@ -126,15 +143,12 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
             is SMBConnectionStatus.Connecting -> {
                 LoadingScreen("正在连接SMB服务器")
             }
-
             is SMBConnectionStatus.Connected, is SMBConnectionStatus.LoadingFiled -> {
                 if (files.isEmpty()) {
-
                     FileEmptyScreen("此目录为空")
 
-
                 } else {
-                    Row(Modifier.fillMaxSize(),  verticalAlignment = Alignment.CenterVertically ) {
+                    Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                         LazyColumn(
                             modifier = Modifier
                                 .padding(16.dp)
@@ -176,9 +190,12 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                     modifier = Modifier
                                         .padding(10.dp)
                                         .onFocusChanged {
-                                            if (it.isFocused) focusedFileName =
-                                                file.name;focusedIsDir =
-                                            file.isDirectory
+                                            if (it.isFocused) {
+                                                focusedFileName = file.name;
+                                                focusedIsDir = file.isDirectory
+                                                focusedMediaUri = "smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}"
+                                            }
+
                                         },
                                     scale = ListItemDefaults.scale(
                                         scale = 1.0f,
@@ -194,16 +211,19 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                             ) {
 
                                                 painterResource(R.drawable.moviefileicon)
-                                            }
-                                            else {
+                                            } else {
                                                 painterResource(R.drawable.baseline_insert_drive_file_24)
                                             },
                                             contentDescription = null,
 
                                             )
                                     },
-                                    headlineContent = { Text(file.name, maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis, fontSize = 12.sp) }
+                                    headlineContent = {
+                                        Text(
+                                            file.name, maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis, fontSize = 12.sp
+                                        )
+                                    }
                                 )
                             }
 

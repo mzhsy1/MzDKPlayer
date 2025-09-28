@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -26,6 +27,7 @@ import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.NFSConnection
 import org.mz.mzdkplayer.tool.Tools
+import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.vm.NFSConViewModel
@@ -56,6 +58,9 @@ fun NFSFileListScreen(
     // 收集 ViewModel 中的状态
     val fileList by viewModel.fileList.collectAsState()
     val connectionStatus by viewModel.connectionStatus.collectAsState()
+    var focusedFileName by remember { mutableStateOf<String?>(null) }
+    var focusedIsDir by remember { mutableStateOf(false) }
+    var focusedMediaUri by remember { mutableStateOf("") }
     // ViewModel 内部可能需要维护当前完整路径或子路径，这里假设它维护的是相对于共享根的子路径
     //val currentSubPath by viewModel.currentSubPath.collectAsState()
 
@@ -134,82 +139,143 @@ fun NFSFileListScreen(
                     FileEmptyScreen("此目录为空")
                 } else {
                     // 已连接，显示文件列表
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                        LazyColumn( modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxHeight()
+                            .weight(0.7f)) {
 
-                        Log.d("NFSFileListScreen", "Displaying fileList: $fileList")
+                            Log.d("NFSFileListScreen", "Displaying fileList: $fileList")
 
-                        items(fileList) { file ->
-                            // 假设有一个类似 FTPFile 的 NFSFile 类，或使用通用文件信息类
-                            // 这里假设 file 有 isDirectory: Boolean 和 name: String? 属性
-                            val isDirectory = file.isDirectory
-                            val fileName = file.name ?: "Unknown"
+                            items(fileList) { file ->
+                                // 假设有一个类似 FTPFile 的 NFSFile 类，或使用通用文件信息类
+                                // 这里假设 file 有 isDirectory: Boolean 和 name: String? 属性
+                                val isDirectory = file.isDirectory
+                                val fileName = file.name ?: "Unknown"
 
-                            ListItem(
-                                selected = false,
-                                onClick = {
-                                    coroutineScope.launch {
-                                        val newSubPath = file.path
+                                ListItem(
+                                    selected = false,
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            val newSubPath = file.path
 
-                                        // 对新路径进行编码
-                                        val encodedNewSubPath =
-                                            URLEncoder.encode(newSubPath.ifEmpty { " " }, "UTF-8")
-                                        if (isDirectory) {
-                                            // 构建新的子路径
-
-                                            Log.d(
-                                                "NFSFileListScreen",
-                                                "Navigating to subdirectory: ${file.path} (encoded: $fileName$fileName)"
-                                            )
-                                            // 导航到子目录，传递连接信息和新的子路径
-                                            // 注意 URL 路径结构可能需要根据你的导航图调整
-                                            navController.navigate("NFSFileListScreen/${nfsConnection.serverAddress}/${URLEncoder.encode(nfsConnection.shareName,"UTF-8")}/$encodedNewSubPath")
-                                        } else {
-                                            // 处理文件点击 - 导航到 VideoPlayer
-                                            // 构造完整的 NFS URL 或文件系统路径
-                                            // 例如: nfs://<ip>/<sharePath>/<subPath>/<fileName>
-                                            // 或者如果已挂载:nfs://192.168.1.4:/fs/1000/nfs/:/moves/as.mkv
-                                            Log.d(
-                                                "NFSFileListScreen",
-                                                "Navigating to subdirectory: ${file.path} (encoded: $fileName$fileName)"
-                                            )
-                                            val fullFileUrl = "nfs://${nfsConnection.serverAddress}:${URLEncoder.encode(nfsConnection.shareName,"UTF-8")}:${URLEncoder.encode(newSubPath.ifEmpty { " " }, "UTF-8")}"
-                                            Log.d(
-                                                "NFSFileListScreen",
-                                                "Full file URL: $fullFileUrl"
-                                            )
-
-                                            val encodedFileUrl = URLEncoder.encode(
-                                                fullFileUrl,
-                                                "UTF-8"
-                                            )
-                                            // 导航到视频播放器
-                                            navController.navigate("VideoPlayer/$encodedFileUrl/NFS")
-                                        }
-                                    }
-                                },
-                                colors = myListItemColor(),
-                                modifier = Modifier.padding(10.dp),
-                                scale = ListItemDefaults.scale(scale = 1.0f, focusedScale = 1.02f),
-                                leadingContent = {
-                                    Icon(
-                                        painter = if (isDirectory) {
-                                            painterResource(R.drawable.baseline_folder_24)
-                                        } else if (Tools.containsVideoFormat(
-                                                Tools.extractFileExtension(
-                                                    fileName
+                                            // 对新路径进行编码
+                                            val encodedNewSubPath =
+                                                URLEncoder.encode(
+                                                    newSubPath.ifEmpty { " " },
+                                                    "UTF-8"
                                                 )
-                                            )
-                                        ) {
-                                            painterResource(R.drawable.moviefileicon)
-                                        } else {
-                                            painterResource(R.drawable.baseline_insert_drive_file_24)
-                                        },
-                                        contentDescription = null
-                                    )
-                                },
-                                headlineContent = { Text(fileName) }
-                                // supportingContent = { Text(file.rawListing ?: "") } // 可以显示原始信息
+                                            if (isDirectory) {
+                                                // 构建新的子路径
+
+//                                                Log.d(
+//                                                    "NFSFileListScreen",
+//                                                    "Navigating to subdirectory: ${file.path} (encoded: $fileName$fileName)"
+//                                                )
+                                                // 导航到子目录，传递连接信息和新的子路径
+                                                // 注意 URL 路径结构可能需要根据你的导航图调整
+                                                navController.navigate(
+                                                    "NFSFileListScreen/${nfsConnection.serverAddress}/${
+                                                        URLEncoder.encode(
+                                                            nfsConnection.shareName,
+                                                            "UTF-8"
+                                                        )
+                                                    }/$encodedNewSubPath"
+                                                )
+                                            } else {
+                                                // 处理文件点击 - 导航到 VideoPlayer
+                                                // 构造完整的 NFS URL 或文件系统路径
+                                                // 例如: nfs://<ip>/<sharePath>/<subPath>/<fileName>
+                                                // 或者如果已挂载:nfs://192.168.1.4:/fs/1000/nfs/:/moves/as.mkv
+                                                Log.d(
+                                                    "NFSFileListScreen",
+                                                    "Navigating to subdirectory: ${file.path} (encoded: $fileName$fileName)"
+                                                )
+                                                val fullFileUrl =
+                                                    "nfs://${nfsConnection.serverAddress}:${
+                                                        URLEncoder.encode(
+                                                            nfsConnection.shareName,
+                                                            "UTF-8"
+                                                        )
+                                                    }:${
+                                                        URLEncoder.encode(
+                                                            newSubPath.ifEmpty { " " },
+                                                            "UTF-8"
+                                                        )
+                                                    }"
+                                                Log.d(
+                                                    "NFSFileListScreen",
+                                                    "Full file URL: $fullFileUrl"
+                                                )
+
+                                                val encodedFileUrl = URLEncoder.encode(
+                                                    fullFileUrl,
+                                                    "UTF-8"
+                                                )
+                                                // 导航到视频播放器
+                                                navController.navigate("VideoPlayer/$encodedFileUrl/NFS")
+                                            }
+                                        }
+                                    },
+                                    colors = myListItemColor(),
+                                    modifier = Modifier.padding(10.dp).onFocusChanged {
+                                        if (it.isFocused) {
+                                            focusedFileName = file.name;
+                                            focusedIsDir = file.isDirectory
+                                            focusedMediaUri =
+                                                "nfs://${nfsConnection.serverAddress}:${nfsConnection.shareName}:${file.path.ifEmpty { " " }}"
+                                        }
+
+                                    },
+                                    scale = ListItemDefaults.scale(
+                                        scale = 1.0f,
+                                        focusedScale = 1.02f
+                                    ),
+                                    leadingContent = {
+                                        Icon(
+                                            painter = if (isDirectory) {
+                                                painterResource(R.drawable.baseline_folder_24)
+                                            } else if (Tools.containsVideoFormat(
+                                                    Tools.extractFileExtension(
+                                                        fileName
+                                                    )
+                                                )
+                                            ) {
+                                                painterResource(R.drawable.moviefileicon)
+                                            } else {
+                                                painterResource(R.drawable.baseline_insert_drive_file_24)
+                                            },
+                                            contentDescription = null
+                                        )
+                                    },
+                                    headlineContent = { Text(fileName) }
+                                    // supportingContent = { Text(file.rawListing ?: "") } // 可以显示原始信息
+                                )
+                            }
+                        }
+                        Column(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .weight(0.3f),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            VideoBigIcon(
+                                focusedIsDir,
+                                focusedFileName,
+                                modifier = Modifier
+                                    .height(200.dp)
+                                    .fillMaxWidth()
                             )
+                            focusedFileName?.let {
+                                Text(
+                                    it,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                    modifier = Modifier.padding(start = 8.dp)
+                                )
+                            }
                         }
                     }
                 }
