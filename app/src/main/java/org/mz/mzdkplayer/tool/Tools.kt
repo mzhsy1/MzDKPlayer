@@ -45,7 +45,7 @@ object Tools {
         if (focusedIsDir) {
             Image(
                 modifier = modifier,
-                painter = painterResource(R.drawable.folderbig),
+                painter = painterResource(R.drawable.foldernew),
                 // tint = Color.White,
                 contentDescription = null,
             )
@@ -53,20 +53,45 @@ object Tools {
             when (extractFileExtension(fileName)) {
                 "mkv" -> Image(
                     modifier = modifier,
-                    painter = painterResource(R.drawable.mkvtype),
+                    painter = painterResource(R.drawable.mkvnew),
                     // tint = Color.White,
                     contentDescription = null,
                 )
 
                 "mp4" -> Image(
                     modifier = modifier,
-                    painter = painterResource(R.drawable.mp4type),
+                    painter = painterResource(R.drawable.mp4new),
+                    contentDescription = null,
+                )
+                "flv" -> Image(
+                    modifier = modifier,
+                    painter = painterResource(R.drawable.flvnew),
+                    contentDescription = null,
+                )
+                "3gp" -> Image(
+                    modifier = modifier,
+                    painter = painterResource(R.drawable.n3gpnew),
+                    contentDescription = null,
+                )
+                "ts" -> Image(
+                    modifier = modifier,
+                    painter = painterResource(R.drawable.tsnew),
+                    contentDescription = null,
+                )
+                "m2ts" -> Image(
+                    modifier = modifier,
+                    painter = painterResource(R.drawable.m2tsnew),
+                    contentDescription = null,
+                )
+                "mov" -> Image(
+                    modifier = modifier,
+                    painter = painterResource(R.drawable.movnew),
                     contentDescription = null,
                 )
 
                 else -> Image(
                     modifier = modifier,
-                    painter = painterResource(R.drawable.file1),
+                    painter = painterResource(R.drawable.filenew),
                     contentDescription = null,
                 )
             }

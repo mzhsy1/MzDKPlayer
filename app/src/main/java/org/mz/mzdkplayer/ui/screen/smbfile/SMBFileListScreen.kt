@@ -185,7 +185,6 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                         focusedScale = 1.02f
                                     ),
                                     leadingContent = {
-                                        //Log.d("SMBSc", Tools.extractFileExtension(file.name))
                                         Icon(
                                             painter = if (file.isDirectory) {
                                                 painterResource(R.drawable.baseline_folder_24)
@@ -193,11 +192,9 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                                     Tools.extractFileExtension(file.name)
                                                 )
                                             ) {
-                                                // Log.d("SMBSc", "R.drawable.mkv")
+
                                                 painterResource(R.drawable.moviefileicon)
                                             }
-//                        else if (containsVideoFormat(Tools.extractFileExtension(file.name))) {
-//                            painterResource(R.drawable.baseline_video_file_24)
                                             else {
                                                 painterResource(R.drawable.baseline_insert_drive_file_24)
                                             },
@@ -205,7 +202,8 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
 
                                             )
                                     },
-                                    headlineContent = { Text(file.name) }
+                                    headlineContent = { Text(file.name, maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis, fontSize = 12.sp) }
                                 )
                             }
 
@@ -230,9 +228,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                     it,
                                     color = Color.White,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 20.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                                    fontSize = 18.sp,
                                     modifier = Modifier.padding(start = 8.dp)
                                 )
                             }
