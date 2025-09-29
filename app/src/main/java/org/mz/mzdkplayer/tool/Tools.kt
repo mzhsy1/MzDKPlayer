@@ -105,6 +105,13 @@ object Tools {
         }
     }
 
+    fun containsAudioFormat(input: String): Boolean {
+        val audioFormats = listOf("MP3", "FLAC","WAV")
+        return audioFormats.any { format ->
+            input.contains(format, ignoreCase = true)
+        }
+    }
+
     /**
      * 根据音频轨道的 Format 信息推断具体的音频格式类型
      * @param format 音频轨道的 Format 对象

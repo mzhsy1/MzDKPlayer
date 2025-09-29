@@ -50,7 +50,9 @@ fun setupPlayer(player: ExoPlayer, mediaUri: String, dataSourceType: String, con
     // 7. 添加 Player.EventListener 来监听准备完成等事件
     player.addListener(object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
+
             when (playbackState) {
+
                 Player.STATE_READY -> {
                     Log.d("MediaInfo", "Player is ready. Extracting information...")
                     val extractedMap = extractAndLogMediaInfo(player)
@@ -99,7 +101,10 @@ fun setupPlayer(player: ExoPlayer, mediaUri: String, dataSourceType: String, con
             // 传递错误信息给调用者
             onError("Player error: ${error.message}")
         }
+
+
     })
+
     return player
 }
 

@@ -66,9 +66,11 @@ import org.mz.mzdkplayer.tool.handleDPadKeyEvents
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 import org.mz.mzdkplayer.ui.videoplayer.components.AkDanmakuPlayer
 import org.mz.mzdkplayer.ui.audioplayer.components.AudioTrackPanel
-import org.mz.mzdkplayer.ui.audioplayer.components.BuilderMzPlayer
+import org.mz.mzdkplayer.ui.screen.vm.AudioPlayerViewModel
+import org.mz.mzdkplayer.ui.videoplayer.components.BuilderMzPlayer
+
 import org.mz.mzdkplayer.ui.videoplayer.components.SubtitleTrackPanel
-import org.mz.mzdkplayer.ui.audioplayer.components.rememberPlayer
+
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerControlsIcon
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerMainFrame
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerMediaTitle
@@ -78,6 +80,7 @@ import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulse
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulseState
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerSeeker
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerState
+import org.mz.mzdkplayer.ui.videoplayer.components.rememberPlayer
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerPulseState
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerState
 import java.io.InputStream
@@ -309,15 +312,22 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
 
         )
     LaunchedEffect(Unit) {
+
+        exoPlayer.addListener(object : Player.Listener {
+            override fun onIsPlayingChanged(isExoPlaying: Boolean) {
+                // super.onIsPlayingChanged(isPlaying)
+                isPlaying = isExoPlaying
+
+            }
+
+        })
         while (true) {
             delay(200)
             contentCurrentPosition = exoPlayer.currentPosition
-            isPlaying = exoPlayer.isPlaying
+           // isPlaying = exoPlayer.isPlaying
             // Log.d("isPlay",isPlaying.toString())
         }
         // 4. 启动一个协程来定期检查字幕
-
-
     }
 //    // 模拟接收弹幕
 //    LaunchedEffect(Unit) {
@@ -616,6 +626,8 @@ private fun Modifier.dPadEvents(
         videoPlayerState.showControls()
     }
 )
+
+
 
 
 @OptIn(UnstableApi::class)

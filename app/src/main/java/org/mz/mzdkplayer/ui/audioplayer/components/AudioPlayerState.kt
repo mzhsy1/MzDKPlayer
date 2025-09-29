@@ -50,7 +50,7 @@ class AudioPlayerState internal constructor(
     suspend fun observe() {
         channel.consumeAsFlow()
             .debounce { it.toLong() * 1000 }
-            .collect {_controlsVisible = false }
+            .collect {_controlsVisible = true }
     }
 }
 

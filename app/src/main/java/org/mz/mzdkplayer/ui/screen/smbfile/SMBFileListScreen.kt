@@ -192,6 +192,10 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                             Log.d("file.fullPath", file.fullPath)
                                             //val  smbMediaInfoExtractor = SmbMediaInfoExtractor(context)
                                             // smbMediaInfoExtractor.extractMetadata(mediaUri = "smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}".toUri())
+                                            if (Tools.containsVideoFormat(
+                                                    Tools.extractFileExtension(file.name)
+                                                )
+                                            ){
                                             navController.navigate(
                                                 "VideoPlayer/${
                                                     URLEncoder.encode(
@@ -199,7 +203,20 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                                         "UTF-8"
                                                     )
                                                 }/SMB"
-                                            )
+                                            )} else if (Tools.containsAudioFormat(
+                                                    Tools.extractFileExtension(file.name)
+                                                )){
+                                                navController.navigate(
+                                                    "AudioPlayer/${
+                                                        URLEncoder.encode(
+                                                            "smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}",
+                                                            "UTF-8"
+                                                        )
+                                                    }/SMB"
+                                                )
+                                            } else{
+                                                Toast.makeText(context, "不支持的格式", Toast.LENGTH_SHORT).show()
+                                            }
                                         }
                                     },
                                     colors = myListItemColor(),
