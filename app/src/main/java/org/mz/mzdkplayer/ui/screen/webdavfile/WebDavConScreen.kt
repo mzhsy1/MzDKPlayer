@@ -111,7 +111,7 @@ fun WebDavConScreen(
                 value = baseUrl,
                 onValueChange = { baseUrl = it },
                 modifier = Modifier.fillMaxWidth(0.5f),
-                placeholder = "Base URL (e.g., https://...)",
+                placeholder = "Base URL (e.g., https://192.168.1.4:5006)",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )
