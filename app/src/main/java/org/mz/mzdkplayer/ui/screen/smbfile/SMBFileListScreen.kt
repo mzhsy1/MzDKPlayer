@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -56,8 +55,6 @@ import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.vm.SMBConViewModel
 import org.mz.mzdkplayer.ui.screen.vm.SMBConnectionStatus
 import org.mz.mzdkplayer.ui.style.myListItemColor
-import org.mz.mzdkplayer.ui.videoplayer.components.BuilderMzPlayer
-import org.mz.mzdkplayer.ui.videoplayer.components.rememberPlayer
 import java.net.URLDecoder
 import java.net.URLEncoder
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.mz.mzdkplayer.ui.videoplayer.components
+package org.mz.mzdkplayer.ui.audioplayer.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -36,16 +36,16 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import org.mz.mzdkplayer.ui.audioplayer.components.CinematicBackground
+
 
 /**
  * Handles the visibility and animation of the controls.
  */
 @Composable
-fun VideoPlayerOverlay(
+fun AudioPlayerOverlay(
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
-    state: VideoPlayerState = rememberVideoPlayerState(),
+    state: AudioPlayerState = rememberAudioPlayerState(),
     focusRequester: FocusRequester = remember { FocusRequester() },
     centerButton: @Composable () -> Unit = {},
     subtitles: @Composable () -> Unit = {},

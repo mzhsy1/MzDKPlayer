@@ -65,21 +65,19 @@ import org.mz.mzdkplayer.tool.SmbUtils
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 import org.mz.mzdkplayer.ui.videoplayer.components.AkDanmakuPlayer
-import org.mz.mzdkplayer.ui.videoplayer.components.AudioTrackPanel
-import org.mz.mzdkplayer.ui.videoplayer.components.BuilderMzPlayer
+import org.mz.mzdkplayer.ui.audioplayer.components.AudioTrackPanel
+import org.mz.mzdkplayer.ui.audioplayer.components.BuilderMzPlayer
 import org.mz.mzdkplayer.ui.videoplayer.components.SubtitleTrackPanel
+import org.mz.mzdkplayer.ui.audioplayer.components.rememberPlayer
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerControlsIcon
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerMainFrame
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerMediaTitle
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerMediaTitleType
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerOverlay
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulse
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulse.Type.BACK
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulse.Type.FORWARD
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulseState
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerSeeker
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerState
-import org.mz.mzdkplayer.ui.videoplayer.components.rememberPlayer
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerPulseState
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerState
 import java.io.InputStream
@@ -602,13 +600,13 @@ private fun Modifier.dPadEvents(
     onLeft = {
         if (!videoPlayerState.controlsVisible) {
             exoPlayer.seekBack()
-            pulseState.setType(BACK)
+            pulseState.setType(VideoPlayerPulse.Type.BACK)
         }
     },
     onRight = {
         if (!videoPlayerState.controlsVisible) {
             exoPlayer.seekForward()
-            pulseState.setType(FORWARD)
+            pulseState.setType(VideoPlayerPulse.Type.FORWARD)
         }
     },
     onUp = { if (videoPlayerViewModel.atpFocus) videoPlayerState.showControls() },

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.mz.mzdkplayer.ui.videoplayer.components
+package org.mz.mzdkplayer.ui.audioplayer.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -33,9 +33,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
-
 @Composable
-fun VideoPlayerMainFrame(
+fun AudioPlayerMainFrame(
     mediaTitle: @Composable () -> Unit,
     seeker: @Composable () -> Unit,
     mediaActions: @Composable () -> Unit = {},
@@ -64,7 +63,7 @@ fun VideoPlayerMainFrame(
 @Preview(device = "id:tv_4k")
 @Composable
 private fun MediaPlayerMainFramePreviewLayout() {
-    VideoPlayerMainFrame(
+    AudioPlayerMainFrame(
         mediaTitle = {
             Box(
                 Modifier
@@ -105,7 +104,7 @@ private fun MediaPlayerMainFramePreviewLayout() {
 @Preview(device = "id:tv_4k")
 @Composable
 private fun MediaPlayerMainFramePreviewLayoutWithoutMore() {
-    VideoPlayerMainFrame(
+    AudioPlayerMainFrame(
         mediaTitle = {
             Box(
                 Modifier

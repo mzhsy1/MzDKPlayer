@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.mz.mzdkplayer.ui.videoplayer.components
+package org.mz.mzdkplayer.ui.audioplayer.components
 
 import androidx.annotation.IntRange
 import androidx.compose.runtime.Composable
@@ -29,7 +29,7 @@ import kotlinx.coroutines.channels.Channel.Factory.CONFLATED
 import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.flow.debounce
 
-class VideoPlayerState internal constructor(
+class AudioPlayerState internal constructor(
     @IntRange(from = 0)
     private val hideSeconds: Int
 ) {
@@ -41,7 +41,7 @@ class VideoPlayerState internal constructor(
         channel.trySend(seconds)
     }
     fun hideControls() {
-        _controlsVisible = false
+       _controlsVisible = false
     }
 
     private val channel = Channel<Int>(CONFLATED)
@@ -50,20 +50,20 @@ class VideoPlayerState internal constructor(
     suspend fun observe() {
         channel.consumeAsFlow()
             .debounce { it.toLong() * 1000 }
-            .collect { _controlsVisible = false }
+            .collect {_controlsVisible = false }
     }
 }
 
 /**
- * Create and remember a [org.mz.mzdkplayer.ui.audioplayer.components.VideoPlayerState] instance. Useful when trying to control the state of
+ * Create and remember a [org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerState] instance. Useful when trying to control the state of
  * the [org.mz.mzdkplayer.ui.audioplayer.components.VideoPlayerOverlay]-related composable.
- * @return A remembered instance of [org.mz.mzdkplayer.ui.audioplayer.components.VideoPlayerState].
+ * @return A remembered instance of [org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerState].
  * @param hideSeconds How many seconds should the controls be visible before being hidden.
  * */
 @Composable
-fun rememberVideoPlayerState(@IntRange(from = 0) hideSeconds: Int = 2) =
+fun rememberAudioPlayerState(@IntRange(from = 0) hideSeconds: Int = 2) =
     remember {
-        VideoPlayerState(
+        AudioPlayerState(
             hideSeconds = hideSeconds
         )
     }

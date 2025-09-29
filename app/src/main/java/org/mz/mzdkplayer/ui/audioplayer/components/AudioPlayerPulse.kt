@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.mz.mzdkplayer.ui.videoplayer.components
+package org.mz.mzdkplayer.ui.audioplayer.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.size
@@ -38,20 +38,20 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.flow.debounce
 import org.mz.mzdkplayer.R
-import org.mz.mzdkplayer.ui.audioplayer.components.AudioPlayerPulse
 
-object VideoPlayerPulse {
+
+object AudioPlayerPulse {
     enum class Type { FORWARD, BACK, NONE }
 }
 
 @Composable
-fun VideoPlayerPulse(
-    state: VideoPlayerPulseState = rememberVideoPlayerPulseState()
+fun AudioPlayerPulse(
+    state: AudioPlayerPulseState = rememberAudioPlayerPulseState()
 ) {
     val icon = when (state.type) {
-        VideoPlayerPulse.Type.FORWARD -> painterResource(R.drawable.baseline_arrow_forward_ios_24)
-        VideoPlayerPulse.Type.BACK -> painterResource(R.drawable.baseline_arrow_back_ios_new_24)
-        VideoPlayerPulse.Type.NONE -> null
+        AudioPlayerPulse.Type.FORWARD -> painterResource(R.drawable.baseline_arrow_forward_ios_24)
+        AudioPlayerPulse.Type.BACK -> painterResource(R.drawable.baseline_arrow_back_ios_new_24)
+        AudioPlayerPulse.Type.NONE -> null
     }
     if (icon != null) {
         Icon(
@@ -66,9 +66,9 @@ fun VideoPlayerPulse(
     }
 }
 
-class VideoPlayerPulseState {
-    private var _type by mutableStateOf(VideoPlayerPulse.Type.NONE)
-    val type: VideoPlayerPulse.Type get() = _type
+class AudioPlayerPulseState {
+    private var _type by mutableStateOf(AudioPlayerPulse.Type.NONE)
+    val type: AudioPlayerPulse.Type get() = _type
 
     private val channel = Channel<Unit>(Channel.CONFLATED)
 
@@ -76,15 +76,16 @@ class VideoPlayerPulseState {
     suspend fun observe() {
         channel.consumeAsFlow()
             .debounce(2.seconds)
-            .collect { _type = VideoPlayerPulse.Type.NONE }
+            .collect { _type = AudioPlayerPulse.Type.NONE
+            }
     }
 
-    fun setType(type: VideoPlayerPulse.Type) {
-        _type = type
+    fun setType(type: AudioPlayerPulse.Type) {
+         _type = type
         channel.trySend(Unit)
     }
 }
 
 @Composable
-fun rememberVideoPlayerPulseState() =
-    remember { VideoPlayerPulseState() }.also { LaunchedEffect(it) { it.observe() } }
+fun rememberAudioPlayerPulseState() =
+    remember { AudioPlayerPulseState() }.also { LaunchedEffect(it) { it.observe() } }

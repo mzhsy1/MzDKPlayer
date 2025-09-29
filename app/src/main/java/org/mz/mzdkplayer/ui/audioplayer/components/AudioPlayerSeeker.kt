@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.mz.mzdkplayer.ui.videoplayer.components
+package org.mz.mzdkplayer.ui.audioplayer.components
 
 import org.mz.mzdkplayer.R
 import androidx.compose.foundation.layout.Row
@@ -29,9 +29,9 @@ import androidx.compose.ui.res.painterResource
 import kotlin.time.Duration
 
 @Composable
-fun VideoPlayerSeeker(
+fun AudioPlayerSeeker(
     focusRequester: FocusRequester,
-    state: VideoPlayerState,
+    state: AudioPlayerState,
     isPlaying: Boolean,
     onPlayPauseToggle: (Boolean) -> Unit,
     onSeek: (Float) -> Unit,
@@ -58,7 +58,7 @@ fun VideoPlayerSeeker(
     Row(
         verticalAlignment = Alignment.CenterVertically
     ) {
-        VideoPlayerControlsIcon(
+        AudioPlayerControlsIcon(
             modifier = Modifier.focusRequester(focusRequester),
             icon = if (!isPlaying) painterResource(id = R.drawable.baseline_play_arrow_24) else painterResource(
                 id = R.drawable.baseline_pause_24
@@ -67,13 +67,13 @@ fun VideoPlayerSeeker(
             state = state,
             isPlaying = isPlaying,
         )
-        VideoPlayerControllerText(text = contentProgressString)
-        VideoPlayerControllerIndicator(
+        AudioPlayerControllerText(text = contentProgressString)
+        AudioPlayerControllerIndicator(
             progress = (contentProgress / contentDuration).toFloat(),
             onSeek = onSeek,
             state = state
         )
-        VideoPlayerControllerText(text = contentDurationString)
+        AudioPlayerControllerText(text = contentDurationString)
     }
 }
 
