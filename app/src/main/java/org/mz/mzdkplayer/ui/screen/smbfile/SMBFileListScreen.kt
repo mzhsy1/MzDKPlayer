@@ -41,6 +41,8 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 import org.mz.mzdkplayer.R
 
@@ -121,20 +123,26 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                 Tools.extractFileExtension(focusedFileName)
             )) {
             Log.d("focusedIsDir", false.toString())
-            Log.d("focusedIsDir","获取媒体信息")
-            exoPlayer = builderPlayer(mediaUri = focusedMediaUri,context, dataSourceType = "SMB")
-            setupPlayer(exoPlayer!!, focusedMediaUri, "SMB", context, { mediaInfoMap ->
-                // 在这里处理获取到的媒体信息
-               Log.d("focusedIsDir", mediaInfoMap.toString())
+            Log.d("focusedIsDir", "获取媒体信息")
+            withContext(Dispatchers.IO) {
+                exoPlayer =
+                    builderPlayer(mediaUri = focusedMediaUri, context, dataSourceType = "SMB")
+            }
+            withContext(Dispatchers.Main) {
+                setupPlayer(
+                    exoPlayer!!, focusedMediaUri, "SMB", context, { mediaInfoMap ->
+                        // 在这里处理获取到的媒体信息
+                        Log.d("focusedIsDir", mediaInfoMap.toString())
 
-                // 可以在这里使用媒体信息进行后续操作
-                // 例如更新UI、保存到数据库等
-            },
-            onError = { errorMessage ->
-                // 在发生错误时处理
-                Log.e("focusedIsDir", "Error occurred: $errorMessage")
-            })
-            //Log.d("focusedIsDir",setupPlayer(exoPlayer!!,focusedMediaUri,"SMB",context).toString())
+                        // 可以在这里使用媒体信息进行后续操作
+                        // 例如更新UI、保存到数据库等
+                    },
+                    onError = { errorMessage ->
+                        // 在发生错误时处理
+                        Log.e("focusedIsDir", "Error occurred: $errorMessage")
+                    })
+                //Log.d("focusedIsDir",setupPlayer(exoPlayer!!,focusedMediaUri,"SMB",context).toString())
+            }
         }
     }
     DisposableEffect(Unit) {

@@ -121,7 +121,7 @@ private fun extractAndLogMediaInfo(player: ExoPlayer): MutableMap<String, String
         putIfNotNull(metadataMap, "VideoHeight", videoFormat.height.toString())
         Log.i("MediaInfo", "Height: ${videoFormat.height}")
 
-        putIfNotNull(metadataMap, "VideoFrameRate", videoFormat.frameRate?.toString())
+        putIfNotNull(metadataMap, "VideoFrameRate", videoFormat.frameRate.toString())
         Log.i("MediaInfo", "Frame Rate: ${videoFormat.frameRate}")
 
         putIfNotNull(metadataMap, "VideoBitrate", videoFormat.bitrate.toString())
