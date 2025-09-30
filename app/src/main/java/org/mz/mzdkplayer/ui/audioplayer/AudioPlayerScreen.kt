@@ -1,9 +1,8 @@
 package org.mz.mzdkplayer.ui.audioplayer
 
-import android.content.Context
+
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.annotation.OptIn
@@ -11,7 +10,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,22 +31,29 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.media3.common.MediaItem
+
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.datasource.DefaultHttpDataSource
+
 import androidx.media3.exoplayer.ExoPlayer
-import com.kuaishou.akdanmaku.DanmakuConfig
-import com.kuaishou.akdanmaku.ui.DanmakuPlayer
+
+import kotlinx.coroutines.Dispatchers
+
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.tool.AudioInfo
+
+
+import org.mz.mzdkplayer.tool.SmbUtils
+import org.mz.mzdkplayer.tool.extractAudioInfoAndLyricsFromStream
+
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
 import org.mz.mzdkplayer.ui.audioplayer.components.AudioPlayerControlsIcon
 import org.mz.mzdkplayer.ui.audioplayer.components.AudioPlayerMainFrame
@@ -65,6 +70,9 @@ import org.mz.mzdkplayer.ui.screen.vm.AudioPlayerViewModel
 import org.mz.mzdkplayer.ui.videoplayer.BackPress
 import org.mz.mzdkplayer.ui.videoplayer.components.BuilderMzPlayer
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberPlayer
+import java.io.InputStream
+import java.net.URL
+import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 
 // 数据类用于存储音频元数据
@@ -101,7 +109,10 @@ fun extractAudioMetadataFromPlayer(exoPlayer: ExoPlayer): AudioMetadata {
         val artworkData = mediaMetadata.artworkData
         if (artworkData != null) {
             coverBitmap = BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
-            Log.d("artworkData", "Cover bitmap created with size: ${coverBitmap?.width}x${coverBitmap?.height}")
+            Log.d(
+                "artworkData",
+                "Cover bitmap created with size: ${coverBitmap?.width}x${coverBitmap?.height}"
+            )
         } else {
             Log.d("artworkData", "No artwork data available")
         }
@@ -129,9 +140,10 @@ fun formatDuration(durationMs: Long): String {
     val totalSeconds = durationMs / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
-    return String.format("%02d:%02d", minutes, seconds)
+    return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
 }
 
+@OptIn(UnstableApi::class)
 @Composable
 fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
     val context = LocalContext.current
@@ -142,6 +154,7 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
     var backPressState by remember { mutableStateOf<BackPress>(BackPress.Idle) }
     var contentCurrentPosition by remember { mutableLongStateOf(0L) }
     var isPlaying: Boolean by remember { mutableStateOf(exoPlayer.isPlaying) }
+    var sampleMimeType: String by remember { mutableStateOf("") }
 
     // 提取音频元数据
     var audioMetadata by remember { mutableStateOf(AudioMetadata()) }
@@ -150,6 +163,101 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
     DisposableEffect(Unit) {
         onDispose {
             exoPlayer.release()
+        }
+    }
+    LaunchedEffect(exoPlayer) {
+        while (true) {
+            delay(600)
+
+        }
+
+    }
+    LaunchedEffect(mediaUri,sampleMimeType) {
+        //Log.d("danmakuUri", mediaUri.toString())
+        // androidx.media3.common.util.Log.d("mediaUri", mediaUri.toUri().toString())
+        Log.d("sampleMimeType",sampleMimeType)
+
+        withContext(Dispatchers.IO) {
+            if (sampleMimeType.isNotEmpty()) {
+                try {
+                    Log.d("danmakuUriScheme", mediaUri.toUri().scheme?.lowercase().toString())
+                    val inputStream: InputStream? = when (mediaUri.toUri().scheme?.lowercase()) {
+
+                        "smb" -> {
+                            // 使用 SMB 工具打开输入流
+                            SmbUtils.openSmbFileInputStream(mediaUri.toUri())
+
+                        }
+
+                        "http", "https" -> {
+                            // 打开 HTTP 输入流
+                            when (dataSourceType) {
+                                "WEBDAV" -> {
+                                    SmbUtils.openWebDavFileInputStream(mediaUri.toUri())
+                                }
+
+                                "HTTP" -> {
+                                    SmbUtils.openHTTPLinkXmlInputStream(mediaUri)
+                                }
+
+                                else -> {
+                                    URL(mediaUri).openStream()
+                                }
+                            }
+                        }
+
+                        "file" -> {
+                            // 打开本地文件输入流
+                            context.contentResolver.openInputStream(mediaUri.toUri())
+                                ?: throw java.io.IOException("Could not open file input stream for $mediaUri.toUri()")
+                        }
+
+                        "ftp" -> {
+                            // 使用 SMB 工具打开输入流
+                            SmbUtils.openFtpFileInputStream(mediaUri.toUri())
+
+                        }
+
+                        "nfs" -> {
+                            SmbUtils.openNfsFileInputStream(mediaUri.toUri())
+                        }
+
+                        else -> {
+                            // 不支持的 scheme
+                            Log.w(
+                                "AudioPlayerScreen",
+                                "Unsupported scheme for danmaku URI: $mediaUri.toUri()"
+                            )
+                            null
+                        }
+                    }
+                    Log.d("AudioPlayerScreen", inputStream.toString())
+
+                    inputStream.use { stream ->
+
+                        val audioInfo: AudioInfo? =
+                            extractAudioInfoAndLyricsFromStream(context, stream, sampleMimeType)
+                        Log.i(
+                            "AudioPlayerScreen",
+                            audioInfo.toString()
+                        )
+
+
+//                val danmakuResponse: DanmakuResponse = getDanmakuXmlFromFile(stream)
+//                danmakuDataList = danmakuResponse.data
+//                isDanmakuLoaded = true
+//                Log.i(
+//                    "AudioPlayerScreen",
+//                    "Loaded ${danmakuDataList?.size ?: 0} danmaku items from $danmakuUri"
+//                )
+                    }
+
+                } catch (e: Exception) {
+                    //Log.e("AudioPlayerScreen", "Failed to load danmaku from $danmakuUri", e)
+                    //isDanmakuLoaded = false // 标记加载失败
+                    // 可以在这里设置一个状态变量来在UI上显示加载失败
+                }
+            }
         }
     }
 
@@ -163,6 +271,28 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
                 Log.d("audioMetadata", audioMetadata.toString())
             }
 
+            override fun onPlaybackStateChanged(playbackState: Int) {
+
+                when (playbackState) {
+
+                    Player.STATE_READY -> {
+                        sampleMimeType = exoPlayer.audioFormat?.sampleMimeType.toString()
+                    }
+
+                    Player.STATE_BUFFERING -> {
+
+                    }
+
+                    Player.STATE_ENDED -> {
+
+                    }
+
+                    Player.STATE_IDLE -> {
+
+                    }
+                }
+            }
+
             override fun onIsPlayingChanged(isExoPlaying: Boolean) {
                 isPlaying = isExoPlaying
             }
@@ -171,6 +301,7 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
         // 初始时也尝试获取元数据
         delay(500) // 等待一小段时间以确保元数据已加载
         audioMetadata = extractAudioMetadataFromPlayer(exoPlayer)
+
     }
 
     LaunchedEffect(Unit) {

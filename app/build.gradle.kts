@@ -67,6 +67,7 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.ass.media)
     implementation(libs.thegrizzlylabs.sardine.android)
+    implementation("net.jthink:jaudiotagger:3.0.1")
     implementation(libs.commons.net)
     //implementation(libs.jcifs)
 // 请检查最新版本
