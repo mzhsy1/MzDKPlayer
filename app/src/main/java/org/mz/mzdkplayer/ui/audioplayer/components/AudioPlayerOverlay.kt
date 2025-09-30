@@ -72,7 +72,7 @@ fun AudioPlayerOverlay(
         contentAlignment = Alignment.Center
     ) {
         AnimatedVisibility(state.controlsVisible, Modifier, fadeIn(), fadeOut()) {
-            CinematicBackground(Modifier.fillMaxSize())
+           // CinematicBackground(Modifier.fillMaxSize())
         }
 
         Column {

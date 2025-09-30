@@ -1,13 +1,22 @@
 package org.mz.mzdkplayer.ui.audioplayer
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.os.Bundle
+import android.util.Log
 import androidx.annotation.OptIn
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -20,12 +29,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import com.kuaishou.akdanmaku.DanmakuConfig
 import com.kuaishou.akdanmaku.ui.DanmakuPlayer
@@ -33,6 +51,9 @@ import kotlinx.coroutines.delay
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
 import org.mz.mzdkplayer.ui.audioplayer.components.AudioPlayerControlsIcon
+import org.mz.mzdkplayer.ui.audioplayer.components.AudioPlayerMainFrame
+import org.mz.mzdkplayer.ui.audioplayer.components.AudioPlayerMediaTitle
+import org.mz.mzdkplayer.ui.audioplayer.components.AudioPlayerMediaTitleType
 import org.mz.mzdkplayer.ui.audioplayer.components.AudioPlayerOverlay
 import org.mz.mzdkplayer.ui.audioplayer.components.AudioPlayerPulse
 import org.mz.mzdkplayer.ui.audioplayer.components.AudioPlayerPulseState
@@ -40,31 +61,81 @@ import org.mz.mzdkplayer.ui.audioplayer.components.AudioPlayerSeeker
 import org.mz.mzdkplayer.ui.audioplayer.components.AudioPlayerState
 import org.mz.mzdkplayer.ui.audioplayer.components.rememberAudioPlayerPulseState
 import org.mz.mzdkplayer.ui.audioplayer.components.rememberAudioPlayerState
-import org.mz.mzdkplayer.ui.audioplayer.dPadEvents
 import org.mz.mzdkplayer.ui.screen.vm.AudioPlayerViewModel
-import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 import org.mz.mzdkplayer.ui.videoplayer.BackPress
-import org.mz.mzdkplayer.ui.videoplayer.VideoPlayerControls
 import org.mz.mzdkplayer.ui.videoplayer.components.BuilderMzPlayer
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerControlsIcon
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerMainFrame
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerMediaTitle
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerMediaTitleType
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerOverlay
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulse
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulseState
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerSeeker
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerState
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberPlayer
-import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerPulseState
-import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerState
 import kotlin.time.Duration.Companion.milliseconds
 
+// 数据类用于存储音频元数据
+data class AudioMetadata(
+    val title: String = "未知标题",
+    val artist: String = "未知艺术家",
+    val album: String = "未知专辑",
+    val year: String = "",
+    val genre: String = "",
+    val duration: String = "",
+    val coverArt: Bitmap? = null,  // 修改为Bitmap类型
+    val extras: Bundle? = null,
+    val lyrics: String = ""
+)
+
+// 从ExoPlayer获取音频元数据的工具函数
+@OptIn(UnstableApi::class)
+fun extractAudioMetadataFromPlayer(exoPlayer: ExoPlayer): AudioMetadata {
+    val mediaMetadata = exoPlayer.mediaMetadata
+
+    // 提取基本元数据
+    val title = mediaMetadata.title?.toString() ?: "未知标题"
+    val artist = mediaMetadata.artist?.toString() ?: "未知艺术家"
+    val album = mediaMetadata.albumTitle?.toString() ?: "未知专辑"
+    val recordingYear = mediaMetadata.releaseYear?.toString() ?: ""
+    val genre = mediaMetadata.genre?.toString() ?: ""
+    val durationMs = exoPlayer.duration
+    val duration = formatDuration(durationMs)
+    val extras = mediaMetadata.extras
+
+    // 从artworkData提取封面图片
+    var coverBitmap: Bitmap? = null
+    try {
+        val artworkData = mediaMetadata.artworkData
+        if (artworkData != null) {
+            coverBitmap = BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
+            Log.d("artworkData", "Cover bitmap created with size: ${coverBitmap?.width}x${coverBitmap?.height}")
+        } else {
+            Log.d("artworkData", "No artwork data available")
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        Log.e("artworkData", "Error decoding artwork data", e)
+    }
+
+    return AudioMetadata(
+        title = title,
+        artist = artist,
+        album = album,
+        year = recordingYear,
+        genre = genre,
+        duration = duration,
+        coverArt = coverBitmap,
+        extras = extras,
+        lyrics = "" // Media3中歌词通常不直接提供，需要单独处理
+    )
+}
+
+// 辅助函数：格式化时长
+fun formatDuration(durationMs: Long): String {
+    if (durationMs == androidx.media3.common.C.TIME_UNSET) return "00:00"
+    val totalSeconds = durationMs / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return String.format("%02d:%02d", minutes, seconds)
+}
 
 @Composable
 fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
     val context = LocalContext.current
-    val exoPlayer = rememberPlayer(context, mediaUri,dataSourceType)
+    val exoPlayer = rememberPlayer(context, mediaUri, dataSourceType)
     val audioPlayerState = rememberAudioPlayerState(hideSeconds = 6)
     val audioPlayerViewModel: AudioPlayerViewModel = viewModel()
     var showToast by remember { mutableStateOf(false) }
@@ -72,26 +143,43 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
     var contentCurrentPosition by remember { mutableLongStateOf(0L) }
     var isPlaying: Boolean by remember { mutableStateOf(exoPlayer.isPlaying) }
 
-    BuilderMzPlayer(context, mediaUri, exoPlayer,dataSourceType)
+    // 提取音频元数据
+    var audioMetadata by remember { mutableStateOf(AudioMetadata()) }
+
+    BuilderMzPlayer(context, mediaUri, exoPlayer, dataSourceType)
     DisposableEffect(Unit) {
         onDispose {
             exoPlayer.release()
         }
     }
-    exoPlayer.addListener(object : Player.Listener {
-        override fun onIsPlayingChanged(isExoPlaying: Boolean) {
-            // super.onIsPlayingChanged(isPlaying)
-            isPlaying = isExoPlaying
 
-        }
+    // 监听播放器状态变化，获取元数据
+    LaunchedEffect(exoPlayer) {
+        exoPlayer.addListener(object : Player.Listener {
+            override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+                super.onMediaMetadataChanged(mediaMetadata)
+                // 当元数据加载完成时更新
+                audioMetadata = extractAudioMetadataFromPlayer(exoPlayer)
+                Log.d("audioMetadata", audioMetadata.toString())
+            }
 
-    })
+            override fun onIsPlayingChanged(isExoPlaying: Boolean) {
+                isPlaying = isExoPlaying
+            }
+        })
+
+        // 初始时也尝试获取元数据
+        delay(500) // 等待一小段时间以确保元数据已加载
+        audioMetadata = extractAudioMetadataFromPlayer(exoPlayer)
+    }
+
     LaunchedEffect(Unit) {
         while (true) {
             delay(200)
             contentCurrentPosition = exoPlayer.currentPosition
         }
     }
+
     val pulseState = rememberAudioPlayerPulseState()
     Box(
         Modifier
@@ -105,35 +193,58 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
             .focusable()
             .fillMaxHeight()
             .fillMaxWidth()
-
     ) {
         val focusRequester = remember { FocusRequester() }
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 56.dp, bottom = 30.dp)
+        ) {
+            AlbumCoverDisplay(audioMetadata.coverArt) // 显示专辑封面
+        }
         AudioPlayerOverlay(
             modifier = Modifier.align(Alignment.BottomCenter),
             focusRequester = focusRequester,
             state = audioPlayerState,
             isPlaying = isPlaying,
-            centerButton = { AudioPlayerPulse(pulseState) },
-            subtitles = {  },
+            subtitles = { },
             controls = {
-
                 AudioPlayerControls(
                     isPlaying,
                     contentCurrentPosition,
                     exoPlayer,
                     audioPlayerState,
                     focusRequester,
-                    "asasas",
-                    "sdssdsd",
-                    "2022/1/20",
-                    audioPlayerViewModel,
-
+                    audioMetadata.title,
+                    "${audioMetadata.artist} - ${audioMetadata.album}",
+                    "时长: ${audioMetadata.duration}",
+                    audioPlayerViewModel
                 )
-
             },
             atpFocus = audioPlayerViewModel.atpFocus
         )
+    }
+}
 
+@Composable
+fun AlbumCoverDisplay(coverArt: Bitmap?) {
+    if (coverArt != null) {
+        Image(
+            bitmap = coverArt.asImageBitmap(),
+            contentDescription = "专辑封面",
+            modifier = Modifier
+                .size(240.dp), // 设置封面图片大小
+            contentScale = ContentScale.Fit
+        )
+    } else {
+        // 如果没有封面，则显示默认图标
+        Image(
+            painter = painterResource(id = R.drawable.album), // 请确保有默认封面图片
+            contentDescription = "默认专辑封面",
+            modifier = Modifier
+                .size(240.dp),
+            contentScale = ContentScale.Fit
+        )
     }
 }
 
@@ -142,7 +253,7 @@ private fun Modifier.dPadEvents(
     audioPlayerState: AudioPlayerState,
     pulseState: AudioPlayerPulseState,
     audioPlayerViewModel: AudioPlayerViewModel
-): Modifier = this.handleDPadKeyEvents(
+): Modifier = handleDPadKeyEvents(
     onLeft = {
         if (!audioPlayerState.controlsVisible) {
             exoPlayer.seekBack()
@@ -175,9 +286,7 @@ fun AudioPlayerControls(
     secondaryText: String,
     tertiaryText: String,
     audioPlayerViewModel: AudioPlayerViewModel,
-
 ) {
-
     val onPlayPauseToggle = { shouldPlay: Boolean ->
         if (shouldPlay) {
             exoPlayer.play()
@@ -186,15 +295,14 @@ fun AudioPlayerControls(
         }
     }
 
-    VideoPlayerMainFrame(
+    AudioPlayerMainFrame(
         mediaTitle = {
-            VideoPlayerMediaTitle(
+            AudioPlayerMediaTitle(
                 title = title,
                 secondaryText = secondaryText,
                 tertiaryText = tertiaryText,
-                type = VideoPlayerMediaTitleType.DEFAULT
+                type = AudioPlayerMediaTitleType.DEFAULT
             )
-
         },
         mediaActions = {
             Row(
@@ -206,8 +314,7 @@ fun AudioPlayerControls(
                     state = state,
                     isPlaying = isPlaying,
                     onClick = {
-//                        videoPlayerViewModel.selectedAorVorS = "V"
-//                        videoPlayerViewModel.atpVisibility = !videoPlayerViewModel.atpVisibility;focusRequester.requestFocus()
+                        // 可以扩展为显示视频选项或切换音频质量
                     }
                 )
                 AudioPlayerControlsIcon(
@@ -216,14 +323,9 @@ fun AudioPlayerControls(
                     state = state,
                     isPlaying = isPlaying,
                     onClick = {
-//                        videoPlayerViewModel.selectedAorVorS = "A"
-//                        videoPlayerViewModel.atpVisibility = !videoPlayerViewModel.atpVisibility;focusRequester.requestFocus()
-
+                        // 可以扩展为显示音频设置
                     }
-
                 )
-
-
             }
         },
         seeker = {
@@ -232,7 +334,7 @@ fun AudioPlayerControls(
                 state,
                 isPlaying,
                 onPlayPauseToggle,
-                onSeek = { exoPlayer.seekTo(exoPlayer.duration.times(it).toLong()) },
+                onSeek = { exoPlayer.seekTo((exoPlayer.duration * it).toLong()) },
                 contentProgress = contentCurrentPosition.milliseconds,
                 contentDuration = exoPlayer.duration.milliseconds
             )
@@ -240,3 +342,6 @@ fun AudioPlayerControls(
         more = null
     )
 }
+
+
+
