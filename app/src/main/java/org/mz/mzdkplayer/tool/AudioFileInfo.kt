@@ -26,15 +26,15 @@ import java.io.*
  * @property artworkData 专辑封面的原始字节数据 (ByteArray)。可以为 null。
  */
 data class AudioInfo(
-    val title: String,
-    val artist: String,
-    val album: String,
-    val year: String?,
-    val track: String?,
-    val genre: String?,
-    val durationSeconds: Long?,
-    val lyrics: String?,
-    val artworkData: ByteArray?
+    val title: String? = "未知标题",
+    val artist: String?="未知艺术家",
+    val album: String?="未知专辑",
+    val year: String?= "",
+    val track: String?= "",
+    val genre: String?= "",
+    val durationSeconds: Long? =0L,
+    val lyrics: String ?="",
+    val artworkData: ByteArray? = byteArrayOf()
 ) {
     // 重写 equals 和 hashCode 以优雅地处理 ByteArray 的比较
     override fun equals(other: Any?): Boolean {
@@ -51,10 +51,7 @@ data class AudioInfo(
         if (genre != other.genre) return false
         if (durationSeconds != other.durationSeconds) return false
         if (lyrics != other.lyrics) return false
-        if (artworkData != null) {
-            if (other.artworkData == null) return false
-            if (!artworkData.contentEquals(other.artworkData)) return false
-        } else if (other.artworkData != null) return false
+        if (!artworkData.contentEquals(other.artworkData)) return false
 
         return true
     }
@@ -66,9 +63,9 @@ data class AudioInfo(
         result = 31 * result + (year?.hashCode() ?: 0)
         result = 31 * result + (track?.hashCode() ?: 0)
         result = 31 * result + (genre?.hashCode() ?: 0)
-        result = 31 * result + (durationSeconds?.hashCode() ?: 0)
-        result = 31 * result + (lyrics?.hashCode() ?: 0)
-        result = 31 * result + (artworkData?.contentHashCode() ?: 0)
+        result = 31 * result + durationSeconds.hashCode()
+        result = 31 * result + lyrics.hashCode()
+        result = 31 * result + artworkData.contentHashCode()
         return result
     }
 }
@@ -274,7 +271,7 @@ private fun getSafeSuffixForMimeType(mimeType: String?): String {
         else -> null
     }
 
-    if (!suffix.isNullOrEmpty() && suffix.startsWith('.') && suffix.length > 1) {
+    if (!suffix.isNullOrEmpty() && suffix.startsWith('.')) {
         if (suffix.all { it.isLetterOrDigit() || it == '.' }) {
             Log.v(TAG, "Mapped MIME type '$normalizedMimeType' to suffix '$suffix'")
             return suffix

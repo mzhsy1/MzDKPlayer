@@ -52,6 +52,7 @@ import org.mz.mzdkplayer.tool.AudioInfo
 
 
 import org.mz.mzdkplayer.tool.SmbUtils
+import org.mz.mzdkplayer.tool.createArtworkBitmap
 import org.mz.mzdkplayer.tool.extractAudioInfoAndLyricsFromStream
 
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
@@ -73,6 +74,7 @@ import org.mz.mzdkplayer.ui.videoplayer.components.rememberPlayer
 import java.io.InputStream
 import java.net.URL
 import java.util.Locale
+import kotlin.math.log
 import kotlin.time.Duration.Companion.milliseconds
 
 // 数据类用于存储音频元数据
@@ -100,7 +102,7 @@ fun extractAudioMetadataFromPlayer(exoPlayer: ExoPlayer): AudioMetadata {
     val recordingYear = mediaMetadata.releaseYear?.toString() ?: ""
     val genre = mediaMetadata.genre?.toString() ?: ""
     val durationMs = exoPlayer.duration
-    val duration = formatDuration(durationMs)
+    //val duration = formatDuration(durationMs)
     val extras = mediaMetadata.extras
 
     // 从artworkData提取封面图片
@@ -127,7 +129,7 @@ fun extractAudioMetadataFromPlayer(exoPlayer: ExoPlayer): AudioMetadata {
         album = album,
         year = recordingYear,
         genre = genre,
-        duration = duration,
+        duration = "0",
         coverArt = coverBitmap,
         extras = extras,
         lyrics = "" // Media3中歌词通常不直接提供，需要单独处理
@@ -135,11 +137,14 @@ fun extractAudioMetadataFromPlayer(exoPlayer: ExoPlayer): AudioMetadata {
 }
 
 // 辅助函数：格式化时长
-fun formatDuration(durationMs: Long): String {
-    if (durationMs == androidx.media3.common.C.TIME_UNSET) return "00:00"
-    val totalSeconds = durationMs / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
+fun formatDuration(durationMs: Int?): String {
+    //Log.d("durationMs",durationMs.toString())
+    //if (durationMs == androidx.media3.common.C.TIME_UNSET) return "00:00"
+
+    //Log.d("totalSeconds",totalSeconds.toString())
+    val minutes = durationMs?.div(60)
+    val seconds = durationMs?.rem(60)
+    //Log.d("totalSeconds",seconds.toString())
     return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
 }
 
@@ -159,6 +164,7 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
     // 提取音频元数据
     var audioMetadata by remember { mutableStateOf(AudioMetadata()) }
 
+    var audioInfo: AudioInfo? by remember { mutableStateOf(AudioInfo()) }
     BuilderMzPlayer(context, mediaUri, exoPlayer, dataSourceType)
     DisposableEffect(Unit) {
         onDispose {
@@ -235,7 +241,7 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
 
                     inputStream.use { stream ->
 
-                        val audioInfo: AudioInfo? =
+                        audioInfo =
                             extractAudioInfoAndLyricsFromStream(context, stream, sampleMimeType)
                         Log.i(
                             "AudioPlayerScreen",
@@ -268,7 +274,7 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
                 super.onMediaMetadataChanged(mediaMetadata)
                 // 当元数据加载完成时更新
                 audioMetadata = extractAudioMetadataFromPlayer(exoPlayer)
-                Log.d("audioMetadata", audioMetadata.toString())
+                //Log.d("audioMetadata", audioMetadata.toString())
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -331,7 +337,7 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
                 .align(Alignment.CenterStart)
                 .padding(start = 56.dp, bottom = 30.dp)
         ) {
-            AlbumCoverDisplay(audioMetadata.coverArt) // 显示专辑封面
+            AlbumCoverDisplay(createArtworkBitmap(audioInfo?.artworkData)) // 显示专辑封面
         }
         AudioPlayerOverlay(
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -346,9 +352,9 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
                     exoPlayer,
                     audioPlayerState,
                     focusRequester,
-                    audioMetadata.title,
-                    "${audioMetadata.artist} - ${audioMetadata.album}",
-                    "时长: ${audioMetadata.duration}",
+                    audioInfo?.title,
+                    "${audioInfo?.artist} - ${audioInfo?.album}",
+                    "时长: ${formatDuration(audioInfo?.durationSeconds?.toInt())}",
                     audioPlayerViewModel
                 )
             },
@@ -413,7 +419,7 @@ fun AudioPlayerControls(
     exoPlayer: ExoPlayer,
     state: AudioPlayerState,
     focusRequester: FocusRequester,
-    title: String,
+    title: String?,
     secondaryText: String,
     tertiaryText: String,
     audioPlayerViewModel: AudioPlayerViewModel,

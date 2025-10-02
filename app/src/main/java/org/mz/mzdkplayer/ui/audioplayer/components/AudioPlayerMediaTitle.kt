@@ -40,7 +40,7 @@ enum class AudioPlayerMediaTitleType { AD, LIVE, DEFAULT }
 
 @Composable
 fun AudioPlayerMediaTitle(
-    title: String,
+    title: String?,
     secondaryText: String,
     tertiaryText: String,
     modifier: Modifier = Modifier,
@@ -52,7 +52,9 @@ fun AudioPlayerMediaTitle(
         append(tertiaryText)
     }
     Column(modifier.fillMaxWidth()) {
-        Text(title, style = MaterialTheme.typography.headlineSmall, color = Color.White, maxLines = 1)
+        if (title != null) {
+            Text(title, style = MaterialTheme.typography.headlineSmall, color = Color.White, maxLines = 1)
+        }
         Spacer(Modifier.height(4.dp))
         Row {
             // TODO: Replaced with Badge component once developed
