@@ -28,6 +28,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toString
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -366,8 +367,26 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
                     mDanmakuPlayer.seekTo(contentCurrentPosition)
 
                 } else {
+                   //
+                    //
+                    // mDanmakuPlayer.seekTo(contentCurrentPosition)
                     mDanmakuPlayer.pause()
                 }
+            }
+        }
+
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int
+        ) {
+            super.onPositionDiscontinuity(oldPosition, newPosition, reason)
+            if (!isPlaying) {
+                mDanmakuPlayer.seekTo(newPosition.contentPositionMs)
+                mDanmakuPlayer.pause()
+
+                Log.d("newPosition", newPosition.contentPositionMs.toString())
+
             }
         }
 
@@ -740,7 +759,8 @@ fun VideoPlayerControls(
 //                                    ))
 //                                Log.d("isPlay","T${isPlaying.toString()}")
 //                                danmakuPlayer.start(danmakuConfig)
-                                //danmakuPlayer.seekTo(contentCurrentPosition)
+                                // 先跳转至播放
+                                danmakuPlayer.seekTo(contentCurrentPosition)
                                 danmakuPlayer.pause()
                             }
                         }
