@@ -1,7 +1,6 @@
 package org.mz.mzdkplayer.ui.audioplayer
 
-import LyricEntry
-import android.annotation.SuppressLint
+
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
@@ -11,20 +10,16 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
+
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
+
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
@@ -40,7 +35,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.mz.mzdkplayer.R
-import org.mz.mzdkplayer.tool.AudioInfo
+import org.mz.mzdkplayer.logic.model.AudioInfo
+
 import org.mz.mzdkplayer.tool.SmbUtils
 import org.mz.mzdkplayer.tool.createArtworkBitmap
 import org.mz.mzdkplayer.tool.extractAudioInfoAndLyricsFromStream
@@ -53,8 +49,8 @@ import org.mz.mzdkplayer.ui.videoplayer.components.rememberPlayer
 import parseLrc
 import java.io.InputStream
 import java.net.URL
-import kotlin.math.abs
-import kotlin.time.Duration
+import java.util.Locale
+
 import kotlin.time.Duration.Companion.milliseconds
 
 // --- 数据类 ---
@@ -89,7 +85,10 @@ fun extractAudioMetadataFromPlayer(exoPlayer: ExoPlayer): AudioMetadata {
         val artworkData = mediaMetadata.artworkData
         if (artworkData != null) {
             coverBitmap = BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
-            Log.d("artworkData", "Cover bitmap created with size: ${coverBitmap?.width}x${coverBitmap?.height}")
+            Log.d(
+                "artworkData",
+                "Cover bitmap created with size: ${coverBitmap?.width}x${coverBitmap?.height}"
+            )
         } else {
             Log.d("artworkData", "No artwork data available")
         }
@@ -174,8 +173,10 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
                                 else -> URL(mediaUri).openStream()
                             }
                         }
+
                         "file" -> context.contentResolver.openInputStream(mediaUri.toUri())
                             ?: throw java.io.IOException("Could not open file input stream for $mediaUri")
+
                         "ftp" -> SmbUtils.openFtpFileInputStream(mediaUri.toUri())
                         "nfs" -> SmbUtils.openNfsFileInputStream(mediaUri.toUri())
                         else -> {
@@ -188,12 +189,17 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
 
                     inputStream.use { stream ->
                         // 关键：调用工具函数获取 audioInfo，其中包含 lyrics
-                        val info = extractAudioInfoAndLyricsFromStream(context, stream, sampleMimeType)
+                        val info =
+                            extractAudioInfoAndLyricsFromStream(context, stream, sampleMimeType)
                         audioInfo = info // 更新状态
                         Log.i("AudioPlayerScreen", "Loaded audio info and lyrics")
                     }
                 } catch (e: Exception) {
-                    Log.e("AudioPlayerScreen", "Failed to load audio info or lyrics from $mediaUri", e)
+                    Log.e(
+                        "AudioPlayerScreen",
+                        "Failed to load audio info or lyrics from $mediaUri",
+                        e
+                    )
                 }
             }
         }
@@ -214,6 +220,7 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
                         // Player 准备好后，更新元数据（可能包含更准确的时长）
                         audioMetadata = extractAudioMetadataFromPlayer(exoPlayer)
                     }
+
                     Player.STATE_BUFFERING -> {}
                     Player.STATE_ENDED -> {}
                     Player.STATE_IDLE -> {}
@@ -250,24 +257,35 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
         // 优化 1: 使用 fillMaxSize() 确保 Row 占据整个可用空间
         Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 优化 5: 专辑封面部分 - 移到右侧
-            Box(modifier = Modifier.fillMaxHeight(0.5f).fillMaxWidth(0.25f),contentAlignment= Alignment.CenterStart) { // 使用 wrapContentSize 并居中对齐到末端
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight(0.5f)
+                    .fillMaxWidth(0.25f)
+                    .offset(x = 56.dp, y = (-38).dp), contentAlignment = Alignment.CenterStart
+            ) { // 使用 wrapContentSize 并居中对齐到末端
 
-                    AlbumCoverDisplay(createArtworkBitmap(audioInfo?.artworkData))
+                AlbumCoverDisplay(createArtworkBitmap(audioInfo?.artworkData))
 
             }
             // 优化 2: 歌词部分 - 使用 audioInfo?.lyrics
             // 优化 3: 使用 weight(1f) 让歌词部分占据剩余空间
-            Box(modifier = Modifier.fillMaxHeight(0.5f).fillMaxWidth(0.75f).offset(30.dp),contentAlignment= Alignment.CenterStart) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight(0.5f)
+                    .fillMaxWidth(0.75f)
+                    .offset(90.dp, y = (-30).dp), contentAlignment = Alignment.CenterStart
+            ) {
                 // 使用您提供的 LRC 解析器
                 val parsedLyrics = remember(audioInfo?.lyrics) { parseLrc(audioInfo?.lyrics) }
                 // 优化 4: ScrollableLyricsView 现在会撑满其父 Box
-                ScrollableLyricsView(currentPosition = contentCurrentPosition.milliseconds, parsedLyrics = parsedLyrics)
+                ScrollableLyricsView(
+                    currentPosition = contentCurrentPosition.milliseconds,
+                    parsedLyrics = parsedLyrics
+                )
             }
 
             // Spacer(Modifier.width(16.dp)) // 添加间距
@@ -295,7 +313,18 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
                     audioPlayerState,
                     focusRequester,
                     audioInfo?.title ?: audioMetadata.title,
-                    "${audioInfo?.artist ?: audioMetadata.artist} - ${audioInfo?.album ?: audioMetadata.album}",
+                    "${audioInfo?.bitsPerSample ?: "--"} bit - " +
+                            "${
+                                audioInfo?.sampleRate?.let {
+                                    String.format(
+                                        Locale.getDefault(),
+                                        "%.1f kHz",
+                                        it.toInt() / 1000.0
+                                    )
+                                } ?: "未知采样率"
+                            } - " +
+                            "${audioInfo?.bit?: "--"} Kbps" ,
+
                     "时长: ${audioMetadata.duration}", // 直接使用已格式化的字符串
                     audioPlayerViewModel,
                     safeDurationMs.milliseconds // 传递安全的 Duration
@@ -303,94 +332,6 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
             },
             atpFocus = audioPlayerViewModel.atpFocus
         )
-    }
-}
-
-@Composable
-fun AlbumCoverDisplay(coverArt: Bitmap?) {
-    if (coverArt != null) {
-        Image(
-            bitmap = coverArt.asImageBitmap(),
-            contentDescription = "专辑封面",
-            modifier = Modifier
-                .size(240.dp), // 保持封面大小
-            contentScale = ContentScale.Fit
-        )
-    } else {
-        Image(
-            painter = painterResource(id = R.drawable.album),
-            contentDescription = "默认专辑封面",
-            modifier = Modifier
-                .size(240.dp), // 保持封面大小
-            contentScale = ContentScale.Fit
-        )
-    }
-}
-
-// --- 歌词组件 ---
-
-/**
- * 可滚动的歌词视图 (使用已解析的歌词列表)，并尝试将高亮行保持在中间。
- *
- * @param currentPosition 当前播放位置 (Duration)
- * @param parsedLyrics 已解析的歌词列表 (包含时间戳)
- */
-@SuppressLint("UnrememberedMutableState")
-@Composable
-fun ScrollableLyricsView(currentPosition: Duration, parsedLyrics: List<LyricEntry>) {
-    val lazyListState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
-
-    var lastHighlightedIndex by remember { mutableIntStateOf(-1) }
-
-    // 查找当前应高亮的歌词索引
-    val highlightedIndex by derivedStateOf {
-        if (parsedLyrics.isEmpty()) return@derivedStateOf -1
-        var index = parsedLyrics.indexOfLast { it.time <= currentPosition }
-        index = index.coerceAtLeast(0)
-        index
-    }
-
-    // 自动滚动到高亮行，并尽量使其居中
-    LaunchedEffect(highlightedIndex) {
-        if (highlightedIndex >= 0 && highlightedIndex != lastHighlightedIndex) {
-            lastHighlightedIndex = highlightedIndex
-            coroutineScope.launch {
-                // 尝试计算使目标项大致居中的偏移量。
-                // 假设每行文本大约占用 30dp + padding (约为 44px on mdpi, ~66px on xhdpi etc.)
-                // 我们希望它出现在列表可视区域的大致中间。
-                // 一种常见的近似做法是滚动到该项，然后向上偏移半个列表高度。
-                // lazyListState.layoutInfo.viewportEndOffset - viewportStartOffset 是可视区总高度(px)
-                // 我们假定单个item平均高度约60px用于计算 offset.
-                val avgItemHeightPx = 60 // 启发式估计，可根据实际UI调整
-                val viewportHeightPx = lazyListState.layoutInfo.viewportEndOffset - lazyListState.layoutInfo.viewportStartOffset
-                val estimatedCenterOffset = (viewportHeightPx / 2) - (avgItemHeightPx / 2)
-
-                // animateScrollToItem 第二个参数是相对于该项顶部的偏移量，
-                // 负数表示向上滚动更多，从而让该项处于更中心的位置。
-                lazyListState.animateScrollToItem(highlightedIndex, -estimatedCenterOffset)
-            }
-        }
-    }
-
-    LazyColumn(
-        state = lazyListState,
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        horizontalAlignment = Alignment.Start
-    ) {
-        itemsIndexed(parsedLyrics) { index, entry ->
-            Text(
-                text = entry.text.ifEmpty { "..." },
-                fontSize = if (index == highlightedIndex) 18.sp else 16.sp,
-                fontWeight = if (index == highlightedIndex) FontWeight.Bold else FontWeight.Normal,
-                color = if (index == highlightedIndex) Color.White else Color.Gray,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-                    .alpha(if (index == highlightedIndex) 1f else 0.7f)
-            )
-        }
     }
 }
 
@@ -421,83 +362,5 @@ private fun Modifier.dPadEvents(
         audioPlayerState.showControls()
     }
 )
-
-
-// --- 控件 ---
-@OptIn(UnstableApi::class)
-@Composable
-fun AudioPlayerControls(
-    isPlaying: Boolean,
-    contentCurrentPosition: Long, // 安全的当前位置 (ms)
-    exoPlayer: ExoPlayer,
-    state: AudioPlayerState,
-    focusRequester: FocusRequester,
-    title: String?,
-    secondaryText: String,
-    tertiaryText: String,
-    audioPlayerViewModel: AudioPlayerViewModel,
-    contentDuration: Duration = 0.milliseconds // 添加 contentDuration 参数，默认值
-) {
-    val onPlayPauseToggle = { shouldPlay: Boolean ->
-        if (shouldPlay) {
-            exoPlayer.play()
-        } else {
-            exoPlayer.pause()
-        }
-    }
-
-    AudioPlayerMainFrame(
-        mediaTitle = {
-            AudioPlayerMediaTitle(
-                title = title,
-                secondaryText = secondaryText,
-                tertiaryText = tertiaryText,
-                type = AudioPlayerMediaTitleType.DEFAULT
-            )
-        },
-        mediaActions = {
-            Row(
-                modifier = Modifier.padding(bottom = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                AudioPlayerControlsIcon(
-                    icon = painterResource(id = R.drawable.baseline_hd_24),
-                    state = state,
-                    isPlaying = isPlaying,
-                    onClick = {
-                        // 可以扩展为显示视频选项或切换音频质量
-                    }
-                )
-                AudioPlayerControlsIcon(
-                    modifier = Modifier.padding(start = 12.dp),
-                    icon = painterResource(id = R.drawable.baseline_speaker_24),
-                    state = state,
-                    isPlaying = isPlaying,
-                    onClick = {
-                        // 可以扩展为显示音频设置
-                    }
-                )
-            }
-        },
-        seeker = {
-            AudioPlayerSeeker(
-                focusRequester,
-                state,
-                isPlaying,
-                onPlayPauseToggle,
-                onSeek = { progressRatio ->
-                    // 确保 duration 有效
-                    val durationMs = if (exoPlayer.duration != C.TIME_UNSET) exoPlayer.duration else 0L
-                    val seekPosition = (durationMs * progressRatio).toLong()
-                    exoPlayer.seekTo(seekPosition)
-                },
-                contentProgress = contentCurrentPosition.milliseconds, // 使用安全的当前位置
-                contentDuration = contentDuration // 使用传入的安全 Duration
-            )
-        },
-        more = null
-    )
-}
-
 
 
