@@ -85,6 +85,7 @@ import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerPulseState
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerState
 import java.io.InputStream
 import java.net.URL
+import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 
 
@@ -584,8 +585,8 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
 fun NetworkSpeedIndicator(networkSpeed: Long, modifier: Modifier = Modifier) {
     val speedText = when {
         networkSpeed < 1024 -> "$networkSpeed B/s"
-        networkSpeed < 1024 * 1024 -> "${String.format("%.1f", networkSpeed / 1024.0)} KB/s"
-        else -> "${String.format("%.1f", networkSpeed / (1024.0 * 1024.0))} MB/s"
+        networkSpeed < 1024 * 1024 -> "${String.format(Locale.getDefault(),"%.1f", networkSpeed / 1024.0)} KB/s"
+        else -> "${String.format(Locale.getDefault(),"%.1f", networkSpeed / (1024.0 * 1024.0))} MB/s"
     }
 
     Box(
@@ -725,11 +726,23 @@ fun VideoPlayerControls(
                             danmakuConfig.copy(
                                 visibility = videoPlayerViewModel.danmakuVisibility,
                             ))
+                        Log.d("isPlay",isPlaying.toString())
                         if (!videoPlayerViewModel.danmakuVisibility){
-                            danmakuPlayer.stop()
+                            danmakuPlayer.pause()
                         }else{
-                            danmakuPlayer.start(danmakuConfig)
-                            danmakuPlayer.seekTo(contentCurrentPosition)
+                            if (isPlaying) {
+                                danmakuPlayer.start(danmakuConfig)
+                                danmakuPlayer.seekTo(contentCurrentPosition)
+                            }else{// 修复关闭弹幕在打开时如果视频处于暂停状态弹幕还会继续滚动
+//                                danmakuPlayer.updateConfig(
+//                                    danmakuConfig.copy(
+//                                        visibility = videoPlayerViewModel.danmakuVisibility,
+//                                    ))
+//                                Log.d("isPlay","T${isPlaying.toString()}")
+//                                danmakuPlayer.start(danmakuConfig)
+                                //danmakuPlayer.seekTo(contentCurrentPosition)
+                                danmakuPlayer.pause()
+                            }
                         }
 //                        )
                     }
