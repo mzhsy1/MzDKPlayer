@@ -27,8 +27,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
 
     }
 
@@ -39,7 +39,7 @@ android {
 
 kotlin {
     compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
         // You can add other compiler options here if needed
     }
 }
@@ -67,7 +67,7 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.ass.media)
     implementation(libs.thegrizzlylabs.sardine.android)
-    implementation("net.jthink:jaudiotagger:3.0.1")
+    implementation(libs.jaudiotagger)
     implementation(libs.commons.net)
     //implementation(libs.jcifs)
 // 请检查最新版本

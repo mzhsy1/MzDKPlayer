@@ -30,7 +30,7 @@ import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.flow.debounce
 
 class AudioPlayerState internal constructor(
-    @IntRange(from = 0)
+    @param:IntRange(from = 0)
     private val hideSeconds: Int
 ) {
     private var _controlsVisible by mutableStateOf(true)

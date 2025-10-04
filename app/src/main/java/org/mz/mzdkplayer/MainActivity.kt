@@ -54,6 +54,16 @@ class MainActivity : AppCompatActivity() {
         super.onStop()
     }
 
+    override fun onPause() {
+        if (!isChangeDensityDpi) {
+            val newConfig = Configuration()
+            newConfig.densityDpi = newDensityDpi
+            // Log.d("attachBaseContext", newDensityDpi.toString())
+            baseContext.createConfigurationContext(newConfig)
+        }
+        super.onPause()
+    }
+
     override fun onResume() {
         if (!isChangeDensityDpi) {
             val newConfig = Configuration()
