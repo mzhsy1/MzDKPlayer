@@ -418,7 +418,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
             state = videoPlayerState, // 播放器状态
             isPlaying = isPlaying, // 播放状态
             centerButton = { VideoPlayerPulse(pulseState) }, // 中心脉冲按钮
-            subtitles = { /* TODO Implement subtitles */ }, // 子标题 (未实现)
+            subtitles = {  }, // 子标题 (未实现)
             controls = {
                 // 控制按钮区域
                 VideoPlayerControls(
@@ -481,6 +481,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
                 .onFocusChanged {
                     if (it.isFocused) {
                         videoPlayerViewModel.atpFocus = it.isFocused
+
                     } else {
                         videoPlayerState.hideControls() // 隐藏控制栏
                         videoPlayerViewModel.atpFocus = it.isFocused

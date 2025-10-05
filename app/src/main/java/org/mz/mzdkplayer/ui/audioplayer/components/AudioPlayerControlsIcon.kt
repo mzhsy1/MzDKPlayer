@@ -59,10 +59,10 @@ fun AudioPlayerControlsIcon(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.Black, contentColor = Color.White,
+            containerColor = Color.DarkGray, contentColor = Color.White,
             focusedContainerColor = Color.White, focusedContentColor = Color.Black
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
         interactionSource = interactionSource
     ) {
         Icon(

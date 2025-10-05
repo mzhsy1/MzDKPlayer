@@ -501,7 +501,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
             state = videoPlayerState,
             isPlaying = isPlaying,
             centerButton = { VideoPlayerPulse(pulseState) },
-            subtitles = { /* TODO Implement subtitles */ },
+            subtitles = { },
             controls = {
 
                 VideoPlayerControls(

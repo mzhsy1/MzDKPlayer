@@ -121,7 +121,7 @@ fun ScrollableLyricsView(currentPosition: Duration, parsedLyrics: List<LyricEntr
                     textAlign = TextAlign.Start, // 确保文本左对齐
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp, horizontal = 16.dp) // 增加左右 padding
+                        .padding(vertical = 4.dp) // 增加左右 padding
                         .alpha(if (index == highlightedIndex) 1f else 0.7f)
                 )
             }

@@ -29,6 +29,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -122,7 +123,7 @@ fun formatDuration(durationMs: Int?): String {
     val totalSeconds = durationMs / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
-    return String.format("%02d:%02d", minutes, seconds)
+    return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
 }
 
 
@@ -130,7 +131,7 @@ fun formatDuration(durationMs: Int?): String {
 
 @OptIn(UnstableApi::class)
 @Composable
-fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
+fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String) {
     val context = LocalContext.current
     val exoPlayer = rememberPlayer(context, mediaUri, dataSourceType)
     val audioPlayerState = rememberAudioPlayerState(hideSeconds = 6)
@@ -260,7 +261,7 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
                 .fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 优化 5: 专辑封面部分 - 移到右侧
+            // 优化 5: 专辑封面部分
             Box(
                 modifier = Modifier
                     .fillMaxHeight(0.5f)
@@ -271,22 +272,53 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
                 AlbumCoverDisplay(createArtworkBitmap(audioInfo?.artworkData))
 
             }
-            // 优化 2: 歌词部分 - 使用 audioInfo?.lyrics
-            // 优化 3: 使用 weight(1f) 让歌词部分占据剩余空间
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight(0.5f)
-                    .fillMaxWidth(0.75f)
-                    .offset(90.dp, y = (-30).dp), contentAlignment = Alignment.CenterStart
-            ) {
-                // 使用您提供的 LRC 解析器
-                val parsedLyrics = remember(audioInfo?.lyrics) { parseLrc(audioInfo?.lyrics) }
-                // 优化 4: ScrollableLyricsView 现在会撑满其父 Box
-                ScrollableLyricsView(
-                    currentPosition = contentCurrentPosition.milliseconds,
-                    parsedLyrics = parsedLyrics
-                )
+            Column(  modifier = Modifier
+                .fillMaxHeight(0.8f)
+                .fillMaxWidth(0.75f)) {
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight(0.2f)
+                        .fillMaxWidth(0.75f)
+                        .offset(90.dp, y = (-24).dp), contentAlignment = Alignment.CenterStart
+                ) {
+                    Column {
+                        Text(
+                            text = audioInfo?.title ?: "未知标题",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = Color.White,
+                            maxLines = 1
+                        )
+                        Row (Modifier.padding(top = 8.dp)){
+                            Text(text = "艺术家 : ${audioInfo?.artist ?: "未知歌手"}", color = Color.Gray, fontSize = 16.sp)
+
+                            Text(text = " · ", color = Color.Gray)
+                            Text(text = "专辑 : ${audioInfo?.album ?: "未知专辑"}", color = Color.Gray,fontSize = 16.sp)
+                        }
+                    }
+                }
+                // 优化 2: 歌词部分 - 使用 audioInfo?.lyrics
+                // 优化 3: 使用 weight(1f) 让歌词部分占据剩余空间
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight(0.8f)
+                        .fillMaxWidth()
+                        .offset(90.dp, y = (-30).dp), contentAlignment = Alignment.CenterStart
+                ) {
+
+                    // 使用您提供的 LRC 解析器
+                    val parsedLyrics =
+                        remember(audioInfo?.lyrics) { parseLrc(audioInfo?.lyrics) }
+                    // 优化 4: ScrollableLyricsView 现在会撑满其父 Box
+                    ScrollableLyricsView(
+                        currentPosition = contentCurrentPosition.milliseconds,
+                        parsedLyrics = parsedLyrics
+                    )
+
+
+                }
             }
+
 
             // Spacer(Modifier.width(16.dp)) // 添加间距
 
@@ -312,7 +344,7 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
                     exoPlayer,
                     audioPlayerState,
                     focusRequester,
-                    audioInfo?.title ?: audioMetadata.title,
+                    fileName,
                     "${audioInfo?.bitsPerSample ?: "--"} bit - " +
                             "${
                                 audioInfo?.sampleRate?.let {
@@ -323,7 +355,7 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String) {
                                     )
                                 } ?: "未知采样率"
                             } - " +
-                            "${audioInfo?.bit?: "--"} Kbps" ,
+                            "${audioInfo?.bit ?: "--"} Kbps",
 
                     "时长: ${audioMetadata.duration}", // 直接使用已格式化的字符串
                     audioPlayerViewModel,

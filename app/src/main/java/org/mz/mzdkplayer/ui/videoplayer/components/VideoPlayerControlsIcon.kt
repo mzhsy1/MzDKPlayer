@@ -47,21 +47,21 @@ fun VideoPlayerControlsIcon(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
 
-    LaunchedEffect(isFocused && isPlaying) {
-        if (isFocused && isPlaying) {
-            state.showControls()
-        }
-    }
+//    LaunchedEffect(isFocused && isPlaying) {
+//        if (isFocused && isPlaying) {
+//            //state.showControls()
+//        }
+//    }
 
     Surface(
         modifier = modifier.size(40.dp),
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.Black, contentColor = Color.White,
+            containerColor = Color.DarkGray, contentColor = Color.White,
             focusedContainerColor = Color.White, focusedContentColor = Color.Black
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
         interactionSource = interactionSource
     ) {
         Icon(

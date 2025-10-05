@@ -212,7 +212,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                                             "smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}",
                                                             "UTF-8"
                                                         )
-                                                    }/SMB"
+                                                    }/SMB/${URLEncoder.encode(file.name,"UTF-8")}"
                                                 )
                                             } else{
                                                 Toast.makeText(context, "不支持的格式", Toast.LENGTH_SHORT).show()
