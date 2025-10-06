@@ -133,7 +133,7 @@ fun formatDuration(durationMs: Int?): String {
 @Composable
 fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String) {
     val context = LocalContext.current
-    val exoPlayer = rememberPlayer(context, mediaUri, dataSourceType)
+    val exoPlayer = rememberAudioPlayer(context, mediaUri, dataSourceType)
     val audioPlayerState = rememberAudioPlayerState(hideSeconds = 6)
     val audioPlayerViewModel: AudioPlayerViewModel = viewModel()
     var showToast by remember { mutableStateOf(false) }
@@ -145,7 +145,7 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String)
     var audioMetadata by remember { mutableStateOf(AudioMetadata()) }
     var audioInfo: AudioInfo? by remember { mutableStateOf(null) } // 关键：存储 audioInfo
 
-    BuilderMzPlayer(context, mediaUri, exoPlayer, dataSourceType)
+    BuilderMzAudioPlayer(context, mediaUri, exoPlayer, dataSourceType)
 
     DisposableEffect(Unit) {
         onDispose {
@@ -161,7 +161,7 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String)
 
     // 加载音频信息和歌词
     LaunchedEffect(mediaUri, sampleMimeType) {
-        Log.d("sampleMimeType", sampleMimeType)
+        Log.e("sampleMimeType", sampleMimeType)
         if (sampleMimeType.isNotEmpty()) {
             withContext(Dispatchers.IO) {
                 try {
@@ -238,7 +238,7 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String)
 
     LaunchedEffect(Unit) {
         while (true) {
-            delay(200) // 更频繁地更新进度
+            delay(300) // 更频繁地更新进度
             contentCurrentPosition = exoPlayer.currentPosition
         }
     }
