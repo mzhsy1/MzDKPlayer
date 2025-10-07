@@ -421,6 +421,7 @@ object SmbUtils {
 
                 // 打开 NFS 文件
                 val file = Nfs3File(client, nfsFilePath)
+                //file.read()
                 if (!file.exists()) {
                     throw IOException("NFS file does not exist: $nfsFilePath")
                 }

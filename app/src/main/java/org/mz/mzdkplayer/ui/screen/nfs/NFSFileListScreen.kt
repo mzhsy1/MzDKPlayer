@@ -212,8 +212,21 @@ fun NFSFileListScreen(
                                                     fullFileUrl,
                                                     "UTF-8"
                                                 )
+                                                if (Tools.containsVideoFormat(
+                                                        Tools.extractFileExtension(file.name)
+                                                    )
+                                                ){
+
                                                 // 导航到视频播放器
-                                                navController.navigate("VideoPlayer/$encodedFileUrl/NFS")
+                                                navController.navigate("VideoPlayer/$encodedFileUrl/NFS")}else if (Tools.containsAudioFormat(
+                                                        Tools.extractFileExtension(file.name)
+                                                    )){
+                                                    navController.navigate(
+                                                        "AudioPlayer/$encodedFileUrl/NFS/${URLEncoder.encode(file.name,"UTF-8")}"
+                                                    )
+                                                } else{
+                                                    Toast.makeText(context, "不支持的格式", Toast.LENGTH_SHORT).show()
+                                                }
                                             }
                                         }
                                     },
