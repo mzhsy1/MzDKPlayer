@@ -161,7 +161,7 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String)
             withContext(Dispatchers.IO) {
                 try {
                     val inputStream: InputStream? = when (mediaUri.toUri().scheme?.lowercase()) {
-                        "smb" -> SmbUtils.openSmbFileInputStream(mediaUri.toUri())
+                        "smb" -> SmbUtils.openSmbFileInputStreamTMB(mediaUri.toUri())
                         "http", "https" -> {
                             when (dataSourceType) {
                                 "WEBDAV" -> SmbUtils.openWebDavFileInputStream(mediaUri.toUri())
