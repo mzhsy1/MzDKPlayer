@@ -29,6 +29,7 @@ import io.github.peerless2012.ass.media.type.AssRenderType
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 
 import androidx.core.net.toUri
+import androidx.media3.common.AudioAttributes
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
 import org.mz.mzdkplayer.tool.FtpDataSourceFactory
@@ -61,8 +62,6 @@ fun BuilderMzAudioPlayer(
 //            .setPreferredTextLanguage("zh") // 将 "zh" 替换为你需要的默认字幕语言代码，例如 "en" 表示英语
 //            .build()
 
-        // SRT 字幕的 MIME 类型
-        val mimeTypeSRT = "application/x-subrip"
 
         //exoPlayer.trackSelectionParameters = trackSelectionParameters
 
@@ -84,7 +83,7 @@ fun BuilderMzAudioPlayer(
                 Log.d("MediaItemUri", uri.toString())
                 MediaItem.fromUri(uri)
             }
-        Log.e("AVCDecoderSelector", "==============================================")
+        //Log.e("AVCDecoderSelector", "==============================================")
         exoPlayer.setMediaItem(mediaItem)
         exoPlayer.prepare()
         exoPlayer.addListener(object : Player.Listener {
@@ -95,8 +94,7 @@ fun BuilderMzAudioPlayer(
                 videoPlayerViewModel.mutableSetOfVideoTrackGroups.clear()
                 videoPlayerViewModel.mutableSetOfTextTrackGroups.clear()
 
-                // 检测是否有SRT字幕轨道被选中
-                var hasSrtTrackSelected = false
+
 
                 for (trackGroup in trackGroups) {
                     // Group level information.
@@ -163,12 +161,14 @@ fun BuilderMzAudioPlayer(
 fun rememberAudioPlayer(context: Context, mediaUri: String, dataSourceType: String) =
     remember(mediaUri) {
 
-        Log.i("AVCDecoderSelector", "==============================================")
+       // Log.i("AVCDecoderSelector", "==============================================")
 
         // 配置 RenderersFactory
         val renderersFactory = DefaultRenderersFactory(context).apply {
             //setMediaCodecSelector(avcAwareCodecSelector)
             setExtensionRendererMode(EXTENSION_RENDERER_MODE_PREFER)
+            setEnableAudioFloatOutput(true)
+            setEnableDecoderFallback(true)
         }
 
         // 根据 URI 协议选择合适的数据源工厂
@@ -212,7 +212,7 @@ fun rememberAudioPlayer(context: Context, mediaUri: String, dataSourceType: Stri
             .setPrioritizeTimeOverSizeThresholds(true) // 优先时间阈值
             .build()
         ExoPlayer.Builder(context).setSeekForwardIncrementMs(10000).setSeekBackIncrementMs(10000)
-            .setLoadControl(loadControl)
+
             .setMediaSourceFactory(
                 DefaultMediaSourceFactory(
                     dataSourceFactory
@@ -221,5 +221,10 @@ fun rememberAudioPlayer(context: Context, mediaUri: String, dataSourceType: Stri
             .build().apply {
                 playWhenReady = true
                 repeatMode = Player.REPEAT_MODE_ONE
+                val audioAttributes = AudioAttributes.Builder()
+                    .setUsage(androidx.media3.common.C.USAGE_MEDIA) // 媒体播放
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC) // 音乐内容
+                    .build()
+                setAudioAttributes(audioAttributes, true) // true 表示处理音频焦点
             }
     }

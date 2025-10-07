@@ -153,11 +153,6 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String)
         }
     }
 
-    LaunchedEffect(exoPlayer) {
-        while (true) {
-            delay(600)
-        }
-    }
 
     // 加载音频信息和歌词
     LaunchedEffect(mediaUri, sampleMimeType) {
@@ -261,6 +256,20 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String)
                 .fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 1. 使用 remember 来缓存解码后的 Bitmap
+            val coverBitmap: Bitmap? = remember(audioInfo?.artworkData) { // 依赖 artworkData
+                // 当 artworkData 改变时，才重新执行 lambda
+                audioInfo?.artworkData?.let { data ->
+                    try {
+                        // 假设 createArtworkBitmap 是一个纯函数，只做解码
+                        // 为了性能，也可以考虑在这里直接用 BitmapFactory.decodeByteArray
+                        createArtworkBitmap(data) // 调用工具函数
+                    } catch (e: Exception) {
+                        Log.e("BitmapCache", "Failed to decode bitmap", e)
+                        null
+                    }
+                }
+            }
             // 优化 5: 专辑封面部分
             Box(
                 modifier = Modifier
@@ -269,7 +278,7 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String)
                     .offset(x = 56.dp, y = (-38).dp), contentAlignment = Alignment.CenterStart
             ) { // 使用 wrapContentSize 并居中对齐到末端
 
-                AlbumCoverDisplay(createArtworkBitmap(audioInfo?.artworkData))
+                AlbumCoverDisplay(coverBitmap)
 
             }
             Column(  modifier = Modifier
@@ -278,9 +287,9 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String)
 
                 Box(
                     modifier = Modifier
-                        .fillMaxHeight(0.2f)
-                        .fillMaxWidth(0.75f)
-                        .offset(90.dp, y = (-24).dp), contentAlignment = Alignment.CenterStart
+                        .fillMaxHeight(0.18f)
+                        .fillMaxWidth()
+                        .offset(90.dp, y = (-32).dp), contentAlignment = Alignment.CenterStart
                 ) {
                     Column {
                         Text(
@@ -290,10 +299,10 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String)
                             maxLines = 1
                         )
                         Row (Modifier.padding(top = 8.dp)){
-                            Text(text = "艺术家 : ${audioInfo?.artist ?: "未知歌手"}", color = Color.Gray, fontSize = 16.sp)
+                            Text(text = "艺术家 : ${audioInfo?.artist ?: "未知歌手"}", color = Color.Gray, fontSize = 16.sp, maxLines = 1)
 
                             Text(text = " · ", color = Color.Gray)
-                            Text(text = "专辑 : ${audioInfo?.album ?: "未知专辑"}", color = Color.Gray,fontSize = 16.sp)
+                            Text(text = "专辑 : ${audioInfo?.album ?: "未知专辑"}", color = Color.Gray,fontSize = 16.sp, maxLines = 1)
                         }
                     }
                 }
@@ -301,7 +310,7 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String)
                 // 优化 3: 使用 weight(1f) 让歌词部分占据剩余空间
                 Box(
                     modifier = Modifier
-                        .fillMaxHeight(0.8f)
+                        .fillMaxHeight(0.82f)
                         .fillMaxWidth()
                         .offset(90.dp, y = (-30).dp), contentAlignment = Alignment.CenterStart
                 ) {

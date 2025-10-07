@@ -384,7 +384,7 @@ class SmbDataSource(
         readBuffer = null // 清空缓冲区引用
         bufferPosition = 0
         bufferLimit = 0
-
+        Log.i("sd","SMB关闭")
         // 打印总体性能统计
         if (numReads > 0 && totalReadTime > 0) {
             val avgSpeed = (totalBytesRead.toDouble() / totalReadTime / 1024 / 1024) * 1000
