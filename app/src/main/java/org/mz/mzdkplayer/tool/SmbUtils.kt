@@ -31,6 +31,7 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 import androidx.core.net.toUri
+import com.hierynomus.smbj.share.File
 import okhttp3.Request
 import okhttp3.Response
 
@@ -64,7 +65,7 @@ object SmbUtils {
             var connection: Connection? = null
             var session: Session? = null
             var share: DiskShare? = null
-            var file: com.hierynomus.smbj.share.File? = null
+            var file: File? = null
 
             try {
                 connection = client.connect(host)
@@ -81,9 +82,7 @@ object SmbUtils {
                     null
                 )
 
-                return@withContext file.inputStream.also {
-                    // 注意：调用者负责关闭 InputStream，它会级联关闭 file/share/session/connection
-                }
+                return@withContext file.inputStream
             } catch (e: Exception) {
                 // 清理资源
                 file?.close()
@@ -119,7 +118,7 @@ object SmbUtils {
             var connection: Connection? = null
             var session: Session? = null
             var share: DiskShare? = null
-            var file: com.hierynomus.smbj.share.File? = null
+            var file: File? = null
 
             try {
                 connection = client.connect(host)
@@ -136,9 +135,7 @@ object SmbUtils {
                     null
                 )
                 val originalInputStream = file.inputStream
-                return@withContext  LimitedInputStream(originalInputStream, 5 * 1024 * 1024).also {
-                    // 注意：调用者负责关闭 InputStream，它会级联关闭 file/share/session/connection
-                }
+                return@withContext  LimitedInputStream(originalInputStream, 5 * 1024 * 1024)
             } catch (e: Exception) {
                 // 清理资源
                 file?.close()
@@ -165,8 +162,8 @@ object SmbUtils {
             if (scheme != "http" && scheme != "https") {
                 throw IOException("Invalid WebDAV URI scheme: $scheme")
             }
-            val host = webDavUri.host ?: throw IOException("Invalid WebDAV URI: no host")
-            val port = webDavUri.port.takeIf { it != -1 } ?: if (scheme == "https") 443 else 80
+            // val host = webDavUri.host ?: throw IOException("Invalid WebDAV URI: no host")
+            // val port = webDavUri.port.takeIf { it != -1 } ?: if (scheme == "https") 443 else 80
             val path = webDavUri.path ?: throw IOException("Invalid WebDAV URI: no path")
             if (path.isEmpty() || path == "/") {
                 throw IOException("Invalid WebDAV URI: path is empty or root")
@@ -187,7 +184,7 @@ object SmbUtils {
             }
 
             // 3. 构建基础 URL (不包含文件路径)
-            val baseUrl = "$scheme://$host:$port"
+            // val baseUrl = "$scheme://$host:$port"
 
             // 4. 配置忽略 SSL 的 OkHttpClient (与 connectToWebDav 逻辑一致)
             val trustAllCerts = arrayOf<TrustManager>(@SuppressLint("CustomX509TrustManager")
@@ -270,7 +267,7 @@ object SmbUtils {
             // ftpClient.soTimeout = 10000 // SOCKET_TIMEOUT_MS (可选)
 
             var success = false // 标记是否成功登录
-            var inputStream: InputStream? = null
+            var inputStream: InputStream?
             try {
                 // 连接到服务器
                 ftpClient.connect(host, port)
@@ -315,11 +312,11 @@ object SmbUtils {
                         if (isClosed) return
                         isClosed = true
 
-                        var completeOk = false
+                        var completeOk: Boolean
                         var inputStreamException: Throwable? = null
                         var completeCommandException: Throwable? = null
-                        var logoutException: Throwable? = null
-                        var disconnectException: Throwable? = null
+                        val logoutException: Throwable? = null
+                        val disconnectException: Throwable? = null
 
                         try {
                             // 1. 首先关闭输入流
@@ -334,11 +331,11 @@ object SmbUtils {
                                 completeOk = ftpClient.completePendingCommand()
                                 if (!completeOk) {
                                     // 可以记录警告日志，但不一定抛异常
-                                    // Log.w("FTP", "completePendingCommand failed: ${ftpClient.replyString}")
+                                    Log.w("FTP", "completePendingCommand failed: ${ftpClient.replyString}")
                                 }
                             } catch (e: Exception) {
                                 completeCommandException = e
-                                // Log.e("FTP", "Exception in completePendingCommand", e)
+                                Log.e("FTP", "Exception in completePendingCommand", e)
                             }
 
                             // 3. 最后注销和断开连接
@@ -347,8 +344,7 @@ object SmbUtils {
                                     ftpClient.logout()
                                 }
                             } catch (e: Exception) {
-                                logoutException = e
-                                // Log.w("FTP", "Exception during logout", e)
+                                Log.w("FTP", "Exception during logout", e)
                             }
 
                             try {
@@ -356,8 +352,7 @@ object SmbUtils {
                                     ftpClient.disconnect()
                                 }
                             } catch (e: Exception) {
-                                disconnectException = e
-                                // Log.w("FTP", "Exception during disconnect", e)
+                                Log.w("FTP", "Exception during disconnect", e)
                             }
 
                             // 如果关闭输入流或完成命令时发生严重错误，则抛出
@@ -370,7 +365,7 @@ object SmbUtils {
                                 // 或者，如果这是关键错误，可以抛出：
                                 // throw IOException("Error completing FTP command", completeCommandException)
                                 // 当前选择记录但不中断调用者（假设数据已读取完毕）
-                                // Log.w("FTP", "FTP command completion error (ignoring if data read OK)", completeCommandException)
+                                Log.w("FTP", "FTP command completion error (ignoring if data read OK)", completeCommandException)
                             }
 
 
@@ -392,7 +387,7 @@ object SmbUtils {
                 if (success) { // 只有成功登录才尝试注销
                     try {
                         ftpClient.logout()
-                    } catch (logoutEx: Exception) {
+                    } catch (_: Exception) {
                         // 忽略注销异常
                     }
                 }
@@ -400,7 +395,7 @@ object SmbUtils {
                     if (ftpClient.isConnected) {
                         ftpClient.disconnect()
                     }
-                } catch (disconnectEx: Exception) {
+                } catch (_: Exception) {
                     // 忽略断开异常
                 }
                 throw IOException("Failed to open FTP file: $ftpUri", e)
@@ -456,13 +451,13 @@ object SmbUtils {
             // 准备认证信息 (使用默认 UID/GID 0)
             val credential = CredentialUnix()
 
-            var nfsClient: Nfs3? = null
-            var nfsFile: Nfs3File? = null
+            var nfsClient: Nfs3?
+
 
             try {
                 // 创建 NFS 客户端并连接/挂载
-                val client = Nfs3(serverAddress, exportedPath, credential, 3)
-                nfsClient = client
+                nfsClient = Nfs3(serverAddress, exportedPath, credential, 3)
+               
 
                 // 构造 NFS 文件路径 (相对于挂载点)
                 val nfsFilePath = if (pathWithinExport.startsWith("/")) {
@@ -472,7 +467,7 @@ object SmbUtils {
                 }
 
                 // 打开 NFS 文件
-                val file = Nfs3File(client, nfsFilePath)
+                val file = Nfs3File(nfsClient, nfsFilePath)
                 //file.read()
                 if (!file.exists()) {
                     throw IOException("NFS file does not exist: $nfsFilePath")
@@ -480,7 +475,6 @@ object SmbUtils {
                 if (!file.isFile) {
                     throw IOException("NFS path is not a file: $nfsFilePath")
                 }
-                nfsFile = file
 
                 // 直接返回文件的 InputStream
                 // 注意: Nfs3File 可能没有直接的 inputStream 属性。
@@ -574,7 +568,6 @@ object SmbUtils {
                 }
                 try {
                     // Nfs3 客户端通常没有显式关闭方法，置为 null 即可
-                    nfsClient = null
                 } catch (closeException: Exception) {
                     Log.w("openNfsFileInputStream", "Error closing NFS client during error handling", closeException)
                 }
@@ -589,17 +582,17 @@ object SmbUtils {
      * 根据完整的 HTTP Link URL 打开 XML 弹幕文件并返回 InputStream
      * 示例 URL: http://host:port/path/to/danmaku.xml
      * @param xmlUrl HTTP Link 上 XML 文件的完整 URL
-     * @param okHttpClient 用于发起请求的 OkHttpClient 实例
+     
      * @return 用于读取 XML 文件的 InputStream
      * @throws IOException 如果连接失败或无法打开流
      */
     @Throws(IOException::class)
     suspend fun openHTTPLinkXmlInputStream(xmlUrl: String): InputStream {
-        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        return withContext(Dispatchers.IO) {
             val okHttpClient = OkHttpClient()
             val request = Request.Builder().url(xmlUrl).build()
             val call = okHttpClient.newCall(request)
-            val response: okhttp3.Response = call.execute() // 同步执行，因为我们需要 Response 对象
+            val response: Response = call.execute() // 同步执行，因为我们需要 Response 对象
 
             if (!response.isSuccessful) {
                 throw IOException("HTTP error code: ${response.code}, message: ${response.message}")
