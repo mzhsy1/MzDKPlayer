@@ -60,13 +60,13 @@ fun CustomSubtitleView(
         fontSize = 18.sp // 默认字体大小
 
     ),
-    backgroundColor: Color = Color.Black.copy(alpha = 1.0f) // 默认半透明黑色背景
+    backgroundColor: Color = Color.Black.copy(alpha = 0.0f) // 默认半透明黑色背景
 ) {
     // 使用 Box 作为容器，方便定位和添加背景
     val (screenWidthDp, screenHeightDp) = getScreenDimensions()
     Box(
         modifier = modifier
-            .background(backgroundColor)
+
             .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.BottomCenter // 将字幕放置在底部
     ) {
@@ -90,8 +90,7 @@ fun CustomSubtitleView(
                             style = subtitleStyle,
                             textAlign = TextAlign.Center,
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 8.dp)
+                                .padding(bottom = 8.dp).background(backgroundColor)//字幕底部边距
                         )
                     }
                     // 处理位图内容

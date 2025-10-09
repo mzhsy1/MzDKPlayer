@@ -56,7 +56,6 @@ import com.kuaishou.akdanmaku.ext.RETAINER_BILIBILI
 import com.kuaishou.akdanmaku.render.SimpleRenderer
 import com.kuaishou.akdanmaku.ui.DanmakuPlayer
 import kotlinx.coroutines.delay
-import org.mz.mzdkplayer.ui.videoplayer.components.VideoTrackPanel
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.danmaku.DanmakuData
 import org.mz.mzdkplayer.danmaku.DanmakuResponse
@@ -64,13 +63,11 @@ import org.mz.mzdkplayer.danmaku.getDanmakuXmlFromFile
 import org.mz.mzdkplayer.tool.CustomSubtitleView
 import org.mz.mzdkplayer.tool.SmbUtils
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
+import org.mz.mzdkplayer.ui.audioplayer.components.AudioTrackPanel
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 import org.mz.mzdkplayer.ui.videoplayer.components.AkDanmakuPlayer
-import org.mz.mzdkplayer.ui.audioplayer.components.AudioTrackPanel
 import org.mz.mzdkplayer.ui.videoplayer.components.BuilderMzPlayer
-
 import org.mz.mzdkplayer.ui.videoplayer.components.SubtitleTrackPanel
-
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerControlsIcon
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerMainFrame
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerMediaTitle
@@ -80,6 +77,7 @@ import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulse
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulseState
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerSeeker
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerState
+import org.mz.mzdkplayer.ui.videoplayer.components.VideoTrackPanel
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberPlayer
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerPulseState
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerState
@@ -255,7 +253,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
     LaunchedEffect(Unit) {
         while (true) {
             delay(200)
-            currentCueGroup = exoPlayer.currentCues
+            //currentCueGroup = exoPlayer.currentCues
         }
     }
 
@@ -327,6 +325,9 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
                 }
             }
         }
+        override fun onCues(cueGroup: CueGroup) {
+            currentCueGroup = cueGroup
+        }
 
         // 当播放位置发生不连续变化时 (如 Seek)
         override fun onPositionDiscontinuity(
@@ -392,8 +393,8 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
         CustomSubtitleView(
             cueGroup = currentCueGroup, // 传递当前字幕组
             subtitleStyle = customSubtitleStyle, // 使用自定义样式
-            modifier = Modifier.align(Alignment.BottomCenter), // 底部居中对齐
-            backgroundColor = Color.Black.copy(alpha = 0.0f) // 无背景色
+            modifier = Modifier.align(Alignment.BottomCenter), // 底部居中对齐(只影响srt字幕)
+            backgroundColor = Color.Black.copy(alpha = 0.5f) // 背景色(只影响srt字幕)
         )
 
         // 弹幕层
