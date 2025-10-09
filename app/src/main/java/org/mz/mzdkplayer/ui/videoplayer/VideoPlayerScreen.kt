@@ -1,7 +1,7 @@
 package org.mz.mzdkplayer.ui.videoplayer
 
 // 导入必要的库和组件
-import CustomSubtitleView
+
 import android.net.TrafficStats
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -38,7 +38,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -57,17 +56,17 @@ import com.kuaishou.akdanmaku.ext.RETAINER_BILIBILI
 import com.kuaishou.akdanmaku.render.SimpleRenderer
 import com.kuaishou.akdanmaku.ui.DanmakuPlayer
 import kotlinx.coroutines.delay
-import org.mz.mzbi.ui.videoplayer.components.VideoTrackPanel
+import org.mz.mzdkplayer.ui.videoplayer.components.VideoTrackPanel
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.danmaku.DanmakuData
 import org.mz.mzdkplayer.danmaku.DanmakuResponse
 import org.mz.mzdkplayer.danmaku.getDanmakuXmlFromFile
+import org.mz.mzdkplayer.tool.CustomSubtitleView
 import org.mz.mzdkplayer.tool.SmbUtils
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 import org.mz.mzdkplayer.ui.videoplayer.components.AkDanmakuPlayer
 import org.mz.mzdkplayer.ui.audioplayer.components.AudioTrackPanel
-import org.mz.mzdkplayer.ui.screen.vm.AudioPlayerViewModel
 import org.mz.mzdkplayer.ui.videoplayer.components.BuilderMzPlayer
 
 import org.mz.mzdkplayer.ui.videoplayer.components.SubtitleTrackPanel
@@ -344,6 +343,9 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
             }
         }
     })
+//    LaunchedEffect(exoPlayer) {
+//        exoPlayer.
+//    }
 
     // 主 UI 布局
     Box(
@@ -363,7 +365,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
         // 创建焦点请求器
         val focusRequester = remember { FocusRequester() }
 
-        // AndroidView 包裹 PlayerView，用于显示视频
+    //     AndroidView 包裹 PlayerView，用于显示视频
         AndroidView(
             factory = { context ->
                 PlayerView(context).apply{
@@ -384,6 +386,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
                 exoPlayer.release()
             }
         )
+//        PlayerSurface(player = exoPlayer,modifier = Modifier.fillMaxSize(),SURFACE_TYPE_SURFACE_VIEW)
 
         // 自定义字幕视图，显示 SRT 字幕 (从 CueGroup 中获取)
         CustomSubtitleView(

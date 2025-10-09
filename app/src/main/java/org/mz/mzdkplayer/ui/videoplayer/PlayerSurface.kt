@@ -47,7 +47,7 @@ import androidx.media3.common.util.UnstableApi
  */
 @UnstableApi
 @Composable
-fun PlayerSurface(
+fun PlayerSurface1(
     player: Player,
     modifier: Modifier = Modifier,
     surfaceType: @SurfaceType Int = SURFACE_TYPE_SURFACE_VIEW,
