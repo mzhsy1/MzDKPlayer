@@ -74,7 +74,7 @@ dependencies {
 // 请检查最新版本
     //implementation(libs.ass.kt)
     //implementation(libs.ass.media.v030beta02)
-    //implementation(libs.androidx.material3)
+    implementation(libs.androidx.material3)
     implementation(libs.androidx.datastore.preferences)
     // https://mvnrepository.com/artifact/com.emc.ecs/nfs-client
     implementation(libs.nfs.client)
