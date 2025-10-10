@@ -60,8 +60,9 @@ import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.danmaku.DanmakuData
 import org.mz.mzdkplayer.danmaku.DanmakuResponse
 import org.mz.mzdkplayer.danmaku.getDanmakuXmlFromFile
-import org.mz.mzdkplayer.tool.CustomSubtitleView
+
 import org.mz.mzdkplayer.tool.SmbUtils
+import org.mz.mzdkplayer.tool.SubtitleView
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
 import org.mz.mzdkplayer.ui.audioplayer.components.AudioTrackPanel
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
@@ -389,10 +390,10 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
         )
 //        PlayerSurface(player = exoPlayer,modifier = Modifier.fillMaxSize(),SURFACE_TYPE_SURFACE_VIEW)
 
-        // 自定义字幕视图，显示 SRT 字幕 (从 CueGroup 中获取)
-        CustomSubtitleView(
+        // 字幕视图，显示 SRT/PSG/ASS 字幕 (从 CueGroup 中获取)
+        SubtitleView(
             cueGroup = currentCueGroup, // 传递当前字幕组
-            subtitleStyle = customSubtitleStyle, // 使用自定义样式
+            subtitleStyle = customSubtitleStyle, // 使用自定义字幕样式(只影响srt字幕)
             modifier = Modifier.align(Alignment.BottomCenter), // 底部居中对齐(只影响srt字幕)
             backgroundColor = Color.Black.copy(alpha = 0.5f) // 背景色(只影响srt字幕)
         )

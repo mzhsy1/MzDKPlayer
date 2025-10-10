@@ -396,12 +396,7 @@ fun rememberPlayer(context: Context, mediaUri: String, dataSourceType: String) =
                     dataSourceFactory
                 )
             ).setRenderersFactory(renderersFactory)
-            .buildWithAssSupport( //配置ass字幕显示 LEGACY
-                context,
-                AssRenderType.LEGACY,
-                dataSourceFactory = dataSourceFactory,
-                renderersFactory = renderersFactory
-            ).apply {
+            .build().apply {
                 playWhenReady = true
                 repeatMode = Player.REPEAT_MODE_ONE
             }
