@@ -179,7 +179,7 @@ fun SubtitleView(
                     Log.i("SubtitleView", "offsetX: $offsetX, offsetY: $offsetY")
                     Box(
                         modifier = Modifier
-                            .offset(x = offsetX.dp , y = offsetY.dp) // Adjust the offset as needed
+                            .offset(x = offsetX.dp-14.dp , y = offsetY.dp-8.dp) // Adjust the offset as needed
                             .size(screenWidthDp.dp,screenHeightDp.dp)
                             .zIndex(cue.zIndex.toFloat())
                     ) {
