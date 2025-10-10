@@ -49,6 +49,8 @@ import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import androidx.media3.ui.compose.PlayerSurface
+import androidx.media3.ui.compose.SURFACE_TYPE_SURFACE_VIEW
 import androidx.tv.material3.Text
 import com.kuaishou.akdanmaku.DanmakuConfig
 import com.kuaishou.akdanmaku.data.DanmakuItemData
@@ -367,7 +369,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
         // 创建焦点请求器
         val focusRequester = remember { FocusRequester() }
 
-    //     AndroidView 包裹 PlayerView，用于显示视频
+   //      AndroidView 包裹 PlayerView，用于显示视频
         AndroidView(
             factory = { context ->
                 PlayerView(context).apply{
@@ -388,16 +390,17 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
                 exoPlayer.release()
             }
         )
-//        PlayerSurface(player = exoPlayer,modifier = Modifier.fillMaxSize(),SURFACE_TYPE_SURFACE_VIEW)
-
-        // 字幕视图，显示 SRT/PSG/ASS 字幕 (从 CueGroup 中获取)
-        SubtitleView(
-            cueGroup = currentCueGroup, // 传递当前字幕组
-            subtitleStyle = customSubtitleStyle, // 使用自定义字幕样式(只影响srt字幕)
-            modifier = Modifier.align(Alignment.BottomCenter), // 底部居中对齐(只影响srt字幕)
-            backgroundColor = Color.Black.copy(alpha = 0.5f) // 背景色(只影响srt字幕)
-        )
-
+        //PlayerSurface(player = exoPlayer,modifier = Modifier.fillMaxSize(),SURFACE_TYPE_SURFACE_VIEW)
+        // 显示 SRT/PSG/ ASS(ASS暂时由PlayerView显示,SubtitleView不显示)
+        if (videoPlayerViewModel.isCusSubtitleViewVis) {
+            // 字幕视图，显示 SRT/PSG/ASS(ASS暂时由PlayerView显示) 字幕 (从 CueGroup 中获取)
+            SubtitleView(
+                cueGroup = currentCueGroup, // 传递当前字幕组
+                subtitleStyle = customSubtitleStyle, // 使用自定义字幕样式(只影响srt字幕)
+                modifier = Modifier.align(Alignment.BottomCenter), // 底部居中对齐(只影响srt字幕)
+                backgroundColor = Color.Black.copy(alpha = 0.5f) // 背景色(只影响srt字幕)
+            )
+        }
         // 弹幕层
         AkDanmakuPlayer(
             modifier = Modifier

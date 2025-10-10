@@ -98,7 +98,8 @@ fun BuilderMzPlayer(
 
                 // 检测是否有SRT字幕轨道被选中
                 var hasSrtTrackSelected = false
-
+                var hasPGSTrackSelected = false
+                var hasASSTrackSelected =false
                 for (trackGroup in trackGroups) {
                     // Group level information.
                     val trackType = trackGroup.type
@@ -126,19 +127,33 @@ fun BuilderMzPlayer(
                                         hasSrtTrackSelected = true
                                         break // 找到一个SRT轨道就足够
                                     }
+                                    if (format.codecs == "application/pgs") {
+                                        hasPGSTrackSelected = true
+                                        break // 找到一个SRT轨道就足够
+                                    }
+                                    if (format.codecs == "text/x-ssa") {
+                                        hasASSTrackSelected = true
+                                        break // 找到一个SRT轨道就足够
+                                    }
                                 }
                             }
                         }
                     }
-                    // 根据是否选中了 SRT 轨道来设置可见性
-                    if (hasSrtTrackSelected) {
+                    // 根据是否选中了 SRT 或者 PSG轨道来设置可见性
+                    if (hasSrtTrackSelected || hasPGSTrackSelected) {
                         Log.d("SDS1", "SubtitleView set to GONE because SRT track is selected.")
                         videoPlayerViewModel.updateSubtitleVisibility(View.GONE)
+                        videoPlayerViewModel.updateCusSubtitleVisibility(true)
 
-                    } else {
+                    } else if (hasASSTrackSelected){
+                        videoPlayerViewModel.updateSubtitleVisibility(View.VISIBLE)
+                        Log.d("SDS1", "SubtitleView set to VISIBLE because ASS track is selected.")
+                        videoPlayerViewModel.updateCusSubtitleVisibility(false)
+                    }else {
                         Log.d(
                             "SDS1", "SubtitleView set to VISIBLE because no SRT track is selected."
                         )
+                        videoPlayerViewModel.updateCusSubtitleVisibility(false)
                         videoPlayerViewModel.updateSubtitleVisibility(View.VISIBLE)
 
                     }
@@ -396,7 +411,7 @@ fun rememberPlayer(context: Context, mediaUri: String, dataSourceType: String) =
                     dataSourceFactory
                 )
             ).setRenderersFactory(renderersFactory)
-            .build().apply {
+            .buildWithAssSupport(context = context, renderType = AssRenderType.LEGACY,renderersFactory=renderersFactory, dataSourceFactory = dataSourceFactory).apply {
                 playWhenReady = true
                 repeatMode = Player.REPEAT_MODE_ONE
             }

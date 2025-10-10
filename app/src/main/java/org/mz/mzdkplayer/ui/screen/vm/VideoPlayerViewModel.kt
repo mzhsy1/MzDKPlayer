@@ -35,6 +35,8 @@ class VideoPlayerViewModel:ViewModel() {
 
     var isSubtitleViewVis by mutableIntStateOf(View.VISIBLE)
 
+    var isCusSubtitleViewVis by mutableStateOf(false)
+
     var isSubtitlePanelVis by mutableStateOf("S")
 
     var selectedAorVorS by mutableStateOf("A")
@@ -45,6 +47,9 @@ class VideoPlayerViewModel:ViewModel() {
     var danmakuVisibility by mutableStateOf(true)
     fun updateSubtitleVisibility(visible: Int) {
         isSubtitleViewVis = visible
+    }
+    fun updateCusSubtitleVisibility(visible: Boolean) {
+        isCusSubtitleViewVis = visible
     }
     var textSize = 1.0f
 }
