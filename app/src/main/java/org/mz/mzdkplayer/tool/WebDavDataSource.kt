@@ -4,13 +4,14 @@ import android.annotation.SuppressLint
 import android.net.Uri
 import android.util.Log
 import androidx.media3.common.C
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.BaseDataSource
 import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSourceException
 import androidx.media3.datasource.DataSpec
 import com.thegrizzlylabs.sardineandroid.impl.OkHttpSardine
 import okhttp3.OkHttpClient
-import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
 import java.security.SecureRandom
@@ -22,16 +23,7 @@ import javax.net.ssl.X509TrustManager
 import kotlin.math.min
 
 /**
- * 自定义的 WebDAV 数据源，用于 ExoPlayer 通过 WebDAV 协议读取文件。
- * 此实现针对大文件（如视频）进行了优化，特别是随机访问（seeking）性能。
- * 主要优化点：
- * 1. 使用 OkHttp 的 Range 请求头来直接从指定偏移量读取数据，避免下载不需要的部分。
- * 2. 移除 Okio Buffer（如果 Sardine 内部使用），改用内部 ByteArray 进行缓冲，减少网络请求次数。
- * 3. 复用 OkHttpClient 实例以优化连接。
- *
- * 注意：此实现依赖于 sardine-android 库 (com.thegrizzlylabs.sardineandroid)。
- *       它使用了内部的 OkHttpSardine 实现来获取 InputStream。
- *       需要在项目中添加 sardine-android 依赖。
+ * 优化后的 WebDAV 数据源，借鉴了 Media3 HttpDataSource 的设计模式
  */
 @UnstableApi
 class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
@@ -41,26 +33,38 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
     private var sardine: OkHttpSardine? = null
     private var inputStream: InputStream? = null
 
-    // 使用 ByteArray 作为内部缓冲区
+    // 借鉴 HttpDataSource 的状态管理
+    private var bytesRead: Long = 0
+    private var bytesToRead: Long = 0
+    private var transferStarted: Boolean = false
+
+    // 缓冲区管理
     private var readBuffer: ByteArray? = null
     private var bufferPosition: Int = 0
     private var bufferLimit: Int = 0
     private var bufferSize: Int = DEFAULT_BUFFER_SIZE_BYTES
 
+    // 文件位置跟踪
     private var currentFileOffset: Long = 0
-    private var bytesRemaining: Long = 0
+
+    // 状态管理
     private val opened = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    // 性能监控
+    private var lastLogTime = 0L
+    private var totalBytesReadFromNetwork = 0L
+    private var totalReadTime = 0L
+    private var numReads = 0
 
     // --- 配置参数 ---
     companion object {
         private const val TAG = "WebDavDataSource"
-        // 增大缓冲区大小
-        private const val DEFAULT_BUFFER_SIZE_BYTES = 8 * 1024 * 1024 // 2MB 默认缓冲区大小
+        private const val DEFAULT_BUFFER_SIZE_BYTES = 8 * 1024 * 1024 // 8MB 默认缓冲区大小
+        private const val MAX_REDIRECTS = 5 // 最大重定向次数
 
-        // 用于信任所有证书的 OkHttpClient，并配置超时
+        // 用于信任所有证书的 OkHttpClient
         private val unsafeOkHttpClient: OkHttpClient by lazy {
             try {
-                // Create a trust manager that does not validate certificate chains
                 val trustAllCerts = arrayOf<TrustManager>(@SuppressLint("CustomX509TrustManager")
                 object : X509TrustManager {
                     @SuppressLint("TrustAllX509TrustManager")
@@ -76,35 +80,91 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
                 OkHttpClient.Builder()
                     .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
                     .hostnameVerifier { _, _ -> true }
-                    // --- 添加超时配置 ---
                     .connectTimeout(10, TimeUnit.SECONDS)
-                    .readTimeout(30, TimeUnit.SECONDS) // 根据需要调整
+                    .readTimeout(30, TimeUnit.SECONDS)
                     .writeTimeout(10, TimeUnit.SECONDS)
-                    // --- 可选：配置连接池 ---
-                    // .connectionPool(ConnectionPool(5, 5, TimeUnit.MINUTES))
+                    .followRedirects(true)
+                    .followSslRedirects(true)
                     .build()
             } catch (e: Exception) {
                 throw RuntimeException(e)
             }
         }
     }
-    // --- 配置结束 ---
 
     /**
-     * 打开数据源，准备读取指定 URI 和范围的数据。
-     * @param dataSpec 包含 URI、起始位置、长度等信息的数据规范
-     * @return 实际可读取的字节数
-     * @throws IOException 打开过程中发生错误
+     * 打开数据源，借鉴 HttpDataSource 的错误处理和状态管理
      */
     @Throws(IOException::class)
     override fun open(dataSpec: DataSpec): Long {
-        transferInitializing(dataSpec)
+        Log.d(TAG, "Opening: ${dataSpec.uri}")
 
+        // 状态检查和初始化 - 类似 HttpDataSource
         if (!opened.compareAndSet(false, true)) {
             throw IOException("WebDavDataSource 已经被打开。")
         }
 
         this.dataSpec = dataSpec
+        bytesRead = 0
+        bytesToRead = 0
+        transferInitializing(dataSpec)
+
+        try {
+            // 建立连接和验证
+            establishConnection(dataSpec)
+
+            // 获取文件信息并验证范围
+            val fileLength = getFileLength()
+            val startPosition = dataSpec.position
+
+            // 范围验证 - 类似 HttpDataSource 的 416 处理
+            if (startPosition < 0 || startPosition > fileLength) {
+                closeConnectionQuietly()
+                throw DataSourceException(PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE)
+            }
+
+            // 计算要读取的字节数
+            bytesToRead = if (dataSpec.length != C.LENGTH_UNSET.toLong()) {
+                dataSpec.length
+            } else {
+                fileLength - startPosition
+            }
+
+            // 验证计算后的长度
+            if (bytesToRead < 0 || startPosition + bytesToRead > fileLength) {
+                closeConnectionQuietly()
+                throw IOException("无效的数据范围: position=$startPosition, length=$bytesToRead, fileSize=$fileLength")
+            }
+
+            // 初始化读取状态
+            currentFileOffset = startPosition
+            this.readBuffer = ByteArray(bufferSize)
+            this.bufferPosition = 0
+            this.bufferLimit = 0
+
+            Log.i(TAG, "成功打开 WebDAV 文件, 大小: ${fileLength / 1024 / 1024}MB, " +
+                    "起始位置: $startPosition, 读取长度: ${bytesToRead / 1024 / 1024}MB")
+
+            // 标记传输开始 - 类似 HttpDataSource
+            transferStarted = true
+            transferStarted(dataSpec)
+
+            return bytesToRead
+
+        } catch (e: Exception) {
+            closeConnectionQuietly()
+            when (e) {
+                is IOException -> throw e
+                else -> throw IOException("打开 WebDAV 文件时出错: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * 建立 WebDAV 连接，包含更好的错误处理
+     */
+    @Throws(IOException::class)
+    private fun establishConnection(dataSpec: DataSpec) {
         val uri = dataSpec.uri
         val urlString = uri.toString()
 
@@ -112,82 +172,78 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
             throw IOException("无效的 WebDAV URI: 空 URI")
         }
 
-        // 从 URI 的 userInfo 部分提取凭证 (注意：这不安全，生产环境应使用更安全的方法)格式https://<username>:<password>@192.168.1.4:5006/movies/as.mkv
+        // 从 URI 的 userInfo 部分提取凭证
         val (username, password) = uri.userInfo?.split(":")?.let {
             if (it.size == 2) Pair(it[0], it[1]) else Pair("", "")
         } ?: Pair("", "")
 
         try {
-            // 直接使用预配置的不安全 OkHttpClient 实例
-            val okHttpClient = unsafeOkHttpClient
-
             // 初始化 Sardine 客户端
-            sardine = OkHttpSardine(okHttpClient)
+            sardine = OkHttpSardine(unsafeOkHttpClient)
             if (username.isNotBlank() || password.isNotBlank()) {
                 sardine?.setCredentials(username, password)
             }
-            Log.d(TAG,"$username $password")
+            Log.d(TAG, "Credentials: $username ***")
 
-            // 方法 1: 使用 Uri.Builder (推荐，因为它处理编码等细节)
-            val cleanUriString = Uri.Builder()
-                .scheme(uri.scheme) // "https"
-                .encodedAuthority(uri.authority?.substringAfter('@') ?: uri.authority) // 移除 userInfo 部分 ("192.168.1.4:5006")
-                .encodedPath(uri.encodedPath) // "/movies/as.mkv" (保持编码)
-                .encodedQuery(uri.encodedQuery) // 如果有查询参数 (?param=value)
-                .encodedFragment(uri.encodedFragment) // 如果有片段 (#section)
-                .build()
-                .toString()
-            Log.d(TAG,cleanUriString)
+            // 构建干净的 URI（移除用户信息）
+            val cleanUriString = buildCleanUri(uri)
+            Log.d(TAG, "Clean URI: $cleanUriString")
 
-            // 获取文件大小（HEAD 请求）
-            val davResources = sardine?.list(cleanUriString) // Depth 0, 不获取属性
-            if (davResources.isNullOrEmpty()) {
-                throw IOException("无法获取文件信息或文件不存在: $urlString")
-            }
-            val fileLength = davResources[0].contentLength
-
-            // 验证请求的数据范围
-            val startPosition = dataSpec.position
-            if (startPosition < 0 || startPosition > fileLength) {
-                throw IOException("无效的起始位置: $startPosition")
-            }
-
-            bytesRemaining = if (dataSpec.length != C.LENGTH_UNSET.toLong()) {
-                dataSpec.length
-            } else {
-                fileLength - startPosition
-            }
-
-            if (bytesRemaining < 0 || startPosition + bytesRemaining > fileLength) {
-                throw IOException("无效的数据长度: $bytesRemaining")
-            }
-
-            // 初始化内部缓冲区状态
-            currentFileOffset = startPosition
-            this.readBuffer = ByteArray(bufferSize)
-            this.bufferPosition = 0
-            this.bufferLimit = 0
-
-            // 注意：我们不在此处打开 InputStream，而是在第一次 read 时打开，
-            // 以便利用 Range 请求进行精确读取。
-
-            transferStarted(dataSpec)
-            Log.i(TAG, "成功打开 WebDAV 数据源: $urlString, 起始位置: $startPosition, 长度: $bytesRemaining")
-            return bytesRemaining
+            // 验证连接和文件存在性
+            validateConnection(cleanUriString)
 
         } catch (e: Exception) {
-            closeQuietly()
-            throw IOException("打开 WebDAV 文件时出错: ${e.message}", e)
+            throw IOException("建立 WebDAV 连接时出错: ${e.message}", e)
         }
     }
 
     /**
-     * 从数据源读取数据到指定的缓冲区。
-     * @param buffer 目标缓冲区
-     * @param offset 缓冲区中的起始写入偏移量
-     * @param readLength 尝试读取的最大字节数
-     * @return 实际读取的字节数，或 C.RESULT_END_OF_INPUT 表示结束
-     * @throws IOException 读取过程中发生错误
+     * 构建干净的 URI（移除用户信息）
+     */
+    private fun buildCleanUri(uri: Uri): String {
+        return Uri.Builder()
+            .scheme(uri.scheme)
+            .encodedAuthority(uri.authority?.substringAfter('@') ?: uri.authority)
+            .encodedPath(uri.encodedPath)
+            .encodedQuery(uri.encodedQuery)
+            .encodedFragment(uri.encodedFragment)
+            .build()
+            .toString()
+    }
+
+    /**
+     * 验证连接和文件存在性
+     */
+    @Throws(IOException::class)
+    private fun validateConnection(uri: String) {
+        val davResources = sardine?.list(uri)
+        if (davResources.isNullOrEmpty()) {
+            throw IOException("无法获取文件信息或文件不存在: $uri")
+        }
+    }
+
+    /**
+     * 获取文件长度，包含错误处理
+     */
+    @Throws(IOException::class)
+    private fun getFileLength(): Long {
+        return try {
+            val cleanUri = buildCleanUri(dataSpec?.uri!!)
+            val davResources = sardine?.list(cleanUri)
+                ?: throw IOException("无法获取文件信息")
+
+            if (davResources.isEmpty()) {
+                throw IOException("文件不存在")
+            }
+
+            davResources[0].contentLength
+        } catch (e: Exception) {
+            throw IOException("获取文件大小时出错: ${e.message}", e)
+        }
+    }
+
+    /**
+     * 读取数据，借鉴 HttpDataSource 的读取模式
      */
     @Throws(IOException::class)
     override fun read(buffer: ByteArray, offset: Int, readLength: Int): Int {
@@ -195,184 +251,227 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
             throw IOException("数据源未打开")
         }
 
-        if (bytesRemaining == 0L) {
+        if (bytesRead == bytesToRead) {
             return C.RESULT_END_OF_INPUT
         }
 
-        val bytesToRead = min(readLength.toLong(), bytesRemaining).toInt().coerceAtLeast(0)
-        if (bytesToRead == 0) {
+        // 计算实际可读取的字节数
+        val bytesToReadNow = min(
+            readLength.toLong(),
+            bytesToRead - bytesRead
+        ).toInt().coerceAtLeast(0)
+
+        if (bytesToReadNow == 0) {
             return 0
         }
 
-        try {
-            var totalBytesRead = 0
-            var currentOffset = offset
-
-            // 循环读取，直到满足请求的字节数或遇到 EOF
-            while (totalBytesRead < bytesToRead) {
-                val bytesNeeded = bytesToRead - totalBytesRead
-
-                // 检查内部缓冲区是否有数据，如果没有或不足，则从网络填充
-                if (bufferPosition >= bufferLimit) {
-                    refillBuffer()
-                }
-
-                // 再次检查缓冲区状态
-                if (bufferPosition >= bufferLimit) {
-                    if (totalBytesRead == 0) {
-                        return C.RESULT_END_OF_INPUT // 如果还没读到任何数据，就是 EOF
-                    } else {
-                        break // 否则返回已读取的部分数据
-                    }
-                }
-
-                // 现在缓冲区中应该有数据了，从中读取
-                val bytesAvailableInBuffer = bufferLimit - bufferPosition
-                val bytesReadFromBuffer = min(bytesNeeded, bytesAvailableInBuffer)
-
-                // 将数据从内部缓冲区复制到输出缓冲区
-                System.arraycopy(
-                    readBuffer!!, // Smart cast to non-null
-                    bufferPosition,
-                    buffer,
-                    currentOffset,
-                    bytesReadFromBuffer
-                )
-
-                // 更新缓冲区内部状态
-                bufferPosition += bytesReadFromBuffer
-                totalBytesRead += bytesReadFromBuffer
-                currentOffset += bytesReadFromBuffer
-                bytesRemaining -= bytesReadFromBuffer.toLong()
-                bytesTransferred(bytesReadFromBuffer)
-            }
-
-            return totalBytesRead
-
-        } catch (e: Exception) {
-            throw IOException("从 WebDAV 文件读取时出错: ${e.message}", e)
-        }
+        return readInternal(buffer, offset, bytesToReadNow)
     }
 
     /**
-     * 通过从 WebDAV 服务器读取数据来填充内部缓冲区。
-     * 使用 HTTP Range 请求来获取从 currentFileOffset 开始的数据块。
-     *
-     * @throws IOException 如果读取操作期间发生错误。
+     * 内部读取实现，包含性能监控
      */
     @Throws(IOException::class)
-    private fun refillBuffer() {
-        val internalBuffer = readBuffer ?: return
-        val bytesRemainingInFile = bytesRemaining
-        if (bytesRemainingInFile <= 0) {
-            bufferPosition = 0
-            bufferLimit = 0
-            return
+    private fun readInternal(buffer: ByteArray, offset: Int, length: Int): Int {
+        var totalBytesRead = 0
+        var currentOffset = offset
+        var remaining = length
+
+        while (remaining > 0) {
+            // 检查并填充缓冲区
+            if (bufferPosition >= bufferLimit) {
+                val bytesFilled = refillBuffer()
+                if (bytesFilled == -1) {
+                    break // 到达文件末尾
+                }
+            }
+
+            // 从缓冲区读取数据
+            val bytesAvailable = bufferLimit - bufferPosition
+            if (bytesAvailable <= 0) break
+
+            val bytesToCopy = min(remaining, bytesAvailable)
+            System.arraycopy(readBuffer!!, bufferPosition, buffer, currentOffset, bytesToCopy)
+
+            // 更新状态
+            bufferPosition += bytesToCopy
+            currentOffset += bytesToCopy
+            totalBytesRead += bytesToCopy
+            remaining -= bytesToCopy
+            bytesRead += bytesToCopy.toLong()
+
+            // 通知传输进度
+            bytesTransferred(bytesToCopy)
         }
 
-        val chunkSize = min(bufferSize.toLong(), bytesRemainingInFile).toInt()
+        return if (totalBytesRead == 0 && length > 0) C.RESULT_END_OF_INPUT else totalBytesRead
+    }
+
+    /**
+     * 填充缓冲区，优化性能和错误处理
+     */
+    @Throws(IOException::class)
+    private fun refillBuffer(): Int {
+        val internalBuffer = readBuffer ?: throw IOException("缓冲区未初始化")
+
+        // 检查是否已读取所有数据
+        if (bytesRead >= bytesToRead) {
+            bufferPosition = 0
+            bufferLimit = 0
+            return -1
+        }
+
+        // 计算本次要读取的字节数
+        val maxBytesToRead = (bytesToRead - bytesRead).coerceAtMost(bufferSize.toLong()).toInt()
+        if (maxBytesToRead <= 0) {
+            return -1
+        }
+
         val startTime = System.currentTimeMillis()
 
-        try {
-            // 关闭旧的 InputStream（如果存在）
-            inputStream?.close()
-            inputStream = null
-
-            // 构造 Range 请求头: "bytes=startOffset-endOffset"
-            val endOffset = currentFileOffset + chunkSize.toLong() - 1
-            val rangeHeader = "bytes=$currentFileOffset-$endOffset"
-            Log.i(TAG, "请求 Range: $rangeHeader")
-
-            // 使用 Sardine 获取带有 Range 头的 InputStream
-            // 注意：这依赖于 OkHttpSardine 的内部实现，它会将 headers 传递给 OkHttpClient
-            inputStream = sardine?.get(dataSpec?.uri.toString(), mapOf("Range" to rangeHeader))
-
-            if (inputStream == null) {
-                throw IOException("无法从 WebDAV 服务器获取输入流")
-            }
-
-            // 从 InputStream 读取到内部缓冲区
-            var totalBytesReadFromStream = 0
-            while (totalBytesReadFromStream < chunkSize) {
-                val bytesRead = inputStream?.read(
-                    internalBuffer,
-                    totalBytesReadFromStream,
-                    chunkSize - totalBytesReadFromStream
-                ) ?: -1
-
-                if (bytesRead == -1) {
-                    // 提前到达流末尾
-                    break
-                }
-                totalBytesReadFromStream += bytesRead
-            }
-
-            val readTime = System.currentTimeMillis() - startTime
-            if (totalBytesReadFromStream > 0) {
-                val speed = if (readTime > 0) {
-                    (totalBytesReadFromStream.toDouble() / readTime / 1024 / 1024) * 1000
-                } else {
-                    0.0
-                }
-                // 可以调整这里的阈值来更敏感地记录慢速读取
-                if (readTime > 200 || speed < 3.0) {
-                    Log.i(
-                        TAG, "读取 ${totalBytesReadFromStream / 1024 / 1024}MB 耗时 ${readTime}ms, " +
-                                "速度: ${"%.2f".format(speed)} MB/s"
-                    )
-                }
-            }
-
-
-            // 更新缓冲区状态
-            bufferPosition = 0
-            bufferLimit = totalBytesReadFromStream // 可能小于请求的 chunkSize
-            currentFileOffset += totalBytesReadFromStream.toLong()
-
-            // 如果读取的字节少于预期且未到文件末尾，可能是服务器问题或连接中断
-            if (totalBytesReadFromStream < chunkSize && bytesRemaining > totalBytesReadFromStream) {
-                Log.w(TAG, "从网络读取的数据少于预期 ($totalBytesReadFromStream < $chunkSize)")
-                // 可以选择抛出异常或继续（可能导致播放卡顿）
-                // throw IOException("网络读取不完整")
-            }
-
-
+        // 从 WebDAV 服务器读取
+        val bytesReadFromNetwork = try {
+            readFromWebDav(maxBytesToRead)
         } catch (e: Exception) {
-            inputStream?.close()
-            inputStream = null
-            throw IOException("从 WebDAV 填充缓冲区时发生错误", e)
+            throw IOException("从 WebDAV 读取数据时发生错误", e)
+        }
+
+        val readTime = System.currentTimeMillis() - startTime
+
+        // 性能监控和日志
+        if (bytesReadFromNetwork > 0) {
+            monitorPerformance(bytesReadFromNetwork, readTime)
+        }
+
+        if (bytesReadFromNetwork <= 0) {
+            bufferPosition = 0
+            bufferLimit = 0
+            return -1
+        }
+
+        // 更新缓冲区状态
+        bufferPosition = 0
+        bufferLimit = bytesReadFromNetwork
+        currentFileOffset += bytesReadFromNetwork.toLong()
+
+        return bytesReadFromNetwork
+    }
+
+    /**
+     * 从 WebDAV 服务器读取数据
+     */
+    @Throws(IOException::class)
+    private fun readFromWebDav(chunkSize: Int): Int {
+        // 关闭旧的 InputStream
+        inputStream?.close()
+        inputStream = null
+
+        // 构造 Range 请求头
+        val endOffset = currentFileOffset + chunkSize - 1
+        val rangeHeader = "bytes=$currentFileOffset-$endOffset"
+
+        Log.d(TAG, "请求 Range: $rangeHeader")
+
+        // 使用 Sardine 获取带有 Range 头的 InputStream
+        inputStream = sardine?.get(dataSpec?.uri.toString(), mapOf("Range" to rangeHeader))
+
+        if (inputStream == null) {
+            throw IOException("无法从 WebDAV 服务器获取输入流")
+        }
+
+        // 从 InputStream 读取到内部缓冲区
+        var totalBytesReadFromStream = 0
+        while (totalBytesReadFromStream < chunkSize) {
+            val bytesRead = inputStream?.read(
+                readBuffer!!,
+                totalBytesReadFromStream,
+                chunkSize - totalBytesReadFromStream
+            ) ?: -1
+
+            if (bytesRead == -1) {
+                // 提前到达流末尾
+                break
+            }
+            totalBytesReadFromStream += bytesRead
+        }
+
+        // 检查读取完整性
+        if (totalBytesReadFromStream < chunkSize && bytesToRead - bytesRead > totalBytesReadFromStream) {
+            Log.w(TAG, "网络读取不完整: 请求 $chunkSize 字节, 实际读取 $totalBytesReadFromStream 字节")
+        }
+
+        return totalBytesReadFromStream
+    }
+
+    /**
+     * 性能监控，借鉴 HttpDataSource 的监控思想
+     */
+    private fun monitorPerformance(bytesRead: Int, readTime: Long) {
+        totalReadTime += readTime
+        numReads++
+        totalBytesReadFromNetwork += bytesRead
+
+        val speed = if (readTime > 0) {
+            (bytesRead.toDouble() / readTime / 1024 / 1024) * 1000
+        } else {
+            0.0
+        }
+
+        val currentTime = System.currentTimeMillis()
+        // 只在性能较差或定期记录日志
+        if (readTime > 200 || speed < 3.0 || currentTime - lastLogTime > 5000) {
+            Log.i(TAG, "读取 ${bytesRead / 1024}KB 耗时 ${readTime}ms, " +
+                    "速度: ${"%.2f".format(speed)} MB/s, 文件位置: ${currentFileOffset / 1024 / 1024}MB")
+            lastLogTime = currentTime
         }
     }
 
-
     /**
-     * 获取当前打开的数据源 URI。
-     * @return 当前 URI 或 null
+     * 获取当前 URI
      */
     override fun getUri(): Uri? {
         return dataSpec?.uri
     }
 
     /**
-     * 关闭数据源，释放所有资源。
+     * 关闭数据源，借鉴 HttpDataSource 的资源清理模式
      */
     @Throws(IOException::class)
     override fun close() {
+        Log.d(TAG, "Closing data source.")
+
         if (opened.compareAndSet(true, false)) {
-            closeQuietly()
+            try {
+                // 先关闭输入流
+                inputStream?.close()
+            } catch (e: IOException) {
+                throw IOException("关闭 WebDAV 输入流时出错", e)
+            } finally {
+                // 清理其他资源
+                closeConnectionQuietly()
+
+                // 状态重置
+                if (transferStarted) {
+                    transferStarted = false
+                    transferEnded()
+                }
+
+                // 清空引用
+                dataSpec = null
+                inputStream = null
+                sardine = null
+                readBuffer = null
+
+                // 打印统计信息
+                logStatistics()
+            }
         }
-        dataSpec = null
-        bytesRemaining = 0
-        currentFileOffset = 0
-        readBuffer = null
-        bufferPosition = 0
-        bufferLimit = 0
     }
 
     /**
-     * 辅助方法：静默关闭所有资源，即使发生异常也忽略。
+     * 静默关闭连接，类似 HttpDataSource 的 closeConnectionQuietly
      */
-    private fun closeQuietly() {
+    private fun closeConnectionQuietly() {
         try {
             inputStream?.close()
         } catch (ignored: Exception) {
@@ -380,13 +479,24 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
         } finally {
             inputStream = null
         }
-        // OkHttp/Sardine 通常会管理连接池，不需要显式关闭客户端
-        sardine = null
+        // Sardine 使用连接池，不需要显式关闭
+    }
+
+    /**
+     * 记录性能统计
+     */
+    private fun logStatistics() {
+        if (numReads > 0 && totalReadTime > 0) {
+            val avgSpeed = (totalBytesReadFromNetwork.toDouble() / totalReadTime / 1024 / 1024) * 1000
+            val avgTimePerRead = totalReadTime.toDouble() / numReads
+            Log.i(TAG, "性能统计 - 总网络读取: ${totalBytesReadFromNetwork / 1024 / 1024}MB, " +
+                    "平均速度: ${"%.2f".format(avgSpeed)} MB/s, 平均读取耗时: ${"%.2f".format(avgTimePerRead)}ms")
+        }
     }
 }
 
 /**
- * WebDavDataSource 的工厂类，用于创建 WebDavDataSource 实例。
+ * WebDavDataSource 的工厂类
  */
 @UnstableApi
 class WebDavDataSourceFactory : DataSource.Factory {
@@ -394,6 +504,3 @@ class WebDavDataSourceFactory : DataSource.Factory {
         return WebDavDataSource()
     }
 }
-
-
-

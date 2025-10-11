@@ -100,6 +100,7 @@ fun BuilderMzPlayer(
                 var hasSrtTrackSelected = false
                 var hasPGSTrackSelected = false
                 var hasASSTrackSelected =false
+                var hasVTTTrackSelected =false
                 for (trackGroup in trackGroups) {
                     // Group level information.
                     val trackType = trackGroup.type
@@ -135,12 +136,16 @@ fun BuilderMzPlayer(
                                         hasASSTrackSelected = true
                                         break // 找到一个SRT轨道就足够
                                     }
+                                    if (format.codecs == "text/vtt") {
+                                        hasVTTTrackSelected = true
+                                        break // 找到一个SRT轨道就足够
+                                    }
                                 }
                             }
                         }
                     }
                     // 根据是否选中了 SRT 或者 PSG轨道来设置可见性
-                    if (hasSrtTrackSelected || hasPGSTrackSelected) {
+                    if (hasSrtTrackSelected || hasPGSTrackSelected || hasVTTTrackSelected) {
                         Log.d("SDS1", "SubtitleView set to GONE because SRT track is selected.")
                         videoPlayerViewModel.updateSubtitleVisibility(View.GONE)
                         videoPlayerViewModel.updateCusSubtitleVisibility(true)
@@ -411,7 +416,8 @@ fun rememberPlayer(context: Context, mediaUri: String, dataSourceType: String) =
                     dataSourceFactory
                 )
             ).setRenderersFactory(renderersFactory)
-            .buildWithAssSupport(context = context, renderType = AssRenderType.LEGACY,renderersFactory=renderersFactory, dataSourceFactory = dataSourceFactory).apply {
+            .buildWithAssSupport(context = context, renderType = AssRenderType.LEGACY,
+                renderersFactory=renderersFactory, dataSourceFactory = dataSourceFactory).apply {
                 playWhenReady = true
                 repeatMode = Player.REPEAT_MODE_ONE
             }

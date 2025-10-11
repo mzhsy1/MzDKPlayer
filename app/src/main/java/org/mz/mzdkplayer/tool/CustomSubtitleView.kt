@@ -177,10 +177,11 @@ fun SubtitleView(
                         else -> screenHeightDp * y
                     }
                     Log.i("SubtitleView", "offsetX: $offsetX, offsetY: $offsetY")
+                    Log.i("SubtitleView", "cue.zIndex$cue.zIndex")
                     Box(
                         modifier = Modifier
                             .offset(x = offsetX.dp-14.dp , y = offsetY.dp-8.dp) // Adjust the offset as needed
-                            .size(screenWidthDp.dp,screenHeightDp.dp)
+                            .fillMaxSize()
                             .zIndex(cue.zIndex.toFloat())
                     ) {
                         Image(
