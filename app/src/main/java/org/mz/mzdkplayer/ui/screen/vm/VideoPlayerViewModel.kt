@@ -12,17 +12,22 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.switchMap
+import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Tracks
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 
 class VideoPlayerViewModel:ViewModel() {
-    private val getUpVideoDataLiveData = MutableLiveData<Map<String,String>>()
 
 
 
-    fun getUpVideoDetailsData(map: Map<String, String>){
-        getUpVideoDataLiveData.value = map
-    }
+    // 播放状态（使用 StateFlow，推荐用于 Compose）
+    private val _playerStatus = MutableStateFlow<VideoPlayerStatus>(VideoPlayerStatus.IDLE)
+    val playerStatus: StateFlow<VideoPlayerStatus> = _playerStatus.asStateFlow()
+
     val mutableSetOfAudioTrackGroups = mutableListOf<Tracks.Group>()
     val mutableSetOfVideoTrackGroups = mutableListOf<Tracks.Group>()
 
@@ -51,5 +56,30 @@ class VideoPlayerViewModel:ViewModel() {
     fun updateCusSubtitleVisibility(visible: Boolean) {
         isCusSubtitleViewVis = visible
     }
-    var textSize = 1.0f
+    // 公共方法：供外部（如 Player.Listener）更新状态
+    fun updatePlayerStatus(status: VideoPlayerStatus) {
+        viewModelScope.launch {
+            _playerStatus.value = status
+        }
+    }
+    fun setPlayerError(message: String) = updatePlayerStatus(VideoPlayerStatus.Error(message))
+}
+// 播放状态密封类（你已定义，稍作补充）
+sealed class VideoPlayerStatus {
+    object IDLE : VideoPlayerStatus()
+    object BUFFERING : VideoPlayerStatus()
+    object READY : VideoPlayerStatus() // 建议加上 READY
+    object ENDED : VideoPlayerStatus() // 建议加上 ENDED
+    data class Error(val message: String) : VideoPlayerStatus()
+
+    // 用于 UI 显示的描述（可选）
+    override fun toString(): String {
+        return when (this) {
+            IDLE -> "正在初始化"
+            BUFFERING -> "正在缓冲..."
+            READY -> "播放中"
+            ENDED -> "播放结束"
+            is Error -> "播放出错: $message"
+        }
+    }
 }

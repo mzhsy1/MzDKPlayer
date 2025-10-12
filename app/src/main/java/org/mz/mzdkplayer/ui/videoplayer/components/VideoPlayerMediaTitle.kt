@@ -92,6 +92,7 @@ fun VideoPlayerMediaTitle(
 
             Text(
                 text = subTitle,
+                maxLines = 1,
                 style = MaterialTheme.typography.bodyLarge,
                 color = Color.Gray,
                 modifier = Modifier.alignByBaseline()

@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.Log
@@ -66,6 +68,8 @@ import org.mz.mzdkplayer.tool.SmbUtils
 import org.mz.mzdkplayer.tool.SubtitleView
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
 import org.mz.mzdkplayer.ui.audioplayer.components.AudioTrackPanel
+import org.mz.mzdkplayer.ui.audioplayer.extractAudioMetadataFromPlayer
+import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerStatus
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 import org.mz.mzdkplayer.ui.videoplayer.components.AkDanmakuPlayer
 import org.mz.mzdkplayer.ui.videoplayer.components.BuilderMzPlayer
@@ -131,7 +135,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
     var currentCueGroup: CueGroup? by remember { mutableStateOf<CueGroup?>(null) }
     // 状态：弹幕配置
     var danmakuConfig by remember { mutableStateOf(DanmakuConfig()) }
-
+    val playerStatus by videoPlayerViewModel.playerStatus.collectAsState()
     // 弹幕数据
     // 状态：解析后的弹幕数据列表
     var danmakuDataList by remember { mutableStateOf<List<DanmakuData>?>(null) }
@@ -251,13 +255,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
         }
     }
 
-    // 每隔200毫秒获取当前字幕 (CueGroup)
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(200)
-            //currentCueGroup = exoPlayer.currentCues
-        }
-    }
+
 
     // 网速监控协程
     LaunchedEffect(isPlaying) {
@@ -311,44 +309,73 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
         }
     }
 
-    // 为 ExoPlayer 添加监听器，用于同步弹幕播放状态和位置
-    exoPlayer.addListener(object : Player.Listener {
-        override fun onIsPlayingChanged(isPlaying: Boolean) {
-            super.onIsPlayingChanged(isPlaying)
-            // 如果弹幕可见性为 true
-            if (videoPlayerViewModel.danmakuVisibility) {
-                if (isPlaying) {
-                    // 启动弹幕播放器并同步位置
-                    mDanmakuPlayer.start(danmakuConfig)
-                    mDanmakuPlayer.seekTo(contentCurrentPosition)
-                } else {
-                    // 暂停弹幕播放器
-                    mDanmakuPlayer.pause()
+
+    LaunchedEffect(exoPlayer) {
+        // 为 ExoPlayer 添加监听器，用于同步弹幕播放状态和位置
+        exoPlayer.addListener(object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                super.onIsPlayingChanged(isPlaying)
+                // 如果弹幕可见性为 true
+                if (videoPlayerViewModel.danmakuVisibility) {
+                    if (isPlaying) {
+                        // 启动弹幕播放器并同步位置
+                        mDanmakuPlayer.start(danmakuConfig)
+                        mDanmakuPlayer.seekTo(contentCurrentPosition)
+                    } else {
+                        // 暂停弹幕播放器
+                        mDanmakuPlayer.pause()
+                    }
                 }
             }
-        }
-        override fun onCues(cueGroup: CueGroup) {
-            currentCueGroup = cueGroup
-        }
-
-        // 当播放位置发生不连续变化时 (如 Seek)
-        override fun onPositionDiscontinuity(
-            oldPosition: Player.PositionInfo,
-            newPosition: Player.PositionInfo,
-            reason: Int
-        ) {
-            super.onPositionDiscontinuity(oldPosition, newPosition, reason)
-            // 如果当前是暂停状态，同步弹幕播放器位置并暂停
-            if (!isPlaying) {
-                mDanmakuPlayer.seekTo(newPosition.contentPositionMs)
-                mDanmakuPlayer.pause()
-                Log.d("newPosition", newPosition.contentPositionMs.toString())
+            override fun onCues(cueGroup: CueGroup) {
+                super.onCues(cueGroup)
+                currentCueGroup = cueGroup
             }
-        }
-    })
-//    LaunchedEffect(exoPlayer) {
-//        exoPlayer.
-//    }
+
+            override fun onPlayerErrorChanged(error: PlaybackException?) {
+                if (error!=null) {
+                    Log.d("error", error.message.toString())
+                    videoPlayerViewModel.setPlayerError(error.message.toString())
+                }
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                when (playbackState) {
+                    Player.STATE_READY -> {
+                        videoPlayerViewModel.updatePlayerStatus(VideoPlayerStatus.READY)
+                    }
+
+                    Player.STATE_BUFFERING -> {
+                        videoPlayerViewModel.updatePlayerStatus(VideoPlayerStatus.BUFFERING)
+                    }
+                    Player.STATE_ENDED -> {
+                        videoPlayerViewModel.updatePlayerStatus(VideoPlayerStatus.ENDED)
+                    }
+                    Player.STATE_IDLE -> {
+                        // 不主动设置 IDLE 状态，避免覆盖错误状态（如网络失败后进入 IDLE）
+                        // 初始状态已在 ViewModel 中设为 IDLE，错误状态由 onPlayerErrorChanged 单独处理
+                       // videoPlayerViewModel.updatePlayerStatus(VideoPlayerStatus.IDLE)
+                    }
+
+                }
+            }
+
+            // 当播放位置发生不连续变化时 (如 Seek)
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int
+            ) {
+                super.onPositionDiscontinuity(oldPosition, newPosition, reason)
+                // 如果当前是暂停状态，同步弹幕播放器位置并暂停
+                if (!isPlaying) {
+                    mDanmakuPlayer.seekTo(newPosition.contentPositionMs)
+                    mDanmakuPlayer.pause()
+                    Log.d("newPosition", newPosition.contentPositionMs.toString())
+                }
+            }
+        })
+    }
 
     // 主 UI 布局
     Box(
@@ -435,7 +462,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
                     videoPlayerState, // 播放器状态
                     focusRequester, // 焦点请求器
                     "asasas", // 标题 (示例)
-                    "sdssdsd", // 副标题 (示例)
+                    playerStatus.toString(), // 副标题 (示例)
                     "2022/1/20", // 第三行文本 (示例)
                     videoPlayerViewModel, // ViewModel
                     danmakuConfig, // 弹幕配置
