@@ -4,6 +4,7 @@ package org.mz.mzdkplayer.ui.screen.http // 请根据你的实际包名修改
 
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -160,7 +161,9 @@ fun HTTPLinkFileListScreen(
     ) {
         when (connectionStatus) {
             is HTTPLinkConnectionStatus.Connecting -> {
-                LoadingScreen("正在链接HTTP服务器")
+                LoadingScreen("正在链接HTTP服务器",Modifier
+                    .fillMaxSize()
+                    .background(Color.Black))
             }
 
             is HTTPLinkConnectionStatus.Error -> {
@@ -274,7 +277,10 @@ fun HTTPLinkFileListScreen(
                                                 )
 
                                                 // 导航到视频播放器，传递编码后的 URL 和来源标识
-                                                navController.navigate("VideoPlayer/$encodedFileUrl/HTTP")
+                                                navController.navigate("VideoPlayer/$encodedFileUrl/HTTP/${ URLEncoder.encode(
+                                                    resource.name,
+                                                    "UTF-8"
+                                                )}")
                                             }
                                         }
                                     },

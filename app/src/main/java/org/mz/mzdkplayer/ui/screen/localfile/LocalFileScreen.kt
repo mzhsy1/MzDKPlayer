@@ -101,7 +101,10 @@ fun LocalFileScreen(path: String?, navController: NavHostController) {
                                             "file://${file.path}",
                                             "UTF-8"
                                         )
-                                    }/LOCAL"
+                                    }/LOCAL/${ URLEncoder.encode(
+                                        file.name,
+                                        "UTF-8"
+                                    )}"
                                 )
                             }
                         },

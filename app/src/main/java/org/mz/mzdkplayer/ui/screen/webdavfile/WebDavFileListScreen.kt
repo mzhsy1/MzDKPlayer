@@ -198,7 +198,10 @@ fun WebDavFileListScreen(
                                                     "WebDavFileListScreen",
                                                     "Navigating to video player: $fullFileUrl (encoded: $encodedFileUrl)"
                                                 )
-                                                navController.navigate("VideoPlayer/$encodedFileUrl/WEBDAV")
+                                                navController.navigate("VideoPlayer/$encodedFileUrl/WEBDAV/${ URLEncoder.encode(
+                                                    file.name,
+                                                    "UTF-8"
+                                                )}")
                                             }
                                         }
                                     },

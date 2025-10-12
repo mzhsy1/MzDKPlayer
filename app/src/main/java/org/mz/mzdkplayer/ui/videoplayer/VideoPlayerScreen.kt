@@ -10,20 +10,24 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -34,7 +38,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -43,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.Log
@@ -66,6 +74,10 @@ import org.mz.mzdkplayer.tool.SmbUtils
 import org.mz.mzdkplayer.tool.SubtitleView
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
 import org.mz.mzdkplayer.ui.audioplayer.components.AudioTrackPanel
+import org.mz.mzdkplayer.ui.audioplayer.extractAudioMetadataFromPlayer
+import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
+import org.mz.mzdkplayer.ui.screen.common.VAErrorScreen
+import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerStatus
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 import org.mz.mzdkplayer.ui.videoplayer.components.AkDanmakuPlayer
 import org.mz.mzdkplayer.ui.videoplayer.components.BuilderMzPlayer
@@ -83,6 +95,7 @@ import org.mz.mzdkplayer.ui.videoplayer.components.VideoTrackPanel
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberPlayer
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerPulseState
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerState
+import java.io.IOException
 import java.io.InputStream
 import java.net.URL
 import java.util.Locale
@@ -96,7 +109,7 @@ import kotlin.time.Duration.Companion.milliseconds
  */
 @OptIn(UnstableApi::class)
 @Composable
-fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
+fun VideoPlayerScreen(mediaUri: String, dataSourceType: String,fileName:String="未知文件名") {
     // 获取当前 Compose 上下文
     val context = LocalContext.current
     // 记住并创建 ExoPlayer 实例
@@ -126,12 +139,15 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
     val mDanmakuPlayer: DanmakuPlayer = remember { DanmakuPlayer(SimpleRenderer()) }
 
     // 根据媒体 URI 和数据源类型推断弹幕文件 URI
-    val danmakuUri = if(dataSourceType=="NFS") SmbUtils.getDanmakuNfsUri(mediaUri.toUri()) else SmbUtils.getDanmakuSmbUri(mediaUri.toUri())
+    val danmakuUri =
+        if (dataSourceType == "NFS") SmbUtils.getDanmakuNfsUri(mediaUri.toUri()) else SmbUtils.getDanmakuSmbUri(
+            mediaUri.toUri()
+        )
     // 状态：当前的字幕组 (CueGroup)
     var currentCueGroup: CueGroup? by remember { mutableStateOf<CueGroup?>(null) }
     // 状态：弹幕配置
     var danmakuConfig by remember { mutableStateOf(DanmakuConfig()) }
-
+    val playerStatus by videoPlayerViewModel.playerStatus.collectAsState()
     // 弹幕数据
     // 状态：解析后的弹幕数据列表
     var danmakuDataList by remember { mutableStateOf<List<DanmakuData>?>(null) }
@@ -159,32 +175,39 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
                     // 使用 SMB 工具打开输入流
                     SmbUtils.openSmbFileInputStream(danmakuUri)
                 }
+
                 "http", "https" -> {
                     // 打开 HTTP 输入流
                     when (dataSourceType) {
                         "WEBDAV" -> {
                             SmbUtils.openWebDavFileInputStream(danmakuUri)
                         }
+
                         "HTTP" -> {
                             SmbUtils.openHTTPLinkXmlInputStream(danmakuUri.toString())
                         }
+
                         else -> {
                             URL(danmakuUri.toString()).openStream()
                         }
                     }
                 }
+
                 "file" -> {
                     // 打开本地文件输入流
                     context.contentResolver.openInputStream(danmakuUri)
-                        ?: throw java.io.IOException("Could not open file input stream for $danmakuUri")
+                        ?: throw IOException("Could not open file input stream for $danmakuUri")
                 }
+
                 "ftp" -> {
                     // 使用 SMB 工具打开输入流
                     SmbUtils.openFtpFileInputStream(danmakuUri)
                 }
+
                 "nfs" -> {
                     SmbUtils.openNfsFileInputStream(danmakuUri)
                 }
+
                 else -> {
                     // 不支持的 scheme
                     Log.w("VideoPlayerScreen", "Unsupported scheme for danmaku URI: $danmakuUri")
@@ -251,13 +274,6 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
         }
     }
 
-    // 每隔200毫秒获取当前字幕 (CueGroup)
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(200)
-            //currentCueGroup = exoPlayer.currentCues
-        }
-    }
 
     // 网速监控协程
     LaunchedEffect(isPlaying) {
@@ -290,9 +306,9 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
     val customSubtitleStyle = TextStyle(
         color = Color.White, // 字幕颜色为白色
         fontSize = 20.sp,     // 字体大小
-        shadow = androidx.compose.ui.graphics.Shadow(
+        shadow = Shadow(
             color = Color.Black, // 黑色阴影
-            offset = androidx.compose.ui.geometry.Offset(3f, 3f),
+            offset = Offset(3f, 3f),
             blurRadius = 1f
         ),
     )
@@ -311,218 +327,299 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String) {
         }
     }
 
-    // 为 ExoPlayer 添加监听器，用于同步弹幕播放状态和位置
-    exoPlayer.addListener(object : Player.Listener {
-        override fun onIsPlayingChanged(isPlaying: Boolean) {
-            super.onIsPlayingChanged(isPlaying)
-            // 如果弹幕可见性为 true
-            if (videoPlayerViewModel.danmakuVisibility) {
-                if (isPlaying) {
-                    // 启动弹幕播放器并同步位置
-                    mDanmakuPlayer.start(danmakuConfig)
-                    mDanmakuPlayer.seekTo(contentCurrentPosition)
-                } else {
-                    // 暂停弹幕播放器
+
+    LaunchedEffect(exoPlayer) {
+        // 为 ExoPlayer 添加监听器，用于同步弹幕播放状态和位置
+        exoPlayer.addListener(object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                super.onIsPlayingChanged(isPlaying)
+                // 如果弹幕可见性为 true
+                if (videoPlayerViewModel.danmakuVisibility) {
+                    if (isPlaying) {
+                        // 启动弹幕播放器并同步位置
+                        mDanmakuPlayer.start(danmakuConfig)
+                        mDanmakuPlayer.seekTo(contentCurrentPosition)
+                    } else {
+                        // 暂停弹幕播放器
+                        mDanmakuPlayer.pause()
+                    }
+                }
+            }
+
+            override fun onCues(cueGroup: CueGroup) {
+                super.onCues(cueGroup)
+                currentCueGroup = cueGroup
+            }
+
+            override fun onPlayerErrorChanged(error: PlaybackException?) {
+                if (error != null) {
+                    Log.d("error", error.message.toString())
+                    videoPlayerViewModel.setPlayerError(error.message.toString())
+                }
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                when (playbackState) {
+                    Player.STATE_READY -> {
+                        videoPlayerViewModel.updatePlayerStatus(VideoPlayerStatus.READY)
+                    }
+
+                    Player.STATE_BUFFERING -> {
+                        videoPlayerViewModel.updatePlayerStatus(VideoPlayerStatus.BUFFERING)
+                    }
+
+                    Player.STATE_ENDED -> {
+                        videoPlayerViewModel.updatePlayerStatus(VideoPlayerStatus.ENDED)
+                    }
+
+                    Player.STATE_IDLE -> {
+                        // 不主动设置 IDLE 状态，避免覆盖错误状态（如网络失败后进入 IDLE）
+                        // 初始状态已在 ViewModel 中设为 IDLE，错误状态由 onPlayerErrorChanged 单独处理
+                        // videoPlayerViewModel.updatePlayerStatus(VideoPlayerStatus.IDLE)
+                    }
+
+                }
+            }
+
+            // 当播放位置发生不连续变化时 (如 Seek)
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int
+            ) {
+                super.onPositionDiscontinuity(oldPosition, newPosition, reason)
+                // 如果当前是暂停状态，同步弹幕播放器位置并暂停
+                if (!isPlaying) {
+                    mDanmakuPlayer.seekTo(newPosition.contentPositionMs)
                     mDanmakuPlayer.pause()
+                    Log.d("newPosition", newPosition.contentPositionMs.toString())
                 }
             }
-        }
-        override fun onCues(cueGroup: CueGroup) {
-            currentCueGroup = cueGroup
-        }
-
-        // 当播放位置发生不连续变化时 (如 Seek)
-        override fun onPositionDiscontinuity(
-            oldPosition: Player.PositionInfo,
-            newPosition: Player.PositionInfo,
-            reason: Int
-        ) {
-            super.onPositionDiscontinuity(oldPosition, newPosition, reason)
-            // 如果当前是暂停状态，同步弹幕播放器位置并暂停
-            if (!isPlaying) {
-                mDanmakuPlayer.seekTo(newPosition.contentPositionMs)
-                mDanmakuPlayer.pause()
-                Log.d("newPosition", newPosition.contentPositionMs.toString())
-            }
-        }
-    })
-//    LaunchedEffect(exoPlayer) {
-//        exoPlayer.
-//    }
-
-    // 主 UI 布局
-    Box(
-        Modifier
-            // 添加 D-Pad 事件处理
-            .dPadEvents(
-                exoPlayer,
-                videoPlayerState,
-                pulseState,
-                videoPlayerViewModel
-            )
-            .background(Color(0, 0, 0)) // 黑色背景
-            .focusable() // 可获得焦点
-            .fillMaxHeight()
-            .fillMaxWidth()
-    ) {
-        // 创建焦点请求器
-        val focusRequester = remember { FocusRequester() }
-
-   //      AndroidView 包裹 PlayerView，用于显示视频
-        AndroidView(
-            factory = { context ->
-                PlayerView(context).apply{
-                    useController = false // 禁用默认控制器
-                    player = exoPlayer // 设置 ExoPlayer
-                    // 根据 ViewModel 状态设置字幕视图可见性
-                    subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
-                }
-            },
-            update = { playView ->
-                // 更新 PlayerView
-                playView.player = exoPlayer
-                playView.subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
-            },
-            modifier = Modifier.fillMaxSize(), // 填充整个父容器
-            onRelease = {
-                // 释放资源
-                exoPlayer.release()
-            }
-        )
-        //PlayerSurface(player = exoPlayer,modifier = Modifier.fillMaxSize(),SURFACE_TYPE_SURFACE_VIEW)
-        // 显示 SRT/PSG/ ASS(ASS暂时由PlayerView显示,SubtitleView不显示)
-        if (videoPlayerViewModel.isCusSubtitleViewVis) {
-            // 字幕视图，显示 SRT/PSG/ASS(ASS暂时由PlayerView显示) 字幕 (从 CueGroup 中获取)
-            SubtitleView(
-                cueGroup = currentCueGroup, // 传递当前字幕组
-                subtitleStyle = customSubtitleStyle, // 使用自定义字幕样式(只影响srt字幕)
-                modifier = Modifier.align(Alignment.BottomCenter), // 底部居中对齐(只影响srt字幕)
-                backgroundColor = Color.Black.copy(alpha = 0.5f) // 背景色(只影响srt字幕)
-            )
-        }
-        // 弹幕层
-        AkDanmakuPlayer(
-            modifier = Modifier
-                .fillMaxSize()
-                .align(Alignment.TopCenter), // 顶部居中对齐
-            danmakuPlayer = mDanmakuPlayer // 传递弹幕播放器实例
-        )
-
-        // 实时网速显示
-        if (isPlaying) {
-            NetworkSpeedIndicator(
-                networkSpeed = networkSpeed, // 传递网络速度
-                modifier = Modifier
-                    .align(Alignment.TopEnd) // 右上角对齐
-                    .padding(16.dp) // 内边距
+        })
+    }
+    when (playerStatus) {
+        VideoPlayerStatus.IDLE -> {
+            LoadingScreen(
+                "正在加载中 请勿操作", Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
             )
         }
 
-        // 视频播放器覆盖层 (包含控制按钮等)
-        VideoPlayerOverlay(
-            modifier = Modifier.align(Alignment.BottomCenter), // 底部居中
-            focusRequester = focusRequester, // 焦点请求器
-            state = videoPlayerState, // 播放器状态
-            isPlaying = isPlaying, // 播放状态
-            centerButton = { VideoPlayerPulse(pulseState) }, // 中心脉冲按钮
-            subtitles = {  }, // 子标题 (未实现)
-            controls = {
-                // 控制按钮区域
-                VideoPlayerControls(
-                    isPlaying, // 播放状态
-                    contentCurrentPosition, // 当前位置
-                    exoPlayer, // ExoPlayer 实例
-                    videoPlayerState, // 播放器状态
-                    focusRequester, // 焦点请求器
-                    "asasas", // 标题 (示例)
-                    "sdssdsd", // 副标题 (示例)
-                    "2022/1/20", // 第三行文本 (示例)
-                    videoPlayerViewModel, // ViewModel
-                    danmakuConfig, // 弹幕配置
-                    mDanmakuPlayer // 弹幕播放器
-                )
-            },
-            atpFocus = videoPlayerViewModel.atpFocus // 音轨/字幕面板焦点状态
-        )
-
-        // 显示 "再按一次退出" Toast
-        if (showToast) {
-            Toast.makeText(context, "再按一次退出", Toast.LENGTH_SHORT).show()
-            showToast = false
+        is VideoPlayerStatus.Error -> {
+            VAErrorScreen(playerStatus.toString())
         }
 
-        // 处理双击返回退出逻辑
-        LaunchedEffect(key1 = backPressState) {
-            if (backPressState == BackPress.InitialTouch) {
-                delay(2000) // 2秒延迟
-                backPressState = BackPress.Idle // 重置状态
-            }
-        }
-        BackHandler(backPressState == BackPress.Idle) {
-            backPressState = BackPress.InitialTouch
-            showToast = true
-        }
+        else -> {
+            // 主 UI 布局
+            Box(
+                Modifier
+                    // 添加 D-Pad 事件处理
+                    .dPadEvents(
+                        exoPlayer,
+                        videoPlayerState,
+                        pulseState,
+                        videoPlayerViewModel
+                    )
+                    .background(Color(0, 0, 0)) // 黑色背景
+                    .focusable() // 可获得焦点
+                    .fillMaxHeight()
+                    .fillMaxWidth()
+            ) {
 
-        // 音轨/字幕选择面板的动画可见性
-        AnimatedVisibility(
-            videoPlayerViewModel.atpVisibility, // 根据 ViewModel 状态显示/隐藏
-            enter = fadeIn(), // 淡入动画
-            exit = fadeOut(), // 淡出动画
-            modifier = Modifier
-                .widthIn(200.dp, 420.dp) // 宽度范围
-                .heightIn(200.dp, 420.dp) // 高度范围
-                .align(AbsoluteAlignment.CenterRight) // 右侧居中
-                .offset(x = (-20).dp) // 向左偏移
-                .background(
-                    Color(0, 0, 0, 193), shape = RoundedCornerShape(8.dp) // 半透明黑色背景和圆角
-                )
-                // 处理 D-Pad 事件
-                .handleDPadKeyEvents(
-                    onRight = {
-                        if (!videoPlayerState.controlsVisible) {
-                            videoPlayerViewModel.atpVisibility = false // 隐藏面板
+                // 创建焦点请求器
+                val focusRequester = remember { FocusRequester() }
+
+                // AndroidView 包裹 PlayerView，用于显示视频
+                AndroidView(
+                    factory = { context ->
+                        PlayerView(context).apply {
+                            useController = false // 禁用默认控制器
+                            player = exoPlayer // 设置 ExoPlayer
+                            // 根据 ViewModel 状态设置字幕视图可见性
+                            subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
                         }
                     },
-                )
-                // 处理焦点变化
-                .onFocusChanged {
-                    if (it.isFocused) {
-                        videoPlayerViewModel.atpFocus = it.isFocused
-
-                    } else {
-                        videoPlayerState.hideControls() // 隐藏控制栏
-                        videoPlayerViewModel.atpFocus = it.isFocused
+                    update = { playView ->
+                        // 更新 PlayerView
+                        playView.player = exoPlayer
+                        playView.subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
+                    },
+                    modifier = Modifier.fillMaxSize(), // 填充整个父容器
+                    onRelease = {
+                        // 释放资源
+                        exoPlayer.release()
                     }
-                }) {
-            // 根据 ViewModel 中的选择显示不同的面板
-            when (videoPlayerViewModel.selectedAorVorS) {
-                "A" -> AudioTrackPanel(
-                    videoPlayerViewModel.selectedAtIndex, // 当前选中的音频轨道索引
-                    onSelectedIndexChange = { videoPlayerViewModel.selectedAtIndex = it }, // 索引变化回调
-                    videoPlayerViewModel.mutableSetOfAudioTrackGroups, // 音频轨道组
-                    exoPlayer // ExoPlayer 实例
                 )
-                "V" -> VideoTrackPanel(
-                    videoPlayerViewModel.selectedVtIndex, // 当前选中的视频轨道索引
-                    onSelectedIndexChange = { videoPlayerViewModel.selectedVtIndex = it }, // 索引变化回调
-                    videoPlayerViewModel.mutableSetOfVideoTrackGroups, // 视频轨道组
-                    exoPlayer // ExoPlayer 实例
-                )
-                else -> {
-                    SubtitleTrackPanel(
-                        videoPlayerViewModel.selectedStIndex, // 当前选中的字幕轨道索引
-                        onSelectedIndexChange = { videoPlayerViewModel.selectedStIndex = it }, // 索引变化回调
-                        videoPlayerViewModel.mutableSetOfTextTrackGroups, // 字幕轨道组
-                        exoPlayer // ExoPlayer 实例
+                //PlayerSurface(player = exoPlayer,modifier = Modifier.fillMaxSize(),SURFACE_TYPE_SURFACE_VIEW)
+                // 显示 SRT/PSG/ ASS(ASS暂时由PlayerView显示,SubtitleView不显示)
+                if (videoPlayerViewModel.isCusSubtitleViewVis) {
+                    // 字幕视图，显示 SRT/PSG/ASS(ASS暂时由PlayerView显示) 字幕 (从 CueGroup 中获取)
+                    SubtitleView(
+                        cueGroup = currentCueGroup, // 传递当前字幕组
+                        subtitleStyle = customSubtitleStyle, // 使用自定义字幕样式(只影响srt字幕)
+                        modifier = Modifier.align(Alignment.BottomCenter), // 底部居中对齐(只影响srt字幕)
+                        backgroundColor = Color.Black.copy(alpha = 0.5f) // 背景色(只影响srt字幕)
                     )
                 }
-            }
-            // 处理返回键，隐藏面板
-            BackHandler(true) {
-                videoPlayerViewModel.atpVisibility = false
+                // 弹幕层
+                AkDanmakuPlayer(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .align(Alignment.TopCenter), // 顶部居中对齐
+                    danmakuPlayer = mDanmakuPlayer // 传递弹幕播放器实例
+                )
+
+                // 实时网速显示
+                if (isPlaying) {
+                    NetworkSpeedIndicator(
+                        networkSpeed = networkSpeed, // 传递网络速度
+                        modifier = Modifier
+                            .align(Alignment.TopEnd) // 右上角对齐
+                            .padding(16.dp) // 内边距
+                    )
+                }
+
+                // 视频播放器覆盖层 (包含控制按钮等)
+                VideoPlayerOverlay(
+                    modifier = Modifier.align(Alignment.BottomCenter), // 底部居中
+                    focusRequester = focusRequester, // 焦点请求器
+                    state = videoPlayerState, // 播放器状态
+                    isPlaying = isPlaying, // 播放状态
+                    centerButton = { VideoPlayerPulse(pulseState) }, // 中心脉冲按钮
+                    subtitles = { }, // 子标题 (未实现)
+                    controls = {
+                        // 控制按钮区域
+                        VideoPlayerControls(
+                            isPlaying, // 播放状态
+                            contentCurrentPosition, // 当前位置
+                            exoPlayer, // ExoPlayer 实例
+                            videoPlayerState, // 播放器状态
+                            focusRequester, // 焦点请求器
+                            fileName, // 标题 (示例)
+                            playerStatus.toString(), // 副标题 (示例)
+                            "2022/1/20", // 第三行文本 (示例)
+                            videoPlayerViewModel, // ViewModel
+                            danmakuConfig, // 弹幕配置
+                            mDanmakuPlayer // 弹幕播放器
+                        )
+                    },
+                    atpFocus = videoPlayerViewModel.atpFocus // 音轨/字幕面板焦点状态
+                )
+
+                // 显示 "再按一次退出" Toast
+                if (showToast) {
+                    Toast.makeText(context, "再按一次退出", Toast.LENGTH_SHORT).show()
+                    showToast = false
+                }
+
+                // 处理双击返回退出逻辑
+                LaunchedEffect(key1 = backPressState) {
+                    if (backPressState == BackPress.InitialTouch) {
+                        delay(2000) // 2秒延迟
+                        backPressState = BackPress.Idle // 重置状态
+                    }
+                }
+                BackHandler(backPressState == BackPress.Idle) {
+                    backPressState = BackPress.InitialTouch
+                    showToast = true
+                }
+
+                // 音轨/字幕选择面板的动画可见性
+                AnimatedVisibility(
+                    videoPlayerViewModel.atpVisibility, // 根据 ViewModel 状态显示/隐藏
+                    enter = fadeIn(), // 淡入动画
+                    exit = fadeOut(), // 淡出动画
+                    modifier = Modifier
+                        .widthIn(200.dp, 420.dp) // 宽度范围
+                        .heightIn(200.dp, 420.dp) // 高度范围
+                        .align(AbsoluteAlignment.CenterRight) // 右侧居中
+                        .offset(x = (-20).dp) // 向左偏移
+                        .background(
+                            Color(0, 0, 0, 193), shape = RoundedCornerShape(8.dp) // 半透明黑色背景和圆角
+                        )
+                        // 处理 D-Pad 事件
+                        .handleDPadKeyEvents(
+                            onRight = {
+                                if (!videoPlayerState.controlsVisible) {
+                                    videoPlayerViewModel.atpVisibility = false // 隐藏面板
+                                }
+                            },
+                        )
+                        // 处理焦点变化
+                        .onFocusChanged {
+                            if (it.isFocused) {
+                                videoPlayerViewModel.atpFocus = it.isFocused
+
+                            } else {
+                                videoPlayerState.hideControls() // 隐藏控制栏
+                                videoPlayerViewModel.atpFocus = it.isFocused
+                            }
+                        }) {
+                    // 根据 ViewModel 中的选择显示不同的面板
+                    when (videoPlayerViewModel.selectedAorVorS) {
+                        "A" -> AudioTrackPanel(
+                            videoPlayerViewModel.selectedAtIndex, // 当前选中的音频轨道索引
+                            onSelectedIndexChange = {
+                                videoPlayerViewModel.selectedAtIndex = it
+                            }, // 索引变化回调
+                            videoPlayerViewModel.mutableSetOfAudioTrackGroups, // 音频轨道组
+                            exoPlayer // ExoPlayer 实例
+                        )
+
+                        "V" -> VideoTrackPanel(
+                            videoPlayerViewModel.selectedVtIndex, // 当前选中的视频轨道索引
+                            onSelectedIndexChange = {
+                                videoPlayerViewModel.selectedVtIndex = it
+                            }, // 索引变化回调
+                            videoPlayerViewModel.mutableSetOfVideoTrackGroups, // 视频轨道组
+                            exoPlayer // ExoPlayer 实例
+                        )
+
+                        else -> {
+                            SubtitleTrackPanel(
+                                videoPlayerViewModel.selectedStIndex, // 当前选中的字幕轨道索引
+                                onSelectedIndexChange = {
+                                    videoPlayerViewModel.selectedStIndex = it
+                                }, // 索引变化回调
+                                videoPlayerViewModel.mutableSetOfTextTrackGroups, // 字幕轨道组
+                                exoPlayer // ExoPlayer 实例
+                            )
+                        }
+                    }
+                    // 处理返回键，隐藏面板
+                    BackHandler(true) {
+                        videoPlayerViewModel.atpVisibility = false
+                    }
+                }
+                if (playerStatus == VideoPlayerStatus.BUFFERING) {
+                    Box(modifier = Modifier
+//                        .clickable(
+//                            false,
+//                            onClickLabel = "TODO()",
+//                            role = null,
+//                            interactionSource = null,
+//                            onClick = {  }
+//                        )
+                        .fillMaxSize()) {
+                        LoadingScreen(
+                            "正在缓冲",
+                            modifier = Modifier
+                                .width(90.dp)
+                                .height(95.dp)
+                                .align(Alignment.Center)
+                                .background(
+                                    Color.Black.copy(0.5f),
+                                    shape = RoundedCornerShape(8.dp)
+                                ), fontSize = 16, 36
+                        )
+                    }
+                }
             }
         }
+
     }
+
 }
 
 /**
@@ -536,14 +633,30 @@ fun NetworkSpeedIndicator(networkSpeed: Long, modifier: Modifier = Modifier) {
     // 格式化网速显示文本
     val speedText = when {
         networkSpeed < 1024 -> "$networkSpeed B/s"
-        networkSpeed < 1024 * 1024 -> "${String.format(Locale.getDefault(),"%.1f", networkSpeed / 1024.0)} KB/s"
-        else -> "${String.format(Locale.getDefault(),"%.1f", networkSpeed / (1024.0 * 1024.0))} MB/s"
+        networkSpeed < 1024 * 1024 -> "${
+            String.format(
+                Locale.getDefault(),
+                "%.1f",
+                networkSpeed / 1024.0
+            )
+        } KB/s"
+
+        else -> "${
+            String.format(
+                Locale.getDefault(),
+                "%.1f",
+                networkSpeed / (1024.0 * 1024.0)
+            )
+        } MB/s"
     }
 
     // 绘制包含网速文本的 Box
     Box(
         modifier = modifier
-            .background(Color.Black.copy(alpha = 0.6f), shape = RoundedCornerShape(4.dp)) // 半透明黑色背景和圆角
+            .background(
+                Color.Black.copy(alpha = 0.6f),
+                shape = RoundedCornerShape(4.dp)
+            ) // 半透明黑色背景和圆角
             .padding(horizontal = 8.dp, vertical = 4.dp) // 内边距
     ) {
         Text(
@@ -653,7 +766,8 @@ fun VideoPlayerControls(
                     onClick = {
                         // 点击高清图标，显示视频轨道选择面板
                         videoPlayerViewModel.selectedAorVorS = "V"
-                        videoPlayerViewModel.atpVisibility = !videoPlayerViewModel.atpVisibility; focusRequester.requestFocus()
+                        videoPlayerViewModel.atpVisibility =
+                            !videoPlayerViewModel.atpVisibility; focusRequester.requestFocus()
                     }
                 )
                 VideoPlayerControlsIcon(
@@ -664,7 +778,8 @@ fun VideoPlayerControls(
                     onClick = {
                         // 点击音频图标，显示音频轨道选择面板
                         videoPlayerViewModel.selectedAorVorS = "A"
-                        videoPlayerViewModel.atpVisibility = !videoPlayerViewModel.atpVisibility; focusRequester.requestFocus()
+                        videoPlayerViewModel.atpVisibility =
+                            !videoPlayerViewModel.atpVisibility; focusRequester.requestFocus()
                     }
                 )
                 VideoPlayerControlsIcon(
@@ -681,12 +796,15 @@ fun VideoPlayerControls(
                 )
                 VideoPlayerControlsIcon(
                     modifier = Modifier.padding(start = 12.dp),
-                    icon = if (videoPlayerViewModel.danmakuVisibility) painterResource(id = R.drawable.dmaopen) else painterResource(id = R.drawable.damclose), // 弹幕开关图标
+                    icon = if (videoPlayerViewModel.danmakuVisibility) painterResource(id = R.drawable.dmaopen) else painterResource(
+                        id = R.drawable.damclose
+                    ), // 弹幕开关图标
                     state = state,
                     isPlaying = isPlaying,
                     onClick = {
                         // 点击弹幕开关图标，切换弹幕可见性
-                        videoPlayerViewModel.danmakuVisibility = !videoPlayerViewModel.danmakuVisibility
+                        videoPlayerViewModel.danmakuVisibility =
+                            !videoPlayerViewModel.danmakuVisibility
                         // 更新弹幕配置
                         danmakuPlayer.updateConfig(
                             danmakuConfig.copy(

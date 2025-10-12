@@ -29,22 +29,22 @@ import java.io.File
 
 @Composable
 
-fun LoadingScreen(text: String) {
+fun LoadingScreen(
+    text: String="正在加载", modifier: Modifier,fontSize:Int=26,arcSize:Int = 80
+) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black), // 加个背景更易观察
+        modifier =modifier,
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            TwoArcLoading(modifier = Modifier.size(80.dp))
-            Spacer(modifier = Modifier.height(16.dp)) // ✅ 用 Spacer 控制间距，自适应
+            TwoArcLoading(modifier = Modifier.size(arcSize.dp))
+            Spacer(modifier = Modifier.height(16.dp)) // 用 Spacer 控制间距，自适应
             Text(
                 text = text,
-                fontSize = 26.sp,
+                fontSize = fontSize.sp,
                 color = Color.White
             )
         }

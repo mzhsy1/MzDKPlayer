@@ -172,16 +172,17 @@ fun MzDKPlayerAPP() {
 
             }
         }
-        composable("VideoPlayer/{sourceUri}/{dataSourceType}") { backStackEntry ->
+        composable("VideoPlayer/{sourceUri}/{dataSourceType}/{fileName}") { backStackEntry ->
 
             //页面路由对应的页面组件
             val sourceUri = backStackEntry.arguments?.getString("sourceUri")
             val dataSourceType = backStackEntry.arguments?.getString("dataSourceType")
+            val fileName = backStackEntry.arguments?.getString("fileName")
             // 检查参数是否不为空，并渲染屏幕
-            if (sourceUri != null && dataSourceType != null) {
+            if (sourceUri != null && dataSourceType != null&& fileName!=null) {
                 Log.d("sourceUri", sourceUri)
                 Log.d("dataSourceType", dataSourceType)
-                VideoPlayerScreen(URLDecoder.decode(sourceUri, "UTF-8"), dataSourceType)
+                VideoPlayerScreen(URLDecoder.decode(sourceUri, "UTF-8"), dataSourceType,URLDecoder.decode(fileName,"UTF-8"))
             }
         }
         composable("AudioPlayer/{sourceUri}/{dataSourceType}/{fileName}") { backStackEntry ->

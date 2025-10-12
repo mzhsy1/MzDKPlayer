@@ -2,6 +2,7 @@ package org.mz.mzdkplayer.ui.screen.smbfile
 
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -106,8 +107,10 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                 Log.e("SMBFileListScreen", "Error state: $errorMessage")
                 Toast.makeText(context, "SMB 错误: $errorMessage", Toast.LENGTH_LONG).show()
             }
+
             SMBConnectionStatus.LoadingFile -> {
             }
+
             SMBConnectionStatus.LoadingFiled -> {
             }
         }
@@ -116,9 +119,10 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
         exoPlayer?.release()
 
 
-        if (!focusedIsDir&&Tools.containsVideoFormat(
+        if (!focusedIsDir && Tools.containsVideoFormat(
                 Tools.extractFileExtension(focusedFileName)
-            )) {
+            )
+        ) {
             Log.d("focusedIsDir", false.toString())
             Log.d("focusedIsDir", "获取媒体信息")
             withContext(Dispatchers.IO) {
@@ -157,8 +161,13 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
     ) {
         when (connectionStatus) {
             is SMBConnectionStatus.Connecting -> {
-                LoadingScreen("正在连接SMB服务器")
+                LoadingScreen(
+                    "正在连接SMB服务器", Modifier
+                        .fillMaxSize()
+                        .background(Color.Black)
+                )
             }
+
             is SMBConnectionStatus.Connected, is SMBConnectionStatus.LoadingFiled -> {
                 if (files.isEmpty()) {
                     FileEmptyScreen("此目录为空")
@@ -195,27 +204,36 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                             if (Tools.containsVideoFormat(
                                                     Tools.extractFileExtension(file.name)
                                                 )
-                                            ){
-                                            navController.navigate(
-                                                "VideoPlayer/${
-                                                    URLEncoder.encode(
-                                                        "smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}",
+                                            ) {
+                                                navController.navigate(
+                                                    "VideoPlayer/${
+                                                        URLEncoder.encode(
+                                                            "smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}",
+                                                            "UTF-8"
+                                                        )
+                                                    }/SMB/${ URLEncoder.encode(
+                                                        file.name,
                                                         "UTF-8"
-                                                    )
-                                                }/SMB"
-                                            )} else if (Tools.containsAudioFormat(
+                                                    )}"
+                                                )
+                                            } else if (Tools.containsAudioFormat(
                                                     Tools.extractFileExtension(file.name)
-                                                )){
+                                                )
+                                            ) {
                                                 navController.navigate(
                                                     "AudioPlayer/${
                                                         URLEncoder.encode(
                                                             "smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}",
                                                             "UTF-8"
                                                         )
-                                                    }/SMB/${URLEncoder.encode(file.name,"UTF-8")}"
+                                                    }/SMB/${URLEncoder.encode(file.name, "UTF-8")}"
                                                 )
-                                            } else{
-                                                Toast.makeText(context, "不支持的格式", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                Toast.makeText(
+                                                    context,
+                                                    "不支持的格式",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
                                             }
                                         }
                                     },
@@ -226,7 +244,8 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                             if (it.isFocused) {
                                                 focusedFileName = file.name;
                                                 focusedIsDir = file.isDirectory
-                                                focusedMediaUri = "smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}"
+                                                focusedMediaUri =
+                                                    "smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}"
                                             }
 
                                         },
@@ -321,7 +340,11 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
             }
 
             SMBConnectionStatus.LoadingFile -> {
-                LoadingScreen("正在加载文件")
+                LoadingScreen(
+                    "正在加载SMB文件", Modifier
+                        .fillMaxSize()
+                        .background(Color.Black)
+                )
             }
 
         }

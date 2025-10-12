@@ -4,6 +4,7 @@ package org.mz.mzdkplayer.ui.screen.nfs
 
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -66,7 +67,7 @@ fun NFSFileListScreen(
     //val currentSubPath by viewModel.currentSubPath.collectAsState()
 
     // 当传入的 subPath 参数变化时，或者首次进入时，尝试加载文件列表
-    LaunchedEffect(sharePath,connectionStatus) { // 依赖 subPath
+    LaunchedEffect(sharePath, connectionStatus) { // 依赖 subPath
         Log.d(
             "NFSFileListScreen",
             "LaunchedEffect triggered with subPath: $sharePath, status: $connectionStatus"
@@ -76,16 +77,16 @@ fun NFSFileListScreen(
             is NFSConnectionStatus.Connected -> {
                 // 已连接，可以安全地列出文件
                 //Log.d("NFSFileListScreen", "Already connected, listing files for subPath: $subPath")
-                Log.d("sharePath",sharePath)
+                Log.d("sharePath", sharePath)
                 viewModel.listFiles(sharePath)
             }
 
             is NFSConnectionStatus.Disconnected -> {
                 // 未连接，尝试连接
                 Log.d("NFSFileListScreen", "Disconnected. Attempting to connect.")
-                Log.d("sharePath",sharePath)
+                Log.d("sharePath", sharePath)
                 viewModel.connectToNFS(
-                 nfsConnection
+                    nfsConnection
                 )
             }
 
@@ -119,7 +120,11 @@ fun NFSFileListScreen(
     ) {
         when (connectionStatus) {
             is NFSConnectionStatus.Connecting -> {
-                LoadingScreen("正在连接NFS服务器")
+                LoadingScreen(
+                    "正在连接NFS服务器", Modifier
+                        .fillMaxSize()
+                        .background(Color.Black)
+                )
             }
 
             is NFSConnectionStatus.Error -> {
@@ -141,10 +146,12 @@ fun NFSFileListScreen(
                 } else {
                     // 已连接，显示文件列表
                     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                        LazyColumn( modifier = Modifier
-                            .padding(10.dp)
-                            .fillMaxHeight()
-                            .weight(0.7f)) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .padding(10.dp)
+                                .fillMaxHeight()
+                                .weight(0.7f)
+                        ) {
 
                             Log.d("NFSFileListScreen", "Displaying fileList: $fileList")
 
@@ -216,31 +223,47 @@ fun NFSFileListScreen(
                                                 if (Tools.containsVideoFormat(
                                                         Tools.extractFileExtension(file.name)
                                                     )
-                                                ){
+                                                ) {
 
-                                                // 导航到视频播放器
-                                                navController.navigate("VideoPlayer/$encodedFileUrl/NFS")}else if (Tools.containsAudioFormat(
+                                                    // 导航到视频播放器
+                                                    navController.navigate("VideoPlayer/$encodedFileUrl/NFS/${ URLEncoder.encode(
+                                                        file.name,
+                                                        "UTF-8"
+                                                    )}")
+                                                } else if (Tools.containsAudioFormat(
                                                         Tools.extractFileExtension(file.name)
-                                                    )){
-                                                    navController.navigate(
-                                                        "AudioPlayer/$encodedFileUrl/NFS/${URLEncoder.encode(file.name,"UTF-8")}"
                                                     )
-                                                } else{
-                                                    Toast.makeText(context, "不支持的格式", Toast.LENGTH_SHORT).show()
+                                                ) {
+                                                    navController.navigate(
+                                                        "AudioPlayer/$encodedFileUrl/NFS/${
+                                                            URLEncoder.encode(
+                                                                file.name,
+                                                                "UTF-8"
+                                                            )
+                                                        }"
+                                                    )
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "不支持的格式",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
                                                 }
                                             }
                                         }
                                     },
                                     colors = myListItemColor(),
-                                    modifier = Modifier.padding(end = 10.dp).onFocusChanged {
-                                        if (it.isFocused) {
-                                            focusedFileName = file.name;
-                                            focusedIsDir = file.isDirectory
-                                            focusedMediaUri =
-                                                "nfs://${nfsConnection.serverAddress}:${nfsConnection.shareName}:${file.path.ifEmpty { " " }}"
-                                        }
+                                    modifier = Modifier
+                                        .padding(end = 10.dp)
+                                        .onFocusChanged {
+                                            if (it.isFocused) {
+                                                focusedFileName = file.name;
+                                                focusedIsDir = file.isDirectory
+                                                focusedMediaUri =
+                                                    "nfs://${nfsConnection.serverAddress}:${nfsConnection.shareName}:${file.path.ifEmpty { " " }}"
+                                            }
 
-                                    },
+                                        },
                                     scale = ListItemDefaults.scale(
                                         scale = 1.0f,
                                         focusedScale = 1.02f
@@ -268,10 +291,12 @@ fun NFSFileListScreen(
 
                                             )
                                     },
-                                    headlineContent = {Text(
-                                        file.name, maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis, fontSize = 12.sp
-                                    ) }
+                                    headlineContent = {
+                                        Text(
+                                            file.name, maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis, fontSize = 12.sp
+                                        )
+                                    }
                                     // supportingContent = { Text(file.rawListing ?: "") } // 可以显示原始信息
                                 )
                             }

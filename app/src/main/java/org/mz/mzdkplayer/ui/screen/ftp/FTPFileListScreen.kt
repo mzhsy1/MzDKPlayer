@@ -2,6 +2,7 @@ package org.mz.mzdkplayer.ui.screen.ftp
 
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -111,7 +112,9 @@ fun FTPFileListScreen(
         when (connectionStatus) {
             is FTPConnectionStatus.Connecting -> {
                 // 显示加载指示器
-                LoadingScreen("正在连接FTP服务器")
+                LoadingScreen("正在连接FTP服务器",Modifier
+                    .fillMaxSize()
+                    .background(Color.Black))
             }
 
             is FTPConnectionStatus.Error -> {
@@ -202,17 +205,17 @@ fun FTPFileListScreen(
                                                     "FTPFileListScreen",
                                                     "Full file URL: $fullFileUrl"
                                                 )
-//                                            val encodedFileUrl = URLEncoder.encode(
-//                                                "ftp://${ftpConnection.username}:${ftpConnection.password}@${ftpConnection.ip}:${ftpConnection.port}/",
-//                                                "UTF-8"
-//                                            )
+//
                                                 val encodedFileUrl = URLEncoder.encode(
                                                     fullFileUrl,
                                                     "UTF-8"
                                                 )
                                                 //Log.d("FTPFileListScreen", "Navigating to video player: $fullFileUrl (encoded: $encodedFileUrl)")
 //                                            // 导航到视频播放器
-                                                navController.navigate("VideoPlayer/$encodedFileUrl/FTP")
+                                                navController.navigate("VideoPlayer/$encodedFileUrl/FTP/${ URLEncoder.encode(
+                                                    fileName,
+                                                    "UTF-8"
+                                                )}")
                                             }
                                         }
                                     },
