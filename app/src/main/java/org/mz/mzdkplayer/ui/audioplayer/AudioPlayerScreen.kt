@@ -5,6 +5,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -45,8 +47,7 @@ import org.mz.mzdkplayer.tool.handleDPadKeyEvents
 import org.mz.mzdkplayer.ui.audioplayer.components.*
 import org.mz.mzdkplayer.ui.screen.vm.AudioPlayerViewModel
 import org.mz.mzdkplayer.ui.videoplayer.BackPress
-import org.mz.mzdkplayer.ui.videoplayer.components.BuilderMzPlayer
-import org.mz.mzdkplayer.ui.videoplayer.components.rememberPlayer
+
 import parseLrc
 import java.io.InputStream
 import java.net.URL
@@ -236,6 +237,23 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String)
             delay(300) // 更频繁地更新进度
             contentCurrentPosition = exoPlayer.currentPosition
         }
+    }
+    // 显示 "再按一次退出" Toast
+    if (showToast) {
+        Toast.makeText(context, "再按一次退出", Toast.LENGTH_SHORT).show()
+        showToast = false
+    }
+
+    // 处理双击返回退出逻辑
+    LaunchedEffect(key1 = backPressState) {
+        if (backPressState == BackPress.InitialTouch) {
+            delay(2000) // 2秒延迟
+            backPressState = BackPress.Idle // 重置状态
+        }
+    }
+    BackHandler(backPressState == BackPress.Idle) {
+        backPressState = BackPress.InitialTouch
+        showToast = true
     }
 
     val pulseState = rememberAudioPlayerPulseState()

@@ -167,7 +167,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                         LazyColumn(
                             modifier = Modifier
-                                .padding(16.dp)
+                                .padding(10.dp)
                                 .fillMaxHeight()
                                 .weight(0.7f)
                         ) {
@@ -221,7 +221,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                     },
                                     colors = myListItemColor(),
                                     modifier = Modifier
-                                        .padding(10.dp)
+                                        .padding(end = 10.dp)
                                         .onFocusChanged {
                                             if (it.isFocused) {
                                                 focusedFileName = file.name;
@@ -244,6 +244,12 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                             ) {
 
                                                 painterResource(R.drawable.moviefileicon)
+                                            } else if (Tools.containsAudioFormat(
+                                                    Tools.extractFileExtension(file.name)
+                                                )
+                                            ) {
+
+                                                painterResource(R.drawable.baseline_music_note_24)
                                             } else {
                                                 painterResource(R.drawable.baseline_insert_drive_file_24)
                                             },

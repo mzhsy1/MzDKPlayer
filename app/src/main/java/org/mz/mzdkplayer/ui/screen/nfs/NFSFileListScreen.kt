@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -141,7 +142,7 @@ fun NFSFileListScreen(
                     // 已连接，显示文件列表
                     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                         LazyColumn( modifier = Modifier
-                            .padding(16.dp)
+                            .padding(10.dp)
                             .fillMaxHeight()
                             .weight(0.7f)) {
 
@@ -231,7 +232,7 @@ fun NFSFileListScreen(
                                         }
                                     },
                                     colors = myListItemColor(),
-                                    modifier = Modifier.padding(10.dp).onFocusChanged {
+                                    modifier = Modifier.padding(end = 10.dp).onFocusChanged {
                                         if (it.isFocused) {
                                             focusedFileName = file.name;
                                             focusedIsDir = file.isDirectory
@@ -246,22 +247,31 @@ fun NFSFileListScreen(
                                     ),
                                     leadingContent = {
                                         Icon(
-                                            painter = if (isDirectory) {
+                                            painter = if (file.isDirectory) {
                                                 painterResource(R.drawable.baseline_folder_24)
                                             } else if (Tools.containsVideoFormat(
-                                                    Tools.extractFileExtension(
-                                                        fileName
-                                                    )
+                                                    Tools.extractFileExtension(file.name)
                                                 )
                                             ) {
+
                                                 painterResource(R.drawable.moviefileicon)
+                                            } else if (Tools.containsAudioFormat(
+                                                    Tools.extractFileExtension(file.name)
+                                                )
+                                            ) {
+
+                                                painterResource(R.drawable.baseline_music_note_24)
                                             } else {
                                                 painterResource(R.drawable.baseline_insert_drive_file_24)
                                             },
-                                            contentDescription = null
-                                        )
+                                            contentDescription = null,
+
+                                            )
                                     },
-                                    headlineContent = { Text(fileName) }
+                                    headlineContent = {Text(
+                                        file.name, maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis, fontSize = 12.sp
+                                    ) }
                                     // supportingContent = { Text(file.rawListing ?: "") } // 可以显示原始信息
                                 )
                             }

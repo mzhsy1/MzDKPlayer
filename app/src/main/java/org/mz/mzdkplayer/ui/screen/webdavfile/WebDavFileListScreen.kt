@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -143,7 +144,7 @@ fun WebDavFileListScreen(
                 } else {
                 Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                     LazyColumn(modifier = Modifier
-                        .padding(16.dp)
+                        .padding(10.dp)
                         .fillMaxHeight()
                         .weight(0.7f)) {
 
@@ -172,10 +173,6 @@ fun WebDavFileListScreen(
                                                     "WebDavFileListScreen",
                                                     "Navigating to subdirectory: $newPath (encoded: $encodedNewPath)"
                                                 )
-                                                Log.d(
-                                                    "WebDavFileListScreen",
-                                                    webDavConnection.toString()
-                                                )
                                                 navController.navigate("WebDavFileListScreen/$encodedNewPath/${webDavConnection.username}/${webDavConnection.password}")
                                             } else {
                                                 // 处理文件点击 - 导航到 VideoPlayer
@@ -193,23 +190,6 @@ fun WebDavFileListScreen(
                                                 val authenticatedUrl = uri.buildUpon()
                                                     .encodedAuthority(newAuthority) // 👈 设置完整的 authority（含 userinfo@host:port）
                                                     .build()
-
-                                                Log.d(
-                                                    "WebDavFileListScreen",
-                                                    "Full file URL: $fullFileUrl"
-                                                )
-                                                Log.d(
-                                                    "WebDavFileListScreen",
-                                                    "Encoded file URL: $fileName"
-                                                )
-                                                Log.d(
-                                                    "WebDavFileListScreen",
-                                                    "authenticatedUrl $authenticatedUrl"
-                                                )
-                                                Log.d(
-                                                    "WebDavFileListScreen",
-                                                    "authenticatedUrl ${authenticatedUrl.authority},${authenticatedUrl.userInfo}"
-                                                )
                                                 val encodedFileUrl = URLEncoder.encode(
                                                     authenticatedUrl.toString(),
                                                     "UTF-8"
@@ -224,7 +204,7 @@ fun WebDavFileListScreen(
                                     },
                                     colors = myListItemColor(),
                                     modifier = Modifier
-                                        .padding(10.dp)
+                                        .padding()
                                         .onFocusChanged {
                                             if (it.isFocused) {
                                                 focusedFileName = file.name;
@@ -239,22 +219,31 @@ fun WebDavFileListScreen(
                                     ),
                                     leadingContent = {
                                         Icon(
-                                            painter = if (isDirectory) {
+                                            painter = if (file.isDirectory) {
                                                 painterResource(R.drawable.baseline_folder_24)
                                             } else if (Tools.containsVideoFormat(
-                                                    Tools.extractFileExtension(
-                                                        fileName
-                                                    )
+                                                    Tools.extractFileExtension(file.name)
                                                 )
                                             ) {
+
                                                 painterResource(R.drawable.moviefileicon)
+                                            } else if (Tools.containsAudioFormat(
+                                                    Tools.extractFileExtension(file.name)
+                                                )
+                                            ) {
+
+                                                painterResource(R.drawable.baseline_music_note_24)
                                             } else {
                                                 painterResource(R.drawable.baseline_insert_drive_file_24)
                                             },
-                                            contentDescription = null
-                                        )
+                                            contentDescription = null,
+
+                                            )
                                     },
-                                    headlineContent = { Text(fileName) }
+                                    headlineContent = {     Text(
+                                        file.name, maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis, fontSize = 12.sp
+                                    ) }
                                     // supportingContent = { Text(file.modified?.toString() ?: "") }
                                 )
                             }
@@ -306,10 +295,3 @@ fun WebDavFileListScreen(
     }
 }
 
-//private fun buildAuthenticatedUrl(baseUrl: String, username: String, password: String): String {
-//    val uri = baseUrl.toUri()
-//    return uri.buildUpon()
-//        .encodedUserInfo("$username:$password")
-//        .build()
-//        .toString()
-//}

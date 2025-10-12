@@ -49,8 +49,7 @@ import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
-import androidx.media3.ui.compose.PlayerSurface
-import androidx.media3.ui.compose.SURFACE_TYPE_SURFACE_VIEW
+
 import androidx.tv.material3.Text
 import com.kuaishou.akdanmaku.DanmakuConfig
 import com.kuaishou.akdanmaku.data.DanmakuItemData
@@ -733,56 +732,6 @@ sealed class BackPress {
     data object Idle : BackPress()
     data object InitialTouch : BackPress()
 }
-//
-///**
-// * 带描边效果的简单文本 Composable
-// * (注：这个组件在当前代码中似乎没有被使用)
-// *
-// * @param text 要显示的文本
-// * @param modifier 修饰符
-// * @param fontSize 字体大小
-// * @param textColor 文本颜色
-// * @param strokeColor 描边颜色
-// */
-//@Composable
-//fun SimpleStrokedText(
-//    text: String,
-//    modifier: Modifier = Modifier,
-//    fontSize: TextUnit = 20.sp,
-//    textColor: Color = Color.White,
-//    strokeColor: Color = Color.Black
-//) {
-//    Box(modifier = modifier) {
-//        // 绘制4次轻微偏移的文本来创建描边效果
-//        Text(
-//            text = text,
-//            color = strokeColor,
-//            fontSize = fontSize,
-//            modifier = Modifier.offset((-1).dp, 0.dp)
-//        )
-//        Text(
-//            text = text,
-//            color = strokeColor,
-//            fontSize = fontSize,
-//            modifier = Modifier.offset(1.dp, 0.dp)
-//        )
-//        Text(
-//            text = text,
-//            color = strokeColor,
-//            fontSize = fontSize,
-//            modifier = Modifier.offset(0.dp, (-1).dp)
-//        )
-//        Text(
-//            text = text,
-//            color = strokeColor,
-//            fontSize = fontSize,
-//            modifier = Modifier.offset(0.dp, 1.dp)
-//        )
-//
-//        // 最上层的填充文字
-//        Text(text = text, color = textColor, fontSize = fontSize)
-//    }
-//}
 
 
 

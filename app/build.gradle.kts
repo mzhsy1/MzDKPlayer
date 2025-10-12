@@ -64,17 +64,19 @@ dependencies {
     implementation(libs.accompanist.permissions)
     implementation(libs.smbj)
     implementation(libs.logback.android)
-    implementation(libs.androidx.media3.ui.compose)
+   // implementation(libs.androidx.media3.ui.compose)
     implementation(libs.gson)
     implementation(libs.ass.media)
     implementation(libs.thegrizzlylabs.sardine.android)
     implementation(libs.jaudiotagger)
     implementation(libs.commons.net)
+
+    //implementation(libs.jcifs.ng)
     //implementation(libs.jcifs)
 // 请检查最新版本
     //implementation(libs.ass.kt)
     //implementation(libs.ass.media.v030beta02)
-    implementation(libs.androidx.material3)
+    //implementation(libs.androidx.material3)
     implementation(libs.androidx.datastore.preferences)
     // https://mvnrepository.com/artifact/com.emc.ecs/nfs-client
     implementation(libs.nfs.client)

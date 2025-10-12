@@ -288,7 +288,7 @@ class NFSDataSource : BaseDataSource(/* isNetwork= */ true) {
      */
     @Throws(IOException::class)
     private fun refillBuffer(): Int {
-        val internalBuffer = readBuffer ?: throw IOException("缓冲区未初始化")
+        //val internalBuffer = readBuffer ?: throw IOException("缓冲区未初始化")
         val file = nfsFile ?: throw IOException("NFS 文件未打开")
 
         // 检查是否已读取所有数据
@@ -363,7 +363,7 @@ class NFSDataSource : BaseDataSource(/* isNetwork= */ true) {
 
         // 检查读取完整性
         if (bytesReadFromFile < chunkSize && bytesToRead - bytesRead > bytesReadFromFile) {
-            Log.w(TAG, "NFS 读取不完整: 请求 $chunkSize 字节, 实际读取 $bytesReadFromFile 字节")
+            //Log.w(TAG, "NFS 读取不完整: 请求 $chunkSize 字节, 实际读取 $bytesReadFromFile 字节")
         }
 
         return bytesReadFromFile
