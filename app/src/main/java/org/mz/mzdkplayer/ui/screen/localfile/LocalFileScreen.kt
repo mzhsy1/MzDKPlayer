@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -95,17 +96,47 @@ fun LocalFileScreen(path: String?, navController: NavHostController) {
                                 val encoded = URLEncoder.encode(file.path, "UTF-8")
                                 navController.navigate("LocalFileScreen/$encoded")
                             } else {
-                                navController.navigate(
-                                    "VideoPlayer/${
-                                        URLEncoder.encode(
-                                            "file://${file.path}",
-                                            "UTF-8"
-                                        )
-                                    }/LOCAL/${ URLEncoder.encode(
-                                        file.name,
-                                        "UTF-8"
-                                    )}"
-                                )
+                                if (Tools.containsVideoFormat(
+                                        Tools.extractFileExtension(file.name)
+                                    )
+                                ) {
+                                    navController.navigate(
+                                        "VideoPlayer/${
+                                            URLEncoder.encode(
+                                                "file://${file.path}",
+                                                "UTF-8"
+                                            )
+                                        }/LOCAL/${
+                                            URLEncoder.encode(
+                                                file.name,
+                                                "UTF-8"
+                                            )
+                                        }"
+                                    )
+                                }else if (Tools.containsAudioFormat(
+                                        Tools.extractFileExtension(file.name)
+                                    )
+                                ) {
+                                    navController.navigate(
+                                        "AudioPlayer/${
+                                            URLEncoder.encode(
+                                                "file://${file.path}",
+                                                "UTF-8"
+                                            )
+                                        }/LOCAL/${
+                                            URLEncoder.encode(
+                                                file.name,
+                                                "UTF-8"
+                                            )
+                                        }"
+                                    )
+                                }else {
+                                    Toast.makeText(
+                                        context,
+                                        "不支持的格式",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                             }
                         },
                         colors = myListItemColor(),

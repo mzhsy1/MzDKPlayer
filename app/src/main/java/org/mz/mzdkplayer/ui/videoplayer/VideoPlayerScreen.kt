@@ -462,6 +462,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String,fileName:String="
                         backgroundColor = Color.Black.copy(alpha = 0.5f) // 背景色(只影响srt字幕)
                     )
                 }
+
                 // 弹幕层
                 AkDanmakuPlayer(
                     modifier = Modifier

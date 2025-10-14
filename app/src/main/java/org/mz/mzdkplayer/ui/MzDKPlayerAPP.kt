@@ -57,6 +57,7 @@ import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavConListScreen
 
 import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavConScreen
 import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavFileListScreen
+import org.mz.mzdkplayer.ui.setting.SettingsScreen
 
 import org.mz.mzdkplayer.ui.videoplayer.VideoPlayerScreen
 import java.net.URLDecoder
@@ -115,7 +116,8 @@ fun MzDKPlayerAPP() {
                                 onClick = {
                                     selectedIndex = index
                                     when (selectedIndex) {
-
+                                        0 -> homeNavController.navigate("HomePage")
+                                        2 -> homeNavController.navigate("SettingsPage")
                                     }
                                 },
                                 leadingContent = {
@@ -155,6 +157,10 @@ fun MzDKPlayerAPP() {
                         composable("HomePage") {
                             //页面路由对应的页面组件
                             HomeScreen(mainNavController)
+                        }
+                        composable("SettingsPage") {
+                            //页面路由对应的页面组件
+                            SettingsScreen(mainNavController)
                         }
 
                     }

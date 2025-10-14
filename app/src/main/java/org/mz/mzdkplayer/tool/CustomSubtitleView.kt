@@ -20,6 +20,7 @@ package org.mz.mzdkplayer.tool
 
 import android.annotation.SuppressLint
 import android.util.DisplayMetrics
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -37,12 +38,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.DrawScope.Companion.DefaultBlendMode
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -181,20 +185,37 @@ fun SubtitleView(
                     Log.i("SubtitleView", "cue.zIndex$cue.zIndex")
                     Box(
                         modifier = Modifier
-                            .offset(x = offsetX.dp-14.dp , y = offsetY.dp-8.dp) // Adjust the offset as needed
+                            .offset(x = (offsetX - 14).dp, y = (offsetY - 8).dp) // Adjust the offset as needed
                             .fillMaxSize()
                             .zIndex(cue.zIndex.toFloat())
                     ) {
-                        Image(
-                            bitmap = bitmap.asImageBitmap(),
-                            contentDescription = "Subtitle bitmap cue",
+                        Canvas(
                             modifier = Modifier
                                 .width(bitmapWidth.dp)
-                                .height(bitmapHeight.dp),
-                            contentScale = ContentScale.Fit,
-                            alignment = Alignment.Center
-                        )
+                                .height(bitmapHeight.dp)
+                        ) {
+                            // Get source size from the bitmap
+                            val srcSize = IntSize(width = bitmap.width, height = bitmap.height)
+
+                            // Set destination size to match the canvas dimensions (bitmapWidth x bitmapHeight)
+                            // Convert dp values to pixels using the canvas density
+                            val dstWidth = (bitmapWidth * this@Canvas.density).toInt()
+                            val dstHeight = (bitmapHeight * this@Canvas.density).toInt()
+                            val dstSize = IntSize(width = dstWidth, height = dstHeight)
+
+                            // Draw the bitmap onto the canvas, stretching to fill the entire canvas
+                            drawImage(
+                                image = bitmap.asImageBitmap(),
+                                srcOffset = IntOffset.Zero, // Start from the top-left corner of the source bitmap
+                                srcSize = srcSize, // Entire source bitmap
+                                dstOffset = IntOffset.Zero, // Draw at the top-left corner of the canvas
+                                dstSize = dstSize, // Scale to fill the entire canvas area
+                                alpha = 1.0f, // Opacity of the image
+                                blendMode = DefaultBlendMode // Blend mode for compositing
+                            )
+                        }
                     }
+
                 }
             }
         }
