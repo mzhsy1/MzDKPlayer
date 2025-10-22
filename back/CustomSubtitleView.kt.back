@@ -409,13 +409,13 @@ private fun RenderCue(
         val calculatedValues = try {
             // Safe bitmap dimensions calculation
             val bitmapWidth = if (cue.size != Cue.DIMEN_UNSET && cue.size > 0) {
-                (safeScreenWidth * cue.size)
+                (safeScreenWidth * cue.size).toFloat()
             } else {
                 bitmap.width.toFloat()
             }.coerceAtLeast(1f)
 
             val bitmapHeight = if (cue.bitmapHeight != Cue.DIMEN_UNSET && cue.bitmapHeight > 0) {
-                (safeScreenHeight * cue.bitmapHeight)
+                (safeScreenHeight * cue.bitmapHeight).toFloat()
             } else {
                 bitmap.height.toFloat()
             }.coerceAtLeast(1f)
@@ -452,11 +452,11 @@ private fun RenderCue(
 
         val (bitmapWidth, bitmapHeight, offsets) = calculatedValues
         val (offsetX, offsetY) = offsets
-        Log.d("SubtitleView",offsetX.toString())
+
         Box(
             modifier = Modifier
-                .offset(x = (offsetX).dp, y = (offsetY).dp)
-                .fillMaxSize()
+                .offset(x = (offsetX - 14).dp, y = (offsetY - 8).dp)
+                .size(bitmapWidth.dp, bitmapHeight.dp)
                 .zIndex(cue.zIndex.toFloat().coerceIn(-100f, 100f))
                 .semantics {
                     this.contentDescription = "图形字幕"
