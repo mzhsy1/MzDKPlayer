@@ -151,9 +151,9 @@ fun BuilderMzPlayer(
                         videoPlayerViewModel.updateCusSubtitleVisibility(true)
 
                     } else if (hasASSTrackSelected){
-                        videoPlayerViewModel.updateSubtitleVisibility(View.VISIBLE)
+                        videoPlayerViewModel.updateSubtitleVisibility(View.GONE)
                         Log.d("SDS1", "SubtitleView set to VISIBLE because ASS track is selected.")
-                        videoPlayerViewModel.updateCusSubtitleVisibility(false)
+                        videoPlayerViewModel.updateCusSubtitleVisibility(true)
                     }else {
                         Log.d(
                             "SDS1", "SubtitleView set to VISIBLE because no SRT track is selected."
@@ -415,10 +415,10 @@ fun rememberPlayer(context: Context, mediaUri: String, dataSourceType: String) =
                 DefaultMediaSourceFactory(
                     dataSourceFactory
                 )
-            ).setRenderersFactory(renderersFactory)
-            .buildWithAssSupport(context = context, renderType = AssRenderType.LEGACY,
-                renderersFactory=renderersFactory, dataSourceFactory = dataSourceFactory).apply {
+            ).setRenderersFactory(renderersFactory).build().apply {
                 playWhenReady = true
                 repeatMode = Player.REPEAT_MODE_ONE
             }
     }
+//            .buildWithAssSupport(context = context, renderType = AssRenderType.LEGACY,
+//                renderersFactory=renderersFactory, dataSourceFactory = dataSourceFactory).apply {

@@ -179,8 +179,8 @@ object Tools {
         val mimeType = format.sampleMimeType ?: return   R.drawable.noradudio
 
         return when (mimeType) {
-            "audio/vnd.dts" -> inferDtsFormatTypeIcon(format) // DTS 家族格式判断
-
+            "audio/vnd.dts" -> R.drawable.dts_1 // DTS 家族格式判断
+            "audio/vnd.dts.hd" -> R.drawable.dts_hd_master_audio_seeklogo // DTS 家族格式判断
             // Dolby 家族格式判断
             "audio/true-hd" -> R.drawable.logo_dolby_audio
             "audio/ac3" -> R.drawable.logo_dolby_audio
@@ -217,12 +217,13 @@ object Tools {
     /**
      * 专门推断 DTS 家族具体格式的辅助方法
      */
+    @OptIn(UnstableApi::class)
     private fun inferDtsFormatTypeIcon(format: Format): Int {
         val codecs = format.codecs?.lowercase() ?: ""
-
+        Log.d("codecs1",codecs)
         return when {
-            codecs.contains("dts-hd-ma") -> R.drawable.dts_hd_master_audio_seeklogo
-            codecs.contains("dts-hd-hra") -> R.drawable.dts_hd_master_audio_seeklogo
+            codecs.contains("dts.hd") -> R.drawable.dts_hd_master_audio_seeklogo
+            codecs.contains("dts-hd") -> R.drawable.dts_hd_master_audio_seeklogo
             codecs.contains("dts-x") -> R.drawable.dts_hd_master_audio_seeklogo
             codecs.contains("dts-express") -> R.drawable.dts_1
             codecs.contains("dts") -> R.drawable.dts_1

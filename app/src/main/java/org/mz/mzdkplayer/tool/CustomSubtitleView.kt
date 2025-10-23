@@ -16,7 +16,6 @@
 
 package org.mz.mzdkplayer.tool
 
-import android.annotation.SuppressLint
 import android.content.res.Configuration
 import android.util.DisplayMetrics
 import androidx.compose.foundation.Canvas
@@ -25,12 +24,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -51,101 +50,129 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-
 import androidx.media3.common.text.Cue
 import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
-import androidx.tv.material3.MaterialTheme
 import kotlin.math.max
 
+
 /**
- * A Material3 composable that renders subtitles provided by a [CueGroup] from Media3.
+ * A composable that renders subtitles provided by a [CueGroup] from Media3.
  *
- * This component displays both text and bitmap cues according to their layout properties
- * (e.g., position, size, anchor). Text cues are rendered using [Canvas], while bitmap cues
- * are rendered using [Canvas]. The subtitle area is aligned to the bottom center of the
- * provided layout space by default.
+ * This component displays both text and bitmap cues according to their layout properties.
+ * Text cues are rendered using Canvas with modifier-based positioning, while bitmap cues
+ * are rendered using independent layout calculations that respect their native positioning
+ * properties from the subtitle source.
  *
- * Features:
- * - Safe null handling for all cue properties
- * - Accessibility support with content descriptions
- * - Configuration change handling (device rotation)
- * - Error boundary and recovery mechanisms
+ * ## Features
+ * - **Dual Rendering Support**: Handles both text-based subtitles (SRT, VTT) and bitmap-based
+ *   subtitles (PGSS, PGS) with appropriate rendering techniques for each type
+ * - **Modifier-Based Text Positioning**: Text cues respect the provided [modifier] for layout
+ *   and positioning, allowing flexible alignment and styling through standard Compose modifiers
+ * - **Native Bitmap Positioning**: Bitmap cues use their intrinsic positioning properties
+ *   (position, line, anchor types) and are completely independent of the text modifier
+ * - **Accessibility Support**: Provides proper content descriptions and live region semantics
+ *   for screen readers and accessibility services
+ * - **Configuration Handling**: Automatically adapts to orientation changes and screen size
+ *   variations when [handleConfigurationChanges] is enabled
+ * - **Error Resilience**: Includes comprehensive error handling and recovery mechanisms
+ *   for malformed cue data or rendering failures
+ * - **Smart Background Rendering**: The [backgroundColor] only appears behind the actual text
+ *   content, not the entire screen, due to the combination of fillMaxSize() and wrapContentHeight()
  *
- * Currently supports SRT, PSG, and ASS subtitles.
- * ASS subtitles are converted to SRT by ExoPlayer for display.
- * SRT subtitles with the same timestamp are displayed vertically in sequence.
+ * ## Layout Behavior
+ * - When no custom [modifier] is provided, text cues default to bottom-center positioning
+ * - The default positioning uses `fillMaxSize().wrapContentHeight(Alignment.Bottom)` which:
+ *   - Provides full screen space for layout calculations
+ *   - Only occupies the actual height needed by subtitle text
+ *   - Ensures [backgroundColor] appears only behind text, not the entire screen
+ * - Bitmap cues ignore the [modifier] completely and use their native positioning
+ *
+ * ## Usage Notes
+ * - The [modifier] parameter **only affects text cues** - bitmap cues will ignore it completely
+ * - For text cues, use standard layout modifiers like [Modifier.align], [Modifier.padding],
+ *   or [Modifier.offset] to control positioning
+ * - Bitmap cues automatically position themselves based on their [Cue.position], [Cue.line],
+ *   [Cue.positionAnchor], and [Cue.lineAnchor] properties
+ * - Both cue types support z-index layering through [Cue.zIndex] for proper overlay ordering
+ * - ASS/SSA subtitles are converted to SRT format by ExoPlayer before reaching this component
+ * - The [backgroundColor] creates a background only behind the text content area, not the full screen
+ *   due to the smart layout combination of maximum available space and content-wrapping height
  *
  * @param cueGroup The group of cues to display. If null or empty, nothing is rendered.
- * @param modifier The [Modifier] to be applied to the root layout.(Only affects SRT subtitles)
- * @param subtitleStyle The [TextStyle] used for rendering text cues. Defaults to
- *   [MaterialTheme.typography.bodyLarge] with white color and 18sp font size.(Only affects SRT subtitles)
- * @param backgroundColor The background color behind text cues. Defaults to fully
- *   transparent black ([Color.Black.copy(alpha = 0.0f)]).(Only affects SRT subtitles)
+ *   The cues are automatically filtered to exclude empty text and null bitmaps.
+ * @param modifier The [Modifier] to be applied to text cues only. This includes layout
+ *   modifiers like alignment, padding, offset, etc. Bitmap cues completely ignore this
+ *   modifier and use their native positioning instead. When no modifier is provided,
+ *   text cues default to bottom center positioning using a smart layout that ensures
+ *   background colors only appear behind the actual text content.
+ * @param subtitleStyle The [TextStyle] used for rendering text cues. This includes
+ *   color, font size, weight, family, and other text styling properties. Does not
+ *   affect bitmap cues.
+ * @param backgroundColor The background color behind text cues. Useful for improving
+ *   text readability against varying video content. Defaults to fully transparent.
+ *   Note: This background only appears behind the actual text content area, not the
+ *   entire screen, due to the content-wrapping layout behavior.
  * @param contentDescription The accessibility content description for the subtitle view.
- * @param isLiveRegion Whether the subtitle view should be treated as a live region for accessibility.
- * @param handleConfigurationChanges Whether to handle configuration changes like device rotation.
+ *   If not provided, an automatic description will be generated from the cue texts.
+ * @param isLiveRegion Whether the subtitle view should be treated as a live region
+ *   for accessibility. Set to true for dynamic content that updates frequently.
+ * @param handleConfigurationChanges Whether to automatically handle configuration
+ *   changes like device rotation. When enabled, the component will adapt spacing
+ *   and layout for different orientations.
  *
  * @sample androidx.media3.ui.compose.material3.SubtitleViewSample
  *
- * Here is a basic usage example:
- *
- * ```
- * @Composable
- * fun VideoPlayerWithSubtitles(exoPlayer: ExoPlayer) {
- *   var currentCueGroup: CueGroup? by remember { mutableStateOf(null) }
- *
- *   DisposableEffect(exoPlayer) {
- *     val listener = object : Player.Listener {
- *       override fun onCues(cueGroup: CueGroup) {
- *         currentCueGroup = cueGroup
- *       }
- *     }
- *     exoPlayer.addListener(listener)
- *     onDispose {
- *       exoPlayer.removeListener(listener)
- *     }
- *   }
- *
- *   Box {
- *     // Your video surface or PlayerView here
- *     SubtitleView(
- *       cueGroup = currentCueGroup,
- *       subtitleStyle = MaterialTheme.typography.bodyLarge.copy(
- *         color = Color.White,
- *         fontSize = 20.sp
- *       ),
- *       backgroundColor = Color.Black.copy(alpha = 0.5f),
- *       contentDescription = "Video subtitles",
- *       isLiveRegion = true,
- *       modifier = Modifier.align(Alignment.BottomCenter)
- *     )
- *   }
- * }
- * ```
+ * @see Cue
+ * @see CueGroup
+ * @see androidx.media3.exoplayer.ExoPlayer
  */
+
 @Composable
 @UnstableApi
 fun SubtitleView(
     cueGroup: CueGroup?,
     modifier: Modifier = Modifier,
-    subtitleStyle: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+    subtitleStyle: TextStyle = TextStyle(
         color = Color.White,
-        fontSize = 18.sp
+        fontSize = 18.sp,
+        fontWeight = FontWeight.Normal,
+        fontStyle = FontStyle.Normal,
+        fontFamily = FontFamily.Default,
+        letterSpacing = TextUnit.Unspecified,
+        textDecoration = TextDecoration.None,
+        textAlign = TextAlign.Center
     ),
     backgroundColor: Color = Color.Black.copy(alpha = 0.0f),
     contentDescription: String? = null,
     isLiveRegion: Boolean = false,
     handleConfigurationChanges: Boolean = true
 ) {
+    // 处理默认底部居中对齐
+    val textModifierWithDefault = if (modifier == Modifier) {
+        // 如果用户没有传入自定义 modifier，使用默认底部居中
+        Modifier
+            .fillMaxSize()
+            .wrapContentHeight(Alignment.Bottom)
+            .padding(bottom = 16.dp)
+    } else {
+        // 如果用户传入了自定义 modifier，直接使用
+        modifier
+    }
+
     // Error boundary state
     var lastError by remember { mutableStateOf<String?>(null) }
 
@@ -198,23 +225,13 @@ fun SubtitleView(
         }.trim().takeIf { it.isNotEmpty() }
     }
 
-    // Layout modifier based on orientation
-    val layoutModifier = if (handleConfigurationChanges) {
-        when (configuration.orientation) {
-            Configuration.ORIENTATION_LANDSCAPE -> modifier.padding(vertical = 4.dp)
-            else -> modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        }
-    } else {
-        modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-    }
-
     // Use SafeSubtitleContent to handle rendering errors
     SafeSubtitleContent(
         visibleCues = visibleCues,
         screenDimensions = screenDimensions,
         subtitleStyle = subtitleStyle,
         backgroundColor = backgroundColor,
-        layoutModifier = layoutModifier,
+        textModifier = textModifierWithDefault, // 使用带默认值的modifier
         contentDescription = contentDescription,
         subtitleText = subtitleText,
         isLiveRegion = isLiveRegion,
@@ -233,7 +250,7 @@ private fun SafeSubtitleContent(
     screenDimensions: Pair<Int, Int>,
     subtitleStyle: TextStyle,
     backgroundColor: Color,
-    layoutModifier: Modifier,
+    textModifier: Modifier, // 专门用于文本渲染的modifier
     contentDescription: String?,
     subtitleText: String?,
     isLiveRegion: Boolean,
@@ -241,7 +258,6 @@ private fun SafeSubtitleContent(
     lastError: String?,
     onError: (String) -> Unit
 ) {
-    // Handle rendering errors with LaunchedEffect instead of try-catch
     LaunchedEffect(lastError) {
         lastError?.let { error ->
             Log.e("SubtitleView", "Rendering error: $error")
@@ -249,7 +265,8 @@ private fun SafeSubtitleContent(
     }
 
     Box(
-        modifier = layoutModifier
+        modifier = Modifier
+            .fillMaxSize() // 确保占据整个空间
             .semantics {
                 contentDescription?.let {
                     this.contentDescription = it
@@ -261,57 +278,58 @@ private fun SafeSubtitleContent(
                 if (isLiveRegion) {
                     this.liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
                 }
-            },
-        contentAlignment = Alignment.BottomCenter
+            }
     ) {
-        when (configuration.orientation) {
-            Configuration.ORIENTATION_LANDSCAPE -> {
-                LandscapeSubtitleContent(
-                    cues = visibleCues,
-                    screenDimensions = screenDimensions,
-                    subtitleStyle = subtitleStyle,
-                    backgroundColor = backgroundColor,
-                    onError = onError
-                )
-            }
-            else -> {
-                PortraitSubtitleContent(
-                    cues = visibleCues,
-                    screenDimensions = screenDimensions,
-                    subtitleStyle = subtitleStyle,
-                    backgroundColor = backgroundColor,
-                    onError = onError
-                )
-            }
-        }
+        // Separate text and bitmap cues for different rendering approaches
+        val textCues = visibleCues.filter { it.text?.toString()?.isNotEmpty() == true }
+        val bitmapCues = visibleCues.filter { it.bitmap != null }
+
+        // Render text cues with the provided modifier
+        TextCuesContent(
+            cues = textCues,
+            screenDimensions = screenDimensions,
+            subtitleStyle = subtitleStyle,
+            backgroundColor = backgroundColor,
+            modifier = textModifier, // 直接使用传入的modifier
+            configuration = configuration,
+            onError = onError
+        )
+
+        // Render bitmap cues with independent layout (不受modifier影响)
+        BitmapCuesContent(
+            cues = bitmapCues,
+            screenDimensions = screenDimensions,
+            onError = onError
+        )
     }
 }
 
 @Composable
 @UnstableApi
-private fun PortraitSubtitleContent(
+private fun TextCuesContent(
     cues: List<Cue>,
     screenDimensions: Pair<Int, Int>,
     subtitleStyle: TextStyle,
     backgroundColor: Color,
+    modifier: Modifier, // 专门用于文本的modifier
+    configuration: Configuration,
     onError: (String) -> Unit
 ) {
     val textMeasurer = rememberTextMeasurer()
-    val (screenWidthDp, screenHeightDp) = screenDimensions
-
-    // Safe screen dimensions
-    val safeScreenWidth = max(screenWidthDp, 1)
-    val safeScreenHeight = max(screenHeightDp, 1)
 
     Column(
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier, // 直接应用modifier到文本容器
+        verticalArrangement = Arrangement.spacedBy(
+            when (configuration.orientation) {
+                Configuration.ORIENTATION_LANDSCAPE -> 2.dp
+                else -> 4.dp
+            }
+        ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         cues.forEach { cue ->
-            RenderCue(
+            RenderTextCue(
                 cue = cue,
-                safeScreenWidth = safeScreenWidth,
-                safeScreenHeight = safeScreenHeight,
                 textMeasurer = textMeasurer,
                 subtitleStyle = subtitleStyle,
                 backgroundColor = backgroundColor,
@@ -323,50 +341,13 @@ private fun PortraitSubtitleContent(
 
 @Composable
 @UnstableApi
-private fun LandscapeSubtitleContent(
-    cues: List<Cue>,
-    screenDimensions: Pair<Int, Int>,
-    subtitleStyle: TextStyle,
-    backgroundColor: Color,
-    onError: (String) -> Unit
-) {
-    val textMeasurer = rememberTextMeasurer()
-    val (screenWidthDp, screenHeightDp) = screenDimensions
-
-    // Safe screen dimensions
-    val safeScreenWidth = max(screenWidthDp, 1)
-    val safeScreenHeight = max(screenHeightDp, 1)
-
-    Column(
-        verticalArrangement = Arrangement.spacedBy(2.dp), // Reduced spacing for landscape
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        cues.forEach { cue ->
-            RenderCue(
-                cue = cue,
-                safeScreenWidth = safeScreenWidth,
-                safeScreenHeight = safeScreenHeight,
-                textMeasurer = textMeasurer,
-                subtitleStyle = subtitleStyle,
-                backgroundColor = backgroundColor,
-                onError = onError
-            )
-        }
-    }
-}
-
-@Composable
-@UnstableApi
-private fun RenderCue(
+private fun RenderTextCue(
     cue: Cue,
-    safeScreenWidth: Int,
-    safeScreenHeight: Int,
     textMeasurer: androidx.compose.ui.text.TextMeasurer,
     subtitleStyle: TextStyle,
     backgroundColor: Color,
     onError: (String) -> Unit
 ) {
-    // Render text cue with error handling
     cue.text?.toString()?.takeIf { it.isNotEmpty() && it != "null" }?.let { text ->
         val textLayoutResult = try {
             textMeasurer.measure(
@@ -382,12 +363,8 @@ private fun RenderCue(
             modifier = Modifier
                 .padding(bottom = 8.dp)
                 .background(backgroundColor)
-                .width(with(LocalDensity.current) {
-                    textLayoutResult.size.width.toDp()
-                })
-                .height(with(LocalDensity.current) {
-                    textLayoutResult.size.height.toDp()
-                })
+                .width(with(LocalDensity.current) { textLayoutResult.size.width.toDp() })
+                .height(with(LocalDensity.current) { textLayoutResult.size.height.toDp() })
                 .semantics {
                     this.contentDescription = "字幕: $text"
                     this.liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
@@ -403,8 +380,39 @@ private fun RenderCue(
             }
         }
     }
+}
 
-    // Render bitmap cue with error handling
+@Composable
+@UnstableApi
+private fun BitmapCuesContent(
+    cues: List<Cue>,
+    screenDimensions: Pair<Int, Int>,
+    onError: (String) -> Unit
+) {
+    val (screenWidthDp, screenHeightDp) = screenDimensions
+
+    // Safe screen dimensions
+    val safeScreenWidth = max(screenWidthDp, 1)
+    val safeScreenHeight = max(screenHeightDp, 1)
+
+    cues.forEach { cue ->
+        RenderBitmapCue(
+            cue = cue,
+            safeScreenWidth = safeScreenWidth,
+            safeScreenHeight = safeScreenHeight,
+            onError = onError
+        )
+    }
+}
+
+@Composable
+@UnstableApi
+private fun RenderBitmapCue(
+    cue: Cue,
+    safeScreenWidth: Int,
+    safeScreenHeight: Int,
+    onError: (String) -> Unit
+) {
     cue.bitmap?.let { bitmap ->
         val calculatedValues = try {
             // Safe bitmap dimensions calculation
@@ -452,15 +460,15 @@ private fun RenderCue(
 
         val (bitmapWidth, bitmapHeight, offsets) = calculatedValues
         val (offsetX, offsetY) = offsets
-        Log.d("SubtitleView",offsetX.toString())
+
         Box(
             modifier = Modifier
-                .offset(x = (offsetX).dp, y = (offsetY).dp)
-                .fillMaxSize()
+                .offset(x = offsetX.dp, y = offsetY.dp)
+                .width(bitmapWidth.dp)
+                .height(bitmapHeight.dp)
                 .zIndex(cue.zIndex.toFloat().coerceIn(-100f, 100f))
                 .semantics {
                     this.contentDescription = "图形字幕"
-                    // Remove isTraversalGroup as it's not available in current Compose version
                 }
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -523,8 +531,6 @@ private fun calculateVerticalOffset(
 
 /**
  * Returns the current screen dimensions in dp.
- *
- * @return A [Pair] of [Int] values representing the screen width and height in dp.
  */
 private fun getScreenDimensions(context: android.content.Context): Pair<Int, Int> {
     val displayMetrics: DisplayMetrics = context.resources.displayMetrics

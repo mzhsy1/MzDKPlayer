@@ -73,13 +73,14 @@ import org.mz.mzdkplayer.danmaku.getDanmakuXmlFromFile
 import org.mz.mzdkplayer.tool.SmbUtils
 import org.mz.mzdkplayer.tool.SubtitleView
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
-import org.mz.mzdkplayer.ui.audioplayer.components.AudioTrackPanel
+
 import org.mz.mzdkplayer.ui.audioplayer.extractAudioMetadataFromPlayer
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.common.VAErrorScreen
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerStatus
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 import org.mz.mzdkplayer.ui.videoplayer.components.AkDanmakuPlayer
+import org.mz.mzdkplayer.ui.videoplayer.components.AudioTrackPanel
 import org.mz.mzdkplayer.ui.videoplayer.components.BuilderMzPlayer
 import org.mz.mzdkplayer.ui.videoplayer.components.SubtitleTrackPanel
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerControlsIcon
@@ -458,7 +459,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String,fileName:String="
                     SubtitleView(
                         cueGroup = currentCueGroup, // 传递当前字幕组
                         subtitleStyle = customSubtitleStyle, // 使用自定义字幕样式(只影响srt字幕)
-                        modifier = Modifier.align(Alignment.BottomCenter), // 底部居中对齐(只影响srt字幕)
+                        //modifier = Modifier.align(Alignment.TopCenter), // 底部居中对齐(只影响srt字幕)
                         backgroundColor = Color.Black.copy(alpha = 0.5f) // 背景色(只影响srt字幕)
                     )
                 }

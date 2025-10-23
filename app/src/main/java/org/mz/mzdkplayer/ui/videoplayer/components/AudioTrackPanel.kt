@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
+import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.tv.material3.Icon
@@ -39,6 +40,8 @@ import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.focusOnInitialVisibility
+import java.util.Locale
+import kotlin.text.toInt
 
 
 @OptIn(UnstableApi::class)
@@ -56,8 +59,9 @@ fun AudioTrackPanel(
 
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-    var channelCount = 2
+    var channelCount: Int
     var audioCode: String
+    //Log.d("sampleRate",lists[index].getTrackFormat(0).sampleRate.toString())
     LazyColumn(modifier = Modifier
         .width(360.dp)
         .focusRequester(focusRequester), state = listState) {
@@ -88,6 +92,7 @@ fun AudioTrackPanel(
                         true
                     )
                 ) 6 else lists[index].getTrackFormat(0).channelCount
+
                 ListItem(
                     modifier = if (index == selectedIndex /*选中的获取焦点*/) {
                         Modifier
@@ -137,6 +142,18 @@ fun AudioTrackPanel(
                                         0
                                     )
                                 )
+                            } · ${
+                                    lists[index].getTrackFormat(
+                                        0
+                                    ).sampleRate
+                                        .let {
+                                        String.format(
+                                            Locale.getDefault(),
+                                            "%.1f kHz",
+                                            it / 1000.0
+                                        )
+                                    }
+
                             }"
                         )
                     },
