@@ -1,6 +1,7 @@
 package org.mz.mzdkplayer.ui.videoplayer.components
 
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,7 +9,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -25,7 +25,9 @@ import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,9 +37,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -46,10 +48,13 @@ import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Switch
+import androidx.tv.material3.SwitchDefaults
 import androidx.tv.material3.Text
-import kotlinx.coroutines.launch
+import com.kuaishou.akdanmaku.DanmakuConfig
+import com.kuaishou.akdanmaku.ui.DanmakuPlayer
 
 import org.mz.mzdkplayer.logic.model.DanmakuSettingsManager
+import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 
 // 公共圆形按钮组件
 @Composable
@@ -230,14 +235,12 @@ fun MultiSelectList(
     }
 }
 
-
-
-// 数据类
-
-
 @Composable
-@Preview
-fun DanmakuPanel() {
+fun DanmakuPanel(
+    danmakuConfig: DanmakuConfig,
+    danmakuPlayer: DanmakuPlayer,
+    videoPlayerViewModel: VideoPlayerViewModel
+) {
     val context = LocalContext.current
     val settingsManager = remember { DanmakuSettingsManager(context) }
 
@@ -259,6 +262,12 @@ fun DanmakuPanel() {
     var selectedTypes by rememberSaveable { mutableStateOf(initialSettings.selectedTypes) }
     val danmakuTypes = remember { listOf("滚动", "底部", "顶部", "彩色") }
 
+    // 用于强制更新的临时状态
+    var updateTrigger by remember { mutableIntStateOf(0) }
+
+    // 用于标记screenPart是否发生变化
+    var previousScreenPart by remember { mutableFloatStateOf(danmakuConfig.screenPart) }
+
     // 保存设置的函数
     val saveSettings = remember {
         {
@@ -276,16 +285,63 @@ fun DanmakuPanel() {
     DisposableEffect(isSwitch, selectedRatio, fontSize, transparency, selectedTypes) {
         // 当状态变化时保存设置
         saveSettings()
-
         onDispose { }
+    }
+
+    // 焦点管理：当焦点离开面板时，重新请求焦点
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    // 处理配置更新，对selectedRatio变化添加延迟以确保生效
+    LaunchedEffect(isSwitch, selectedRatio, fontSize, transparency, selectedTypes, updateTrigger) {
+        val screenPartValue = when(selectedRatio){
+            "1/2" -> 0.5f
+            "1/4" -> 0.25f
+            "1/6" -> 0.166f
+            "1/8" -> 0.125f
+            "1/10" -> 0.1f
+            "1/12" -> 0.083f
+            "全屏" -> 1f
+            else -> 0.083f
+        }
+
+        val updatedConfig = danmakuConfig.copy(
+            visibility = isSwitch,
+            screenPart = screenPartValue,
+            textSizeScale = fontSize.toFloat() / 100,
+            alpha = transparency.toFloat() / 100
+        )
+
+        Log.d("DanmakuPanel", "Updating config: visibility=$isSwitch, screenPart=$screenPartValue, fontSize=$fontSize, transparency=$transparency, selectedRatio=$selectedRatio, updateTrigger=$updateTrigger")
+
+        // 先更新配置
+        danmakuPlayer.updateConfig(updatedConfig)
+        videoPlayerViewModel.danmakuVisibility = isSwitch
+        // 关键修复：当screenPart变化时，需要更新layoutGeneration和retainerGeneration来触发重新布局和排布
+        if (previousScreenPart != screenPartValue) {
+            danmakuConfig.updateLayout()
+            danmakuConfig.updateRetainer()
+            previousScreenPart = screenPartValue
+        }
+    }
+
+    // 当selectedRatio变化时，滚动到对应项
+    LaunchedEffect(selectedRatio) {
+        val selectedIndex = screenRatios.indexOf(selectedRatio)
+        if (selectedIndex >= 0) {
+            listState.animateScrollToItem(selectedIndex)
+        }
     }
 
     Column (
         modifier = Modifier
             .background(Color(0xFF121212)) // 深灰色背景
-            .fillMaxWidth(0.3f)
             .padding(16.dp)
-    ) {
+            .focusRequester(focusRequester) // 使整个Column可获得焦点
+
+    )
+    {
         // 弹幕开关区域
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -300,12 +356,19 @@ fun DanmakuPanel() {
             )
             Switch(
                 checked = isSwitch,
-                onCheckedChange = { isSwitch = it },
-                colors = androidx.tv.material3.SwitchDefaults.colors(
+                onCheckedChange = {
+                    isSwitch = it
+                    // 当开关状态改变时，也触发一次更新
+                    updateTrigger++
+                },
+                colors = SwitchDefaults.colors(
                     uncheckedThumbColor = Color(0xFFB0B0B0), // 未选中时的灰色
                     uncheckedTrackColor = Color(0xFF555555),  // 未选中时的轨道颜色
                     checkedThumbColor = Color(0xFFEEEEEE),   // 选中时的灰色
-                    checkedTrackColor = Color(0xFF999999)    // 选中时的轨道颜色
+                    checkedTrackColor = Color(0xFF999999),    // 选中时的轨道颜色
+                    // 通过增加边框颜色来增强焦点效果
+                    uncheckedBorderColor = Color(0xFFFDFDFD), // 未选中时的边框颜色
+                    checkedBorderColor = Color(0xFFFFA500)    // 选中时的边框颜色（橙色）
                 )
             )
         }
@@ -327,16 +390,15 @@ fun DanmakuPanel() {
                 .padding(vertical = 8.dp)
         )
         {
-            //LazyColumn滚到到当前选择位置
-            coroutineScope.launch {
-                listState.animateScrollToItem(index = 5)
-            }
             items(screenRatios.size) { index ->
+                val isSelected = screenRatios[index] == selectedRatio
 
                 ListItem(
-                    selected = screenRatios[index] == selectedRatio,
+                    selected = isSelected,
                     onClick = {
                         selectedRatio = screenRatios[index]
+                        // 当选择变化时，触发更新
+                        updateTrigger++
                     },
                     modifier = Modifier
                         .padding(horizontal = 2.dp)
@@ -357,7 +419,7 @@ fun DanmakuPanel() {
                     ),
                     scale = ListItemDefaults.scale(scale = 1.0f, focusedScale = 1.0f),
 
-                    leadingContent = if (screenRatios[index] == selectedRatio) {
+                    leadingContent = if (isSelected) {
                         {
                             Icon(
                                 imageVector = Icons.Default.Check,
@@ -372,7 +434,6 @@ fun DanmakuPanel() {
                         )
                     }
                 )
-
             }
         }
 
@@ -382,7 +443,11 @@ fun DanmakuPanel() {
         MultiSelectList(
             items = danmakuTypes,
             selectedItems = selectedTypes,
-            onSelectionChange = { selectedTypes = it },
+            onSelectionChange = {
+                selectedTypes = it
+                // 当类型选择变化时，也触发更新
+                updateTrigger++
+            },
             title = "按类型过滤"
         )
 
@@ -391,7 +456,11 @@ fun DanmakuPanel() {
         // 弹幕字号控制
         NumberControl(
             value = fontSize,
-            onValueChange = { fontSize = it },
+            onValueChange = {
+                fontSize = it
+                // 当字号变化时，也触发更新
+                updateTrigger++
+            },
             maxValue = 200,
             minValue = 10,
             label = "弹幕字号"
@@ -402,7 +471,11 @@ fun DanmakuPanel() {
         // 弹幕透明度控制
         NumberControl(
             value = transparency,
-            onValueChange = { transparency = it },
+            onValueChange = {
+                transparency = it
+                // 当透明度变化时，也触发更新
+                updateTrigger++
+            },
             maxValue = 100,
             minValue = 0,
             label = "弹幕透明度"

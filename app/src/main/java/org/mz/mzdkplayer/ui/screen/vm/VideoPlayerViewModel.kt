@@ -14,6 +14,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.switchMap
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Tracks
+import com.kuaishou.akdanmaku.DanmakuConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -49,7 +50,10 @@ class VideoPlayerViewModel:ViewModel() {
     var atpVisibility by mutableStateOf(false)
     var atpFocus by mutableStateOf(false)
 
+    // 弹幕配置相关
+    var danmakuConfig by mutableStateOf(DanmakuConfig())
     var danmakuVisibility by mutableStateOf(true)
+
     fun updateSubtitleVisibility(visible: Int) {
         isSubtitleViewVis = visible
     }
@@ -63,6 +67,16 @@ class VideoPlayerViewModel:ViewModel() {
         }
     }
     fun setPlayerError(message: String) = updatePlayerStatus(VideoPlayerStatus.Error(message))
+
+    // 更新弹幕配置的方法
+    fun updateDanmakuConfig(config: DanmakuConfig) {
+        danmakuConfig = config
+    }
+
+    // 更新弹幕可见性的方法
+    fun updateDanmakuVisibility(visibility: Boolean) {
+        danmakuVisibility = visibility
+    }
 }
 // 播放状态密封类（你已定义，稍作补充）
 sealed class VideoPlayerStatus {
@@ -83,3 +97,6 @@ sealed class VideoPlayerStatus {
         }
     }
 }
+
+
+

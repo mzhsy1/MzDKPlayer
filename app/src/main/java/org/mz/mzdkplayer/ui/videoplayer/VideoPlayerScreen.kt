@@ -10,7 +10,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -18,8 +17,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -40,7 +37,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -70,11 +66,11 @@ import org.mz.mzdkplayer.danmaku.DanmakuData
 import org.mz.mzdkplayer.danmaku.DanmakuResponse
 import org.mz.mzdkplayer.danmaku.getDanmakuXmlFromFile
 
+import org.mz.mzdkplayer.logic.model.DanmakuSettingsManager
 import org.mz.mzdkplayer.tool.SmbUtils
 import org.mz.mzdkplayer.tool.SubtitleView
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
 
-import org.mz.mzdkplayer.ui.audioplayer.extractAudioMetadataFromPlayer
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.common.VAErrorScreen
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerStatus
@@ -82,6 +78,7 @@ import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 import org.mz.mzdkplayer.ui.videoplayer.components.AkDanmakuPlayer
 import org.mz.mzdkplayer.ui.videoplayer.components.AudioTrackPanel
 import org.mz.mzdkplayer.ui.videoplayer.components.BuilderMzPlayer
+import org.mz.mzdkplayer.ui.videoplayer.components.DanmakuPanel
 import org.mz.mzdkplayer.ui.videoplayer.components.SubtitleTrackPanel
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerControlsIcon
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerMainFrame
@@ -110,7 +107,7 @@ import kotlin.time.Duration.Companion.milliseconds
  */
 @OptIn(UnstableApi::class)
 @Composable
-fun VideoPlayerScreen(mediaUri: String, dataSourceType: String,fileName:String="未知文件名") {
+fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String = "未知文件名") {
     // 获取当前 Compose 上下文
     val context = LocalContext.current
     // 记住并创建 ExoPlayer 实例
@@ -146,8 +143,6 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String,fileName:String="
         )
     // 状态：当前的字幕组 (CueGroup)
     var currentCueGroup: CueGroup? by remember { mutableStateOf<CueGroup?>(null) }
-    // 状态：弹幕配置
-    var danmakuConfig by remember { mutableStateOf(DanmakuConfig()) }
     val playerStatus by videoPlayerViewModel.playerStatus.collectAsState()
     // 弹幕数据
     // 状态：解析后的弹幕数据列表
@@ -155,6 +150,10 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String,fileName:String="
     // 状态：弹幕是否已加载完成
     var isDanmakuLoaded by remember { mutableStateOf(false) }
     val pulseState = rememberVideoPlayerPulseState()
+
+    // 弹幕设置管理器
+    val settingsManager = remember { DanmakuSettingsManager(context) }
+
     // 构建播放器 (设置媒体源等)
     BuilderMzPlayer(context, mediaUri, exoPlayer, dataSourceType)
     // 当 Composable 离开组合时，释放资源
@@ -164,6 +163,54 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String,fileName:String="
             mDanmakuPlayer.release() // 释放弹幕播放器
         }
     }
+
+    // 辅助方法：获取当前弹幕配置
+    fun getDanmakuConfig(): DanmakuConfig {
+        val currentSettings = settingsManager.loadSettings()
+        val screenPartValue = when(currentSettings.selectedRatio) {
+            "1/2" -> 0.5f
+            "1/4" -> 0.25f
+            "1/6" -> 0.166f
+            "1/8" -> 0.125f
+            "1/10" -> 0.1f
+            "1/12" -> 0.083f
+            "全屏" -> 1f
+            else -> 0.083f // 默认值
+        }
+
+        return videoPlayerViewModel.danmakuConfig.copy(
+            retainerPolicy = RETAINER_BILIBILI,
+            visibility = videoPlayerViewModel.danmakuVisibility,
+            screenPart = screenPartValue,
+            textSizeScale = currentSettings.fontSize.toFloat() / 100,
+            alpha = currentSettings.transparency.toFloat() / 100
+        )
+    }
+
+    // 在初始化时从本地加载弹幕设置，如果没有则使用默认值
+    LaunchedEffect(Unit) {
+        val savedSettings = settingsManager.loadSettings()
+        videoPlayerViewModel.danmakuConfig = videoPlayerViewModel.danmakuConfig.copy(
+            retainerPolicy = RETAINER_BILIBILI, // 设置弹幕保留策略
+            textSizeScale = savedSettings.fontSize.toFloat() / 100, // 字体缩放
+            screenPart = when(savedSettings.selectedRatio) {
+                "1/2" -> 0.5f
+                "1/4" -> 0.25f
+                "1/6" -> 0.166f
+                "1/8" -> 0.125f
+                "1/10" -> 0.1f
+                "1/12" -> 0.083f
+                "全屏" -> 1f
+                else -> 0.083f // 默认值
+            }, // 屏幕占用比例
+            alpha = savedSettings.transparency.toFloat() / 100, // 透明度
+            visibility = savedSettings.isSwitchEnabled // 可见性
+        )
+        mDanmakuPlayer.updateConfig(videoPlayerViewModel.danmakuConfig)
+        // 设置ViewModel的弹幕可见性状态与本地设置一致
+        videoPlayerViewModel.danmakuVisibility = savedSettings.isSwitchEnabled
+    }
+
     // 加载弹幕数据
     LaunchedEffect(danmakuUri) {
         Log.d("danmakuUri", danmakuUri.toString())
@@ -261,13 +308,6 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String,fileName:String="
             }
 
             hasSentDanmaku = true
-            // 配置弹幕播放器
-            danmakuConfig = danmakuConfig.copy(
-                retainerPolicy = RETAINER_BILIBILI, // 设置弹幕保留策略
-                textSizeScale = 1.0f, // 字体缩放
-                screenPart = 0.12f, // 屏幕占用比例
-            )
-            mDanmakuPlayer.updateConfig(danmakuConfig)
             Log.i(
                 "VideoPlayerScreen",
                 "Sent ${danmakuDataList?.size ?: 0} danmaku items to player."
@@ -337,8 +377,10 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String,fileName:String="
                 // 如果弹幕可见性为 true
                 if (videoPlayerViewModel.danmakuVisibility) {
                     if (isPlaying) {
-                        // 启动弹幕播放器并同步位置
-                        mDanmakuPlayer.start(danmakuConfig)
+                        // 使用封装的方法获取当前配置并启动弹幕
+                        videoPlayerViewModel.danmakuConfig = getDanmakuConfig()
+                        mDanmakuPlayer.updateConfig(videoPlayerViewModel.danmakuConfig)
+                        mDanmakuPlayer.start()
                         mDanmakuPlayer.seekTo(contentCurrentPosition)
                     } else {
                         // 暂停弹幕播放器
@@ -502,8 +544,9 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String,fileName:String="
                             playerStatus.toString(), // 副标题 (示例)
                             "2022/1/20", // 第三行文本 (示例)
                             videoPlayerViewModel, // ViewModel
-                            danmakuConfig, // 弹幕配置
-                            mDanmakuPlayer // 弹幕播放器
+                            mDanmakuPlayer, // 弹幕播放器
+                            settingsManager, // 弹幕设置管理器，用于保存可见性状态
+                            ::getDanmakuConfig // 传递获取配置的方法
                         )
                     },
                     atpFocus = videoPlayerViewModel.atpFocus // 音轨/字幕面板焦点状态
@@ -534,19 +577,23 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String,fileName:String="
                     exit = fadeOut(), // 淡出动画
                     modifier = Modifier
                         .widthIn(200.dp, 420.dp) // 宽度范围
-                        .heightIn(200.dp, 420.dp) // 高度范围
+                        .fillMaxHeight() // 高度范围
                         .align(AbsoluteAlignment.CenterRight) // 右侧居中
-                        .offset(x = (-20).dp) // 向左偏移
+                        // 向左偏移
                         .background(
-                            Color(0, 0, 0, 193), shape = RoundedCornerShape(8.dp) // 半透明黑色背景和圆角
+                            Color.White.copy(0.8f), shape = RoundedCornerShape(2.dp) // 半透明黑色背景和圆角
                         )
                         // 处理 D-Pad 事件
                         .handleDPadKeyEvents(
                             onRight = {
-                                if (!videoPlayerState.controlsVisible) {
-                                    videoPlayerViewModel.atpVisibility = false // 隐藏面板
-                                }
+                                true
                             },
+                            onUp = {
+                                true
+                            },
+                            onDown = {
+                                true
+                            }
                         )
                         // 处理焦点变化
                         .onFocusChanged {
@@ -576,6 +623,12 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String,fileName:String="
                             }, // 索引变化回调
                             videoPlayerViewModel.mutableSetOfVideoTrackGroups, // 视频轨道组
                             exoPlayer // ExoPlayer 实例
+                        )
+
+                        "D" -> DanmakuPanel(
+                            videoPlayerViewModel.danmakuConfig, // 弹幕配置
+                            mDanmakuPlayer, // 弹幕播放器
+                            videoPlayerViewModel
                         )
 
                         else -> {
@@ -719,8 +772,9 @@ private fun Modifier.dPadEvents(
  * @param secondaryText 副标题
  * @param tertiaryText 第三行文本
  * @param videoPlayerViewModel ViewModel
- * @param danmakuConfig 弹幕配置
  * @param danmakuPlayer 弹幕播放器
+ * @param settingsManager 弹幕设置管理器
+ * @param getDanmakuConfig 获取弹幕配置的方法
  */
 @OptIn(UnstableApi::class)
 @Composable
@@ -732,8 +786,9 @@ fun VideoPlayerControls(
     focusRequester: FocusRequester,
     title: String, secondaryText: String, tertiaryText: String,
     videoPlayerViewModel: VideoPlayerViewModel,
-    danmakuConfig: DanmakuConfig,
-    danmakuPlayer: DanmakuPlayer
+    danmakuPlayer: DanmakuPlayer,
+    settingsManager: DanmakuSettingsManager, // 添加设置管理器参数
+    getDanmakuConfig: () -> DanmakuConfig // 添加获取配置的方法参数
 ) {
     // 播放/暂停切换回调
     val onPlayPauseToggle = { shouldPlay: Boolean ->
@@ -768,8 +823,8 @@ fun VideoPlayerControls(
                     onClick = {
                         // 点击高清图标，显示视频轨道选择面板
                         videoPlayerViewModel.selectedAorVorS = "V"
-                        videoPlayerViewModel.atpVisibility =
-                            !videoPlayerViewModel.atpVisibility; focusRequester.requestFocus()
+                        videoPlayerViewModel.atpVisibility = !videoPlayerViewModel.atpVisibility;
+                        focusRequester.requestFocus()
                     }
                 )
                 VideoPlayerControlsIcon(
@@ -780,8 +835,8 @@ fun VideoPlayerControls(
                     onClick = {
                         // 点击音频图标，显示音频轨道选择面板
                         videoPlayerViewModel.selectedAorVorS = "A"
-                        videoPlayerViewModel.atpVisibility =
-                            !videoPlayerViewModel.atpVisibility; focusRequester.requestFocus()
+                        videoPlayerViewModel.atpVisibility = !videoPlayerViewModel.atpVisibility;
+                        focusRequester.requestFocus()
                     }
                 )
                 VideoPlayerControlsIcon(
@@ -798,28 +853,26 @@ fun VideoPlayerControls(
                 )
                 VideoPlayerControlsIcon(
                     modifier = Modifier.padding(start = 12.dp),
-                    icon = if (videoPlayerViewModel.danmakuVisibility) painterResource(id = R.drawable.dmaopen) else painterResource(
-                        id = R.drawable.damclose
+                    icon = if (videoPlayerViewModel.danmakuVisibility) painterResource(id = R.drawable.dmk) else painterResource(
+                        id = R.drawable.dmb
                     ), // 弹幕开关图标
                     state = state,
                     isPlaying = isPlaying,
                     onClick = {
                         // 点击弹幕开关图标，切换弹幕可见性
-                        videoPlayerViewModel.danmakuVisibility =
-                            !videoPlayerViewModel.danmakuVisibility
-                        // 更新弹幕配置
-                        danmakuPlayer.updateConfig(
-                            danmakuConfig.copy(
-                                visibility = videoPlayerViewModel.danmakuVisibility,
-                            )
-                        )
+                        videoPlayerViewModel.danmakuVisibility = !videoPlayerViewModel.danmakuVisibility
+
+                        // 使用封装的方法获取当前配置
+                        videoPlayerViewModel.danmakuConfig = getDanmakuConfig()
+                        danmakuPlayer.updateConfig(videoPlayerViewModel.danmakuConfig)
+
                         Log.d("isPlay", isPlaying.toString())
                         // 根据播放状态和可见性控制弹幕播放器
                         if (!videoPlayerViewModel.danmakuVisibility) {
                             danmakuPlayer.pause()
                         } else {
                             if (isPlaying) {
-                                danmakuPlayer.start(danmakuConfig)
+                                danmakuPlayer.start()
                                 danmakuPlayer.seekTo(contentCurrentPosition)
                             } else {
                                 // 修复关闭弹幕在打开时如果视频处于暂停状态弹幕还会继续滚动
@@ -827,6 +880,29 @@ fun VideoPlayerControls(
                                 danmakuPlayer.pause()
                             }
                         }
+
+                        // 保存当前配置到本地，包括可见性状态
+                        val currentSettings = settingsManager.loadSettings()
+                        settingsManager.saveSettings(
+                            videoPlayerViewModel.danmakuVisibility, // 更新可见性
+                            currentSettings.selectedRatio, // 保持其他设置不变
+                            currentSettings.fontSize,
+                            currentSettings.transparency,
+                            currentSettings.selectedTypes
+                        )
+                    }
+                )
+
+                VideoPlayerControlsIcon(
+                    modifier = Modifier.padding(start = 12.dp),
+                    icon = painterResource(id = R.drawable.video_danmu_config), // 字幕图标
+                    state = state,
+                    isPlaying = isPlaying,
+                    onClick = {
+                        // 点击字幕图标，显示字幕轨道选择面板
+                        videoPlayerViewModel.selectedAorVorS = "D"
+                        videoPlayerViewModel.atpVisibility = !videoPlayerViewModel.atpVisibility;
+                        focusRequester.requestFocus()
                     }
                 )
             }
