@@ -221,7 +221,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
             val inputStream: InputStream? = when (danmakuUri.scheme?.lowercase()) {
                 "smb" -> {
                     // 使用 SMB 工具打开输入流
-                    SmbUtils.openSmbFileInputStream(danmakuUri)
+                    SmbUtils.openSmbFileInputStream(danmakuUri,"video")
                 }
 
                 "http", "https" -> {
@@ -581,7 +581,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
                         .align(AbsoluteAlignment.CenterRight) // 右侧居中
                         // 向左偏移
                         .background(
-                            Color.White.copy(0.8f), shape = RoundedCornerShape(2.dp) // 半透明黑色背景和圆角
+                            Color.Black.copy(0.8f), shape = RoundedCornerShape(2.dp) // 半透明黑色背景和圆角
                         )
                         // 处理 D-Pad 事件
                         .handleDPadKeyEvents(

@@ -51,6 +51,7 @@ import androidx.tv.material3.Switch
 import androidx.tv.material3.SwitchDefaults
 import androidx.tv.material3.Text
 import com.kuaishou.akdanmaku.DanmakuConfig
+import com.kuaishou.akdanmaku.ext.RETAINER_BILIBILI
 import com.kuaishou.akdanmaku.ui.DanmakuPlayer
 
 import org.mz.mzdkplayer.logic.model.DanmakuSettingsManager
@@ -306,7 +307,8 @@ fun DanmakuPanel(
             else -> 0.083f
         }
 
-        val updatedConfig = danmakuConfig.copy(
+        videoPlayerViewModel.danmakuConfig = danmakuConfig.copy(
+            retainerPolicy = RETAINER_BILIBILI,
             visibility = isSwitch,
             screenPart = screenPartValue,
             textSizeScale = fontSize.toFloat() / 100,
@@ -316,7 +318,7 @@ fun DanmakuPanel(
         Log.d("DanmakuPanel", "Updating config: visibility=$isSwitch, screenPart=$screenPartValue, fontSize=$fontSize, transparency=$transparency, selectedRatio=$selectedRatio, updateTrigger=$updateTrigger")
 
         // 先更新配置
-        danmakuPlayer.updateConfig(updatedConfig)
+        danmakuPlayer.updateConfig(videoPlayerViewModel.danmakuConfig)
         videoPlayerViewModel.danmakuVisibility = isSwitch
         // 关键修复：当screenPart变化时，需要更新layoutGeneration和retainerGeneration来触发重新布局和排布
         if (previousScreenPart != screenPartValue) {

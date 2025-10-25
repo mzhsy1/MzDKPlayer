@@ -147,7 +147,7 @@ fun BuilderMzPlayer(
                     // 根据是否选中了 SRT 或者 PSG轨道来设置可见性
                     if (hasSrtTrackSelected || hasPGSTrackSelected || hasVTTTrackSelected) {
                         Log.d("SDS1", "SubtitleView set to GONE because SRT track is selected.")
-                        videoPlayerViewModel.updateSubtitleVisibility(View.VISIBLE)
+                        videoPlayerViewModel.updateSubtitleVisibility(View.GONE)
                         videoPlayerViewModel.updateCusSubtitleVisibility(true)
 
                     } else if (hasASSTrackSelected){

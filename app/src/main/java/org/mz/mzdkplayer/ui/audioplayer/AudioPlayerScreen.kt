@@ -8,7 +8,6 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
@@ -36,9 +35,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.AudioInfo
 
 import org.mz.mzdkplayer.tool.SmbUtils
@@ -163,7 +160,7 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String)
             withContext(Dispatchers.IO) {
                 try {
                     val inputStream: InputStream? = when (mediaUri.toUri().scheme?.lowercase()) {
-                        "smb" -> SmbUtils.openSmbFileInputStreamTMB(mediaUri.toUri())
+                        "smb" -> SmbUtils.openSmbFileInputStream(mediaUri.toUri(),sampleMimeType)
                         "http", "https" -> {
                             when (dataSourceType) {
                                 "WEBDAV" -> SmbUtils.openWebDavFileInputStream(mediaUri.toUri())

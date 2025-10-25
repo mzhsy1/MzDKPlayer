@@ -58,7 +58,7 @@ fun VideoPlayerControlsIcon(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.DarkGray, contentColor = Color.White,
+            containerColor = Color.Black.copy(0.9f), contentColor = Color.White,
             focusedContainerColor = Color.White, focusedContentColor = Color.Black
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
