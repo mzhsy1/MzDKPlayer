@@ -41,6 +41,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Icon
@@ -50,11 +51,13 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Switch
 import androidx.tv.material3.SwitchDefaults
 import androidx.tv.material3.Text
-import com.kuaishou.akdanmaku.DanmakuConfig
+
 import com.kuaishou.akdanmaku.ext.RETAINER_BILIBILI
 import com.kuaishou.akdanmaku.ui.DanmakuPlayer
+import org.mz.mzdkplayer.logic.model.DanmakuScreenRatio
 
 import org.mz.mzdkplayer.logic.model.DanmakuSettingsManager
+import org.mz.mzdkplayer.logic.model.DanmakuType
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 
 // 公共圆形按钮组件
@@ -238,9 +241,9 @@ fun MultiSelectList(
 
 @Composable
 fun DanmakuPanel(
-    danmakuConfig: DanmakuConfig,
     danmakuPlayer: DanmakuPlayer,
-    videoPlayerViewModel: VideoPlayerViewModel
+    videoPlayerViewModel: VideoPlayerViewModel,
+    exoPlayer: ExoPlayer
 ) {
     val context = LocalContext.current
     val settingsManager = remember { DanmakuSettingsManager(context) }
@@ -250,8 +253,11 @@ fun DanmakuPanel(
 
     val focusRequester = remember { FocusRequester() }
     var isSwitch by rememberSaveable { mutableStateOf(initialSettings.isSwitchEnabled) }
-    val screenRatios = remember{listOf("1/2", "1/4","1/6", "1/8",  "1/10","1/12","全屏")}
-    var selectedRatio by rememberSaveable { mutableStateOf(initialSettings.selectedRatio) }
+    // 使用枚举获取显示名称列表
+    val screenRatios = remember { DanmakuScreenRatio.displayNames }
+
+    var selectedRatio by rememberSaveable(initialSettings.selectedRatio) { mutableStateOf(initialSettings.selectedRatio) }
+
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
@@ -261,13 +267,13 @@ fun DanmakuPanel(
 
     // 弹幕类型过滤状态
     var selectedTypes by rememberSaveable { mutableStateOf(initialSettings.selectedTypes) }
-    val danmakuTypes = remember { listOf("滚动", "底部", "顶部", "彩色") }
+    val danmakuTypes = remember { DanmakuType.displayNames }
 
     // 用于强制更新的临时状态
     var updateTrigger by remember { mutableIntStateOf(0) }
 
     // 用于标记screenPart是否发生变化
-    var previousScreenPart by remember { mutableFloatStateOf(danmakuConfig.screenPart) }
+    var previousScreenPart by remember { mutableFloatStateOf(videoPlayerViewModel.danmakuConfig.screenPart) }
 
     // 保存设置的函数
     val saveSettings = remember {
@@ -296,34 +302,32 @@ fun DanmakuPanel(
 
     // 处理配置更新，对selectedRatio变化添加延迟以确保生效
     LaunchedEffect(isSwitch, selectedRatio, fontSize, transparency, selectedTypes, updateTrigger) {
-        val screenPartValue = when(selectedRatio){
-            "1/2" -> 0.5f
-            "1/4" -> 0.25f
-            "1/6" -> 0.166f
-            "1/8" -> 0.125f
-            "1/10" -> 0.1f
-            "1/12" -> 0.083f
-            "全屏" -> 1f
-            else -> 0.083f
-        }
+        // 从枚举获取比例值
+        val screenPartValue = DanmakuScreenRatio.fromDisplayName(selectedRatio).ratioValue
 
-        videoPlayerViewModel.danmakuConfig = danmakuConfig.copy(
+        videoPlayerViewModel.danmakuConfig = videoPlayerViewModel.danmakuConfig.copy(
             retainerPolicy = RETAINER_BILIBILI,
             visibility = isSwitch,
             screenPart = screenPartValue,
             textSizeScale = fontSize.toFloat() / 100,
-            alpha = transparency.toFloat() / 100
+            alpha = transparency.toFloat() / 100,
+            dataFilter = listOf(videoPlayerViewModel.createDanmakuTypeFilter(selectedTypes)) // 添加弹幕过滤器
         )
 
         Log.d("DanmakuPanel", "Updating config: visibility=$isSwitch, screenPart=$screenPartValue, fontSize=$fontSize, transparency=$transparency, selectedRatio=$selectedRatio, updateTrigger=$updateTrigger")
-
+        videoPlayerViewModel.danmakuConfig.updateFilter()
         // 先更新配置
         danmakuPlayer.updateConfig(videoPlayerViewModel.danmakuConfig)
+
+        // 强制更新过滤器以立即生效
+
+        videoPlayerViewModel.danmakuConfig.updateVisibility()
+        //danmakuPlayer.seekTo(exoPlayer.currentPosition)
         videoPlayerViewModel.danmakuVisibility = isSwitch
         // 关键修复：当screenPart变化时，需要更新layoutGeneration和retainerGeneration来触发重新布局和排布
         if (previousScreenPart != screenPartValue) {
-            danmakuConfig.updateLayout()
-            danmakuConfig.updateRetainer()
+            videoPlayerViewModel.danmakuConfig.updateLayout()
+            videoPlayerViewModel.danmakuConfig.updateRetainer()
             previousScreenPart = screenPartValue
         }
     }

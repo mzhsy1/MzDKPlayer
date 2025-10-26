@@ -322,8 +322,8 @@ object SmbUtils {
                         var completeOk: Boolean
                         var inputStreamException: Throwable? = null
                         var completeCommandException: Throwable? = null
-                        val logoutException: Throwable? = null
-                        val disconnectException: Throwable? = null
+                       // val logoutException: Throwable? = null
+                       // val disconnectException: Throwable? = null
 
                         try {
                             // 1. 首先关闭输入流

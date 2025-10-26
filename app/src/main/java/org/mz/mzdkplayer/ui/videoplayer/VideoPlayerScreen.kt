@@ -65,6 +65,7 @@ import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.danmaku.DanmakuData
 import org.mz.mzdkplayer.danmaku.DanmakuResponse
 import org.mz.mzdkplayer.danmaku.getDanmakuXmlFromFile
+import org.mz.mzdkplayer.logic.model.DanmakuScreenRatio
 
 import org.mz.mzdkplayer.logic.model.DanmakuSettingsManager
 import org.mz.mzdkplayer.tool.SmbUtils
@@ -167,23 +168,15 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
     // 辅助方法：获取当前弹幕配置
     fun getDanmakuConfig(): DanmakuConfig {
         val currentSettings = settingsManager.loadSettings()
-        val screenPartValue = when(currentSettings.selectedRatio) {
-            "1/2" -> 0.5f
-            "1/4" -> 0.25f
-            "1/6" -> 0.166f
-            "1/8" -> 0.125f
-            "1/10" -> 0.1f
-            "1/12" -> 0.083f
-            "全屏" -> 1f
-            else -> 0.083f // 默认值
-        }
+        val screenPartValue = DanmakuScreenRatio.fromDisplayName(currentSettings.selectedRatio).ratioValue
 
         return videoPlayerViewModel.danmakuConfig.copy(
             retainerPolicy = RETAINER_BILIBILI,
             visibility = videoPlayerViewModel.danmakuVisibility,
             screenPart = screenPartValue,
             textSizeScale = currentSettings.fontSize.toFloat() / 100,
-            alpha = currentSettings.transparency.toFloat() / 100
+            alpha = currentSettings.transparency.toFloat() / 100,
+            dataFilter = listOf(videoPlayerViewModel.createDanmakuTypeFilter(currentSettings.selectedTypes)) // 添加弹幕过滤器
         )
     }
 
@@ -193,19 +186,12 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
         videoPlayerViewModel.danmakuConfig = videoPlayerViewModel.danmakuConfig.copy(
             retainerPolicy = RETAINER_BILIBILI, // 设置弹幕保留策略
             textSizeScale = savedSettings.fontSize.toFloat() / 100, // 字体缩放
-            screenPart = when(savedSettings.selectedRatio) {
-                "1/2" -> 0.5f
-                "1/4" -> 0.25f
-                "1/6" -> 0.166f
-                "1/8" -> 0.125f
-                "1/10" -> 0.1f
-                "1/12" -> 0.083f
-                "全屏" -> 1f
-                else -> 0.083f // 默认值
-            }, // 屏幕占用比例
+            screenPart =DanmakuScreenRatio.fromDisplayName(savedSettings.selectedRatio).ratioValue, // 屏幕占用比例
             alpha = savedSettings.transparency.toFloat() / 100, // 透明度
-            visibility = savedSettings.isSwitchEnabled // 可见性
+            visibility = savedSettings.isSwitchEnabled, // 可见性
+            dataFilter = listOf(videoPlayerViewModel.createDanmakuTypeFilter(savedSettings.selectedTypes)) // 添加弹幕过滤器
         )
+        videoPlayerViewModel.danmakuConfig.updateFilter()
         mDanmakuPlayer.updateConfig(videoPlayerViewModel.danmakuConfig)
         // 设置ViewModel的弹幕可见性状态与本地设置一致
         videoPlayerViewModel.danmakuVisibility = savedSettings.isSwitchEnabled
@@ -626,9 +612,9 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
                         )
 
                         "D" -> DanmakuPanel(
-                            videoPlayerViewModel.danmakuConfig, // 弹幕配置
                             mDanmakuPlayer, // 弹幕播放器
-                            videoPlayerViewModel
+                            videoPlayerViewModel,
+                            exoPlayer
                         )
 
                         else -> {

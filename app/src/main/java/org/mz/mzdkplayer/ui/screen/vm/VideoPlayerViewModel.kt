@@ -15,6 +15,9 @@ import androidx.lifecycle.switchMap
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Tracks
 import com.kuaishou.akdanmaku.DanmakuConfig
+import com.kuaishou.akdanmaku.data.DanmakuItemData
+import com.kuaishou.akdanmaku.ecs.component.filter.TypeFilter
+
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -53,6 +56,7 @@ class VideoPlayerViewModel:ViewModel() {
     // 弹幕配置相关
     var danmakuConfig by mutableStateOf(DanmakuConfig())
     var danmakuVisibility by mutableStateOf(true)
+    private var typeFilter by mutableStateOf(TypeFilter())
 
     fun updateSubtitleVisibility(visible: Int) {
         isSubtitleViewVis = visible
@@ -76,6 +80,37 @@ class VideoPlayerViewModel:ViewModel() {
     // 更新弹幕可见性的方法
     fun updateDanmakuVisibility(visibility: Boolean) {
         danmakuVisibility = visibility
+    }
+
+    // 创建弹幕过滤器的方法
+    fun createDanmakuTypeFilter(selectedTypes: Set<String>): TypeFilter {
+        // 清除之前的所有过滤项
+        typeFilter.clear()
+
+        // 如果有勾选类型，则将勾选的类型添加到过滤规则中（即过滤掉勾选的类型）
+        if (selectedTypes.isNotEmpty()) {
+            val allTypes = listOf("滚动", "底部", "顶部", "彩色").toSet()
+            val selectedFilteredTypes = selectedTypes.intersect(allTypes)
+
+            val filterTypes = selectedFilteredTypes.mapNotNull { typeName ->
+                when (typeName) {
+                    "滚动" -> DanmakuItemData.DANMAKU_MODE_ROLLING
+                    "顶部" -> DanmakuItemData.DANMAKU_MODE_CENTER_TOP
+                    "底部" -> DanmakuItemData.DANMAKU_MODE_CENTER_BOTTOM
+                    "彩色" -> null // 彩色类型可能不需要过滤，或者需要特殊处理
+                    else -> null
+                }
+            }
+
+            filterTypes.forEach { typeFilter.addFilterItem(it) }
+        }
+
+        return typeFilter
+    }
+
+    // 获取当前弹幕过滤器的方法
+    fun getCurrentTypeFilter(): TypeFilter {
+        return typeFilter
     }
 }
 // 播放状态密封类（你已定义，稍作补充）
