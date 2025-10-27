@@ -19,3 +19,11 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+## ============ mbassy (EL resolution) ============
+#-dontwarn javax.el.**
+#-dontwarn net.engio.mbassy.dispatch.el.**
+#
+## ============ smbj (GSS/Kerberos) ============
+#-dontwarn org.ietf.jgss.**
+#-dontwarn com.hierynomus.smbj.auth.SpnegoAuthenticator
+#-dontwarn com.hierynomus.smbj.auth.GSSAuthenticationContext

@@ -14,15 +14,16 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-//        ndk {
-//            //noinspection ChromeOsAbiSupport
-//            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
-//        }
+        ndk {
+            //noinspection ChromeOsAbiSupport
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -70,7 +71,14 @@ dependencies {
    // implementation(libs.androidx.media3.ui.compose)
     implementation(libs.gson)
     implementation(libs.ass.media)
-    implementation(libs.thegrizzlylabs.sardine.android)
+    // 👇 修改这一行：排除 xpp3 和 stax
+    implementation(libs.thegrizzlylabs.sardine.android) {
+        exclude(group = "xpp3", module = "xpp3")
+        exclude(group = "stax", module = "stax-api")
+        exclude(group = "stax", module = "stax")
+        exclude(group = "xmlpull", module = "xmlpull")
+    }
+
     implementation(libs.jaudiotagger)
     implementation(libs.commons.net)
 
