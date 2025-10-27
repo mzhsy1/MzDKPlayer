@@ -125,7 +125,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
         ) {
             Log.d("focusedIsDir", false.toString())
             Log.d("focusedIsDir", "获取媒体信息")
-            withContext(Dispatchers.IO) {
+            withContext(Dispatchers.Main) {
                 exoPlayer =
                     builderPlayer(mediaUri = focusedMediaUri, context, dataSourceType = "SMB")
             }

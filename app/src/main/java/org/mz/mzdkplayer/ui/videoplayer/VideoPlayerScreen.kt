@@ -38,9 +38,12 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -458,7 +461,15 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
 
                 // 创建焦点请求器
                 val focusRequester = remember { FocusRequester() }
+                var videoSizePx by remember { mutableStateOf(IntSize.Zero) }
+                val density = LocalDensity.current.density
 
+                val videoSizeDp = with(density) {
+                    IntSize(
+                        width = (videoSizePx.width / density).toInt(),
+                        height = (videoSizePx.height / density).toInt()
+                    )
+                }
                 // AndroidView 包裹 PlayerView，用于显示视频
                 AndroidView(
                     factory = { context ->
@@ -472,9 +483,14 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
                     update = { playView ->
                         // 更新 PlayerView
                         playView.player = exoPlayer
+                        playView.resizeMode
                         playView.subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
                     },
-                    modifier = Modifier.fillMaxSize(), // 填充整个父容器
+
+                    modifier = Modifier.fillMaxSize().onSizeChanged { size ->
+                        videoSizePx = size
+                        Log.d("playViewSize",videoSizePx.toString())
+                    }, // 填充整个父容器
                     onRelease = {
                         // 释放资源
                         exoPlayer.release()
@@ -487,8 +503,11 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
                     SubtitleView(
                         cueGroup = currentCueGroup, // 传递当前字幕组
                         subtitleStyle = customSubtitleStyle, // 使用自定义字幕样式(只影响srt字幕)
-                        //modifier = Modifier.align(Alignment.TopCenter), // 底部居中对齐(只影响srt字幕)
-                        backgroundColor = Color.Black.copy(alpha = 0.5f) // 背景色(只影响srt字幕)
+                        modifier = Modifier.align(Alignment.BottomCenter), // 底部居中对齐(只影响srt字幕)
+                        videoSizeDp = videoSizeDp,
+                        backgroundColor = Color.Black.copy(alpha = 0.5f) ,// 背景色(只影响srt字幕)
+                        exoPlayer = exoPlayer
+
                     )
                 }
 
