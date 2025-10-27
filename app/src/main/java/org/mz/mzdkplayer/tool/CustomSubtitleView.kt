@@ -67,7 +67,8 @@ fun SubtitleView(
         fontSize = 18.sp
     ),
     backgroundColor: Color = Color.Black.copy(alpha = 0.0f),
-    exoPlayer: ExoPlayer
+    exoPlayer: ExoPlayer,
+    forcePGSCenter: Boolean = false
 ) {
     if (cueGroup == null || cueGroup.cues.isEmpty()) {
         return
@@ -162,92 +163,89 @@ fun SubtitleView(
                 }
             }
         }
-
-        // 位图字幕 - 独立定位，不受文本字幕modifier影响
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
+// === 位图字幕 ===
+        Box(modifier = Modifier.fillMaxSize()) {
             cueGroup.cues.forEach { cue ->
                 cue.bitmap?.let { bitmap ->
-                    Log.i("SubtitleView", "Processing bitmap cue with size: ${bitmap.width}x${bitmap.height}")
+                    // >>> 强制居中逻辑：覆盖 position/line/anchor
+                    // 替换从这里开始
+                    val anchorInfo = if (forcePGSCenter) {
+                        SubtitleAnchorInfo(
+                            x = 0.5f,
+                            y = 0.90f,
+                            positionAnchor = Cue.ANCHOR_TYPE_MIDDLE,
+                            lineAnchor = Cue.ANCHOR_TYPE_START
+                        )
+                    } else {
+                        val resolvedX = if (cue.position != Cue.DIMEN_UNSET) cue.position.coerceIn(0f, 1f) else 0.5f
+                        val resolvedY = if (cue.line != Cue.DIMEN_UNSET) cue.line.coerceIn(0f, 1f) else 0.5f
+                        SubtitleAnchorInfo(
+                            x = resolvedX,
+                            y = resolvedY,
+                            positionAnchor = cue.positionAnchor,
+                            lineAnchor = cue.lineAnchor
+                        )
+                    }
 
-                    // 计算字幕在视频内容区域内的位置
-                    val x = if (cue.position != Cue.DIMEN_UNSET) cue.position.coerceIn(0f, 1f) else 0.5f
-                    val y = if (cue.line != Cue.DIMEN_UNSET) cue.line.coerceIn(0f, 1f) else 0.5f
+                    val (x, y, positionAnchor, lineAnchor) = anchorInfo
 
-                    // 保持位图原始宽高比
                     val originalBitmapAspectRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
 
-                    // Bitmap 尺寸：如果 cue.size / cue.bitmapHeight 未设置，则使用原始 bitmap 尺寸
-                    val targetWidthDp = if (cue.size != Cue.DIMEN_UNSET) {
+                    val targetWidthDp = if (!forcePGSCenter && cue.size != Cue.DIMEN_UNSET) {
                         displayedVideoRect.widthDp * cue.size
                     } else {
                         bitmap.width / density
                     }
 
-                    val targetHeightDp = if (cue.bitmapHeight != Cue.DIMEN_UNSET) {
+                    val targetHeightDp = if (!forcePGSCenter && cue.bitmapHeight != Cue.DIMEN_UNSET) {
                         displayedVideoRect.heightDp * cue.bitmapHeight
                     } else {
                         bitmap.height / density
                     }
 
-                    // 如果两个尺寸都设置了，使用比例较大的那个以保持宽高比
-                    val bitmapWidthDp: Float
-                    val bitmapHeightDp: Float
-
-                    if (cue.size != Cue.DIMEN_UNSET && cue.bitmapHeight != Cue.DIMEN_UNSET) {
-                        // 如果都设置了，按比例较大的那个来计算，保持宽高比
-                        val widthBasedHeight = targetWidthDp / originalBitmapAspectRatio
-                        val heightBasedWidth = targetHeightDp * originalBitmapAspectRatio
-
-                        if (widthBasedHeight <= targetHeightDp) {
-                            // 宽度决定了尺寸
-                            bitmapWidthDp = targetWidthDp
-                            bitmapHeightDp = widthBasedHeight
-                        } else {
-                            // 高度决定了尺寸
-                            bitmapWidthDp = heightBasedWidth
-                            bitmapHeightDp = targetHeightDp
+                    // 尺寸计算逻辑保持不变
+                    val (bitmapWidthDp, bitmapHeightDp) = when {
+                        !forcePGSCenter && cue.size != Cue.DIMEN_UNSET && cue.bitmapHeight != Cue.DIMEN_UNSET -> {
+                            val widthBasedHeight = targetWidthDp / originalBitmapAspectRatio
+                            val heightBasedWidth = targetHeightDp * originalBitmapAspectRatio
+                            if (widthBasedHeight <= targetHeightDp) {
+                                targetWidthDp to widthBasedHeight
+                            } else {
+                                heightBasedWidth to targetHeightDp
+                            }
                         }
-                    } else if (cue.size != Cue.DIMEN_UNSET) {
-                        // 只设置了宽度比例，按宽高比计算高度
-                        bitmapWidthDp = targetWidthDp
-                        bitmapHeightDp = targetWidthDp / originalBitmapAspectRatio
-                    } else if (cue.bitmapHeight != Cue.DIMEN_UNSET) {
-                        // 只设置了高度比例，按宽高比计算宽度
-                        bitmapHeightDp = targetHeightDp
-                        bitmapWidthDp = targetHeightDp * originalBitmapAspectRatio
-                    } else {
-                        // 都没设置，使用原始尺寸
-                        bitmapWidthDp = bitmap.width / density
-                        bitmapHeightDp = bitmap.height / density
+
+                        !forcePGSCenter && cue.size != Cue.DIMEN_UNSET -> {
+                            targetWidthDp to (targetWidthDp / originalBitmapAspectRatio)
+                        }
+
+                        !forcePGSCenter && cue.bitmapHeight != Cue.DIMEN_UNSET -> {
+                            (targetHeightDp * originalBitmapAspectRatio) to targetHeightDp
+                        }
+
+                        else -> {
+                            (bitmap.width / density) to (bitmap.height / density)
+                        }
                     }
 
-                    Log.i("SubtitleView", "Bitmap dimensions: ${bitmapWidthDp}x${bitmapHeightDp} dp, original aspect: ${originalBitmapAspectRatio}")
-
-                    // 计算在视频内容区域内的偏移
-                    val contentOffsetX = when (cue.positionAnchor) {
+                    // 使用覆盖后的 anchor 计算偏移
+                    val contentOffsetX = when (positionAnchor) {
                         Cue.ANCHOR_TYPE_START -> displayedVideoRect.widthDp * x
                         Cue.ANCHOR_TYPE_MIDDLE -> displayedVideoRect.widthDp * x - bitmapWidthDp / 2
                         Cue.ANCHOR_TYPE_END -> displayedVideoRect.widthDp * x - bitmapWidthDp
                         else -> displayedVideoRect.widthDp * x
                     }
 
-                    val contentOffsetY = when (cue.lineAnchor) {
+                    val contentOffsetY = when (lineAnchor) {
                         Cue.ANCHOR_TYPE_START -> displayedVideoRect.heightDp * y
                         Cue.ANCHOR_TYPE_MIDDLE -> displayedVideoRect.heightDp * y - bitmapHeightDp / 2
                         Cue.ANCHOR_TYPE_END -> displayedVideoRect.heightDp * y - bitmapHeightDp
                         else -> displayedVideoRect.heightDp * y
                     }
 
-                    // 最终偏移 = 容器内视频区域偏移 + 内容区域内字幕偏移
                     val finalOffsetX = displayedVideoRect.offsetXDp + contentOffsetX
                     val finalOffsetY = displayedVideoRect.offsetYDp + contentOffsetY
 
-                    Log.i("SubtitleView", "Cue position: (${x}, ${y}), anchor: (${cue.positionAnchor}, ${cue.lineAnchor})")
-                    Log.i("SubtitleView", "Final offset: (${finalOffsetX}, ${finalOffsetY}) dp")
-
-                    // 创建一个足够大的Box来包含位图
                     Box(
                         modifier = Modifier
                             .offset(x = finalOffsetX.dp, y = finalOffsetY.dp)
@@ -255,15 +253,9 @@ fun SubtitleView(
                             .height(bitmapHeightDp.dp)
                             .zIndex(cue.zIndex.toFloat())
                     ) {
-                        // 使用Canvas绘制位图
-                        Canvas(
-                            modifier = Modifier
-                                .fillMaxSize()
-                        ) {
-                            // 将dp转换为像素进行绘制
+                        Canvas(modifier = Modifier.fillMaxSize()) {
                             val dstWidthPx = (bitmapWidthDp * density).toInt()
                             val dstHeightPx = (bitmapHeightDp * density).toInt()
-
                             drawImage(
                                 image = bitmap.asImageBitmap(),
                                 srcOffset = IntOffset.Zero,
@@ -349,3 +341,9 @@ private fun getScreenDimensions(): Pair<Int, Int> {
 
 
 
+private data class SubtitleAnchorInfo(
+    val x: Float,
+    val y: Float,
+    val positionAnchor: Int,
+    val lineAnchor: Int
+)
