@@ -2,7 +2,7 @@ package org.mz.mzdkplayer.ui.videoplayer.components
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.media.MediaCodecList
+
 import android.view.View
 import androidx.annotation.OptIn
 import androidx.compose.runtime.Composable
@@ -33,10 +33,10 @@ import androidx.core.net.toUri
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
 import org.mz.mzdkplayer.tool.FtpDataSourceFactory
-import org.mz.mzdkplayer.tool.NFSDataSource
+
 import org.mz.mzdkplayer.tool.NFSDataSourceFactory
 
-import org.mz.mzdkplayer.tool.WebDavDataSource
+
 import org.mz.mzdkplayer.tool.WebDavDataSourceFactory
 
 @OptIn(UnstableApi::class)
@@ -399,16 +399,16 @@ fun rememberPlayer(context: Context, mediaUri: String, dataSourceType: String) =
             // 其他情况（如 http/https），使用默认的 HTTP 数据源
             DefaultHttpDataSource.Factory()
         }
-        val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(
-                30000,  // minBufferMs: 最小缓冲时间 (例如 15秒)
-                150000,  // maxBufferMs: 最大缓冲时间 (例如 60秒)
-                5000,   // bufferForPlaybackMs: 开始播放前至少要缓冲的时间 (例如 2.5秒)
-                5000    // bufferForPlaybackAfterRebufferMs: 重新缓冲后恢复播放前至少要缓冲的时间 (例如 5秒)
-            )
-            .setTargetBufferBytes(C.LENGTH_UNSET) // 不使用字节数限制
-            .setPrioritizeTimeOverSizeThresholds(true) // 优先时间阈值
-            .build()
+//        val loadControl = DefaultLoadControl.Builder()
+//            .setBufferDurationsMs(
+//                30000,  // minBufferMs: 最小缓冲时间 (例如 15秒)
+//                150000,  // maxBufferMs: 最大缓冲时间 (例如 60秒)
+//                5000,   // bufferForPlaybackMs: 开始播放前至少要缓冲的时间 (例如 2.5秒)
+//                5000    // bufferForPlaybackAfterRebufferMs: 重新缓冲后恢复播放前至少要缓冲的时间 (例如 5秒)
+//            )
+//            .setTargetBufferBytes(C.LENGTH_UNSET) // 不使用字节数限制
+//            .setPrioritizeTimeOverSizeThresholds(true) // 优先时间阈值
+//            .build()
         ExoPlayer.Builder(context).setSeekForwardIncrementMs(10000).setSeekBackIncrementMs(10000)
             //.setLoadControl(loadControl)
             .setMediaSourceFactory(

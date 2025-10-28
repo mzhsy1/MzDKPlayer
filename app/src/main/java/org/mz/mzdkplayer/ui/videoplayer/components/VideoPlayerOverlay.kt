@@ -16,6 +16,7 @@
 
 package org.mz.mzdkplayer.ui.videoplayer.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -66,11 +67,15 @@ fun VideoPlayerOverlay(
 //
 //        }
     }
+    // 处理返回键，隐藏面板
 
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
+        BackHandler(state.controlsVisible) {
+            state.hideControls()
+        }
         AnimatedVisibility(state.controlsVisible, Modifier, fadeIn(), fadeOut()) {
             CinematicBackground(Modifier.fillMaxSize())
         }

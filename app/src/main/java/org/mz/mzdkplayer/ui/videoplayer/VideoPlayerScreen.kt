@@ -3,6 +3,7 @@ package org.mz.mzdkplayer.ui.videoplayer
 // 导入必要的库和组件
 
 import android.net.TrafficStats
+import android.view.KeyEvent
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
@@ -34,10 +35,15 @@ import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.FocusState
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.input.key.Key
+
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -172,7 +178,8 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
     // 辅助方法：获取当前弹幕配置
     fun getDanmakuConfig(): DanmakuConfig {
         val currentSettings = settingsManager.loadSettings()
-        val screenPartValue = DanmakuScreenRatio.fromDisplayName(currentSettings.selectedRatio).ratioValue
+        val screenPartValue =
+            DanmakuScreenRatio.fromDisplayName(currentSettings.selectedRatio).ratioValue
 
         return videoPlayerViewModel.danmakuConfig.copy(
             retainerPolicy = RETAINER_BILIBILI,
@@ -190,7 +197,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
         videoPlayerViewModel.danmakuConfig = videoPlayerViewModel.danmakuConfig.copy(
             retainerPolicy = RETAINER_BILIBILI, // 设置弹幕保留策略
             textSizeScale = savedSettings.fontSize.toFloat() / 100, // 字体缩放
-            screenPart =DanmakuScreenRatio.fromDisplayName(savedSettings.selectedRatio).ratioValue, // 屏幕占用比例
+            screenPart = DanmakuScreenRatio.fromDisplayName(savedSettings.selectedRatio).ratioValue, // 屏幕占用比例
             alpha = savedSettings.transparency.toFloat() / 100, // 透明度
             visibility = savedSettings.isSwitchEnabled, // 可见性
             dataFilter = listOf(videoPlayerViewModel.createDanmakuTypeFilter(savedSettings.selectedTypes)) // 添加弹幕过滤器
@@ -211,7 +218,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
             val inputStream: InputStream? = when (danmakuUri.scheme?.lowercase()) {
                 "smb" -> {
                     // 使用 SMB 工具打开输入流
-                    SmbUtils.openSmbFileInputStream(danmakuUri,"video")
+                    SmbUtils.openSmbFileInputStream(danmakuUri, "video")
                 }
 
                 "http", "https" -> {
@@ -476,10 +483,12 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
                 playView.subtitleView?.visibility = videoPlayerViewModel.isSubtitleViewVis
             },
 
-            modifier = Modifier.fillMaxSize().onSizeChanged { size ->
-                videoSizePx = size
-                Log.d("playViewSize",videoSizePx.toString())
-            }, // 填充整个父容器
+            modifier = Modifier
+                .fillMaxSize()
+                .onSizeChanged { size ->
+                    videoSizePx = size
+                    Log.d("playViewSize", videoSizePx.toString())
+                }, // 填充整个父容器
             onRelease = {
                 // 释放资源
                 exoPlayer.release()
@@ -494,7 +503,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
                 subtitleStyle = customSubtitleStyle, // 使用自定义字幕样式(只影响srt字幕)
                 modifier = Modifier.align(Alignment.BottomCenter), // 底部居中对齐(只影响srt字幕)
                 videoSizeDp = videoSizeDp,
-                backgroundColor = Color.Black.copy(alpha = 0.5f) ,// 背景色(只影响srt字幕)
+                backgroundColor = Color.Black.copy(alpha = 0.5f),// 背景色(只影响srt字幕)
                 exoPlayer = exoPlayer
 
             )
@@ -520,7 +529,12 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
 
         // 视频播放器覆盖层 (包含控制按钮等)
         VideoPlayerOverlay(
-            modifier = Modifier.align(Alignment.BottomCenter), // 底部居中
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .onFocusChanged {
+                    videoPlayerViewModel.conFocus =
+                        it.isFocused
+                }, // 底部居中
             focusRequester = focusRequester, // 焦点请求器
             state = videoPlayerState, // 播放器状态
             isPlaying = isPlaying, // 播放状态
@@ -548,6 +562,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
 
         // 显示 "再按一次退出" Toast
         if (showToast) {
+
             Toast.makeText(context, "再按一次退出", Toast.LENGTH_SHORT).show()
             showToast = false
         }
@@ -559,10 +574,39 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
                 backPressState = BackPress.Idle // 重置状态
             }
         }
+        LaunchedEffect(videoPlayerViewModel.conFocus) {   Log.d("conFocus",videoPlayerViewModel.conFocus.toString()) }
+//        BackHandler(backPressState == BackPress.Idle) { // 移除 !videoPlayerState.controlsVisible 条件
+//
+//
+//                // 如果控制栏未显示，则执行退出逻辑
+//
+//                backPressState = BackPress.InitialTouch
+//
+//                showToast = true
+//
+//        }
         BackHandler(backPressState == BackPress.Idle) {
-            backPressState = BackPress.InitialTouch
-            showToast = true
+//            if (videoPlayerState.controlsVisible && !videoPlayerViewModel.conFocus) {
+//                // 如果控制栏显示，则隐藏控制栏
+//                //videoPlayerState.hideControls()
+//            } else if (videoPlayerState.controlsVisible ){
+//                // 如果控制栏不显示，则执行退出逻辑
+//                videoPlayerState.hideControls()
+//            }else{
+                if (backPressState == BackPress.Idle&&!videoPlayerState.controlsVisible) {
+                    backPressState = BackPress.InitialTouch
+                    showToast = true
+                }
+
+
         }
+//        BackHandler(videoPlayerState.controlsVisible) {
+//            if(!videoPlayerViewModel.conFocus){
+//                videoPlayerState.hideControls()
+//            }
+//        }
+
+
 
         // 音轨/字幕选择面板的动画可见性
         AnimatedVisibility(
@@ -750,29 +794,75 @@ private fun Modifier.dPadEvents(
     videoPlayerState: VideoPlayerState,
     pulseState: VideoPlayerPulseState,
     videoPlayerViewModel: VideoPlayerViewModel
-): Modifier = this.handleDPadKeyEvents(
-    onLeft = {
-        // 如果控制栏未显示，则快退
-        if (!videoPlayerState.controlsVisible) {
-            exoPlayer.seekBack()
-            pulseState.setType(VideoPlayerPulse.Type.BACK) // 设置脉冲类型
+): Modifier = this
+    .handleDPadKeyEvents(
+        onLeft = {
+            // 如果控制栏未显示，则快退
+            if (!videoPlayerState.controlsVisible) {
+                exoPlayer.seekBack()
+                pulseState.setType(VideoPlayerPulse.Type.BACK) // 设置脉冲类型
+            }
+        },
+        onRight = {
+            // 如果控制栏未显示，则快进
+            if (!videoPlayerState.controlsVisible) {
+                exoPlayer.seekForward()
+                pulseState.setType(VideoPlayerPulse.Type.FORWARD) // 设置脉冲类型
+            }
+        },
+        onUp = {
+            // if (videoPlayerViewModel.atpFocus) videoPlayerState.showControls()
+            if (!videoPlayerState.controlsVisible) {
+                videoPlayerViewModel.atpVisibility = true
+                videoPlayerViewModel.selectedAorVorS = "A"
+            }
+        }, // 如果面板有焦点，显示控制栏
+        onDown = {
+            //if (videoPlayerViewModel.atpFocus) videoPlayerState.showControls();
+            if (!videoPlayerState.controlsVisible) {
+                videoPlayerViewModel.atpVisibility = true
+                videoPlayerViewModel.selectedAorVorS = "D"
+            }
+        }, // 如果面板有焦点，显示控制栏
+        onEnter = {
+            // 暂停播放并显示控制栏
+            exoPlayer.pause()
+            videoPlayerState.showControls()
+        },
+    )
+    .onKeyEvent { keyEvent ->
+        when (keyEvent.key) {
+            Key.Menu -> {
+                // 菜单键处理逻辑
+                if (!videoPlayerState.controlsVisible) {
+                    videoPlayerState.showControls()
+                }
+                true // 消费事件
+            }
+
+            Key.ButtonY -> {
+                // 游戏手柄 Y 键（通常对应菜单键）
+                if (!videoPlayerState.controlsVisible) {
+                    videoPlayerState.showControls()
+                }
+                true // 消费事件
+            }
+
+            else -> {
+                // 检查原生键码
+                when (keyEvent.nativeKeyEvent.keyCode) {
+                    KeyEvent.KEYCODE_MENU -> {
+                        if (!videoPlayerState.controlsVisible) {
+                            videoPlayerState.showControls()
+                        }
+                        true // 消费事件
+                    }
+
+                    else -> false
+                }
+            }
         }
-    },
-    onRight = {
-        // 如果控制栏未显示，则快进
-        if (!videoPlayerState.controlsVisible) {
-            exoPlayer.seekForward()
-            pulseState.setType(VideoPlayerPulse.Type.FORWARD) // 设置脉冲类型
-        }
-    },
-    onUp = { if (videoPlayerViewModel.atpFocus) videoPlayerState.showControls() }, // 如果面板有焦点，显示控制栏
-    onDown = { if (videoPlayerViewModel.atpFocus) videoPlayerState.showControls(); }, // 如果面板有焦点，显示控制栏
-    onEnter = {
-        // 暂停播放并显示控制栏
-        exoPlayer.pause()
-        videoPlayerState.showControls()
     }
-)
 
 /**
  * 视频播放器控制按钮区域
@@ -874,7 +964,8 @@ fun VideoPlayerControls(
                     isPlaying = isPlaying,
                     onClick = {
                         // 点击弹幕开关图标，切换弹幕可见性
-                        videoPlayerViewModel.danmakuVisibility = !videoPlayerViewModel.danmakuVisibility
+                        videoPlayerViewModel.danmakuVisibility =
+                            !videoPlayerViewModel.danmakuVisibility
 
                         // 使用封装的方法获取当前配置
                         videoPlayerViewModel.danmakuConfig = getDanmakuConfig()

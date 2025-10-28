@@ -52,6 +52,7 @@ class VideoPlayerViewModel:ViewModel() {
 
     var atpVisibility by mutableStateOf(false)
     var atpFocus by mutableStateOf(false)
+    var conFocus by mutableStateOf(false)
 
     // 弹幕配置相关
     var danmakuConfig by mutableStateOf(DanmakuConfig())
