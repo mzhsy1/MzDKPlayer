@@ -1,5 +1,5 @@
 // 这些类和函数通常会放在独立的文件中，例如 LrcParser.kt
-
+package org.mz.mzdkplayer.ui.audioplayer.components
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds

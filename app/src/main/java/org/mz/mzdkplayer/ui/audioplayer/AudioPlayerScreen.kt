@@ -46,7 +46,7 @@ import org.mz.mzdkplayer.ui.audioplayer.components.*
 import org.mz.mzdkplayer.ui.screen.vm.AudioPlayerViewModel
 import org.mz.mzdkplayer.ui.videoplayer.BackPress
 
-import parseLrc
+
 import java.io.InputStream
 import java.net.URL
 import java.util.Locale
@@ -78,6 +78,7 @@ fun extractAudioMetadataFromPlayer(exoPlayer: ExoPlayer): AudioMetadata {
     val recordingYear = mediaMetadata.releaseYear?.toString() ?: ""
     val genre = mediaMetadata.genre?.toString() ?: ""
     val durationMs = exoPlayer.duration
+
     val extras = mediaMetadata.extras
 
     var coverBitmap: Bitmap? = null

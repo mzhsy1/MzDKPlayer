@@ -21,7 +21,7 @@ data class AudioInfo(
     val track: String?= "",
     val genre: String?= "",
     val durationSeconds: Long? =0L,
-    val bit: String? ="",
+    val bit: Long? =0,
     val lyrics: String ?="",
     val sampleRate: String? ="",
     val bitsPerSample: Int?= 16,

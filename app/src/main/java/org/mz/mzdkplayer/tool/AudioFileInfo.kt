@@ -81,7 +81,7 @@ suspend fun extractAudioInfoAndLyricsFromStream(
             val track = tag?.getFirst(FieldKey.TRACK)?.takeIf { it.isNotBlank() }
             val genre = tag?.getFirst(FieldKey.GENRE)?.takeIf { it.isNotBlank() }
             val durationSeconds = audioHeader?.trackLength?.toLong()
-            val bits = audioHeader?.bitRate
+            val bits = audioHeader?.bitRateAsNumber
             val sampleRate = audioHeader?.sampleRate
             val bitsPerSample = audioHeader?.bitsPerSample
 
@@ -129,7 +129,7 @@ suspend fun extractAudioInfoAndLyricsFromStream(
 
             Log.d(
                 TAG,
-                "Extraction successful: Title='${result.title}', Artist='${result.artist}', Album='${result.album}', HasArtwork=${result.artworkData != null}"
+                "Extraction successful: Title='${result.title}', Artist='${result.artist}', Album='${result.bit}', HasArtwork=${result.artworkData != null}"
             )
             return@withContext result
 

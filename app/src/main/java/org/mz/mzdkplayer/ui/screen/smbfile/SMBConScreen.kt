@@ -45,8 +45,6 @@ import org.mz.mzdkplayer.ui.screen.vm.FTPConnectionStatus
 import org.mz.mzdkplayer.ui.theme.TvTextField
 
 import org.mz.mzdkplayer.ui.screen.vm.SMBConViewModel
-import org.mz.mzdkplayer.ui.screen.vm.SMBConfig
-import org.mz.mzdkplayer.ui.screen.vm.SMBConnectionStatus
 import org.mz.mzdkplayer.ui.screen.vm.SMBListViewModel
 import org.mz.mzdkplayer.ui.style.myTTFColor
 import org.mz.mzdkplayer.ui.theme.MyIconButton

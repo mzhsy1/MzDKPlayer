@@ -1,5 +1,8 @@
 package org.mz.mzdkplayer.ui.screen.vm
 
+
+
+import SMBConnectionStatus
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -264,26 +267,7 @@ class SMBConViewModel : ViewModel() {
 }
 
 // --- 状态枚举 ---
-sealed class SMBConnectionStatus {
-    object Disconnected : SMBConnectionStatus()
-    object Connecting : SMBConnectionStatus()
-    object Connected : SMBConnectionStatus()
-    object LoadingFile : SMBConnectionStatus()
-    object LoadingFiled : SMBConnectionStatus()
-    data class Error(val message: String) : SMBConnectionStatus()
 
-    // 添加一个用于 UI 显示的描述方法
-    override fun toString(): String {
-        return when (this) {
-            Disconnected -> "已断开"
-            Connecting -> "连接中..."
-            Connected -> "已连接"
-            LoadingFile -> "正在加载文件"
-            LoadingFiled -> "加载文件完成"
-            is Error -> "错误: $message"
-        }
-    }
-}
 
 data class SMBConfig(
     val server: String,

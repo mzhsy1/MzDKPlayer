@@ -4,14 +4,15 @@ accompanistPermissions = "0.37.3"
 agp = "8.13.0"
 akdanmaku = "1.0.3"
 
-assMedia = "0.3.0-rc03"
+assMedia = "0.3.0-rc04"
 
 commonsNet = "3.12.0"
 gson = "2.13.2"
 
 jaudiotagger = "3.0.1"
+jcifs = "3.0.0"
 jcifsNg = "2.1.10"
-kotlin = "2.2.20"
+kotlin = "2.2.21"
 coreKtx = "1.17.0"
 appcompat = "1.7.1"
 composeBom = "2025.10.00"
@@ -63,6 +64,7 @@ commons-net = { module = "commons-net:commons-net", version.ref = "commonsNet" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 
 jaudiotagger = { module = "net.jthink:jaudiotagger", version.ref = "jaudiotagger" }
+jcifs = { module = "org.codelibs:jcifs", version.ref = "jcifs" }
 jcifs-ng = { module = "eu.agno3.jcifs:jcifs-ng", version.ref = "jcifsNg" }
 logback-android = { module = "com.github.tony19:logback-android", version.ref = "logbackAndroid" }
 nfs-client = { module = "com.emc.ecs:nfs-client", version.ref = "nfsClient" }

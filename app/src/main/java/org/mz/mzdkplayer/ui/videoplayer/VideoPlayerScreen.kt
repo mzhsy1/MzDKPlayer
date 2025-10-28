@@ -834,7 +834,7 @@ private fun Modifier.dPadEvents(
         when (keyEvent.key) {
             Key.Menu -> {
                 // 菜单键处理逻辑
-                if (!videoPlayerState.controlsVisible) {
+                if (!videoPlayerState.controlsVisible && !videoPlayerViewModel.atpVisibility) {
                     videoPlayerState.showControls()
                 }
                 true // 消费事件
@@ -842,7 +842,7 @@ private fun Modifier.dPadEvents(
 
             Key.ButtonY -> {
                 // 游戏手柄 Y 键（通常对应菜单键）
-                if (!videoPlayerState.controlsVisible) {
+                if (!videoPlayerState.controlsVisible && !videoPlayerViewModel.atpVisibility) {
                     videoPlayerState.showControls()
                 }
                 true // 消费事件
@@ -852,7 +852,7 @@ private fun Modifier.dPadEvents(
                 // 检查原生键码
                 when (keyEvent.nativeKeyEvent.keyCode) {
                     KeyEvent.KEYCODE_MENU -> {
-                        if (!videoPlayerState.controlsVisible) {
+                        if (!videoPlayerState.controlsVisible && !videoPlayerViewModel.atpVisibility) {
                             videoPlayerState.showControls()
                         }
                         true // 消费事件

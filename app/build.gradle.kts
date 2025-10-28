@@ -16,7 +16,7 @@ android {
         versionName = "1.0"
 //        ndk {
 //            //noinspection ChromeOsAbiSupport
-//            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+//            abiFilters += listOf( "armeabi-v7a")
 //        }
     }
 
@@ -31,8 +31,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
 
     }
 
@@ -43,7 +43,7 @@ android {
 
 kotlin {
     compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         // You can add other compiler options here if needed
     }
 }
@@ -81,9 +81,8 @@ dependencies {
 
     implementation(libs.jaudiotagger)
     implementation(libs.commons.net)
+    implementation(libs.jcifs)
 
-    //implementation(libs.jcifs.ng)
-    //implementation(libs.jcifs)
 // 请检查最新版本
     //implementation(libs.ass.kt)
     //implementation(libs.ass.media.v030beta02)
