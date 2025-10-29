@@ -81,7 +81,7 @@ dependencies {
 
     implementation(libs.jaudiotagger)
     implementation(libs.commons.net)
-    implementation(libs.jcifs)
+    //implementation(libs.jcifs)
 
 // 请检查最新版本
     //implementation(libs.ass.kt)

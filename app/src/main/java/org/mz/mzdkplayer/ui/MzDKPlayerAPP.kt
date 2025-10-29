@@ -57,7 +57,7 @@ import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavConListScreen
 
 import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavConScreen
 import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavFileListScreen
-import org.mz.mzdkplayer.ui.setting.SettingsScreen
+import org.mz.mzdkplayer.ui.screen.setting.SettingsScreen
 
 import org.mz.mzdkplayer.ui.videoplayer.VideoPlayerScreen
 import java.net.URLDecoder

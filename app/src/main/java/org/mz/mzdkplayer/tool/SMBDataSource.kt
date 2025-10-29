@@ -61,7 +61,9 @@ class SmbDataSource(
     private val PREFERRED_SMB_DIALECTS = EnumSet.of(
         SMB2Dialect.SMB_3_1_1,
         SMB2Dialect.SMB_3_0,
-        SMB2Dialect.SMB_3_0_2
+        SMB2Dialect.SMB_3_0_2,
+        SMB2Dialect.SMB_2XX,
+        SMB2Dialect.SMB_2_1,
     )
 
     // 状态管理
@@ -172,29 +174,32 @@ class SmbDataSource(
             .withBufferSize(config.smbBufferSizeBytes)
             .withSoTimeout(config.soTimeoutMs)
             .withReadBufferSize(config.readBufferSizeBytes)
+            .withTransactBufferSize(1*1024*1024)
             .build()
 
         val connectionStartTime = System.currentTimeMillis()
-        smbClient = SMBClient(clientConfig)
-        connection = smbClient?.connect(host) ?: throw IOException("无法创建 SMB 连接")
+        Log.d("SmbDataSource","isConnected : ${isConnected()}")
+        if (!isConnected()) {  // 避免重复连接
+            smbClient = SMBClient(clientConfig)
+            connection = smbClient?.connect(host) ?: throw IOException("无法创建 SMB 连接")
 
-        // 认证
-        val authContext = AuthenticationContext(username, password.toCharArray(), domain)
-        session = connection?.authenticate(authContext) ?: throw IOException("会话认证失败")
+            // 认证
+            val authContext = AuthenticationContext(username, password.toCharArray(), domain)
+            session = connection?.authenticate(authContext) ?: throw IOException("会话认证失败")
 
-        // 连接共享
-        share = session?.connectShare(shareName) as? DiskShare
-            ?: throw IOException("连接共享失败或共享不是磁盘共享")
-
-        // 打开文件 - 类似 HttpDataSource 的资源获取
-        file = share?.openFile(
-            filePath,
-            setOf(AccessMask.GENERIC_READ),
-            null,
-            SMB2ShareAccess.ALL,
-            SMB2CreateDisposition.FILE_OPEN,
-            null
-        ) ?: throw IOException("打开文件失败")
+            // 连接共享
+            share = session?.connectShare(shareName) as? DiskShare
+                ?: throw IOException("连接共享失败或共享不是磁盘共享")
+        }
+            // 打开文件 - 类似 HttpDataSource 的资源获取
+            file = share?.openFile(
+                filePath,
+                setOf(AccessMask.GENERIC_READ),
+                null,
+                SMB2ShareAccess.ALL,
+                SMB2CreateDisposition.FILE_OPEN,
+                null
+            ) ?: throw IOException("打开文件失败")
 
         val totalTime = System.currentTimeMillis() - connectionStartTime
         Log.d("SmbDataSource", "连接建立总耗时: ${totalTime}ms")
@@ -219,6 +224,7 @@ class SmbDataSource(
      */
     @Throws(IOException::class)
     override fun read(buffer: ByteArray, offset: Int, readLength: Int): Int {
+
         if (!opened.get()) {
             throw IOException("数据源未打开")
         }
@@ -417,6 +423,17 @@ class SmbDataSource(
         } catch (ignored: Exception) { }
     }
 
+    fun isConnected(): Boolean {
+        return connection?.isConnected == true && isSessionActive()
+    }
+    fun isSessionActive(): Boolean {
+        return try {
+            share?.list("")  // 尝试列出根目录（不抛出异常说明连接正常）
+            true
+        } catch (e: Exception) {
+            false  // 抛出异常说明连接已断开
+        }
+    }
     /**
      * 记录性能统计
      */

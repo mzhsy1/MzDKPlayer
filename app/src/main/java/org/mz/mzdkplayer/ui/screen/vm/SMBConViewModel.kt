@@ -1,8 +1,5 @@
 package org.mz.mzdkplayer.ui.screen.vm
 
-
-
-import SMBConnectionStatus
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -74,10 +71,11 @@ class SMBConViewModel : ViewModel() {
     fun testConnectSMB(ip: String, username: String, password: String, shareName: String) {
 
         viewModelScope.launch {
-            disconnectSMB()  // 先清理旧连接
+            //disconnectSMB()  // 先清理旧连接
 //            withContext(Dispatchers.Main) {
 //                _connectionStatus.value = "正在尝试连接"
 //            }
+            _connectionStatus.value = SMBConnectionStatus.Connecting
             mutex.withLock {
                 try {
 
@@ -101,6 +99,7 @@ class SMBConViewModel : ViewModel() {
                 } catch (e: Exception) {
                     Log.e("SMB", "连接失败$e", e)
                     _connectionStatus.value = SMBConnectionStatus.Error("连接失败: ${e.message}")
+                    _fileList.value = emptyList()
                     //disconnectSMB()
                 }
             }
@@ -109,7 +108,7 @@ class SMBConViewModel : ViewModel() {
 
     fun listSMBFiles(config: SMBConfig) {
         Log.d("listSMBFiles", config.toString())
-        Log.d("_connectionStatus2", _connectionStatus.value.toString())
+
         viewModelScope.launch {
             if (_connectionStatus.value != SMBConnectionStatus.Connected) {
                 //Log.d("listSMBFiles", _connectionStatus.value.toString())
@@ -267,7 +266,26 @@ class SMBConViewModel : ViewModel() {
 }
 
 // --- 状态枚举 ---
+sealed class SMBConnectionStatus {
+    object Disconnected : SMBConnectionStatus()
+    object Connecting : SMBConnectionStatus()
+    object Connected : SMBConnectionStatus()
+    object LoadingFile : SMBConnectionStatus()
+    object LoadingFiled : SMBConnectionStatus()
+    data class Error(val message: String) : SMBConnectionStatus()
 
+    // 添加一个用于 UI 显示的描述方法
+    override fun toString(): String {
+        return when (this) {
+            Disconnected -> "已断开"
+            Connecting -> "连接中..."
+            Connected -> "已连接"
+            LoadingFile -> "正在加载文件"
+            LoadingFiled -> "加载文件完成"
+            is Error -> "错误: $message"
+        }
+    }
+}
 
 data class SMBConfig(
     val server: String,

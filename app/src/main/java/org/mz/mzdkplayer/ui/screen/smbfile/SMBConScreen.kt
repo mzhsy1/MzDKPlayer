@@ -45,6 +45,7 @@ import org.mz.mzdkplayer.ui.screen.vm.FTPConnectionStatus
 import org.mz.mzdkplayer.ui.theme.TvTextField
 
 import org.mz.mzdkplayer.ui.screen.vm.SMBConViewModel
+import org.mz.mzdkplayer.ui.screen.vm.SMBConnectionStatus
 import org.mz.mzdkplayer.ui.screen.vm.SMBListViewModel
 import org.mz.mzdkplayer.ui.style.myTTFColor
 import org.mz.mzdkplayer.ui.theme.MyIconButton
@@ -70,6 +71,15 @@ fun SMBConScreen() {
     val fileList by viewModel.fileList.collectAsState()
     val keyboardController = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
+
+
+    // 验证分享名称是否以/开头
+    val isShareNameValid = !shareName.startsWith("/")
+    val shareNameError = if (!isShareNameValid) "分享名称不能以'/'开头" else ""
+
+    // 检查是否已连接
+    val isConnected = connectionStatus is SMBConnectionStatus.LoadingFiled
+
     Row(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -105,7 +115,7 @@ fun SMBConScreen() {
                 value = ip,
                 onValueChange = { ip = it },
                 modifier = Modifier.fillMaxWidth(0.5f),
-                placeholder = "Ip address",
+                placeholder = "服务器地址",
                 colors = myTTFColor(),
             )
 
@@ -113,7 +123,7 @@ fun SMBConScreen() {
                 value = username,
                 onValueChange = { username = it },
                 modifier = Modifier.fillMaxWidth(0.5f),
-                placeholder = "Username",
+                placeholder = "用户名",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )
@@ -123,7 +133,7 @@ fun SMBConScreen() {
                 onValueChange = { password = it },
                 modifier = Modifier.fillMaxWidth(0.5f),
                 colors = myTTFColor(),
-                placeholder = "password",
+                placeholder = "密码",
 
                 textStyle = TextStyle(color = Color.White),
             )
@@ -132,18 +142,23 @@ fun SMBConScreen() {
                 value = aliasName,
                 onValueChange = { aliasName = it },
                 modifier = Modifier.fillMaxWidth(0.5f),
-                placeholder = "aliasName",
+                placeholder = "别名",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )
 
+            // 分享名称输入
             TvTextField(
                 value = shareName,
-                onValueChange = { shareName = it },
+                onValueChange = {
+                    if (!it.startsWith("/")) {
+                        shareName = it
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(0.5f),
-                placeholder = "shareName",
+                placeholder = "分享名称（不能以'/'开头）",
                 colors = myTTFColor(),
-                textStyle = TextStyle(color = Color.White),
+                textStyle = TextStyle(color = if (isShareNameValid) Color.White else Color.Red),
             )
 
             MyIconButton(
@@ -160,29 +175,38 @@ fun SMBConScreen() {
             MyIconButton(
                 text = "保存连接",
                 imageVector = Icons.Outlined.Star,
+
                 modifier = Modifier.fillMaxWidth(0.5f),
                 onClick = {
-                    if (smbListViewModel.addConnection(
-                            SMBConnection(
-                                UUID.randomUUID().toString(),
-                                aliasName,
-                                ip,
-                                username,
-                                password,
-                                shareName
+                    if (isShareNameValid && isConnected) {
+                        if (smbListViewModel.addConnection(
+                                SMBConnection(
+                                    UUID.randomUUID().toString(),
+                                    aliasName,
+                                    ip,
+                                    username,
+                                    password,
+                                    shareName
+                                )
                             )
-                        )
-                    ) {
-                        Toast.makeText(context, "添加成功", Toast.LENGTH_SHORT).show()
+                        ) {
+                            Toast.makeText(context, "添加成功", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "添加失败,已经有相同的连接存在", Toast.LENGTH_SHORT).show()
+                        }
+                    } else if (!isConnected) {
+                        Toast.makeText(context, "请先连接成功后再保存", Toast.LENGTH_SHORT).show()
                     } else {
-                        Toast.makeText(context, "添加失败", Toast.LENGTH_SHORT).show()
-                    };
+                        Toast.makeText(context, "分享名称不能以'/'开头", Toast.LENGTH_SHORT).show()
+                    }
                 },
+
             )
 
             MyIconButton(
                 text = "断开连接",
                 imageVector = Icons.Outlined.Delete,
+
                 modifier = Modifier.fillMaxWidth(0.5f),
                 onClick = { viewModel.disconnectSMB() },
             )

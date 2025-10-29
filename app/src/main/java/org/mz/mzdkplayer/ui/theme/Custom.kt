@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.ButtonScale
 import androidx.tv.material3.ClickableSurfaceColors
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -174,9 +175,10 @@ fun MyIconButton(
         enabled = enabled,
         contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
         shape = ButtonDefaults.shape(shape = ShapeDefaults.ExtraSmall),
+        scale = ButtonDefaults.scale( focusedScale = 1.03f),
         colors = ButtonDefaults.colors(
-            Color.White, // background
-            Color.Black, // content
+            Color.DarkGray, // background
+            Color.White, // content
             Color.White, // disabled background
             Color.Black  // disabled content
         )

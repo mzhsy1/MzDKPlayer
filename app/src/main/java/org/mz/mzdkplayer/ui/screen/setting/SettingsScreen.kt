@@ -1,4 +1,4 @@
-package org.mz.mzdkplayer.ui.setting
+package org.mz.mzdkplayer.ui.screen.setting
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
