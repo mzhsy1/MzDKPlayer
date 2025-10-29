@@ -115,8 +115,10 @@ class FTPListViewModel(application: Application) : AndroidViewModel(application)
      * 设置当前选中的连接 ID
      * @param id 选中的连接 ID
      */
-    fun setSelectedId(id: String) {
-        _selectedId.value = id
+    fun setSelectedId(id: String?) {
+        if (id != null) {
+            _selectedId.value = id
+        }
     }
 
     /**

@@ -45,7 +45,7 @@ class WebDavConViewModel : ViewModel() {
      * @param username 用户名
      * @param password 密码
      */
-    fun connectToWebDav(baseUrl: String, username: String, password: String) {
+    fun connectToWebDav(baseUrl: String?, username: String?, password: String?) {
         viewModelScope.launch {
             // 注意：移除了开头的 disconnectWebDav() 调用
             mutex.withLock {
@@ -76,12 +76,14 @@ class WebDavConViewModel : ViewModel() {
                         sardine = OkHttpSardine(okHttpClient)
                         // 设置认证信息
                         sardine?.setCredentials(username, password)
-                        Log.d("connectToWebDav",baseUrl)
-                        Log.d("connectToWebDav",username)
-                        Log.d("connectToWebDav",password)
+                        //Log.d("connectToWebDav",baseUrl)
+                        //Log.d("connectToWebDav",username)
+                        //Log.d("connectToWebDav",password)
                         // 验证连接 - 尝试列出根目录
-                        val trimmedBaseUrl = baseUrl.trimEnd('/')
-                        this@WebDavConViewModel.baseUrl = trimmedBaseUrl
+                        val trimmedBaseUrl = baseUrl?.trimEnd('/')
+                        if (trimmedBaseUrl != null) {
+                            this@WebDavConViewModel.baseUrl = trimmedBaseUrl
+                        }
                         val rootResources = sardine?.list(trimmedBaseUrl) ?: throw Exception("无法列出根目录")
 
                         _fileList.value = rootResources.filter { it.name != ".." } // 过滤掉 ..

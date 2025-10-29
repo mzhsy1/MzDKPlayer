@@ -32,7 +32,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.Icon
@@ -54,7 +53,6 @@ import java.util.UUID
  * FTP 连接界面
  */
 @Composable
-
 fun FTPConScreen(
 
 ) {
@@ -124,7 +122,7 @@ fun FTPConScreen(
                     value = port,
                     modifier = Modifier.weight(0.4f).padding(start = 8.dp),
                     onValueChange = { newValue ->
-                        // 简单校验端口号为数字
+                        // 简单校验端口号为数字，允许空值
                         if (newValue.all { it.isDigit() } || newValue.isEmpty()) {
                             port = newValue
                         }
@@ -176,7 +174,7 @@ fun FTPConScreen(
             )
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween, // 可选：让两个按钮之间有间距
-                        modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 // 操作按钮
                 MyIconButton(
@@ -196,19 +194,30 @@ fun FTPConScreen(
                     imageVector = Icons.Outlined.Star,
                     modifier = Modifier.weight(1f).padding(start = 8.dp), // 可选：加点右边距，避免贴太紧 ,// ⬅️ 平分宽度,
                     // 只有在已连接时才允许保存
-                   // enabled = connectionStatus is FTPConnectionStatus.Connected,
+                    // enabled = connectionStatus is FTPConnectionStatus.Connected,
                     onClick = {
+
                         keyboardController?.hide()
-                        val portInt = port.toIntOrNull() ?: 21 // 保存时也转换端口
+                        // 验证必填项
+                        if (server.isBlank()) {
+                            Toast.makeText(context, "请输入服务器地址", Toast.LENGTH_SHORT).show()
+                            return@MyIconButton
+                        }
+                        if (shareName.isBlank()) {
+                            Toast.makeText(context, "请输入分享文件名称", Toast.LENGTH_SHORT).show()
+                            return@MyIconButton
+                        }
+
+                        val portInt = port.toIntOrNull() ?: 21 // 保存时也转换端口，空值则默认 21
                         // 创建 FTPConnection 数据对象
                         val newConnection = FTPConnection(
                             id = UUID.randomUUID().toString(),
-                            name = aliasName,
+                            name = aliasName.ifBlank { "未命名FTP连接" },
                             ip = server, // 使用 ip 字段存储服务器地址
                             username = username,
                             password = password, // 再次提醒：明文存储不安全
                             shareName = shareName ,// 存储共享文件夹名称
-                            port = port.toInt()
+                            port = portInt
                         )
                         if (ftpListViewModel.addConnection(newConnection)) {
                             Toast.makeText(context, "FTP 连接已保存", Toast.LENGTH_SHORT).show()

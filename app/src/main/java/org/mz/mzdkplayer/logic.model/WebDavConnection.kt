@@ -13,11 +13,11 @@ import java.util.UUID
  */
 
 data class WebDavConnection(
-    val id: String = UUID.randomUUID().toString(), // 默认生成 UUID
-    val name: String, // 显示名称
-    val baseUrl: String, // 基础 URL
-    val username: String,
-    val password: String // 注意：实际项目中应加密存储密码
+    val id: String? = UUID.randomUUID().toString(), // 默认生成 UUID
+    val name: String?, // 显示名称
+    val baseUrl: String?, // 基础 URL
+    val username: String?,
+    val password: String ?// 注意：实际项目中应加密存储密码
 )
 
 

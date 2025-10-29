@@ -56,7 +56,7 @@ class NFSConViewModel(application: Application) : AndroidViewModel(application) 
                 try {
                     withContext(Dispatchers.IO) {
                         // 验证配置
-                        if (connection.serverAddress.isBlank() || connection.serverAddress.isBlank()) {
+                        if (connection.serverAddress?.isBlank() == true || connection.serverAddress?.isBlank() == true) {
                             throw IllegalArgumentException("服务器地址或导出路径不能为空")
                         }
                         // 准备认证信息 (使用 UID/GID 或 CredentialNone)

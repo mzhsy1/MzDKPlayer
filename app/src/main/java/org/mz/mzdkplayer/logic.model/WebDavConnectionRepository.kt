@@ -1,4 +1,3 @@
-
 package org.mz.mzdkplayer.logic.model
 
 import android.content.Context
@@ -41,7 +40,18 @@ class WebDavConnectionRepository(private val context: Context) {
         val json = prefs.getString(KEY_CONNECTIONS, null)
         return if (!json.isNullOrEmpty()) {
             try {
-                gson.fromJson(json, connectionListType)
+                val loadedConnections = gson.fromJson<List<WebDavConnection>>(json, connectionListType)
+
+                // 对加载的数据进行空值保护处理，确保不会返回包含 null 字段的对象
+                loadedConnections.map { connection ->
+                    WebDavConnection(
+                        id = connection.id,
+                        name = connection.name ?: "未命名连接",
+                        baseUrl = connection.baseUrl ?: "未知地址",
+                        username = connection.username ?: "未知用户",
+                        password = connection.password ?: "",
+                    )
+                }
             } catch (e: Exception) {
                 // 如果 JSON 解析失败（例如数据损坏），返回空列表
                 Log.e("WebDavRepo", "解析连接列表失败", e)
@@ -58,14 +68,24 @@ class WebDavConnectionRepository(private val context: Context) {
      */
     fun addConnection(connection: WebDavConnection) {
         val currentConnections = getConnections().toMutableList()
+        // 确保新连接的字段不是 null（使用默认值）
+        val safeConnection = WebDavConnection(
+            id = connection.id,
+            name = connection.name ?: "未命名连接",
+            baseUrl = connection.baseUrl ?: "未知地址",
+            username = connection.username ?: "未知用户",
+            password = connection.password ?: "",
+
+        )
+
         // 检查 ID 是否已存在（理论上 UUID 不会冲突，但作为预防）
-        val existingIndex = currentConnections.indexOfFirst { it.id == connection.id }
+        val existingIndex = currentConnections.indexOfFirst { it.id == safeConnection.id }
         if (existingIndex >= 0) {
             // 如果 ID 存在，替换旧的连接
-            currentConnections[existingIndex] = connection
+            currentConnections[existingIndex] = safeConnection
         } else {
             // 如果 ID 不存在，添加新的连接
-            currentConnections.add(connection)
+            currentConnections.add(safeConnection)
         }
         saveConnections(currentConnections)
     }
@@ -94,14 +114,24 @@ class WebDavConnectionRepository(private val context: Context) {
      */
     fun updateConnection(connection: WebDavConnection) {
         val currentConnections = getConnections().toMutableList()
-        val index = currentConnections.indexOfFirst { it.id == connection.id }
+        // 确保更新的连接字段不是 null
+        val safeConnection = WebDavConnection(
+            id = connection.id,
+            name = connection.name ?: "未命名连接",
+            baseUrl = connection.baseUrl ?: "未知地址",
+            username = connection.username ?: "未知用户",
+            password = connection.password ?: "",
+
+        )
+
+        val index = currentConnections.indexOfFirst { it.id == safeConnection.id }
         if (index >= 0) {
-            currentConnections[index] = connection
+            currentConnections[index] = safeConnection
             saveConnections(currentConnections)
         } else {
-            Log.w("WebDavRepo", "尝试更新一个不存在的连接 ID: ${connection.id}")
+            Log.w("WebDavRepo", "尝试更新一个不存在的连接 ID: ${safeConnection.id}")
             // 或者可以选择添加它？取决于业务逻辑
-            // addConnection(connection)
+            // addConnection(safeConnection)
         }
     }
 }

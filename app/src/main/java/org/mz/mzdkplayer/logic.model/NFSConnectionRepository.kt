@@ -1,13 +1,12 @@
 package org.mz.mzdkplayer.logic.model
 
-
-
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import androidx.core.content.edit
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import java.util.UUID
 
 /**
  * 管理 NfsConnection 对象的本地存储 (使用 SharedPreferences)
@@ -42,7 +41,17 @@ class NFSConnectionRepository(private val context: Context) {
         val json = prefs.getString(KEY_CONNECTIONS, null)
         return if (!json.isNullOrEmpty()) {
             try {
-                gson.fromJson(json, connectionListType)
+                val loadedConnections = gson.fromJson<List<NFSConnection>>(json, connectionListType)
+
+                // 对加载的数据进行空值保护处理，确保不会返回包含 null 字段的对象
+                loadedConnections.map { connection ->
+                    NFSConnection(
+                        id = connection.id ?: UUID.randomUUID().toString(),
+                        name = connection.name ?: "未命名连接",
+                        serverAddress = connection.serverAddress ?: "未知IP",
+                        shareName = connection.shareName ?: "未知路径"
+                    )
+                }
             } catch (e: Exception) {
                 // 如果 JSON 解析失败（例如数据损坏），返回空列表
                 Log.e("NfsRepo", "解析连接列表失败", e)
@@ -59,14 +68,22 @@ class NFSConnectionRepository(private val context: Context) {
      */
     fun addConnection(connection: NFSConnection) {
         val currentConnections = getConnections().toMutableList()
+        // 确保新连接的字段不是 null（使用默认值）
+        val safeConnection = NFSConnection(
+            id = connection.id ?: UUID.randomUUID().toString(),
+            name = connection.name ?: "未命名连接",
+            serverAddress = connection.serverAddress ?: "未知IP",
+            shareName = connection.shareName ?: "未知路径"
+        )
+
         // 检查 ID 是否已存在（理论上 UUID 不会冲突，但作为预防）
-        val existingIndex = currentConnections.indexOfFirst { it.id == connection.id }
+        val existingIndex = currentConnections.indexOfFirst { it.id == safeConnection.id }
         if (existingIndex >= 0) {
             // 如果 ID 存在，替换旧的连接
-            currentConnections[existingIndex] = connection
+            currentConnections[existingIndex] = safeConnection
         } else {
             // 如果 ID 不存在，添加新的连接
-            currentConnections.add(connection)
+            currentConnections.add(safeConnection)
         }
         saveConnections(currentConnections)
     }
@@ -95,17 +112,27 @@ class NFSConnectionRepository(private val context: Context) {
      */
     fun updateConnection(connection: NFSConnection) {
         val currentConnections = getConnections().toMutableList()
-        val index = currentConnections.indexOfFirst { it.id == connection.id }
+        // 确保更新的连接字段不是 null
+        val safeConnection = NFSConnection(
+            id = connection.id ?: UUID.randomUUID().toString(),
+            name = connection.name ?: "未命名连接",
+            serverAddress = connection.serverAddress ?: "未知IP",
+            shareName = connection.shareName ?: "未知路径"
+        )
+
+        val index = currentConnections.indexOfFirst { it.id == safeConnection.id }
         if (index >= 0) {
-            currentConnections[index] = connection
+            currentConnections[index] = safeConnection
             saveConnections(currentConnections)
         } else {
-            Log.w("NfsRepo", "尝试更新一个不存在的连接 ID: ${connection.id}")
+            Log.w("NfsRepo", "尝试更新一个不存在的连接 ID: ${safeConnection.id}")
             // 或者可以选择添加它？取决于业务逻辑
-            // addConnection(connection)
+            // addConnection(safeConnection)
         }
     }
 }
+
+
 
 
 

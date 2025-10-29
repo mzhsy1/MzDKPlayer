@@ -31,7 +31,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.Icon
@@ -53,7 +52,7 @@ import java.util.UUID
  * WebDAV 连接界面
  */
 @Composable
-@Preview(showBackground = true)
+
 fun WebDavConScreen(
     // 允许外部传入 ViewModel，便于测试和依赖注入
 

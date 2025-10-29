@@ -33,6 +33,8 @@ class FTPConViewModel : ViewModel() {
     private var username: String = ""
     private var password: String = ""
 
+    private var port: Int = 21
+
     private val mutex = Mutex()
 
     /**
@@ -44,14 +46,14 @@ class FTPConViewModel : ViewModel() {
      * @param password 密码
      */
     fun connectToFTP(
-        server: String,
-        port: Int,
-        username: String,
-        password: String,
-        shareName: String, // 例如 "movies" 或 "documents/shared"
+        server: String?,
+        port: Int?,
+        username: String?,
+        password: String?,
+        shareName: String?, // 例如 "movies" 或 "documents/shared"
     ) {
        // Log.d("path", "$server:$port")
-        Log.d("shareName", shareName)
+        Log.d("shareName", shareName.toString())
         viewModelScope.launch {
             mutex.withLock {
                 _connectionStatus.value = FTPConnectionStatus.Connecting
@@ -60,12 +62,22 @@ class FTPConViewModel : ViewModel() {
                         // 初始化 FTPClient
                         ftpClient = FTPClient()
                         ftpClient?.controlEncoding = "UTF-8" //ftpClient.sendSiteCommand("OPTS UTF8 ON")
-                        this@FTPConViewModel.username = username
-                        this@FTPConViewModel.password = password
-                        this@FTPConViewModel.server = server // 仅用于显示或构建完整 URL
+                        if (username != null) {
+                            this@FTPConViewModel.username = username
+                        }
+                        if (password != null) {
+                            this@FTPConViewModel.password = password
+                        }
+                        if (server != null) {
+                            this@FTPConViewModel.server = server
+                        } // 仅用于显示或构建完整 URL
+
+                        if (port != null) {
+                            this@FTPConViewModel.port = port
+                        } // 仅用于显示或构建完整 URL
 
                         // 连接并登录
-                        ftpClient?.connect(server, port)
+                        ftpClient?.connect(server, port?:21)
                         val loginSuccess = ftpClient?.login(username, password) ?: false
                         if (!loginSuccess) {
                             throw IOException("FTP 登录失败")
@@ -79,15 +91,15 @@ class FTPConViewModel : ViewModel() {
 
                         // --- 修改部分开始 ---
                         // 确保 shareName 以 '/' 开头，便于构建路径
-                        val initialPath = if (shareName.startsWith("/")) shareName else "/$shareName"
+                        val initialPath = if (shareName?.startsWith("/") ?: true) shareName else "/$shareName"
                         // 确保路径以 '/' 结尾，以便正确列出目录内容 (如果它是目录的话)
-                        val initialDirPath = if (initialPath.endsWith("/")) initialPath else "$initialPath/"
+                        val initialDirPath = if (initialPath?.endsWith("/") ?: true) initialPath else "$initialPath/"
 
                         // 尝试列出 shareName 指定的目录内容
                         val initialFiles = ftpClient?.listFiles(initialDirPath) ?: throw IOException("无法列出初始目录: $initialDirPath")
                         _fileList.value = initialFiles.toList()
                         // 更新当前路径为 shareName (去除开头的 '/' 以便于后续路径拼接)
-                        _currentPath.value = initialPath.removePrefix("/")
+                        _currentPath.value = initialPath?.removePrefix("/").toString()
                         // --- 修改部分结束 ---
                     }
                     // _currentPath 已在 IO 线程中设置

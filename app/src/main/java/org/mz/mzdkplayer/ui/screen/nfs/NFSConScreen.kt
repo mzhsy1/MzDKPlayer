@@ -87,7 +87,7 @@ fun NFSConScreen(
             // 连接状态显示
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "NFS 状态: ${connectionStatus.toString()}",
+                    text = "NFS 状态: $connectionStatus",
                     color = Color.White,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.widthIn(100.dp, 400.dp),
@@ -369,13 +369,6 @@ fun NFSConScreen(
 }
 
 // --- 预览 (如果需要) ---
-@Preview(showBackground = true)
-@Composable
-fun NFSConScreenPreview() {
-    // 注意：预览时 ViewModel 需要特殊处理或使用 Hilt 注入
-    // 这里只是一个简单的结构预览
-    NFSConScreen()
-}
 
 
 

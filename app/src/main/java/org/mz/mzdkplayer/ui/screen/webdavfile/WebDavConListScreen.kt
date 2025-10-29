@@ -132,14 +132,14 @@ fun WebDavConListScreen(mainNavController: NavHostController) {
                                 // 注意：在实际应用中，直接在 URL 中暴露密码可能不安全。
                                 // 更好的做法是在 ViewModel 或 Repository 中处理认证。
                                 // 这里为了简化导航示例，暂时采用此方式。
-                                val authPart = if (conn.username.isNotBlank() && conn.password.isNotBlank()) {
+                                val authPart = if (conn.username?.isNotBlank() == true && conn.password?.isNotBlank() == true) {
                                     "${conn.username}:${conn.password}@"
                                 } else {
                                     ""
                                 }
                                 // 假设 baseUrl 已经是完整的路径 (e.g., https://example.com/webdav/)
                                 // 如果 baseUrl 不包含协议，需要预先添加
-                                val fullUrl = if (conn.baseUrl.startsWith("http")) {
+                                val fullUrl = if (conn.baseUrl?.startsWith("http") ?: true) {
                                     conn.baseUrl
                                 } else {
                                     "http://$authPart${conn.baseUrl}" // 或 https，根据实际情况
@@ -318,7 +318,7 @@ fun WebDavConnectionCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(connection.name, style = MaterialTheme.typography.titleMedium)
+                connection.name?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
             }
             // 根据 WebDavConnection 数据模型显示信息
             Text("URL: ${connection.baseUrl}")

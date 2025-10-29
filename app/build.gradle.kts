@@ -16,7 +16,7 @@ android {
         versionName = "1.0"
 //        ndk {
 //            //noinspection ChromeOsAbiSupport
-//            abiFilters += listOf( "armeabi-v7a")
+//            abiFilters += listOf( "armeabi-v7a","armeabi-v8a")
 //        }
     }
 

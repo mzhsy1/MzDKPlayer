@@ -128,8 +128,10 @@ class NFSListViewModel(application: Application) : AndroidViewModel(application)
      * 设置选中项的 ID
      * @param id 选中项的 ID
      */
-    fun setSelectedId(id: String) {
-        _selectedId.value = id
+    fun setSelectedId(id: String?) {
+        if (id != null) {
+            _selectedId.value = id
+        }
     }
 
     /**

@@ -14,9 +14,9 @@ import java.util.UUID
  * @param password 密码 (如果需要认证，注意: 实际应用中应加密存储)
  */
 data class NFSConnection(
-    val id: String = UUID.randomUUID().toString(), // 默认生成 UUID
-    val name: String, // 显示名称
-    val serverAddress: String, // NFS 服务器地址
-    val shareName: String
+    val id: String? = UUID.randomUUID().toString(), // 默认生成 UUID
+    val name: String?, // 显示名称
+    val serverAddress: String?, // NFS 服务器地址
+    val shareName: String?
 )
 
