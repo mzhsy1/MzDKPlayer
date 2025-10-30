@@ -141,32 +141,7 @@ fun FTPFileListScreen(
                             .padding(all = 10.dp)
                             .fillMaxHeight()
                             .weight(0.7f)) {
-                            // 添加返回上一级目录的按钮
-//                    if (path != null && path.isNotEmpty()) {
-//                        item {
-//                            ListItem(
-//                                selected = false,
-//                                onClick = {
-////                                    val parentPath = viewModel.getParentPath()
-////                                    // 对路径进行编码，空路径特殊处理
-////                                    val encodedParentPath = URLEncoder.encode(parentPath.ifEmpty { " " }, "UTF-8")
-////                                    Log.d("FTPFileListScreen", "Navigating to parent: '$parentPath' (encoded: '$encodedParentPath')")
-////                                    // 导航到父目录，传递连接信息
-////                                    navController.navigate("FTPFileListScreen/$encodedParentPath/${ftpConnection.username}/${ftpConnection.password}/${ftpConnection.ip}/${ftpConnection.port}/${ftpConnection.shareName}")
-//                                },
-//                                colors = myListItemColor(),
-//                                modifier = Modifier.padding(10.dp),
-//                                scale = ListItemDefaults.scale(scale = 1.0f, focusedScale = 1.02f),
-//                                leadingContent = {
-//                                    Icon(
-//                                        painter = painterResource(R.drawable.baseline_arrow_back_24),
-//                                        contentDescription = "返回上一级"
-//                                    )
-//                                },
-//                                headlineContent = { Text("...") }
-//                            )
-//                        }
-//                    }
+
                             Log.d("fileList", fileList.toString())
 
                             items(fileList) { file ->
@@ -199,28 +174,46 @@ fun FTPFileListScreen(
                                                 navController.navigate("FTPFileListScreen/${ftpConnection.ip}/${ftpConnection.username}/${ftpConnection.password}/${ftpConnection.port}/$encodedNewPath")
                                             } else {
                                                 // 处理文件点击 - 导航到 VideoPlayer
-                                                val fullFileUrl =
-                                                    viewModel.getResourceFullUrl(fileName)
-                                                Log.d(
-                                                    "FTPFileListScreen",
-                                                    "Full file URL: $fullFileUrl"
-                                                )
-//
+                                                val fullFileUrl = viewModel.getResourceFullUrl(fileName)
+                                                Log.d("FTPFileListScreen", "Full file URL: $fullFileUrl")
+// // 处理文件点击
+                                                val fileExtension = Tools.extractFileExtension(file.name)
                                                 val encodedFileUrl = URLEncoder.encode(
                                                     fullFileUrl,
                                                     "UTF-8"
                                                 )
                                                 //Log.d("FTPFileListScreen", "Navigating to video player: $fullFileUrl (encoded: $encodedFileUrl)")
-//                                            // 导航到视频播放器
-                                                navController.navigate("VideoPlayer/$encodedFileUrl/FTP/${ URLEncoder.encode(
-                                                    fileName,
-                                                    "UTF-8"
-                                                )}")
+//
+                                                when {
+                                                    Tools.containsVideoFormat(fileExtension) -> {
+
+                                                        // 导航到视频播放器
+                                                        navController.navigate("VideoPlayer/$encodedFileUrl/FTP/${ URLEncoder.encode(
+                                                            fileName,
+                                                            "UTF-8"
+                                                        )}")
+                                                    }
+                                                    Tools.containsAudioFormat(fileExtension) -> {
+                                                        navController.navigate("AudioPlayer/$encodedFileUrl/FTP/${ URLEncoder.encode(
+                                                            fileName,
+                                                            "UTF-8"
+                                                        )}")
+                                                        //navController.navigate("AudioPlayer/$encodedUri/SMB/$encodedFileName")
+                                                    }
+                                                    else -> {
+                                                        Toast.makeText(
+                                                            context,
+                                                            "不支持的文件格式: $fileExtension",
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
+                                                    }
+                                                }
                                             }
                                         }
                                     },
                                     colors = myListItemColor(),
-                                    modifier = Modifier.padding(end = 10.dp).onFocusChanged {
+                                    modifier = Modifier
+                                        .padding(end = 10.dp).height(40.dp).onFocusChanged {
                                         if (it.isFocused) {
                                             focusedFileName = file.name;
                                             focusedIsDir = file.isDirectory
@@ -229,7 +222,7 @@ fun FTPFileListScreen(
                                     },
                                     scale = ListItemDefaults.scale(
                                         scale = 1.0f,
-                                        focusedScale = 1.02f
+                                        focusedScale = 1.01f
                                     ),
                                     leadingContent = {
                                         Icon(
@@ -256,7 +249,7 @@ fun FTPFileListScreen(
                                     },
                                     headlineContent = {  Text(
                                         file.name, maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis, fontSize = 12.sp
+                                        overflow = TextOverflow.Ellipsis, fontSize = 10.sp
                                     ) }
                                     // supportingContent = { Text(file.rawListing ?: "") } // 可以显示原始信息
                                 )

@@ -254,7 +254,7 @@ fun NFSFileListScreen(
                                     },
                                     colors = myListItemColor(),
                                     modifier = Modifier
-                                        .padding(end = 10.dp)
+                                        .padding(end = 10.dp).height(40.dp)
                                         .onFocusChanged {
                                             if (it.isFocused) {
                                                 focusedFileName = file.name;
@@ -266,7 +266,7 @@ fun NFSFileListScreen(
                                         },
                                     scale = ListItemDefaults.scale(
                                         scale = 1.0f,
-                                        focusedScale = 1.02f
+                                        focusedScale = 1.01f
                                     ),
                                     leadingContent = {
                                         Icon(
@@ -294,7 +294,7 @@ fun NFSFileListScreen(
                                     headlineContent = {
                                         Text(
                                             file.name, maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis, fontSize = 12.sp
+                                            overflow = TextOverflow.Ellipsis, fontSize = 10.sp
                                         )
                                     }
                                     // supportingContent = { Text(file.rawListing ?: "") } // 可以显示原始信息

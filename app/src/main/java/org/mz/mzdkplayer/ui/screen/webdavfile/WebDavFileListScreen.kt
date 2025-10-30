@@ -178,6 +178,7 @@ fun WebDavFileListScreen(
                                                 // 需要获取文件的完整 URL
                                                 // 注意：getResourceFullUrl 应该基于当前 path 和 filename 计算
                                                 // 确保 ViewModel 的逻辑正确 https://<username>:<password>@192.168.1.4:5006/movies/as.mkv
+                                                val fileExtension = Tools.extractFileExtension(file.name)
                                                 val fullFileUrl =
                                                     viewModel.getResourceFullUrl(fileName) // 假设内部处理了 path
                                                 val userInfo =
@@ -197,16 +198,36 @@ fun WebDavFileListScreen(
                                                     "WebDavFileListScreen",
                                                     "Navigating to video player: $fullFileUrl (encoded: $encodedFileUrl)"
                                                 )
-                                                navController.navigate("VideoPlayer/$encodedFileUrl/WEBDAV/${ URLEncoder.encode(
-                                                    file.name,
-                                                    "UTF-8"
-                                                )}")
+                                                when {
+                                                    Tools.containsVideoFormat(fileExtension) -> {
+
+                                                        // 导航到视频播放器
+                                                        navController.navigate("VideoPlayer/$encodedFileUrl/WEBDAV/${ URLEncoder.encode(
+                                                            fileName,
+                                                            "UTF-8"
+                                                        )}")
+                                                    }
+                                                    Tools.containsAudioFormat(fileExtension) -> {
+                                                        navController.navigate("AudioPlayer/$encodedFileUrl/WEBDAV/${ URLEncoder.encode(
+                                                            fileName,
+                                                            "UTF-8"
+                                                        )}")
+                                                        //navController.navigate("AudioPlayer/$encodedUri/SMB/$encodedFileName")
+                                                    }
+                                                    else -> {
+                                                        Toast.makeText(
+                                                            context,
+                                                            "不支持的文件格式: $fileExtension",
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
+                                                    }
+                                                }
                                             }
                                         }
                                     },
                                     colors = myListItemColor(),
                                     modifier = Modifier
-                                        .padding()
+                                        .padding(end = 10.dp).height(40.dp)
                                         .onFocusChanged {
                                             if (it.isFocused) {
                                                 focusedFileName = file.name;
@@ -217,7 +238,7 @@ fun WebDavFileListScreen(
                                         },
                                     scale = ListItemDefaults.scale(
                                         scale = 1.0f,
-                                        focusedScale = 1.02f
+                                        focusedScale = 1.01f
                                     ),
                                     leadingContent = {
                                         Icon(
@@ -244,7 +265,7 @@ fun WebDavFileListScreen(
                                     },
                                     headlineContent = {     Text(
                                         file.name, maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis, fontSize = 12.sp
+                                        overflow = TextOverflow.Ellipsis, fontSize = 10.sp
                                     ) }
                                     // supportingContent = { Text(file.modified?.toString() ?: "") }
                                 )

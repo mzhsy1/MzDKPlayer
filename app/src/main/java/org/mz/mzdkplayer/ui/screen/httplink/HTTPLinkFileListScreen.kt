@@ -276,17 +276,37 @@ fun HTTPLinkFileListScreen(
                                                     "Encoded file URL: $encodedFileUrl"
                                                 )
 
-                                                // 导航到视频播放器，传递编码后的 URL 和来源标识
-                                                navController.navigate("VideoPlayer/$encodedFileUrl/HTTP/${ URLEncoder.encode(
-                                                    resource.name,
-                                                    "UTF-8"
-                                                )}")
+                                                val fileExtension = Tools.extractFileExtension(resource.name)
+                                                when {
+                                                    Tools.containsVideoFormat(fileExtension) -> {
+
+                                                        // 导航到视频播放器
+                                                        navController.navigate("VideoPlayer/$encodedFileUrl/HTTP/${ URLEncoder.encode(
+                                                            resource.name,
+                                                            "UTF-8"
+                                                        )}")
+                                                    }
+                                                    Tools.containsAudioFormat(fileExtension) -> {
+                                                        navController.navigate("AudioPlayer/$encodedFileUrl/HTTP/${ URLEncoder.encode(
+                                                            resource.name,
+                                                            "UTF-8"
+                                                        )}")
+                                                        //navController.navigate("AudioPlayer/$encodedUri/SMB/$encodedFileName")
+                                                    }
+                                                    else -> {
+                                                        Toast.makeText(
+                                                            context,
+                                                            "不支持的文件格式: $fileExtension",
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
+                                                    }
+                                                }
                                             }
                                         }
                                     },
                                     colors = myListItemColor(),
                                     modifier = Modifier
-                                        .padding(end = 10.dp)
+                                        .padding(end = 10.dp).height(40.dp)
                                         .onFocusChanged {
                                             if (it.isFocused) {
                                                 focusedFileName = resource.name;
@@ -297,7 +317,7 @@ fun HTTPLinkFileListScreen(
                                         },
                                     scale = ListItemDefaults.scale(
                                         scale = 1.0f,
-                                        focusedScale = 1.02f
+                                        focusedScale = 1.01f
                                     ),
                                     leadingContent = {
                                         Icon(
@@ -326,7 +346,7 @@ fun HTTPLinkFileListScreen(
                                         // 显示完整的文件名
                                         Text(
                                             resourceName, maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis, fontSize = 12.sp
+                                            overflow = TextOverflow.Ellipsis, fontSize = 10.sp
                                         )
                                     }
                                     // supportingContent = { Text(resource.rawListing ?: "") } // 可以显示原始信息

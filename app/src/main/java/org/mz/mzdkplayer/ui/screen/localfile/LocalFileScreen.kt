@@ -141,7 +141,7 @@ fun LocalFileScreen(path: String?, navController: NavHostController) {
                         },
                         colors = myListItemColor(),
                         modifier = Modifier
-                            .padding(end = 10.dp)
+                            .padding(end = 10.dp).height(40.dp)
                             .onFocusChanged {
                                 if (it.isFocused) {
                                     focusedFileName = file.name;
@@ -175,7 +175,7 @@ fun LocalFileScreen(path: String?, navController: NavHostController) {
                         },
                         headlineContent = {  Text(
                             file.name, maxLines = 1,
-                            overflow = TextOverflow.Ellipsis, fontSize = 12.sp
+                            overflow = TextOverflow.Ellipsis, fontSize = 10.sp
                         ) }
                     )
                 }

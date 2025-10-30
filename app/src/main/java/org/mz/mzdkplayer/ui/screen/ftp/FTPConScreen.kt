@@ -286,10 +286,7 @@ fun FTPConScreen(
                                     } else {
                                         // 点击文件：可以触发下载或其他操作
                                         Toast.makeText(context, "点击了文件: $resourceName", Toast.LENGTH_SHORT).show()
-                                        // TODO: 实现文件下载逻辑
-                                        // 可以使用 ftpConViewModel.getResourceFullUrl(resourceName) 获取 FTP URL
-                                        // val fullUrl = ftpConViewModel.getResourceFullUrl(resourceName)
-                                        // viewModel.downloadFile(fullUrl, localPath)
+
                                     }
                                 }
                                 .padding(8.dp),

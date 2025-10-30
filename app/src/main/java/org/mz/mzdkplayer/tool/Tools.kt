@@ -88,6 +88,21 @@ object Tools {
                     painter = painterResource(R.drawable.movnew),
                     contentDescription = null,
                 )
+                "mp3" -> Image(
+                    modifier = modifier,
+                    painter = painterResource(R.drawable.mp3big),
+                    contentDescription = null,
+                )
+                "wav" -> Image(
+                    modifier = modifier,
+                    painter = painterResource(R.drawable.wavbig),
+                    contentDescription = null,
+                )
+                "flac" -> Image(
+                    modifier = modifier,
+                    painter = painterResource(R.drawable.flacnew),
+                    contentDescription = null,
+                )
 
                 else -> Image(
                     modifier = modifier,
@@ -121,8 +136,8 @@ object Tools {
         val mimeType = format.sampleMimeType ?: return "Unknown Audio Format (No MIME type)"
 
         return when (mimeType) {
-            "audio/vnd.dts" -> inferDtsFormatType(format) // DTS 家族格式判断
-
+            "audio/vnd.dts" -> "DTS" // DTS 家族格式判断
+            "audio/vnd.dts.hd" -> "DTS HD" // DTS 家族格式判断
             // Dolby 家族格式判断
             "audio/true-hd" -> "Dolby TrueHD"
             "audio/ac3" -> "Dolby Digital (AC3)"
@@ -157,22 +172,22 @@ object Tools {
     /**
      * 专门推断 DTS 家族具体格式的辅助方法
      */
-    private fun inferDtsFormatType(format: Format): String {
-        val codecs = format.codecs?.lowercase() ?: ""
-
-        return when {
-            codecs.contains("dts-hd-ma") -> "DTS-HD Master Audio"
-            codecs.contains("dts-hd-hra") -> "DTS-HD High Resolution"
-            codecs.contains("dts-x") -> "DTS:X"
-            codecs.contains("dts-express") -> "DTS Express"
-            codecs.contains("dts") -> "DTS Core"
-
-            // 如果没有明确的 codecs 信息，则基于声道数等进行推测
-            format.channelCount >= 8 -> "DTS-HD "
-            format.channelCount == 6 -> "DTS Core "
-            else -> "DTS (未知DTS编码)"
-        }
-    }
+//    private fun inferDtsFormatType(format: Format): String {
+//        val codecs = format.codecs?.lowercase() ?: ""
+//
+//        return when {
+//            codecs.contains("dts-hd-ma") -> "DTS-HD Master Audio"
+//            codecs.contains("dts-hd-hra") -> "DTS-HD High Resolution"
+//            codecs.contains("dts-x") -> "DTS:X"
+//            codecs.contains("dts-express") -> "DTS Express"
+//            codecs.contains("dts") -> "DTS Core"
+//
+//            // 如果没有明确的 codecs 信息，则基于声道数等进行推测
+//            format.channelCount >= 8 -> "DTS-HD "
+//            format.channelCount == 6 -> "DTS Core "
+//            else -> "DTS (未知DTS编码)"
+//        }
+//    }
 
 
     fun audioFormatIconType(format: Format): Int {
@@ -205,8 +220,8 @@ object Tools {
             "audio/x-wav" -> R.drawable.pcm_seeklogo__1_
 
             // MP3 格式
-            "audio/mpeg" ->  R.drawable.mp3_seeklogo
-            "audio/mp3" -> R.drawable.mp3_seeklogo
+            "audio/mpeg" ->  R.drawable.mp3
+            "audio/mp3" -> R.drawable.mp3
 
             // 其他已知格式
             else ->   R.drawable.noradudio
@@ -247,18 +262,15 @@ object Tools {
         val lowerCode = languageCode.lowercase()
 
         // 特别处理中文的细分（包括字幕语言代码）
-        return when {
-            // 简体中文（视频轨道和字幕轨道）
-            lowerCode == "zh-hans" || lowerCode == "zh-cn" || lowerCode == "zh-sg" ||
-                    lowerCode == "chs" || lowerCode == "sc" || lowerCode == "chi_sim" -> "简体中文"
+        return when (// 简体中文（视频轨道和字幕轨道）
+            lowerCode) {
+            "zh-hans", "zh-cn", "zh-sg", "chs", "sc", "chi_sim" -> "简体中文"
 
             // 繁体中文（视频轨道和字幕轨道）
-            lowerCode == "zh-hant" || lowerCode == "zh-tw" || lowerCode == "zh-hk" ||
-                    lowerCode == "zh-mo" || lowerCode == "cht" || lowerCode == "tc" ||
-                    lowerCode == "chi_tra" -> "繁体中文"
+            "zh-hant", "zh-tw", "zh-hk", "zh-mo", "cht", "tc", "chi_tra" -> "繁体中文"
 
             // 一般中文代码（无法区分简繁体时）
-            lowerCode == "zh" || lowerCode == "zho" || lowerCode == "chi" -> "中文"
+            "zh", "zho", "chi" -> "中文"
 
             // 其他语言保持不变
             else -> getOtherLanguageName(lowerCode)

@@ -145,7 +145,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                             },
                             onError = { errorMessage ->
                                 Log.e("SMBFileListScreen", "播放错误: $errorMessage")
-                                Toast.makeText(context, "播放错误: $errorMessage", Toast.LENGTH_SHORT).show()
+                                //Toast.makeText(context, "播放错误: $errorMessage", Toast.LENGTH_SHORT).show()
                             }
                         )
                     }
@@ -193,6 +193,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                             items(files) { file ->
                                 ListItem(
                                     selected = false,
+
                                     onClick = {
                                         if (file.isDirectory) {
                                             // 导航到子目录
@@ -268,7 +269,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                     },
                                     colors = myListItemColor(),
                                     modifier = Modifier
-                                        .padding(end = 10.dp)
+                                        .padding(end = 10.dp).height(40.dp)
                                         .onFocusChanged { focusState ->
                                             if (focusState.isFocused) {
                                                 focusedFileName = file.name
@@ -279,7 +280,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                         },
                                     scale = ListItemDefaults.scale(
                                         scale = 1.0f,
-                                        focusedScale = 1.02f
+                                        focusedScale = 1.01f
                                     ),
                                     leadingContent = {
                                         Icon(
@@ -299,7 +300,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                             file.name,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
-                                            fontSize = 12.sp
+                                            fontSize = 10.sp
                                         )
                                     }
                                 )
