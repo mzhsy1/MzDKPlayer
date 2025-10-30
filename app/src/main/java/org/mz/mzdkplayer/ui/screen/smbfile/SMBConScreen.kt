@@ -1,6 +1,6 @@
 package org.mz.mzdkplayer.ui.screen.smbfile
 
-import android.util.Log
+
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
@@ -41,7 +41,7 @@ import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 
 import org.mz.mzdkplayer.logic.model.SMBConnection
-import org.mz.mzdkplayer.ui.screen.vm.FTPConnectionStatus
+
 import org.mz.mzdkplayer.ui.theme.TvTextField
 
 import org.mz.mzdkplayer.ui.screen.vm.SMBConViewModel
@@ -66,16 +66,16 @@ fun SMBConScreen() {
     var aliasName by remember { mutableStateOf("my nas") }
 
     // 全局跟踪当前活跃的输入框ID（初始为null）
-    val activeFieldId = remember { mutableStateOf<String?>(null) }
+    //val activeFieldId = remember { mutableStateOf<String?>(null) }
     val connectionStatus by viewModel.connectionStatus.collectAsState()
     val fileList by viewModel.fileList.collectAsState()
-    val keyboardController = LocalSoftwareKeyboardController.current
+    //val keyboardController = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
 
 
     // 验证分享名称是否以/开头
     val isShareNameValid = !shareName.startsWith("/")
-    val shareNameError = if (!isShareNameValid) "分享名称不能以'/'开头" else ""
+    //val shareNameError = if (!isShareNameValid) "分享名称不能以'/'开头" else ""
 
     // 检查是否已连接
     val isConnected = connectionStatus is SMBConnectionStatus.LoadingFiled
@@ -93,7 +93,7 @@ fun SMBConScreen() {
                     color = Color.White,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.widthIn(100.dp,400.dp),
-                    maxLines = 2
+                    maxLines = 1
                 )
                 // 状态指示灯
                 Icon(
@@ -167,7 +167,7 @@ fun SMBConScreen() {
                 modifier = Modifier.fillMaxWidth(0.5f),
                 enabled = true,
                 onClick = {
-                    viewModel.testConnectSMB(ip, username, password, shareName);
+                    viewModel.testConnectSMB(ip, username, password, shareName)
                     //viewModel.listSMBFiles(config = SMBConfig(ip,shareName,"/",username,password))
                 },
             )
@@ -178,11 +178,20 @@ fun SMBConScreen() {
 
                 modifier = Modifier.fillMaxWidth(0.5f),
                 onClick = {
+                    if (ip.isBlank()) {
+                        Toast.makeText(context, "请输入服务器地址", Toast.LENGTH_SHORT).show()
+                        return@MyIconButton
+                    }
+                    if (shareName.isBlank()) {
+                        Toast.makeText(context, "请输入分享文件名称", Toast.LENGTH_SHORT).show()
+                        return@MyIconButton
+                    }
+
                     if (isShareNameValid && isConnected) {
                         if (smbListViewModel.addConnection(
                                 SMBConnection(
                                     UUID.randomUUID().toString(),
-                                    aliasName,
+                                    aliasName.ifBlank { "未命名SMB连接" },
                                     ip,
                                     username,
                                     password,
@@ -223,8 +232,7 @@ fun SMBConScreen() {
                     modifier = Modifier
                         .fillMaxHeight()
                         .clickable {
-                            // 点击下载文件（需指定本地路径）
-                            //viewModel.downloadFile(fileName, "/sdcard/Download/$fileName")
+
                         }
                         .padding(8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween

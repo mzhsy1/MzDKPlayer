@@ -281,7 +281,7 @@ fun ConnectionCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(connection.name, style = MaterialTheme.typography.titleMedium)
+                connection.name?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
             }
             Text("IP: ${connection.ip}")
             Text("共享目录: ${connection.shareName}")

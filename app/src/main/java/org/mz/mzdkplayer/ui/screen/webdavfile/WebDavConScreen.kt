@@ -38,6 +38,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.WebDavConnection
+import org.mz.mzdkplayer.ui.screen.vm.HTTPLinkConnectionStatus
 import org.mz.mzdkplayer.ui.screen.vm.WebDavConViewModel
 import org.mz.mzdkplayer.ui.screen.vm.WebDavConnectionStatus
 import org.mz.mzdkplayer.ui.screen.vm.WebDavListViewModel
@@ -90,7 +91,7 @@ fun WebDavConScreen(
                     color = Color.White,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.widthIn(100.dp, 400.dp),
-                    maxLines = 2
+                    maxLines = 1
                 )
                 // 状态指示灯
                 Icon(
@@ -149,7 +150,7 @@ fun WebDavConScreen(
                 text = "测试连接",
                 imageVector = Icons.Outlined.Check,
                 modifier = Modifier.fillMaxWidth(0.5f),
-                enabled = connectionStatus != WebDavConnectionStatus.Connecting, // 连接中时禁用
+                
                 onClick = {
                     keyboardController?.hide() // 隐藏键盘
                     webDavConViewModel.connectToWebDav(baseUrl, username, password)
@@ -161,12 +162,20 @@ fun WebDavConScreen(
                 imageVector = Icons.Outlined.Star,
                 modifier = Modifier.fillMaxWidth(0.5f),
                 // 只有在已连接时才允许保存
-                enabled = connectionStatus is WebDavConnectionStatus.Connected,
                 onClick = {
                     keyboardController?.hide()
+                    if (baseUrl.isBlank()) {
+                        Toast.makeText(context, "请输入服务器地址", Toast.LENGTH_SHORT).show()
+                        return@MyIconButton
+                    }
+
+                    if (connectionStatus !is WebDavConnectionStatus.Connected){
+                        Toast.makeText(context, "请先连接成功后再保存", Toast.LENGTH_SHORT).show()
+                        return@MyIconButton
+                    }
                     val newConnection = WebDavConnection( // 使用您定义的数据类
                         id = UUID.randomUUID().toString(),
-                        name = aliasName,
+                        name = aliasName.ifBlank { "未命名WebDav连接" },
                         baseUrl = baseUrl,
                         username = username,
                         password = password // 再次提醒：明文存储不安全
@@ -186,9 +195,9 @@ fun WebDavConScreen(
                 imageVector = Icons.Outlined.Delete,
                 modifier = Modifier.fillMaxWidth(0.5f),
                 // 只有在已连接或连接出错时才允许断开
-                enabled = connectionStatus is WebDavConnectionStatus.Connected ||
-                        connectionStatus is WebDavConnectionStatus.Error ||
-                        connectionStatus is WebDavConnectionStatus.Connecting,
+//                enabled = connectionStatus is WebDavConnectionStatus.Connected ||
+//                        connectionStatus is WebDavConnectionStatus.Error ||
+//                        connectionStatus is WebDavConnectionStatus.Connecting,
                 onClick = {
                     keyboardController?.hide()
                     webDavConViewModel.disconnectWebDav()

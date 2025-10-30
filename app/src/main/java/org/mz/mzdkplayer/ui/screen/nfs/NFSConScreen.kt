@@ -91,7 +91,7 @@ fun NFSConScreen(
                     color = Color.White,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.widthIn(100.dp, 400.dp),
-                    maxLines = 2
+                    maxLines = 1
                 )
                 // 状态指示灯
                 Icon(
@@ -121,7 +121,7 @@ fun NFSConScreen(
                 value = shareName,
                 onValueChange = { shareName = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = "Export Path (e.g., /movies)",
+                placeholder = "Export Path (e.g., /fs/1000/nfs)",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )
@@ -169,14 +169,20 @@ fun NFSConScreen(
                     modifier = Modifier
                         .weight(1f)
                         .padding(start = 8.dp), // 平分宽度并加左边距
-                    // 只有在已连接时才允许保存
-                    enabled = connectionStatus is NFSConnectionStatus.Connected,
                     onClick = {
                         keyboardController?.hide()
+                        if (serverAddress.isBlank()) {
+                            Toast.makeText(context, "请输入服务器地址", Toast.LENGTH_SHORT).show()
+                            return@MyIconButton
+                        }
+                        if (shareName.isBlank()) {
+                            Toast.makeText(context, "请输入分享文件名称", Toast.LENGTH_SHORT).show()
+                            return@MyIconButton
+                        }
                         // 创建 NfsConnection 数据对象
                         val newConnection = NFSConnection(
                             id = UUID.randomUUID().toString(),
-                            name = aliasName,
+                            name = aliasName.ifBlank { "未命名NFS连接" },
                             serverAddress = serverAddress,
                             shareName
                         )

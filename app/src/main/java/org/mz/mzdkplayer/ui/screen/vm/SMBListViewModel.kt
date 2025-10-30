@@ -5,14 +5,15 @@ import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import org.mz.mzdkplayer.logic.model.ConnectionRepository
+
 import org.mz.mzdkplayer.logic.model.SMBConnection
+import org.mz.mzdkplayer.logic.model.SMBConnectionRepository
 
 /**
  * SMB连接vm,用来操作储存在本地的smb连接数据
  */
 class SMBListViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = ConnectionRepository(application)
+    private val repository = SMBConnectionRepository(application)
     private val _connections = MutableStateFlow<List<SMBConnection>>(emptyList())
     private val _isOPanelShow = MutableStateFlow<Boolean>(false)
     val connections: StateFlow<List<SMBConnection>> = _connections
@@ -82,8 +83,10 @@ class SMBListViewModel(application: Application) : AndroidViewModel(application)
     private val _selectedId = MutableStateFlow("") // 初始无选中
     val selectedId = _selectedId.asStateFlow()
 
-    fun setSelectedId(id: String) {
-        _selectedId.value = id
+    fun setSelectedId(id: String?) {
+        if (id != null) {
+            _selectedId.value = id
+        }
     }
 
     private val _isLongPressInProgress = MutableStateFlow(false) // 初始无选中

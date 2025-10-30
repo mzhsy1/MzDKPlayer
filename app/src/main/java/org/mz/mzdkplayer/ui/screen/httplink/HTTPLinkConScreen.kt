@@ -89,7 +89,7 @@ fun HTTPLinkConScreen(
                     color = Color.White,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.widthIn(100.dp, 400.dp),
-                    maxLines = 2
+                    maxLines = 1
                 )
                 // 状态指示灯
                 Icon(
@@ -180,13 +180,25 @@ fun HTTPLinkConScreen(
                         .weight(1f)
                         .padding(start = 8.dp), // 平分宽度并加左边距
                     // 只有在已连接时才允许保存
-                    enabled = connectionStatus is HTTPLinkConnectionStatus.Connected,
+                    //enabled = connectionStatus is HTTPLinkConnectionStatus.Connected,
                     onClick = {
                         keyboardController?.hide()
+                        if (serverAddress.isBlank()) {
+                            Toast.makeText(context, "请输入服务器地址", Toast.LENGTH_SHORT).show()
+                            return@MyIconButton
+                        }
+                        if (shareName.isBlank()) {
+                            Toast.makeText(context, "请输入分享文件名称", Toast.LENGTH_SHORT).show()
+                            return@MyIconButton
+                        }
+                        if (connectionStatus !is HTTPLinkConnectionStatus.Connected){
+                            Toast.makeText(context, "请先连接成功后再保存", Toast.LENGTH_SHORT).show()
+                            return@MyIconButton
+                        }
                         // 创建 HTTPLinkConnection 数据对象
                         val newConnection = HTTPLinkConnection(
                             id = UUID.randomUUID().toString(),
-                            name = aliasName,
+                            name = aliasName.ifBlank { "未命名HTTP连接" },
                             serverAddress = serverAddress,
                             shareName = shareName
                         )
@@ -211,9 +223,6 @@ fun HTTPLinkConScreen(
                 imageVector = Icons.Outlined.Delete,
                 modifier = Modifier.fillMaxWidth(),
                 // 只有在已连接或连接出错时才允许断开
-                enabled = connectionStatus is HTTPLinkConnectionStatus.Connected ||
-                        connectionStatus is HTTPLinkConnectionStatus.Error ||
-                        connectionStatus is HTTPLinkConnectionStatus.Connecting,
                 onClick = {
                     keyboardController?.hide()
                     httpLinkConViewModel.disconnectHTTPLink()

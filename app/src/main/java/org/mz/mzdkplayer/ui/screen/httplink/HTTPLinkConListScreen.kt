@@ -315,7 +315,7 @@ fun HTTPLinkConnectionCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(connection.name, style = MaterialTheme.typography.titleMedium)
+                connection.name?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
             }
             // 根据 HTTPLinkConnection 数据模型显示信息
             Text("服务器地址: ${connection.serverAddress}")

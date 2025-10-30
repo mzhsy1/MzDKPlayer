@@ -88,11 +88,11 @@ fun FTPConScreen(
             // 连接状态显示
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "FTP 状态: ${connectionStatus.toString()}",
+                    text = "FTP 状态: $connectionStatus",
                     color = Color.White,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.widthIn(100.dp, 400.dp),
-                    maxLines = 2
+                    maxLines = 1
                 )
                 // 状态指示灯
                 Icon(
@@ -106,7 +106,7 @@ fun FTPConScreen(
                     }
                 )
             }
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(),) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 // 输入字段 - FTP 服务器地址
                 TvTextField(
                     value = server,
@@ -234,9 +234,9 @@ fun FTPConScreen(
                 imageVector = Icons.Outlined.Delete,
                 modifier = Modifier.fillMaxWidth(),
                 // 只有在已连接或连接出错时才允许断开
-                enabled = connectionStatus is FTPConnectionStatus.Connected ||
-                        connectionStatus is FTPConnectionStatus.Error ||
-                        connectionStatus is FTPConnectionStatus.Connecting,
+//                enabled = connectionStatus is FTPConnectionStatus.Connected ||
+//                        connectionStatus is FTPConnectionStatus.Error ||
+//                        connectionStatus is FTPConnectionStatus.Connecting,
                 onClick = {
                     keyboardController?.hide()
                     ftpConViewModel.disconnectFTP()
