@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.C
+import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -37,11 +38,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.mz.mzdkplayer.logic.model.AudioInfo
+import org.mz.mzdkplayer.logic.model.AudioItem
 
 import org.mz.mzdkplayer.tool.SmbUtils
+import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.createArtworkBitmap
 import org.mz.mzdkplayer.tool.extractAudioInfoAndLyricsFromStream
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
+
 import org.mz.mzdkplayer.ui.audioplayer.components.*
 import org.mz.mzdkplayer.ui.screen.vm.AudioPlayerViewModel
 import org.mz.mzdkplayer.ui.videoplayer.BackPress
@@ -131,7 +135,12 @@ fun formatDuration(durationMs: Int?): String {
 
 @OptIn(UnstableApi::class)
 @Composable
-fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String) {
+fun AudioPlayerScreen(
+    mediaUri: String,
+    dataSourceType: String,
+    fileName: String,
+    extraList: List<AudioItem>
+) {
     val context = LocalContext.current
     val exoPlayer = rememberAudioPlayer(context, mediaUri, dataSourceType)
     val audioPlayerState = rememberAudioPlayerState(hideSeconds = 6)
@@ -144,8 +153,9 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String)
 
     var audioMetadata by remember { mutableStateOf(AudioMetadata()) }
     var audioInfo: AudioInfo? by remember { mutableStateOf(null) } // 关键：存储 audioInfo
-
-    BuilderMzAudioPlayer(context, mediaUri, exoPlayer, dataSourceType)
+    var currentMediaUri by remember {  mutableStateOf(mediaUri) }
+    var currentFileName by remember { mutableStateOf(fileName) } // 替换原来的 fileName 状态
+    BuilderMzAudioPlayer(context, currentMediaUri, exoPlayer, dataSourceType,extraList)
 
     DisposableEffect(Unit) {
         onDispose {
@@ -155,28 +165,28 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String)
 
 
     // 加载音频信息和歌词
-    LaunchedEffect(mediaUri, sampleMimeType) {
+    LaunchedEffect(currentMediaUri, sampleMimeType) {
         Log.e("sampleMimeType", sampleMimeType)
         if (sampleMimeType.isNotEmpty()) {
             withContext(Dispatchers.IO) {
                 try {
-                    val inputStream: InputStream? = when (mediaUri.toUri().scheme?.lowercase()) {
-                        "smb" -> SmbUtils.openSmbFileInputStream(mediaUri.toUri(),sampleMimeType)
+                    val inputStream: InputStream? = when (currentMediaUri.toUri().scheme?.lowercase()) {
+                        "smb" -> SmbUtils.openSmbFileInputStream(currentMediaUri.toUri(),sampleMimeType)
                         "http", "https" -> {
                             when (dataSourceType) {
-                                "WEBDAV" -> SmbUtils.openWebDavFileInputStream(mediaUri.toUri())
-                                "HTTP" -> SmbUtils.openHTTPLinkXmlInputStream(mediaUri)
-                                else -> URL(mediaUri).openStream()
+                                "WEBDAV" -> SmbUtils.openWebDavFileInputStream(currentMediaUri.toUri(),sampleMimeType)
+                                "HTTP" -> SmbUtils.openHTTPLinkXmlInputStream(currentMediaUri,sampleMimeType)
+                                else -> URL(currentMediaUri).openStream()
                             }
                         }
 
-                        "file" -> context.contentResolver.openInputStream(mediaUri.toUri())
-                            ?: throw java.io.IOException("Could not open file input stream for $mediaUri")
+                        "file" -> context.contentResolver.openInputStream(currentMediaUri.toUri())
+                            ?: throw java.io.IOException("Could not open file input stream for $currentMediaUri")
 
-                        "ftp" -> SmbUtils.openFtpFileInputStream(mediaUri.toUri())
-                        "nfs" -> SmbUtils.openNfsFileInputStream(mediaUri.toUri())
+                        "ftp" -> SmbUtils.openFtpFileInputStream(currentMediaUri.toUri(),sampleMimeType)
+                        "nfs" -> SmbUtils.openNfsFileInputStream(currentMediaUri.toUri(),sampleMimeType)
                         else -> {
-                            Log.w("AudioPlayerScreen", "Unsupported scheme for URI: $mediaUri")
+                            Log.w("AudioPlayerScreen", "Unsupported scheme for URI: $currentMediaUri")
                             null
                         }
                     }
@@ -188,12 +198,13 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String)
                         val info =
                             extractAudioInfoAndLyricsFromStream(context, stream, sampleMimeType)
                         audioInfo = info // 更新状态
+
                         Log.i("AudioPlayerScreen", "Loaded audio info and lyrics")
                     }
                 } catch (e: Exception) {
                     Log.e(
                         "AudioPlayerScreen",
-                        "Failed to load audio info or lyrics from $mediaUri",
+                        "Failed to load audio info or lyrics from $currentMediaUri",
                         e
                     )
                 }
@@ -222,6 +233,16 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String)
                     Player.STATE_IDLE -> {}
 
                 }
+            }
+
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                super.onMediaItemTransition(mediaItem, reason)
+                Log.d("onMediaItemTransition", mediaItem?.localConfiguration?.uri.toString())
+                currentMediaUri = mediaItem?.localConfiguration?.uri.toString()
+                audioInfo = null // 重置音频信息
+
+                // ✅ 提取并更新文件名
+                currentFileName = Tools.extractFileNameFromUri(currentMediaUri)
             }
 
             override fun onIsPlayingChanged(isExoPlaying: Boolean) {
@@ -375,7 +396,7 @@ fun AudioPlayerScreen(mediaUri: String, dataSourceType: String,fileName: String)
                     exoPlayer,
                     audioPlayerState,
                     focusRequester,
-                    fileName,
+                    currentFileName,
                     "${audioInfo?.bitsPerSample ?: "--"} bit - " +
                             "${
                                 audioInfo?.sampleRate?.let {

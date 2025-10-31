@@ -446,6 +446,23 @@ object Tools {
         return true
     }
 
+    /**
+     * 从 URI 字符串中提取文件名（最后一个 `/` 后的部分）
+     */
+    fun extractFileNameFromUri(uriString: String): String {
+        return try {
+            val lastSlashIndex = uriString.lastIndexOf('/')
+            if (lastSlashIndex != -1 && lastSlashIndex < uriString.length - 1) {
+                uriString.substring(lastSlashIndex + 1)
+            } else {
+                uriString // 如果没有找到 `/`，返回整个字符串
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            "未知文件名" // 异常时的兜底名称
+        }
+    }
+
 
 
 }

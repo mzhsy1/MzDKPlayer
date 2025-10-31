@@ -1,6 +1,7 @@
 package org.mz.mzdkplayer.ui
 
 import android.util.Log
+import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.util.UnstableApi
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -30,6 +32,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.NavigationDrawer
+import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.FTPConnection
 import org.mz.mzdkplayer.logic.model.NFSConnection
@@ -62,6 +65,7 @@ import org.mz.mzdkplayer.ui.screen.setting.SettingsScreen
 import org.mz.mzdkplayer.ui.videoplayer.VideoPlayerScreen
 import java.net.URLDecoder
 
+@OptIn(UnstableApi::class)
 @Composable
 fun MzDKPlayerAPP() {
 
@@ -197,11 +201,13 @@ fun MzDKPlayerAPP() {
             val sourceUri = backStackEntry.arguments?.getString("sourceUri")
             val dataSourceType = backStackEntry.arguments?.getString("dataSourceType")
             val fileName = backStackEntry.arguments?.getString("fileName")
+            // 获取特定的字符串列表
+            val extraList = MzDkPlayerApplication.getStringList("audio_playlist")
             // 检查参数是否不为空，并渲染屏幕
             if (sourceUri != null && dataSourceType != null) {
                 Log.d("sourceUri", sourceUri)
                 Log.d("dataSourceType", dataSourceType)
-                AudioPlayerScreen(URLDecoder.decode(sourceUri, "UTF-8"), dataSourceType,URLDecoder.decode(fileName,"UTF-8")?:"未知文件名")
+                AudioPlayerScreen(URLDecoder.decode(sourceUri, "UTF-8"), dataSourceType,URLDecoder.decode(fileName,"UTF-8")?:"未知文件名",extraList)
             }
         }
         composable("SMBFileListScreen/{path}") { backStackEntry ->
@@ -237,7 +243,15 @@ fun MzDKPlayerAPP() {
             if (encodedIp != null) {
 
                 val path = URLDecoder.decode(URLDecoder.decode(encodedIp, "UTF-8"), "UTF-8")
-                Log.d("encodedPath", "${URLDecoder.decode(encodedUsername, "UTF-8")}${URLDecoder.decode(encodedPassword, "UTF-8")}${URLDecoder.decode(encodedShareName, "UTF-8")}",)
+                Log.d(
+                    "encodedPath",
+                    "${URLDecoder.decode(encodedUsername, "UTF-8")}${
+                        URLDecoder.decode(
+                            encodedPassword,
+                            "UTF-8"
+                        )
+                    }${URLDecoder.decode(encodedShareName, "UTF-8")}"
+                )
                 FTPFileListScreen(
                     URLDecoder.decode(encodedShareName, "UTF-8"),
                     mainNavController,
@@ -261,7 +275,7 @@ fun MzDKPlayerAPP() {
             if (encodedIp != null) {
 
                 //val path = URLDecoder.decode(URLDecoder.decode(encodedIp, "UTF-8"), "UTF-8")
-                Log.d("encodedPath", "${URLDecoder.decode(newSubPath, "UTF-8")}",)
+                Log.d("encodedPath", "${URLDecoder.decode(newSubPath, "UTF-8")}")
                 NFSFileListScreen(
                     URLDecoder.decode(newSubPath, "UTF-8"),
                     mainNavController,
@@ -283,7 +297,7 @@ fun MzDKPlayerAPP() {
             if (encodedIp != null) {
 
                 //val path = URLDecoder.decode(URLDecoder.decode(encodedIp, "UTF-8"), "UTF-8")
-                Log.d("encodedPath", "${URLDecoder.decode(newSubPath, "UTF-8")}",)
+                Log.d("encodedPath", "${URLDecoder.decode(newSubPath, "UTF-8")}")
                 HTTPLinkFileListScreen(
                     URLDecoder.decode(encodedIp, "UTF-8"),
                     URLDecoder.decode(newSubPath, "UTF-8"),

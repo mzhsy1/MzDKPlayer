@@ -2,6 +2,7 @@ package org.mz.mzdkplayer.ui.screen.smbfile
 
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Icon
@@ -41,7 +43,9 @@ import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.logic.model.AudioItem
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
 import org.mz.mzdkplayer.tool.builderPlayer
@@ -54,6 +58,7 @@ import org.mz.mzdkplayer.ui.style.myListItemColor
 import java.net.URLDecoder
 import java.net.URLEncoder
 
+@OptIn(UnstableApi::class)
 @Composable
 fun SMBFileListScreen(path: String?, navController: NavHostController) {
     val context = LocalContext.current
@@ -238,6 +243,19 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                                     navController.navigate("VideoPlayer/$encodedUri/SMB/$encodedFileName")
                                                 }
                                                 Tools.containsAudioFormat(fileExtension) -> {
+                                                    val audioFiles = files.filter {
+                                                        Tools.containsAudioFormat(Tools.extractFileExtension(it.name))
+                                                    }
+                                                    val audioItems = audioFiles.map { audioFile ->
+                                                        AudioItem(
+                                                            uri = "smb://${audioFile.username}:${audioFile.password}@${audioFile.server}/${audioFile.share}${audioFile.fullPath}",
+                                                            fileName = audioFile.name,
+                                                            dataSourceType = "SMB"
+                                                        )
+                                                    }
+                                                    // 设置数据
+                                                    MzDkPlayerApplication.clearStringList("audio_playlist")
+                                                    MzDkPlayerApplication.setStringList("audio_playlist", audioItems)
                                                     val encodedUri = try {
                                                         URLEncoder.encode(
                                                             "smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}",

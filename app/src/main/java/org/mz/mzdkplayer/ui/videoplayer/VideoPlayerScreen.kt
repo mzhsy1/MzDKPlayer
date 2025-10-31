@@ -225,11 +225,11 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
                     // 打开 HTTP 输入流
                     when (dataSourceType) {
                         "WEBDAV" -> {
-                            SmbUtils.openWebDavFileInputStream(danmakuUri)
+                            SmbUtils.openWebDavFileInputStream(danmakuUri,"video")
                         }
 
                         "HTTP" -> {
-                            SmbUtils.openHTTPLinkXmlInputStream(danmakuUri.toString())
+                            SmbUtils.openHTTPLinkXmlInputStream(danmakuUri.toString(),"video")
                         }
 
                         else -> {
@@ -246,11 +246,11 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
 
                 "ftp" -> {
                     // 使用 SMB 工具打开输入流
-                    SmbUtils.openFtpFileInputStream(danmakuUri)
+                    SmbUtils.openFtpFileInputStream(danmakuUri,"video")
                 }
 
                 "nfs" -> {
-                    SmbUtils.openNfsFileInputStream(danmakuUri)
+                    SmbUtils.openNfsFileInputStream(danmakuUri,"video")
                 }
 
                 else -> {

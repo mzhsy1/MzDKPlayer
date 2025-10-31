@@ -162,15 +162,14 @@ object SmbUtils {
      * 调用者负责在使用完毕后关闭返回的 InputStream。
      */
     @Throws(IOException::class)
-    suspend fun openWebDavFileInputStream(webDavUri: Uri): InputStream {
+    suspend fun openWebDavFileInputStream(webDavUri: Uri,sampleMimeType: String): InputStream {
          return withContext(Dispatchers.IO) {
             // 1. 解析 URI
             val scheme = webDavUri.scheme ?: throw IOException("Invalid WebDAV URI: no scheme")
             if (scheme != "http" && scheme != "https") {
                 throw IOException("Invalid WebDAV URI scheme: $scheme")
             }
-            // val host = webDavUri.host ?: throw IOException("Invalid WebDAV URI: no host")
-            // val port = webDavUri.port.takeIf { it != -1 } ?: if (scheme == "https") 443 else 80
+
             val path = webDavUri.path ?: throw IOException("Invalid WebDAV URI: no path")
             if (path.isEmpty() || path == "/") {
                 throw IOException("Invalid WebDAV URI: path is empty or root")
@@ -218,10 +217,7 @@ object SmbUtils {
             // 6. 设置认证信息
             tempSardine.setCredentials(username, password)
 
-            // 7. 构建完整的文件 URL
-            // 注意：webDavUri.toString() 已经是完整的 URL，可以直接使用
-            // 但为了清晰和可能的路径处理，我们也可以这样构建：
-            // val fullFileUrl = "$baseUrl$path"
+
             val fullFileUrl = webDavUri.toString()
 
             try {
@@ -236,7 +232,13 @@ object SmbUtils {
                 // 如果未来 Sardine 实现有变化，可能需要调整。
 
                 // 返回 InputStream 给调用者，调用者负责关闭它。
-                return@withContext inputStream
+                if (sampleMimeType.contains("audio")&&sampleMimeType.contains("raw")){
+                    return@withContext inputStream
+                }else if (sampleMimeType.contains("video")){
+                    return@withContext inputStream
+                }else{
+                    return@withContext  LimitedInputStream(inputStream, 5 * 1024 * 1024)
+                }
 
             } catch (e: Exception) {
                 // 捕获 Sardine 相关异常（如网络错误、认证失败、文件不存在等）
@@ -255,7 +257,7 @@ object SmbUtils {
      * 示例 URI: ftp://user:pass@host:port/path/to/file.xml
      */
     @Throws(IOException::class)
-    suspend fun openFtpFileInputStream(ftpUri: Uri): InputStream {
+    suspend fun openFtpFileInputStream(ftpUri: Uri, sampleMimeType: String): InputStream {
         return withContext(Dispatchers.IO) {
             val host = ftpUri.host ?: throw IOException("Invalid FTP URI: no host")
             val port = ftpUri.port.takeIf { it != -1 } ?: 21 // 默认 FTP 端口
@@ -296,23 +298,38 @@ object SmbUtils {
                     throw IOException("无法打开 FTP 文件输入流: $path. 服务器回复: ${ftpClient.replyString}")
                 }
 
+                // 根据 MIME 类型决定是否限制流大小
+                val wrappedInputStream = if (sampleMimeType.contains("audio") && sampleMimeType.contains("raw")) {
+                    inputStream
+                } else if (sampleMimeType.contains("video")) {
+                    inputStream
+                } else {
+                    LimitedInputStream(inputStream, 5 * 1024 * 1024) // 限制为5MB
+                }
+
                 // 返回一个包装的 InputStream，在关闭时也处理 FTP 连接
                 object : InputStream() {
                     private var isClosed = false // 防止重复关闭
+                    private val delegateStream = wrappedInputStream
 
                     override fun read(): Int {
                         check(!isClosed) { "Stream is closed" }
-                        return inputStream.read()
+                        return delegateStream.read()
                     }
 
                     override fun read(b: ByteArray): Int {
                         check(!isClosed) { "Stream is closed" }
-                        return inputStream.read(b)
+                        return delegateStream.read(b)
                     }
 
                     override fun read(b: ByteArray, off: Int, len: Int): Int {
                         check(!isClosed) { "Stream is closed" }
-                        return inputStream.read(b, off, len)
+                        return delegateStream.read(b, off, len)
+                    }
+
+                    override fun available(): Int {
+                        check(!isClosed) { "Stream is closed" }
+                        return delegateStream.available()
                     }
 
                     override fun close() {
@@ -322,13 +339,11 @@ object SmbUtils {
                         var completeOk: Boolean
                         var inputStreamException: Throwable? = null
                         var completeCommandException: Throwable? = null
-                       // val logoutException: Throwable? = null
-                       // val disconnectException: Throwable? = null
 
                         try {
                             // 1. 首先关闭输入流
                             try {
-                                inputStream.close()
+                                delegateStream.close()
                             } catch (e: Exception) {
                                 inputStreamException = e
                             }
@@ -367,30 +382,21 @@ object SmbUtils {
                                 throw IOException("Error closing FTP input stream", inputStreamException)
                             }
                             if (completeCommandException != null) {
-                                // 如果 completePendingCommand 失败，可能连接已损坏，但仍需确保连接关闭
-                                // 这里选择将它作为警告处理，除非它导致了关键问题
-                                // 或者，如果这是关键错误，可以抛出：
-                                // throw IOException("Error completing FTP command", completeCommandException)
-                                // 当前选择记录但不中断调用者（假设数据已读取完毕）
                                 Log.w("FTP", "FTP command completion error (ignoring if data read OK)", completeCommandException)
                             }
 
-
                         } finally {
-                            // 确保所有资源尝试都被释放，即使前面有异常
-                            // 注意：FTPClient 的 logout 和 disconnect 通常内部有 isConnected 检查，
-                            // 但我们显式检查以避免不必要的调用或潜在问题。
-                            // 上面的 try-catch 已经处理了这些，这里的 finally 主要是为了极端情况下的兜底。
-                            // 在当前结构下，这里的 finally 可能是多余的，因为上面已经处理了。
-                            // 保留注释说明意图。
+                            // 确保所有资源尝试都被释放
                         }
                     }
+
+                    override fun markSupported(): Boolean = delegateStream.markSupported()
+                    override fun mark(readlimit: Int) = delegateStream.mark(readlimit)
+                    override fun reset() = delegateStream.reset()
                 }
 
             } catch (e: Exception) {
                 // 在初始化或打开流阶段发生异常，需要清理资源
-
-
                 if (success) { // 只有成功登录才尝试注销
                     try {
                         ftpClient.logout()
@@ -410,6 +416,10 @@ object SmbUtils {
         }
     }
 
+
+
+
+
     /**
      * 根据完整的 NFS URI 打开文件并返回 InputStream
      * 示例 URI: nfs://host:/exported_path:path_within_export
@@ -417,7 +427,7 @@ object SmbUtils {
      * 注意: URI 格式解析依赖于 NFSDataSource 中的逻辑
      */
     @Throws(IOException::class)
-    suspend fun openNfsFileInputStream(nfsUri: Uri): InputStream {
+    suspend fun openNfsFileInputStream(nfsUri: Uri,sampleMimeType: String): InputStream {
         return withContext(Dispatchers.IO) {
             // --- 解析 NFS URI ---
             if (nfsUri.scheme?.lowercase() != "nfs") {
@@ -485,17 +495,7 @@ object SmbUtils {
 
                 // 直接返回文件的 InputStream
                 // 注意: Nfs3File 可能没有直接的 inputStream 属性。
-                // 需要根据 NFS 客户端库的实际 API 来实现。
-                // 如果库不直接提供，可能需要创建一个包装类。
-                // 但根据你的要求，假设库提供了类似的方法或我们可以创建一个。
-                // 例如，如果库提供了一个方法来获取一个 InputStream 包装器。
-                // 这里我们直接使用 file.inputStream (假设存在或通过其他方式创建)
-                // 如果库没有直接提供，可能需要像之前那样创建一个基于 Nfs3File 的 InputStream 包装器。
-                // 但根据你的简化要求和对 SMB 的类比，我们尝试直接返回。
-                // 由于 Nfs3File 本身通常不直接是 InputStream，我们需要创建一个。
-                // 这里提供一个基于 Nfs3File.read 方法的简单包装。
-                // 这个包装器需要实现 InputStream 的 read 方法，内部调用 file.read(offset, length, buffer, offset_in_buffer)
-                // 为了简化，我们创建一个匿名内部类 InputStream，持有 file 引用。
+
 
                 // 创建一个基于 Nfs3File 的简单 InputStream 包装器
                 val inputStream = object : InputStream() {
@@ -563,7 +563,14 @@ object SmbUtils {
                     }
                 }
 
-                return@withContext inputStream
+                // 返回 InputStream 给调用者，调用者负责关闭它。
+                if (sampleMimeType.contains("audio")&&sampleMimeType.contains("raw")){
+                    return@withContext inputStream
+                }else if (sampleMimeType.contains("video")){
+                    return@withContext inputStream
+                }else{
+                    return@withContext  LimitedInputStream(inputStream, 5 * 1024 * 1024)
+                }
 
             } catch (e: Exception) {
                 // 清理资源
@@ -594,7 +601,7 @@ object SmbUtils {
      * @throws IOException 如果连接失败或无法打开流
      */
     @Throws(IOException::class)
-    suspend fun openHTTPLinkXmlInputStream(xmlUrl: String): InputStream {
+    suspend fun openHTTPLinkXmlInputStream(xmlUrl: String, sampleMimeType: String): InputStream {
         return withContext(Dispatchers.IO) {
             val okHttpClient = OkHttpClient()
             val request = Request.Builder().url(xmlUrl).build()
@@ -613,37 +620,60 @@ object SmbUtils {
             // 获取输入流
             val inputStream = responseBody.byteStream()
 
+            // 根据 MIME 类型决定是否限制流大小
+            val wrappedInputStream = if (sampleMimeType.contains("audio") && sampleMimeType.contains("raw")) {
+                inputStream
+            } else if (sampleMimeType.contains("video")) {
+                inputStream
+            } else {
+                LimitedInputStream(inputStream, 5 * 1024 * 1024) // 限制为5MB
+            }
+
             // 返回一个包装的 InputStream，在关闭时也处理 HTTP 响应
             object : InputStream() {
                 private var isClosed = false // 防止重复关闭
+                private val delegateStream = wrappedInputStream
 
                 override fun read(): Int {
                     check(!isClosed) { "Stream is closed" }
-                    return inputStream.read()
+                    return delegateStream.read()
                 }
 
                 override fun read(b: ByteArray): Int {
                     check(!isClosed) { "Stream is closed" }
-                    return inputStream.read(b)
+                    return delegateStream.read(b)
                 }
 
                 override fun read(b: ByteArray, off: Int, len: Int): Int {
                     check(!isClosed) { "Stream is closed" }
-                    return inputStream.read(b, off, len)
+                    return delegateStream.read(b, off, len)
+                }
+
+                override fun available(): Int {
+                    check(!isClosed) { "Stream is closed" }
+                    return delegateStream.available()
                 }
 
                 override fun close() {
                     if (isClosed) return
                     isClosed = true
                     // 关闭输入流，OkHttp 会自动管理连接的释放
-                    inputStream.close()
+                    delegateStream.close()
                     // Response 对象在 inputStream 关闭后通常也应被关闭
                     // 虽然 byteStream() 后 body 可能已被消耗，但显式关闭是好习惯
                     response.close()
                 }
+
+                override fun markSupported(): Boolean = delegateStream.markSupported()
+                override fun mark(readlimit: Int) = delegateStream.mark(readlimit)
+                override fun reset() = delegateStream.reset()
             }
         }
     }
+
+
+
+
 
 
     /**

@@ -55,20 +55,20 @@ fun AudioPlayerControls(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 AudioPlayerControlsIcon(
-                    icon = painterResource(id = R.drawable.baseline_hd_24),
+                    icon = painterResource(id = R.drawable.repeatone),
                     state = state,
                     isPlaying = isPlaying,
                     onClick = {
-                        // 可以扩展为显示视频选项或切换音频质量
+
                     }
                 )
                 AudioPlayerControlsIcon(
                     modifier = Modifier.padding(start = 12.dp),
-                    icon = painterResource(id = R.drawable.baseline_speaker_24),
+                    icon = painterResource(id = R.drawable.queuemusic),
                     state = state,
                     isPlaying = isPlaying,
                     onClick = {
-                        // 可以扩展为显示音频设置
+
                     }
                 )
             }
