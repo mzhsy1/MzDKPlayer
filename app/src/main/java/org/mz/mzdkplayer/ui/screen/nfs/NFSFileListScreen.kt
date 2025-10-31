@@ -240,7 +240,7 @@ fun NFSFileListScreen(
                                                                 file.name,
                                                                 "UTF-8"
                                                             )
-                                                        }"
+                                                        }/0"
                                                     )
                                                 } else {
                                                     Toast.makeText(

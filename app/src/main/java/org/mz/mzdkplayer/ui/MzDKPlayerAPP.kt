@@ -195,19 +195,20 @@ fun MzDKPlayerAPP() {
                 VideoPlayerScreen(URLDecoder.decode(sourceUri, "UTF-8"), dataSourceType,URLDecoder.decode(fileName,"UTF-8"))
             }
         }
-        composable("AudioPlayer/{sourceUri}/{dataSourceType}/{fileName}") { backStackEntry ->
+        composable("AudioPlayer/{sourceUri}/{dataSourceType}/{fileName}/{currentIndex}") { backStackEntry ->
 
             //页面路由对应的页面组件
             val sourceUri = backStackEntry.arguments?.getString("sourceUri")
             val dataSourceType = backStackEntry.arguments?.getString("dataSourceType")
             val fileName = backStackEntry.arguments?.getString("fileName")
+            val currentIndex = backStackEntry.arguments?.getString("currentIndex")?:"1"
             // 获取特定的字符串列表
             val extraList = MzDkPlayerApplication.getStringList("audio_playlist")
             // 检查参数是否不为空，并渲染屏幕
             if (sourceUri != null && dataSourceType != null) {
                 Log.d("sourceUri", sourceUri)
                 Log.d("dataSourceType", dataSourceType)
-                AudioPlayerScreen(URLDecoder.decode(sourceUri, "UTF-8"), dataSourceType,URLDecoder.decode(fileName,"UTF-8")?:"未知文件名",extraList)
+                AudioPlayerScreen(URLDecoder.decode(sourceUri, "UTF-8"), dataSourceType,URLDecoder.decode(fileName,"UTF-8")?:"未知文件名",extraList,currentIndex)
             }
         }
         composable("SMBFileListScreen/{path}") { backStackEntry ->

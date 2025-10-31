@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -156,7 +157,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                     }
                 } catch (e: Exception) {
                     Log.e("SMBFileListScreen", "播放器初始化失败: ${e.message}", e)
-                   // Toast.makeText(context, "播放器初始化失败", Toast.LENGTH_SHORT).show()
+                    // Toast.makeText(context, "播放器初始化失败", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -231,6 +232,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                                     } catch (e: Exception) {
                                                         Log.e("SMBFileListScreen", "视频URI编码失败: $e")
                                                         Toast.makeText(context, "视频路径编码失败", Toast.LENGTH_SHORT).show()
+                                                        return@ListItem
 
                                                     }
                                                     val encodedFileName = try {
@@ -238,24 +240,41 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                                     } catch (e: Exception) {
                                                         Log.e("SMBFileListScreen", "文件名编码失败: $e")
                                                         Toast.makeText(context, "文件名编码失败", Toast.LENGTH_SHORT).show()
+                                                        return@ListItem
 
                                                     }
                                                     navController.navigate("VideoPlayer/$encodedUri/SMB/$encodedFileName")
                                                 }
                                                 Tools.containsAudioFormat(fileExtension) -> {
-                                                    val audioFiles = files.filter {
-                                                        Tools.containsAudioFormat(Tools.extractFileExtension(it.name))
+                                                    // ✅ 构建音频文件列表
+                                                    val audioFiles = files.filter { smbFile ->
+                                                        Tools.containsAudioFormat(Tools.extractFileExtension(smbFile.name))
                                                     }
-                                                    val audioItems = audioFiles.map { audioFile ->
+
+                                                    // ✅ 构建文件名到索引的映射（O(N) 一次构建）
+                                                    val nameToIndexMap = audioFiles.withIndex().associateBy({ it.value.name }, { it.index })
+
+                                                    // ✅ 快速查找索引（O(1)）
+                                                    val currentAudioIndex = nameToIndexMap[file.name] ?: -1
+                                                    if (currentAudioIndex == -1) {
+                                                        Log.e("SMBFileListScreen", "未找到文件在音频列表中: ${file.name}")
+                                                        return@ListItem
+
+                                                    }
+
+                                                    // ✅ 构建播放列表
+                                                    val audioItems = audioFiles.map { smbFile ->
                                                         AudioItem(
-                                                            uri = "smb://${audioFile.username}:${audioFile.password}@${audioFile.server}/${audioFile.share}${audioFile.fullPath}",
-                                                            fileName = audioFile.name,
+                                                            uri = "smb://${smbFile.username}:${smbFile.password}@${smbFile.server}/${smbFile.share}${smbFile.fullPath}",
+                                                            fileName = smbFile.name,
                                                             dataSourceType = "SMB"
                                                         )
                                                     }
+
                                                     // 设置数据
                                                     MzDkPlayerApplication.clearStringList("audio_playlist")
                                                     MzDkPlayerApplication.setStringList("audio_playlist", audioItems)
+
                                                     val encodedUri = try {
                                                         URLEncoder.encode(
                                                             "smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}",
@@ -264,16 +283,19 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                                     } catch (e: Exception) {
                                                         Log.e("SMBFileListScreen", "音频URI编码失败: $e")
                                                         Toast.makeText(context, "音频路径编码失败", Toast.LENGTH_SHORT).show()
-
+                                                        return@ListItem
                                                     }
+
                                                     val encodedFileName = try {
                                                         URLEncoder.encode(file.name, "UTF-8")
                                                     } catch (e: Exception) {
                                                         Log.e("SMBFileListScreen", "文件名编码失败: $e")
                                                         Toast.makeText(context, "文件名编码失败", Toast.LENGTH_SHORT).show()
-
+                                                        return@ListItem
                                                     }
-                                                    navController.navigate("AudioPlayer/$encodedUri/SMB/$encodedFileName")
+
+                                                    // ✅ 传递当前音频项在播放列表中的索引
+                                                    navController.navigate("AudioPlayer/$encodedUri/SMB/$encodedFileName/$currentAudioIndex")
                                                 }
                                                 else -> {
                                                     Toast.makeText(
@@ -387,6 +409,5 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
         }
     }
 }
-
 
 

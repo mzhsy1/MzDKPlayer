@@ -38,34 +38,35 @@ fun BuilderMzAudioPlayer(
     mediaUri: String,
     exoPlayer: ExoPlayer,
     dataSourceType: String,
-    extraList: List<AudioItem>
+    extraList: List<AudioItem>,
+    currentIndex: String
 ) {
     val videoPlayerViewModel: VideoPlayerViewModel = viewModel()
 
     LaunchedEffect(Unit) {
         Log.d("播放器uri", mediaUri)
 
-        // 创建媒体项列表
+//        // 创建媒体项列表
         val mediaItems = mutableListOf<MediaItem>()
 
         // 添加当前播放的媒体项
-        val currentMediaItem = if (mediaUri.startsWith("smb://") || mediaUri.startsWith("http://") || mediaUri.startsWith(
-                "https://"
-            ) || mediaUri.startsWith("ftp://") || mediaUri.startsWith("nfs://")
-        ) {
-            MediaItem.fromUri(mediaUri)
-        } else {
-            // 处理本地文件路径
-            val uri = if (mediaUri.startsWith("file://")) {
-                mediaUri.toUri()
-            } else {
-                // 假设是文件路径，添加 file:// 前缀
-                "file://$mediaUri".toUri()
-            }
-            Log.d("MediaItemUri", uri.toString())
-            MediaItem.fromUri(uri)
-        }
-        mediaItems.add(currentMediaItem)
+//        val currentMediaItem = if (mediaUri.startsWith("smb://") || mediaUri.startsWith("http://") || mediaUri.startsWith(
+//                "https://"
+//            ) || mediaUri.startsWith("ftp://") || mediaUri.startsWith("nfs://")
+//        ) {
+//            MediaItem.fromUri(mediaUri)
+//        } else {
+//            // 处理本地文件路径
+//            val uri = if (mediaUri.startsWith("file://")) {
+//                mediaUri.toUri()
+//            } else {
+//                // 假设是文件路径，添加 file:// 前缀
+//                "file://$mediaUri".toUri()
+//            }
+//            Log.d("MediaItemUri", uri.toString())
+//            MediaItem.fromUri(uri)
+//        }
+//        mediaItems.add(currentMediaItem)
 
         // 添加额外的媒体项到播放列表
         for (audioItem in extraList) {
@@ -89,7 +90,7 @@ fun BuilderMzAudioPlayer(
         // 清除现有的播放列表并添加新的媒体项
         exoPlayer.clearMediaItems()
         exoPlayer.addMediaItems(mediaItems)
-
+        exoPlayer.seekTo(currentIndex.toInt(), 0) // ⭐ 关键：跳到指定位置
         exoPlayer.prepare()
         exoPlayer.addListener(object : Player.Listener {
             override fun onTracksChanged(tracks: Tracks) {
@@ -196,7 +197,7 @@ fun rememberAudioPlayer(context: Context, mediaUri: String, dataSourceType: Stri
             .build()
             .apply {
                 playWhenReady = true
-                repeatMode = Player.REPEAT_MODE_ALL // 设置为循环播放整个播放列表
+                repeatMode = Player.REPEAT_MODE_OFF // 设置为循环播放整个播放列表
                 val audioAttributes = AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA) // 媒体播放
                     .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC) // 音乐内容

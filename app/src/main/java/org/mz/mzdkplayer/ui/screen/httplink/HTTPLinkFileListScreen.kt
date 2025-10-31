@@ -290,7 +290,7 @@ fun HTTPLinkFileListScreen(
                                                         navController.navigate("AudioPlayer/$encodedFileUrl/HTTP/${ URLEncoder.encode(
                                                             resource.name,
                                                             "UTF-8"
-                                                        )}")
+                                                        )}/0")
                                                         //navController.navigate("AudioPlayer/$encodedUri/SMB/$encodedFileName")
                                                     }
                                                     else -> {

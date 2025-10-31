@@ -139,7 +139,8 @@ fun AudioPlayerScreen(
     mediaUri: String,
     dataSourceType: String,
     fileName: String,
-    extraList: List<AudioItem>
+    extraList: List<AudioItem>,
+    currentIndex: String
 ) {
     val context = LocalContext.current
     val exoPlayer = rememberAudioPlayer(context, mediaUri, dataSourceType)
@@ -155,7 +156,7 @@ fun AudioPlayerScreen(
     var audioInfo: AudioInfo? by remember { mutableStateOf(null) } // 关键：存储 audioInfo
     var currentMediaUri by remember {  mutableStateOf(mediaUri) }
     var currentFileName by remember { mutableStateOf(fileName) } // 替换原来的 fileName 状态
-    BuilderMzAudioPlayer(context, currentMediaUri, exoPlayer, dataSourceType,extraList)
+    BuilderMzAudioPlayer(context, currentMediaUri, exoPlayer, dataSourceType,extraList,currentIndex)
 
     DisposableEffect(Unit) {
         onDispose {
@@ -436,6 +437,7 @@ private fun Modifier.dPadEvents(
     onRight = {
         if (!audioPlayerState.controlsVisible) {
             exoPlayer.seekForward()
+
             pulseState.setType(AudioPlayerPulse.Type.FORWARD)
         }
     },

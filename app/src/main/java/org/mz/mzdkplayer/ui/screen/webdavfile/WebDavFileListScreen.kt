@@ -211,7 +211,7 @@ fun WebDavFileListScreen(
                                                         navController.navigate("AudioPlayer/$encodedFileUrl/WEBDAV/${ URLEncoder.encode(
                                                             fileName,
                                                             "UTF-8"
-                                                        )}")
+                                                        )}/0")
                                                         //navController.navigate("AudioPlayer/$encodedUri/SMB/$encodedFileName")
                                                     }
                                                     else -> {

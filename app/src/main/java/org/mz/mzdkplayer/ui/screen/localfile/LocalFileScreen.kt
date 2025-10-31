@@ -128,7 +128,7 @@ fun LocalFileScreen(path: String?, navController: NavHostController) {
                                                 file.name,
                                                 "UTF-8"
                                             )
-                                        }"
+                                        }/0"
                                     )
                                 }else {
                                     Toast.makeText(
