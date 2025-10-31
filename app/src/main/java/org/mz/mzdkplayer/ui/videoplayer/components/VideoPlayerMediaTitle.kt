@@ -64,7 +64,7 @@ fun VideoPlayerMediaTitle(
         )
         Spacer(Modifier.height(4.dp))
         Row {
-            // TODO: Replaced with Badge component once developed
+
             when (type) {
                 VideoPlayerMediaTitleType.AD -> {
                     Text(

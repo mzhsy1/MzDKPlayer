@@ -41,6 +41,7 @@ import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 
 import org.mz.mzdkplayer.logic.model.SMBConnection
+import org.mz.mzdkplayer.tool.Tools
 
 import org.mz.mzdkplayer.ui.theme.TvTextField
 
@@ -167,6 +168,9 @@ fun SMBConScreen() {
                 modifier = Modifier.fillMaxWidth(0.5f),
                 enabled = true,
                 onClick = {
+                    if (!Tools.validateSMBConnectionParams(context,ip,shareName)) {
+                        return@MyIconButton
+                    }
                     viewModel.testConnectSMB(ip, username, password, shareName)
                     //viewModel.listSMBFiles(config = SMBConfig(ip,shareName,"/",username,password))
                 },
@@ -178,16 +182,11 @@ fun SMBConScreen() {
 
                 modifier = Modifier.fillMaxWidth(0.5f),
                 onClick = {
-                    if (ip.isBlank()) {
-                        Toast.makeText(context, "请输入服务器地址", Toast.LENGTH_SHORT).show()
-                        return@MyIconButton
-                    }
-                    if (shareName.isBlank()) {
-                        Toast.makeText(context, "请输入分享文件名称", Toast.LENGTH_SHORT).show()
+                    if (!Tools.validateSMBConnectionParams(context,ip,shareName)) {
                         return@MyIconButton
                     }
 
-                    if (isShareNameValid && isConnected) {
+                    if  (isConnected) {
                         if (smbListViewModel.addConnection(
                                 SMBConnection(
                                     UUID.randomUUID().toString(),
@@ -203,10 +202,8 @@ fun SMBConScreen() {
                         } else {
                             Toast.makeText(context, "添加失败,已经有相同的连接存在", Toast.LENGTH_SHORT).show()
                         }
-                    } else if (!isConnected) {
-                        Toast.makeText(context, "请先连接成功后再保存", Toast.LENGTH_SHORT).show()
                     } else {
-                        Toast.makeText(context, "分享名称不能以'/'开头", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "请先连接成功后再保存", Toast.LENGTH_SHORT).show()
                     }
                 },
 

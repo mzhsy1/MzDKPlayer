@@ -31,7 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.tooling.preview.Preview
+
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.Icon
@@ -39,6 +39,8 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.NFSConnection // 引入 NFS 数据模型
+import org.mz.mzdkplayer.tool.Tools
+import org.mz.mzdkplayer.ui.screen.vm.HTTPLinkConnectionStatus
 import org.mz.mzdkplayer.ui.screen.vm.NFSConViewModel
 
 import org.mz.mzdkplayer.ui.screen.vm.NFSConnectionStatus // 引入 NFS 状态枚举
@@ -150,6 +152,9 @@ fun NFSConScreen(
                     enabled = connectionStatus != NFSConnectionStatus.Connecting, // 连接中时禁用
                     onClick = {
                         keyboardController?.hide() // 隐藏键盘
+                        if (!Tools.validateConnectionParams(context,serverAddress,shareName)) {
+                            return@MyIconButton
+                    }
                         // 创建临时连接对象用于测试
                         val tempConnection = NFSConnection(
                             id = UUID.randomUUID().toString(), // 临时 ID
@@ -171,12 +176,11 @@ fun NFSConScreen(
                         .padding(start = 8.dp), // 平分宽度并加左边距
                     onClick = {
                         keyboardController?.hide()
-                        if (serverAddress.isBlank()) {
-                            Toast.makeText(context, "请输入服务器地址", Toast.LENGTH_SHORT).show()
+                        if (!Tools.validateConnectionParams(context,serverAddress,shareName)) {
                             return@MyIconButton
                         }
-                        if (shareName.isBlank()) {
-                            Toast.makeText(context, "请输入分享文件名称", Toast.LENGTH_SHORT).show()
+                        if (connectionStatus !is NFSConnectionStatus.Connected){
+                            Toast.makeText(context, "请先连接成功后再保存", Toast.LENGTH_SHORT).show()
                             return@MyIconButton
                         }
                         // 创建 NfsConnection 数据对象
@@ -260,7 +264,7 @@ fun NFSConScreen(
                                                     "点击了文件: $resourceName",
                                                     Toast.LENGTH_SHORT
                                                 ).show()
-                                                // TODO: 实现文件播放逻辑
+
                                                 // 可以使用 nfsFile 的路径等信息
                                             }
                                         }

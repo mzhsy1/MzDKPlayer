@@ -57,7 +57,6 @@ fun AudioPlayerMediaTitle(
         }
         Spacer(Modifier.height(4.dp))
         Row {
-            // TODO: Replaced with Badge component once developed
             when (type) {
                 AudioPlayerMediaTitleType.AD -> {
                     Text(

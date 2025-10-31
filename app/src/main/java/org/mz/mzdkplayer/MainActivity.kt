@@ -15,13 +15,36 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
-        private const val TARGET_DENSITY_DPI = 320 // 目标 DPI 值
-        private const val BASE_DENSITY = 160       // Android mdpi 基准密度
+        private const val TARGET_WIDTH_DP = 960 // 目标宽度，单位dp
+        private const val MIN_DENSITY_DPI = 120 // 最小密度DPI
+        private const val MAX_DENSITY_DPI = 640 // 最大密度DPI
     }
 
     // 不再使用 lazy 初始化，避免在 Context 完全可用前访问资源
     private var needsDensityChangeCalculated = false
     private var needsDensityChangeResult = false
+    private var calculatedTargetDensityDpi = -1
+
+    /**
+     * 计算目标密度DPI
+     * @param context 用于获取屏幕尺寸的上下文
+     * @return 计算出的目标DPI值
+     */
+    private fun calculateTargetDensityDpi(context: Context): Int {
+        val displayMetrics = context.resources.displayMetrics
+        val screenWidthDp = displayMetrics.widthPixels / displayMetrics.density
+
+        // 计算需要的DPI：实际像素宽度 / 目标dp宽度
+        val targetDpi = (displayMetrics.widthPixels * 160.0 / TARGET_WIDTH_DP).toInt()
+
+        // 限制在合理范围内
+        val clampedDpi = targetDpi.coerceIn(MIN_DENSITY_DPI, MAX_DENSITY_DPI)
+
+        Log.i(TAG, "Screen width: ${displayMetrics.widthPixels}px, Screen width in dp: ${screenWidthDp}, " +
+                "Calculated target DPI: $targetDpi, Clamped to: $clampedDpi")
+
+        return clampedDpi
+    }
 
     /**
      * 在 attachBaseContext 中安全地计算是否需要更改 DPI。
@@ -33,13 +56,19 @@ class MainActivity : AppCompatActivity() {
         }
 
         val currentDpi = context.resources?.displayMetrics?.densityDpi ?: -1
-        val isValidDpi = currentDpi > 0
-        val isStandardMultiple = isValidDpi && (currentDpi % BASE_DENSITY == 0)
-        val shouldChange = isValidDpi && !isStandardMultiple
+        if (currentDpi <= 0) {
+            Log.w(TAG, "Invalid current DPI: $currentDpi")
+            needsDensityChangeResult = false
+            needsDensityChangeCalculated = true
+            return false
+        }
+
+        calculatedTargetDensityDpi = calculateTargetDensityDpi(context)
+        val shouldChange = calculatedTargetDensityDpi != currentDpi
 
         Log.i(
             TAG,
-            "Current DPI: $currentDpi. Valid? $isValidDpi. Is standard multiple of $BASE_DENSITY? $isStandardMultiple. Needs change? $shouldChange"
+            "Current DPI: $currentDpi. Target DPI: $calculatedTargetDensityDpi. Needs change? $shouldChange"
         )
 
         needsDensityChangeResult = shouldChange
@@ -61,13 +90,15 @@ class MainActivity : AppCompatActivity() {
         if (newBase != null) {
             try {
                 val shouldApplyCustomDpi = calculateNeedsDensityChange(newBase)
-                if (shouldApplyCustomDpi) {
+                if (shouldApplyCustomDpi && calculatedTargetDensityDpi > 0) {
                     val newConfig = Configuration(newBase.resources.configuration)
-                    newConfig.densityDpi = TARGET_DENSITY_DPI
-                    Log.i(TAG, "Applying custom densityDpi: $TARGET_DENSITY_DPI")
+                    newConfig.densityDpi = calculatedTargetDensityDpi
+                    Log.i(TAG, "Applying custom densityDpi: $calculatedTargetDensityDpi")
                     contextToUse = newBase.createConfigurationContext(newConfig)
+                } else if (!shouldApplyCustomDpi) {
+                    Log.d(TAG, "No density change needed - current DPI matches target or target DPI is invalid")
                 } else {
-                    Log.d(TAG, "Keeping original densityDpi as it's a standard multiple of $BASE_DENSITY or invalid.")
+                    Log.w(TAG, "Density change needed but target DPI is invalid: $calculatedTargetDensityDpi")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error calculating or applying density change", e)

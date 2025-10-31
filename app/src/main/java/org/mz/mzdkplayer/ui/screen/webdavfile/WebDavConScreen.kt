@@ -38,6 +38,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.WebDavConnection
+import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.ui.screen.vm.HTTPLinkConnectionStatus
 import org.mz.mzdkplayer.ui.screen.vm.WebDavConViewModel
 import org.mz.mzdkplayer.ui.screen.vm.WebDavConnectionStatus
@@ -153,6 +154,9 @@ fun WebDavConScreen(
                 
                 onClick = {
                     keyboardController?.hide() // 隐藏键盘
+                    if (!Tools.validateWebConnectionParams(context, serverAddress = baseUrl)) {
+                        return@MyIconButton
+                    }
                     webDavConViewModel.connectToWebDav(baseUrl, username, password)
                 },
             )
@@ -164,8 +168,7 @@ fun WebDavConScreen(
                 // 只有在已连接时才允许保存
                 onClick = {
                     keyboardController?.hide()
-                    if (baseUrl.isBlank()) {
-                        Toast.makeText(context, "请输入服务器地址", Toast.LENGTH_SHORT).show()
+                    if (!Tools.validateWebConnectionParams(context, serverAddress = baseUrl)) {
                         return@MyIconButton
                     }
 
@@ -241,9 +244,7 @@ fun WebDavConScreen(
                                 } else {
                                     // 点击文件：可以触发下载或其他操作
                                     Toast.makeText(context, "点击了文件: $resourceName", Toast.LENGTH_SHORT).show()
-                                    // TODO: 实现文件下载逻辑
-                                    // val fullUrl = webDavConViewModel.getResourceFullUrl(resourceName)
-                                    // viewModel.downloadFile(fullUrl, localPath)
+
                                 }
                             }
                             .padding(8.dp),

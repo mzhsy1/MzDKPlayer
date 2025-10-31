@@ -38,6 +38,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.HTTPLinkConnection // 使用提供的数据模型
+import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.ui.screen.vm.HTTPLinkConViewModel
 import org.mz.mzdkplayer.ui.screen.vm.HTTPLinkConnectionStatus
 import org.mz.mzdkplayer.ui.screen.vm.HTTPLinkListViewModel // 假设你也有一个管理 HTTPLink 连接列表的 ViewModel
@@ -140,14 +141,16 @@ fun HTTPLinkConScreen(
             ) {
                 // 操作按钮 - 连接
                 MyIconButton(
-                    text = "连接",
+                    text = "测试连接",
                     imageVector = Icons.Outlined.Check,
                     modifier = Modifier
                         .weight(1f)
                         .padding(end = 8.dp), // 平分宽度并加右边距
-                    enabled = connectionStatus != HTTPLinkConnectionStatus.Connecting, // 连接中时禁用
                     onClick = {
                         keyboardController?.hide() // 隐藏键盘
+                        if (!Tools.validateConnectionParams(context, serverAddress, shareName = shareName)) {
+                            return@MyIconButton
+                        }
                         // 构建完整的 URL，确保以 / 结尾
                         val fullUrl = if (shareName.startsWith("/")) {
                             "$serverAddress$shareName"
@@ -162,12 +165,7 @@ fun HTTPLinkConScreen(
                         }
                         Log.d("HTTPLinkConScreen", "构建的完整 URL: $normalizedUrl")
                         // 创建临时连接对象用于连接
-                        val tempConnection = HTTPLinkConnection(
-                            id = UUID.randomUUID().toString(), // 临时 ID
-                            name = aliasName,
-                            serverAddress = serverAddress,
-                            shareName = shareName
-                        )
+
                         httpLinkConViewModel.connectToHTTPLink(normalizedUrl) // 传递确保以 / 结尾的完整 URL
                     },
                 )
@@ -183,12 +181,7 @@ fun HTTPLinkConScreen(
                     //enabled = connectionStatus is HTTPLinkConnectionStatus.Connected,
                     onClick = {
                         keyboardController?.hide()
-                        if (serverAddress.isBlank()) {
-                            Toast.makeText(context, "请输入服务器地址", Toast.LENGTH_SHORT).show()
-                            return@MyIconButton
-                        }
-                        if (shareName.isBlank()) {
-                            Toast.makeText(context, "请输入分享文件名称", Toast.LENGTH_SHORT).show()
+                        if (!Tools.validateConnectionParams(context, serverAddress, shareName = shareName)) {
                             return@MyIconButton
                         }
                         if (connectionStatus !is HTTPLinkConnectionStatus.Connected){
@@ -278,7 +271,7 @@ fun HTTPLinkConScreen(
                                                     "点击了文件: $resourceName\nURL: $fileUrl",
                                                     Toast.LENGTH_LONG // 长一些以便显示 URL
                                                 ).show()
-                                                // TODO: 实现文件播放逻辑
+
                                                 // 可以使用 `fileUrl` 或 `resource` 的其他信息
                                             }
                                         }

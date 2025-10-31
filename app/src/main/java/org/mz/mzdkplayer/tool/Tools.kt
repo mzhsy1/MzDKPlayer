@@ -1,6 +1,8 @@
 package org.mz.mzdkplayer.tool
 
 
+import android.content.Context
+import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.compose.foundation.Image
 import androidx.compose.runtime.Composable
@@ -382,5 +384,69 @@ object Tools {
             else -> languageCode.uppercase()
         }
     }
+
+    /**
+    * 验证连接参数
+    * @param context 上下文用于显示Toast
+    * @param serverAddress 服务器地址
+    * @param shareName 分享文件名称
+    * @return 如果验证通过返回true，否则返回false
+    */
+     fun validateConnectionParams(context: Context, serverAddress: String, shareName: String): Boolean {
+        if (serverAddress.isBlank()) {
+            Toast.makeText(context, "请输入服务器地址", Toast.LENGTH_SHORT).show()
+            return false
+        }
+        if (shareName.isBlank()) {
+            Toast.makeText(context, "请输入分享文件名称", Toast.LENGTH_SHORT).show()
+            return false
+        }
+        if (!shareName.startsWith("/")) {
+            Toast.makeText(context, "分享连接必须以/开头", Toast.LENGTH_SHORT).show()
+            return false
+        }
+        return true
+    }
+
+    /**
+     * 验证连接参数
+     * @param context 上下文用于显示Toast
+     * @param serverAddress 服务器地址
+     * @param shareName 分享文件名称
+     * @return 如果验证通过返回true，否则返回false
+     */
+    fun validateSMBConnectionParams(context: Context, serverAddress: String, shareName: String): Boolean {
+        if (serverAddress.isBlank()) {
+            Toast.makeText(context, "请输入服务器地址", Toast.LENGTH_SHORT).show()
+            return false
+        }
+        if (shareName.isBlank()) {
+            Toast.makeText(context, "请输入分享文件名称", Toast.LENGTH_SHORT).show()
+            return false
+        }
+        if (shareName.startsWith("/")) {
+            Toast.makeText(context, "SMB分享名称不能以/开头", Toast.LENGTH_SHORT).show()
+            return false
+        }
+        return true
+    }
+
+    /**
+     * 验证连接参数
+     * @param context 上下文用于显示Toast
+     * @param serverAddress 服务器地址
+     * @return 如果验证通过返回true，否则返回false
+     */
+    fun validateWebConnectionParams(context: Context, serverAddress: String): Boolean {
+        if (serverAddress.isBlank()) {
+            Toast.makeText(context, "请输入服务器地址", Toast.LENGTH_SHORT).show()
+            return false
+        }
+
+        return true
+    }
+
+
+
 }
 

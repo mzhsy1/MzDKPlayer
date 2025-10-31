@@ -245,7 +245,7 @@ fun NFSConListScreen(mainNavController: NavHostController) {
                             .width(230.dp),
                         selected = false,
                         onClick = {
-                            // TODO: 实现编辑功能或导航到编辑屏幕
+
                             // 例如: mainNavController.navigate("EditNFSScreen/$selectedId")
                             Log.d("NFSList", "Edit button clicked for id: $selectedId")
                             nfsListViewModel.closeOPanel() // 操作后关闭面板

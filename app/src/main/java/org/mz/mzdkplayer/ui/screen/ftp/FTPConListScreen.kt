@@ -244,8 +244,7 @@ fun FTPConListScreen(mainNavController: NavHostController) {
                             .width(230.dp),
                         selected = false,
                         onClick = {
-                            // TODO: 实现编辑功能或导航到编辑屏幕
-                            // 例如: mainNavController.navigate("EditFTPScreen/$selectedId")
+
                             Log.d("FTPList", "Edit button clicked for id: $selectedId")
                             ftpListViewModel.closeOPanel() // 操作后关闭面板
                         },

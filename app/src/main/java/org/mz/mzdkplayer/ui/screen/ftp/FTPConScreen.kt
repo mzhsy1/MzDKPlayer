@@ -39,9 +39,11 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.FTPConnection // 引入 FTP 数据模型
+import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.ui.screen.vm.FTPConViewModel // 引入 FTP ViewModel
 import org.mz.mzdkplayer.ui.screen.vm.FTPConnectionStatus // 引入 FTP 状态枚举
 import org.mz.mzdkplayer.ui.screen.vm.FTPListViewModel // 引入 FTP List ViewModel
+import org.mz.mzdkplayer.ui.screen.vm.HTTPLinkConnectionStatus
 import org.mz.mzdkplayer.ui.style.myTTFColor
 import org.mz.mzdkplayer.ui.theme.MyIconButton
 import org.mz.mzdkplayer.ui.theme.TvTextField
@@ -71,7 +73,7 @@ fun FTPConScreen(
     var username by remember { mutableStateOf("wang") }
     var password by remember { mutableStateOf("Wa541888") }
     var aliasName by remember { mutableStateOf("My FTP Server") } // 连接别名
-    var shareName by remember { mutableStateOf("movies") } // FTP 共享文件夹名称
+    var shareName by remember { mutableStateOf("/movies") } // FTP 共享文件夹名称
 
     // 用于控制键盘
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -168,7 +170,7 @@ fun FTPConScreen(
                 value = shareName,
                 onValueChange = { shareName = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = "Initial Share Folder (Optional)",
+                placeholder = "Initial Share Folder e.g. /movies",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )
@@ -184,6 +186,9 @@ fun FTPConScreen(
                     enabled = connectionStatus != FTPConnectionStatus.Connecting, // 连接中时禁用
                     onClick = {
                         keyboardController?.hide() // 隐藏键盘
+                        if (!Tools.validateConnectionParams(context, server, shareName = shareName)) {
+                            return@MyIconButton
+                        }
                         val portInt = port.toIntOrNull() ?: 21 // 转换端口，失败则默认 21
                         ftpConViewModel.connectToFTP(server, portInt, username, password, shareName)
                     },
@@ -199,15 +204,13 @@ fun FTPConScreen(
 
                         keyboardController?.hide()
                         // 验证必填项
-                        if (server.isBlank()) {
-                            Toast.makeText(context, "请输入服务器地址", Toast.LENGTH_SHORT).show()
+                        if (!Tools.validateConnectionParams(context, server, shareName = shareName)) {
                             return@MyIconButton
                         }
-                        if (shareName.isBlank()) {
-                            Toast.makeText(context, "请输入分享文件名称", Toast.LENGTH_SHORT).show()
+                        if (connectionStatus !is FTPConnectionStatus.Connected){
+                            Toast.makeText(context, "请先连接成功后再保存", Toast.LENGTH_SHORT).show()
                             return@MyIconButton
                         }
-
                         val portInt = port.toIntOrNull() ?: 21 // 保存时也转换端口，空值则默认 21
                         // 创建 FTPConnection 数据对象
                         val newConnection = FTPConnection(
