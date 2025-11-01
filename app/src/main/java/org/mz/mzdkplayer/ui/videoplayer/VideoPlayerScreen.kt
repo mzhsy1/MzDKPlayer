@@ -644,7 +644,8 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
                     }
                 }) {
             // 根据 ViewModel 中的选择显示不同的面板
-            when (videoPlayerViewModel.selectedAorVorS) {
+            when (videoPlayerViewModel.selectedAorVorS)
+            {
                 "A" -> AudioTrackPanel(
                     videoPlayerViewModel.selectedAtIndex, // 当前选中的音频轨道索引
                     onSelectedIndexChange = {

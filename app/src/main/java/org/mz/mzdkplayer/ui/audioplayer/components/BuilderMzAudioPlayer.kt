@@ -29,6 +29,7 @@ import org.mz.mzdkplayer.tool.FtpDataSourceFactory
 import org.mz.mzdkplayer.tool.NFSDataSourceFactory
 import org.mz.mzdkplayer.tool.SmbDataSourceConfig
 import org.mz.mzdkplayer.tool.WebDavDataSourceFactory
+import org.mz.mzdkplayer.ui.screen.vm.AudioPlayerViewModel
 
 @OptIn(UnstableApi::class)
 @SuppressLint("SuspiciousIndentation")
@@ -39,9 +40,10 @@ fun BuilderMzAudioPlayer(
     exoPlayer: ExoPlayer,
     dataSourceType: String,
     extraList: List<AudioItem>,
-    currentIndex: String
+    currentIndex: String,
+    audioPlayerViewModel: AudioPlayerViewModel
 ) {
-    val videoPlayerViewModel: VideoPlayerViewModel = viewModel()
+
 
     LaunchedEffect(Unit) {
         Log.d("播放器uri", mediaUri)
@@ -91,49 +93,12 @@ fun BuilderMzAudioPlayer(
         exoPlayer.clearMediaItems()
         exoPlayer.addMediaItems(mediaItems)
         exoPlayer.seekTo(currentIndex.toInt(), 0) // ⭐ 关键：跳到指定位置
+        audioPlayerViewModel.selectedAtIndex = currentIndex.toInt()
         exoPlayer.prepare()
         exoPlayer.addListener(object : Player.Listener {
             override fun onTracksChanged(tracks: Tracks) {
-                // Update UI using current tracks.
-                val trackGroups = exoPlayer.currentTracks.groups
-                videoPlayerViewModel.mutableSetOfAudioTrackGroups.clear()
-                videoPlayerViewModel.mutableSetOfVideoTrackGroups.clear()
-                videoPlayerViewModel.mutableSetOfTextTrackGroups.clear()
 
-                for (trackGroup in trackGroups) {
-                    // Group level information.
-                    val trackType = trackGroup.type
-                    // 音频轨
-                    if (trackType == C.TRACK_TYPE_AUDIO) {
-                        videoPlayerViewModel.mutableSetOfAudioTrackGroups.add(trackGroup)
-                        Log.d("TRACK_TYPE_AUDIO", trackGroup.getTrackFormat(0).toString())
-                    }
-                }
 
-                if (videoPlayerViewModel.mutableSetOfAudioTrackGroups.isNotEmpty()) {
-                    for ((index, atGroup) in videoPlayerViewModel.mutableSetOfAudioTrackGroups.withIndex()) {
-                        Log.d("VideoTrackGroupsID", atGroup.getTrackFormat(0).id.toString())
-                        if (atGroup.isTrackSelected(0)) {
-                            Log.d("sindex", index.toString())
-                            videoPlayerViewModel.selectedAtIndex = index
-                        }
-                    }
-                }
-                if (videoPlayerViewModel.mutableSetOfVideoTrackGroups.isNotEmpty()) {
-                    for ((index, vtGroup) in videoPlayerViewModel.mutableSetOfVideoTrackGroups.withIndex()) {
-                        if (vtGroup.isTrackSelected(0)) {
-                            videoPlayerViewModel.selectedVtIndex = index
-                        }
-                    }
-                }
-                if (videoPlayerViewModel.mutableSetOfTextTrackGroups.isNotEmpty()) {
-                    for ((index, vtGroup) in videoPlayerViewModel.mutableSetOfTextTrackGroups.withIndex()) {
-                        if (vtGroup.isTrackSelected(0)) {
-                            videoPlayerViewModel.selectedStIndex = index
-                        }
-                    }
-                }
-                videoPlayerViewModel.onTracksChangedState = 1
             }
 
         })

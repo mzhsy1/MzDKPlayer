@@ -5,19 +5,29 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Log
+import android.view.KeyEvent
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 import androidx.compose.runtime.*
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
 
 import androidx.compose.ui.platform.LocalContext
 
@@ -154,9 +164,22 @@ fun AudioPlayerScreen(
 
     var audioMetadata by remember { mutableStateOf(AudioMetadata()) }
     var audioInfo: AudioInfo? by remember { mutableStateOf(null) } // 关键：存储 audioInfo
-    var currentMediaUri by remember {  mutableStateOf(mediaUri) }
+    var currentMediaUri by remember { mutableStateOf(mediaUri) }
     var currentFileName by remember { mutableStateOf(fileName) } // 替换原来的 fileName 状态
-    BuilderMzAudioPlayer(context, currentMediaUri, exoPlayer, dataSourceType,extraList,currentIndex)
+
+    // 添加缓存状态，用于在单曲循环时恢复音频信息
+    var cachedAudioInfo by remember { mutableStateOf<AudioInfo?>(null) }
+    var cachedAudioMetadata by remember { mutableStateOf(AudioMetadata()) }
+
+    BuilderMzAudioPlayer(
+        context,
+        currentMediaUri,
+        exoPlayer,
+        dataSourceType,
+        extraList,
+        currentIndex,
+        audioPlayerViewModel
+    )
 
     DisposableEffect(Unit) {
         onDispose {
@@ -171,26 +194,50 @@ fun AudioPlayerScreen(
         if (sampleMimeType.isNotEmpty()) {
             withContext(Dispatchers.IO) {
                 try {
-                    val inputStream: InputStream? = when (currentMediaUri.toUri().scheme?.lowercase()) {
-                        "smb" -> SmbUtils.openSmbFileInputStream(currentMediaUri.toUri(),sampleMimeType)
-                        "http", "https" -> {
-                            when (dataSourceType) {
-                                "WEBDAV" -> SmbUtils.openWebDavFileInputStream(currentMediaUri.toUri(),sampleMimeType)
-                                "HTTP" -> SmbUtils.openHTTPLinkXmlInputStream(currentMediaUri,sampleMimeType)
-                                else -> URL(currentMediaUri).openStream()
+                    val inputStream: InputStream? =
+                        when (currentMediaUri.toUri().scheme?.lowercase()) {
+                            "smb" -> SmbUtils.openSmbFileInputStream(
+                                currentMediaUri.toUri(),
+                                sampleMimeType
+                            )
+
+                            "http", "https" -> {
+                                when (dataSourceType) {
+                                    "WEBDAV" -> SmbUtils.openWebDavFileInputStream(
+                                        currentMediaUri.toUri(),
+                                        sampleMimeType
+                                    )
+
+                                    "HTTP" -> SmbUtils.openHTTPLinkXmlInputStream(
+                                        currentMediaUri,
+                                        sampleMimeType
+                                    )
+
+                                    else -> URL(currentMediaUri).openStream()
+                                }
+                            }
+
+                            "file" -> context.contentResolver.openInputStream(currentMediaUri.toUri())
+                                ?: throw java.io.IOException("Could not open file input stream for $currentMediaUri")
+
+                            "ftp" -> SmbUtils.openFtpFileInputStream(
+                                currentMediaUri.toUri(),
+                                sampleMimeType
+                            )
+
+                            "nfs" -> SmbUtils.openNfsFileInputStream(
+                                currentMediaUri.toUri(),
+                                sampleMimeType
+                            )
+
+                            else -> {
+                                Log.w(
+                                    "AudioPlayerScreen",
+                                    "Unsupported scheme for URI: $currentMediaUri"
+                                )
+                                null
                             }
                         }
-
-                        "file" -> context.contentResolver.openInputStream(currentMediaUri.toUri())
-                            ?: throw java.io.IOException("Could not open file input stream for $currentMediaUri")
-
-                        "ftp" -> SmbUtils.openFtpFileInputStream(currentMediaUri.toUri(),sampleMimeType)
-                        "nfs" -> SmbUtils.openNfsFileInputStream(currentMediaUri.toUri(),sampleMimeType)
-                        else -> {
-                            Log.w("AudioPlayerScreen", "Unsupported scheme for URI: $currentMediaUri")
-                            null
-                        }
-                    }
 
                     Log.d("AudioPlayerScreen", "Opened input stream")
 
@@ -199,6 +246,7 @@ fun AudioPlayerScreen(
                         val info =
                             extractAudioInfoAndLyricsFromStream(context, stream, sampleMimeType)
                         audioInfo = info // 更新状态
+                        cachedAudioInfo = info // 同时缓存一份
 
                         Log.i("AudioPlayerScreen", "Loaded audio info and lyrics")
                     }
@@ -218,7 +266,9 @@ fun AudioPlayerScreen(
         exoPlayer.addListener(object : Player.Listener {
             override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
                 super.onMediaMetadataChanged(mediaMetadata)
-                audioMetadata = extractAudioMetadataFromPlayer(exoPlayer)
+                val newMetadata = extractAudioMetadataFromPlayer(exoPlayer)
+                audioMetadata = newMetadata
+                cachedAudioMetadata = newMetadata // 同时缓存一份
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -226,11 +276,24 @@ fun AudioPlayerScreen(
                     Player.STATE_READY -> {
                         sampleMimeType = exoPlayer.audioFormat?.sampleMimeType.toString()
                         // Player 准备好后，更新元数据（可能包含更准确的时长）
-                        audioMetadata = extractAudioMetadataFromPlayer(exoPlayer)
+                        val newMetadata = extractAudioMetadataFromPlayer(exoPlayer)
+                        audioMetadata = newMetadata
+                        cachedAudioMetadata = newMetadata
                     }
 
                     Player.STATE_BUFFERING -> {}
-                    Player.STATE_ENDED -> {}
+                    Player.STATE_ENDED -> {
+                        // 播放结束时，如果是单曲循环模式，恢复音频信息
+                        if (exoPlayer.repeatMode == Player.REPEAT_MODE_ONE) {
+                            if (cachedAudioInfo != null) {
+                                audioInfo = cachedAudioInfo
+                            }
+                            if (cachedAudioMetadata.title != "未知标题") {
+                                audioMetadata = cachedAudioMetadata
+                            }
+                        }
+                    }
+
                     Player.STATE_IDLE -> {}
 
                 }
@@ -239,11 +302,23 @@ fun AudioPlayerScreen(
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 super.onMediaItemTransition(mediaItem, reason)
                 Log.d("onMediaItemTransition", mediaItem?.localConfiguration?.uri.toString())
-                currentMediaUri = mediaItem?.localConfiguration?.uri.toString()
-                audioInfo = null // 重置音频信息
 
-                // ✅ 提取并更新文件名
-                currentFileName = Tools.extractFileNameFromUri(currentMediaUri)
+                if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) {
+                    val newUri = mediaItem?.localConfiguration?.uri?.toString() ?: return
+                    currentMediaUri = newUri
+                    audioInfo = null
+                    currentFileName = Tools.extractFileNameFromUri(newUri)
+
+                    // ✅ 查找当前 URI 在 extraList 中的索引
+                    val newIndex = extraList.indexOfFirst { it.uri == newUri }
+                    if (newIndex != -1) {
+                        audioPlayerViewModel.selectedAtIndex = newIndex
+                    } else {
+                        Log.w("AudioPlayerScreen", "Could not find index for URI: $newUri")
+                    }
+                } else {
+                    Log.d("onMediaItemTransition", "Repeat transition - keeping current audio info")
+                }
             }
 
             override fun onIsPlayingChanged(isExoPlaying: Boolean) {
@@ -255,7 +330,9 @@ fun AudioPlayerScreen(
             }
         })
         delay(500)
-        audioMetadata = extractAudioMetadataFromPlayer(exoPlayer)
+        val initialMetadata = extractAudioMetadataFromPlayer(exoPlayer)
+        audioMetadata = initialMetadata
+        cachedAudioMetadata = initialMetadata
     }
 
     LaunchedEffect(Unit) {
@@ -303,6 +380,7 @@ fun AudioPlayerScreen(
             // 1. 使用 remember 来缓存解码后的 Bitmap
             val coverBitmap: Bitmap? = remember(audioInfo?.artworkData) { // 依赖 artworkData
                 // 当 artworkData 改变时，才重新执行 lambda
+                // 为了性能，也可以考虑在这里直接用 BitmapFactory.decodeByteArray
                 audioInfo?.artworkData?.let { data ->
                     try {
                         // 假设 createArtworkBitmap 是一个纯函数，只做解码
@@ -325,9 +403,11 @@ fun AudioPlayerScreen(
                 AlbumCoverDisplay(coverBitmap)
 
             }
-            Column(  modifier = Modifier
-                .fillMaxHeight(0.8f)
-                .fillMaxWidth(0.75f)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight(0.8f)
+                    .fillMaxWidth(0.75f)
+            ) {
 
                 Box(
                     modifier = Modifier
@@ -342,11 +422,21 @@ fun AudioPlayerScreen(
                             color = Color.White,
                             maxLines = 1
                         )
-                        Row (Modifier.padding(top = 8.dp)){
-                            Text(text = "艺术家 : ${audioInfo?.artist ?: "未知歌手"}", color = Color.Gray, fontSize = 16.sp, maxLines = 1)
+                        Row(Modifier.padding(top = 8.dp)) {
+                            Text(
+                                text = "艺术家 : ${audioInfo?.artist ?: "未知歌手"}",
+                                color = Color.Gray,
+                                fontSize = 16.sp,
+                                maxLines = 1
+                            )
 
                             Text(text = " · ", color = Color.Gray)
-                            Text(text = "专辑 : ${audioInfo?.album ?: "未知专辑"}", color = Color.Gray,fontSize = 16.sp, maxLines = 1)
+                            Text(
+                                text = "专辑 : ${audioInfo?.album ?: "未知专辑"}",
+                                color = Color.Gray,
+                                fontSize = 16.sp,
+                                maxLines = 1
+                            )
                         }
                     }
                 }
@@ -386,7 +476,6 @@ fun AudioPlayerScreen(
         // 控制层叠在底部
         AudioPlayerOverlay(
             modifier = Modifier.align(Alignment.BottomCenter),
-            focusRequester = focusRequester,
             state = audioPlayerState,
             isPlaying = isPlaying,
             subtitles = { },
@@ -417,6 +506,52 @@ fun AudioPlayerScreen(
             },
             atpFocus = audioPlayerViewModel.atpFocus
         )
+
+        // 音轨/字幕选择面板的动画可见性
+        AnimatedVisibility(
+            audioPlayerViewModel.atpVisibility, // 根据 ViewModel 状态显示/隐藏
+            enter = fadeIn(), // 淡入动画
+            exit = fadeOut(), // 淡出动画
+            modifier = Modifier
+                .widthIn(200.dp, 420.dp) // 宽度范围
+                .fillMaxHeight() // 高度范围
+                .align(AbsoluteAlignment.CenterRight) // 右侧居中
+                // 向左偏移
+                .background(
+                    Color.Black.copy(0.8f), shape = RoundedCornerShape(2.dp) // 半透明黑色背景和圆角
+                )
+                // ✅ 关键修复：阻止事件冒泡到父组件
+                .handleDPadKeyEvents(
+                    onRight = { true },  // 消耗事件
+                    onUp = { true },     // 消耗事件
+                    onDown = { true },   // 消耗事件
+                    onLeft = { true }    // ✅ 关键：向左按键在面板内消耗，不传递到控制栏
+                )
+                // 处理焦点变化
+                .onFocusChanged {
+
+                        // 隐藏控制栏
+                        audioPlayerViewModel.atpFocus = it.isFocused
+
+                }) {
+            // 根据 ViewModel 中的选择显示不同的面板
+            when (audioPlayerViewModel.selectedAorVorS) {
+                "L" -> AudioListPanel(
+                    audioPlayerViewModel.selectedAtIndex, // 当前选中的音频轨道索引
+                    onSelectedIndexChange = {
+                        audioPlayerViewModel.selectedAtIndex = it
+                    }, // 索引变化回调
+                    extraList.toMutableList(), // 音频轨道组
+                    exoPlayer,
+                    audioPlayerViewModel
+
+                )
+            }
+            BackHandler(true) {
+                audioPlayerViewModel.atpVisibility = false
+                audioPlayerViewModel.atpFocus = false // 隐藏时重置焦点状态
+            }
+        }
     }
 }
 
@@ -429,24 +564,59 @@ private fun Modifier.dPadEvents(
     audioPlayerViewModel: AudioPlayerViewModel
 ): Modifier = handleDPadKeyEvents(
     onLeft = {
-        if (!audioPlayerState.controlsVisible) {
-            exoPlayer.seekBack()
-            pulseState.setType(AudioPlayerPulse.Type.BACK)
-        }
+//        // 面板可见时，不处理向左事件
+        !audioPlayerViewModel.atpVisibility
     },
     onRight = {
-        if (!audioPlayerState.controlsVisible) {
-            exoPlayer.seekForward()
-
-            pulseState.setType(AudioPlayerPulse.Type.FORWARD)
-        }
+//       !audioPlayerViewModel.atpVisibility
     },
-    onUp = { if (audioPlayerViewModel.atpFocus) audioPlayerState.showControls() },
-    onDown = { if (audioPlayerViewModel.atpFocus) audioPlayerState.showControls(); },
+    onUp = {
+        !audioPlayerViewModel.atpVisibility
+//        if (!audioPlayerViewModel.atpVisibility) {
+//            audioPlayerViewModel.atpVisibility = true
+//            audioPlayerViewModel.selectedAorVorS = "L"
+//            true
+//        } else {
+//            false
+//        }
+    },
+    onDown = {
+        !audioPlayerViewModel.atpVisibility
+//        if (audioPlayerViewModel.atpVisibility) {
+//            audioPlayerViewModel.atpVisibility = false
+//            true
+//        } else {
+//            false
+//        }
+    },
     onEnter = {
-        exoPlayer.pause()
-        audioPlayerState.showControls()
+            exoPlayer.pause()
+    },
+).onKeyEvent { keyEvent ->
+    when (keyEvent.key) {
+        Key.Menu -> {
+            // 菜单键处理逻辑
+            audioPlayerViewModel.atpVisibility = !audioPlayerViewModel.atpVisibility
+            true // 消费事件
+        }
+
+        Key.ButtonY -> {
+            audioPlayerViewModel.atpVisibility = !audioPlayerViewModel.atpVisibility
+            true // 消费事件
+        }
+
+        else -> {
+            // 检查原生键码
+            when (keyEvent.nativeKeyEvent.keyCode) {
+                KeyEvent.KEYCODE_MENU -> {
+                    audioPlayerViewModel.atpVisibility = !audioPlayerViewModel.atpVisibility
+                    true // 消费事件
+                }
+
+                else -> false
+            }
+        }
     }
-)
+}
 
 

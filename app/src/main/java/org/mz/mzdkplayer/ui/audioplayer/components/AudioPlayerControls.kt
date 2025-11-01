@@ -10,6 +10,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.C
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import org.mz.mzdkplayer.R
@@ -55,11 +56,19 @@ fun AudioPlayerControls(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 AudioPlayerControlsIcon(
-                    icon = painterResource(id = R.drawable.repeatone),
+                    icon = getRepeatModeIcon(exoPlayer.repeatMode), // 根据当前模式获取对应图标
                     state = state,
                     isPlaying = isPlaying,
                     onClick = {
-
+                        // 切换重复模式
+                        val currentMode = exoPlayer.repeatMode
+                        val newMode = when (currentMode) {
+                            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ONE
+                            Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_ALL
+                            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_OFF
+                            else -> Player.REPEAT_MODE_OFF
+                        }
+                        exoPlayer.repeatMode = newMode
                     }
                 )
                 AudioPlayerControlsIcon(
@@ -68,7 +77,7 @@ fun AudioPlayerControls(
                     state = state,
                     isPlaying = isPlaying,
                     onClick = {
-
+                        audioPlayerViewModel.atpVisibility = !audioPlayerViewModel.atpVisibility
                     }
                 )
             }
@@ -91,6 +100,17 @@ fun AudioPlayerControls(
         },
         more = null
     )
+}
+
+// 根据重复模式返回对应的图标资源
+@Composable
+private fun getRepeatModeIcon(repeatMode: Int): androidx.compose.ui.graphics.painter.Painter {
+    return when (repeatMode) {
+        Player.REPEAT_MODE_OFF -> painterResource(id = R.drawable.listsx) // 列表顺序图标
+        Player.REPEAT_MODE_ONE -> painterResource(id = R.drawable.repeatone) // 单曲循环图标
+        Player.REPEAT_MODE_ALL -> painterResource(id = R.drawable.repeatlist) // 列表循环图标
+        else -> painterResource(id = R.drawable.listsx) // 默认返回普通重复图标
+    }
 }
 
 

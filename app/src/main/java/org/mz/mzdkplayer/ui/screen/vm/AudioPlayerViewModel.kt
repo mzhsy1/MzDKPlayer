@@ -7,4 +7,9 @@ import androidx.lifecycle.ViewModel
 
 class AudioPlayerViewModel:ViewModel() {
     var atpFocus by mutableStateOf(false)
+    var atpVisibility by mutableStateOf(false)
+
+    var selectedAorVorS by mutableStateOf("L")
+
+    var selectedAtIndex by mutableStateOf(0)
 }

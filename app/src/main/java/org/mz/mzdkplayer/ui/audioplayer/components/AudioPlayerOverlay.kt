@@ -22,6 +22,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -53,11 +54,9 @@ fun AudioPlayerOverlay(
     atpFocus:Boolean
 
 ) {
-    LaunchedEffect(state.controlsVisible) {
-        if (state.controlsVisible) {
-            focusRequester.requestFocus()
-        }
-    }
+//    LaunchedEffect(Unit) {
+//        focusRequester.requestFocus()
+//    }
 
     LaunchedEffect(isPlaying) {
 //        if (!isPlaying) {
@@ -71,9 +70,10 @@ fun AudioPlayerOverlay(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        AnimatedVisibility(state.controlsVisible, Modifier, fadeIn(), fadeOut()) {
-           // CinematicBackground(Modifier.fillMaxSize())
-        }
+//        if (state.controlsVisible) {
+//
+//        }
+
 
         Column {
             Box(
@@ -83,19 +83,14 @@ fun AudioPlayerOverlay(
                 subtitles()
             }
 
-            AnimatedVisibility(
-                state.controlsVisible,
-                Modifier,
-                slideInVertically { it },
-                slideOutVertically { it }
+            // ✅ 控制栏一直显示，但根据 atpFocus 决定是否可聚焦
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 56.dp)
+                    .padding(bottom = 32.dp, top = 8.dp)
+
             ) {
-                Column(
-                    modifier = Modifier
-                        .padding(horizontal = 56.dp)
-                        .padding(bottom = 32.dp, top = 8.dp)
-                ) {
-                    controls()
-                }
+                controls()
             }
         }
         centerButton()
