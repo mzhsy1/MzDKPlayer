@@ -54,9 +54,9 @@ fun AudioPlayerOverlay(
     atpFocus:Boolean
 
 ) {
-//    LaunchedEffect(Unit) {
-//        focusRequester.requestFocus()
-//    }
+    if (state.controlsVisible) {
+        focusRequester.requestFocus()
+    }
 
     LaunchedEffect(isPlaying) {
 //        if (!isPlaying) {

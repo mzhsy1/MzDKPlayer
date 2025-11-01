@@ -565,13 +565,13 @@ private fun Modifier.dPadEvents(
 ): Modifier = handleDPadKeyEvents(
     onLeft = {
 //        // 面板可见时，不处理向左事件
-        !audioPlayerViewModel.atpVisibility
+        true
     },
     onRight = {
 //       !audioPlayerViewModel.atpVisibility
     },
     onUp = {
-        !audioPlayerViewModel.atpVisibility
+        true
 //        if (!audioPlayerViewModel.atpVisibility) {
 //            audioPlayerViewModel.atpVisibility = true
 //            audioPlayerViewModel.selectedAorVorS = "L"
@@ -581,7 +581,7 @@ private fun Modifier.dPadEvents(
 //        }
     },
     onDown = {
-        !audioPlayerViewModel.atpVisibility
+        true
 //        if (audioPlayerViewModel.atpVisibility) {
 //            audioPlayerViewModel.atpVisibility = false
 //            true
@@ -596,12 +596,12 @@ private fun Modifier.dPadEvents(
     when (keyEvent.key) {
         Key.Menu -> {
             // 菜单键处理逻辑
-            audioPlayerViewModel.atpVisibility = !audioPlayerViewModel.atpVisibility
+            audioPlayerViewModel.atpVisibility = true
             true // 消费事件
         }
 
         Key.ButtonY -> {
-            audioPlayerViewModel.atpVisibility = !audioPlayerViewModel.atpVisibility
+            audioPlayerViewModel.atpVisibility = true
             true // 消费事件
         }
 
@@ -609,7 +609,7 @@ private fun Modifier.dPadEvents(
             // 检查原生键码
             when (keyEvent.nativeKeyEvent.keyCode) {
                 KeyEvent.KEYCODE_MENU -> {
-                    audioPlayerViewModel.atpVisibility = !audioPlayerViewModel.atpVisibility
+                    audioPlayerViewModel.atpVisibility = true
                     true // 消费事件
                 }
 
