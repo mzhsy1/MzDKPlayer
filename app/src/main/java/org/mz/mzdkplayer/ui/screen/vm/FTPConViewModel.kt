@@ -219,7 +219,7 @@ class FTPConViewModel : ViewModel() {
      */
     fun getResourceFullUrl(resourceName: String): String {
         val server = this.server
-        val port = ftpClient?.defaultPort ?: 21 // 获取连接时使用的端口
+        val port = this.port // 获取连接时使用的端口
         val path = getCurrentPath()
         val cleanPath = if (path.endsWith("/")) path else "$path/"
         val cleanResourceName = resourceName.removePrefix("/") // 确保资源名不以 / 开头

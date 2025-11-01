@@ -26,7 +26,9 @@ import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
+import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.logic.model.AudioItem
 import org.mz.mzdkplayer.logic.model.NFSConnection
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
@@ -216,31 +218,58 @@ fun NFSFileListScreen(
                                                     "Full file URL: $fullFileUrl"
                                                 )
 
-                                                val encodedFileUrl = URLEncoder.encode(
-                                                    fullFileUrl,
-                                                    "UTF-8"
-                                                )
+                                                val encodedFileUrl =
+                                                    URLEncoder.encode(fullFileUrl, "UTF-8")
                                                 if (Tools.containsVideoFormat(
-                                                        Tools.extractFileExtension(file.name)
+                                                        Tools.extractFileExtension(
+                                                            file.name
+                                                        )
                                                     )
                                                 ) {
-
                                                     // 导航到视频播放器
-                                                    navController.navigate("VideoPlayer/$encodedFileUrl/NFS/${ URLEncoder.encode(
-                                                        file.name,
-                                                        "UTF-8"
-                                                    )}")
-                                                } else if (Tools.containsAudioFormat(
-                                                        Tools.extractFileExtension(file.name)
+                                                    navController.navigate(
+                                                        "VideoPlayer/$encodedFileUrl/NFS/${
+                                                            URLEncoder.encode(
+                                                                file.name,
+                                                                "UTF-8"
+                                                            )
+                                                        }"
                                                     )
-                                                ) {
+                                                } else if (Tools.containsAudioFormat(Tools.extractFileExtension(file.name))) {
+                                                    // ✅ 构建音频文件列表
+                                                    val audioFiles = fileList.filter { nfsFile ->
+                                                        Tools.containsAudioFormat(Tools.extractFileExtension(nfsFile.name))
+                                                    }
+
+                                                    // ✅ 构建文件名到索引的映射（O(N) 一次构建）
+                                                    val nameToIndexMap = audioFiles.withIndex().associateBy({ it.value.name }, { it.index })
+
+                                                    // ✅ 快速查找索引（O(1)）
+                                                    val currentAudioIndex = nameToIndexMap[file.name] ?: -1
+                                                    if (currentAudioIndex == -1) {
+                                                        Log.e("FTPFileListScreen", "未找到文件在音频列表中: ${file.name}")
+                                                        return@launch
+
+                                                    }
+
+                                                    // ✅ 构建播放列表
+                                                    val audioItems = audioFiles.map { nfsFile ->
+                                                        AudioItem(
+                                                            uri = "nfs://${nfsConnection.serverAddress}:${nfsConnection.shareName}:${nfsFile.path}" ,
+                                                            fileName = nfsFile.name,
+                                                            dataSourceType = "HTTP"
+                                                        )
+                                                    }
+                                                    // 设置数据
+                                                    MzDkPlayerApplication.clearStringList("audio_playlist")
+                                                    MzDkPlayerApplication.setStringList("audio_playlist", audioItems)
                                                     navController.navigate(
                                                         "AudioPlayer/$encodedFileUrl/NFS/${
                                                             URLEncoder.encode(
                                                                 file.name,
                                                                 "UTF-8"
                                                             )
-                                                        }/0"
+                                                        }/$currentAudioIndex"
                                                     )
                                                 } else {
                                                     Toast.makeText(
@@ -254,7 +283,8 @@ fun NFSFileListScreen(
                                     },
                                     colors = myListItemColor(),
                                     modifier = Modifier
-                                        .padding(end = 10.dp).height(40.dp)
+                                        .padding(end = 10.dp)
+                                        .height(40.dp)
                                         .onFocusChanged {
                                             if (it.isFocused) {
                                                 focusedFileName = file.name;

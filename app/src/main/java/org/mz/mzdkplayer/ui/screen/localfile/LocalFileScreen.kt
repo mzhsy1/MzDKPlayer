@@ -38,7 +38,9 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
+import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.logic.model.AudioItem
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
@@ -117,6 +119,33 @@ fun LocalFileScreen(path: String?, navController: NavHostController) {
                                         Tools.extractFileExtension(file.name)
                                     )
                                 ) {
+                                    // ✅ 构建音频文件列表
+                                    val audioFiles = files.filter { localFile ->
+                                        Tools.containsAudioFormat(Tools.extractFileExtension(localFile.name))
+                                    }
+
+                                    // ✅ 构建文件名到索引的映射（O(N) 一次构建）
+                                    val nameToIndexMap = audioFiles.withIndex().associateBy({ it.value.name }, { it.index })
+
+                                    // ✅ 快速查找索引（O(1)）
+                                    val currentAudioIndex = nameToIndexMap[file.name] ?: -1
+                                    if (currentAudioIndex == -1) {
+                                        Log.e("FTPFileListScreen", "未找到文件在音频列表中: ${file.name}")
+                                        return@ListItem
+
+                                    }
+
+                                    // ✅ 构建播放列表
+                                    val audioItems = audioFiles.map { localFile ->
+                                        AudioItem(
+                                            uri = localFile.path,
+                                            fileName = localFile.name,
+                                            dataSourceType = "LOCAL"
+                                        )
+                                    }
+                                    // 设置数据
+                                    MzDkPlayerApplication.clearStringList("audio_playlist")
+                                    MzDkPlayerApplication.setStringList("audio_playlist", audioItems)
                                     navController.navigate(
                                         "AudioPlayer/${
                                             URLEncoder.encode(
@@ -128,7 +157,7 @@ fun LocalFileScreen(path: String?, navController: NavHostController) {
                                                 file.name,
                                                 "UTF-8"
                                             )
-                                        }/0"
+                                        }/$currentAudioIndex"
                                     )
                                 }else {
                                     Toast.makeText(

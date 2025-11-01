@@ -2,6 +2,7 @@ package org.mz.mzdkplayer.ui.screen.ftp
 
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,13 +19,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
+import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.logic.model.AudioItem
 import org.mz.mzdkplayer.logic.model.FTPConnection
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
@@ -36,6 +40,7 @@ import org.mz.mzdkplayer.ui.style.myListItemColor
 import java.net.URLEncoder
 import kotlin.text.ifEmpty
 
+@OptIn(UnstableApi::class)
 @Composable
 fun FTPFileListScreen(
     // path 现在是相对于 FTP 共享根目录的路径
@@ -112,9 +117,11 @@ fun FTPFileListScreen(
         when (connectionStatus) {
             is FTPConnectionStatus.Connecting -> {
                 // 显示加载指示器
-                LoadingScreen("正在连接FTP服务器",Modifier
-                    .fillMaxSize()
-                    .background(Color.Black))
+                LoadingScreen(
+                    "正在连接FTP服务器", Modifier
+                        .fillMaxSize()
+                        .background(Color.Black)
+                )
             }
 
             is FTPConnectionStatus.Error -> {
@@ -137,12 +144,14 @@ fun FTPFileListScreen(
                 } else {
                     // 已连接，显示文件列表
                     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                        LazyColumn(modifier = Modifier
-                            .padding(all = 10.dp)
-                            .fillMaxHeight()
-                            .weight(0.7f)) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .padding(all = 10.dp)
+                                .fillMaxHeight()
+                                .weight(0.7f)
+                        ) {
 
-                            Log.d("fileList", fileList.toString())
+                            //Log.d("fileList", fileList.toString())
 
                             items(fileList) { file ->
                                 // FTPFile 使用 isDirectory 方法
@@ -161,23 +170,22 @@ fun FTPFileListScreen(
                                                     "${path.trimEnd('/')}/$fileName"
                                                 }
                                                 // 对路径进行编码，空路径特殊处理
-                                                val encodedNewPath =
-                                                    URLEncoder.encode(
-                                                        newPath.ifEmpty { " " },
-                                                        "UTF-8"
-                                                    )
-                                                Log.d(
-                                                    "FTPFileListScreen",
-                                                    "Navigating to subdirectory: $newPath (encoded: $encodedNewPath)"
-                                                )
+                                                val encodedNewPath = URLEncoder.encode(newPath.ifEmpty { " " }, "UTF-8")
+                                                Log.d("FTPFileListScreen", "Navigating to subdirectory: $newPath (encoded: $encodedNewPath)")
                                                 // 导航到子目录，传递连接信息
                                                 navController.navigate("FTPFileListScreen/${ftpConnection.ip}/${ftpConnection.username}/${ftpConnection.password}/${ftpConnection.port}/$encodedNewPath")
                                             } else {
                                                 // 处理文件点击 - 导航到 VideoPlayer
-                                                val fullFileUrl = viewModel.getResourceFullUrl(fileName)
-                                                Log.d("FTPFileListScreen", "Full file URL: $fullFileUrl")
+
+                                                val fullFileUrl =
+                                                    viewModel.getResourceFullUrl(fileName)
+                                                Log.d(
+                                                    "FTPFileListScreen",
+                                                    "Full file URL: $fullFileUrl"
+                                                )
 // // 处理文件点击
-                                                val fileExtension = Tools.extractFileExtension(file.name)
+                                                val fileExtension =
+                                                    Tools.extractFileExtension(file.name)
                                                 val encodedFileUrl = URLEncoder.encode(
                                                     fullFileUrl,
                                                     "UTF-8"
@@ -186,26 +194,43 @@ fun FTPFileListScreen(
 //
                                                 when {
                                                     Tools.containsVideoFormat(fileExtension) -> {
-
                                                         // 导航到视频播放器
-                                                        navController.navigate("VideoPlayer/$encodedFileUrl/FTP/${ URLEncoder.encode(
-                                                            fileName,
-                                                            "UTF-8"
-                                                        )}")
+                                                        navController.navigate("VideoPlayer/$encodedFileUrl/FTP/${URLEncoder.encode(fileName, "UTF-8")}")
                                                     }
+
                                                     Tools.containsAudioFormat(fileExtension) -> {
-                                                        navController.navigate("AudioPlayer/$encodedFileUrl/FTP/${ URLEncoder.encode(
-                                                            fileName,
-                                                            "UTF-8"
-                                                        )}/0")
-                                                        //navController.navigate("AudioPlayer/$encodedUri/SMB/$encodedFileName")
+                                                        // ✅ 构建音频文件列表
+                                                        val audioFiles = fileList.filter { ftpFile ->
+                                                            Tools.containsAudioFormat(Tools.extractFileExtension(ftpFile.name))
+                                                        }
+
+                                                        // ✅ 构建文件名到索引的映射（O(N) 一次构建）
+                                                        val nameToIndexMap = audioFiles.withIndex().associateBy({ it.value.name }, { it.index })
+
+                                                        // ✅ 快速查找索引（O(1)）
+                                                        val currentAudioIndex = nameToIndexMap[file.name] ?: -1
+                                                        if (currentAudioIndex == -1) {
+                                                            Log.e("FTPFileListScreen", "未找到文件在音频列表中: ${file.name}")
+                                                            return@launch
+
+                                                        }
+
+                                                        // ✅ 构建播放列表
+                                                        val audioItems = audioFiles.map { ftpFile ->
+                                                            AudioItem(
+                                                                uri = viewModel.getResourceFullUrl(ftpFile.name),
+                                                                fileName = ftpFile.name,
+                                                                dataSourceType = "FTP"
+                                                            )
+                                                        }
+
+                                                        // 设置数据
+                                                        MzDkPlayerApplication.clearStringList("audio_playlist")
+                                                        MzDkPlayerApplication.setStringList("audio_playlist", audioItems)
+                                                        navController.navigate("AudioPlayer/$encodedFileUrl/FTP/${URLEncoder.encode(fileName, "UTF-8")}/$currentAudioIndex")
                                                     }
                                                     else -> {
-                                                        Toast.makeText(
-                                                            context,
-                                                            "不支持的文件格式: $fileExtension",
-                                                            Toast.LENGTH_SHORT
-                                                        ).show()
+                                                        Toast.makeText(context, "不支持的文件格式: $fileExtension", Toast.LENGTH_SHORT).show()
                                                     }
                                                 }
                                             }
@@ -213,13 +238,16 @@ fun FTPFileListScreen(
                                     },
                                     colors = myListItemColor(),
                                     modifier = Modifier
-                                        .padding(end = 10.dp).height(40.dp).onFocusChanged {
-                                        if (it.isFocused) {
-                                            focusedFileName = file.name;
-                                            focusedIsDir = file.isDirectory
-                                            focusedMediaUri = viewModel.getResourceFullUrl(fileName)
-                                        }
-                                    },
+                                        .padding(end = 10.dp)
+                                        .height(40.dp)
+                                        .onFocusChanged {
+                                            if (it.isFocused) {
+                                                focusedFileName = file.name;
+                                                focusedIsDir = file.isDirectory
+                                                focusedMediaUri =
+                                                    viewModel.getResourceFullUrl(fileName)
+                                            }
+                                        },
                                     scale = ListItemDefaults.scale(
                                         scale = 1.0f,
                                         focusedScale = 1.01f
@@ -247,10 +275,12 @@ fun FTPFileListScreen(
 
                                             )
                                     },
-                                    headlineContent = {  Text(
-                                        file.name, maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis, fontSize = 10.sp
-                                    ) }
+                                    headlineContent = {
+                                        Text(
+                                            file.name, maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis, fontSize = 10.sp
+                                        )
+                                    }
                                     // supportingContent = { Text(file.rawListing ?: "") } // 可以显示原始信息
                                 )
                             }

@@ -12,11 +12,15 @@ import androidx.media3.datasource.DataSpec
 import org.apache.commons.net.ftp.FTP
 import org.apache.commons.net.ftp.FTPClient
 import org.apache.commons.net.ftp.FTPConnectionClosedException
+import org.apache.commons.net.ftp.FTPFile
 import org.apache.commons.net.ftp.FTPReply
 import java.io.IOException
 import java.io.InputStream
+import java.time.Duration
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.min
+import kotlin.time.toDuration
 
 /**
  * 优化后的 FTP 数据源，借鉴了 Media3 HttpDataSource 的设计模式
@@ -48,7 +52,12 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
         private const val BUFFER_SIZE = 64 * 1024
         private const val SOCKET_TIMEOUT_MS = 30000
         private const val CONNECTION_TIMEOUT_MS = 10000
+        private const val DATA_TIMEOUT_MS = 60000
         private const val SPEED_LOG_INTERVAL_MS = 1000L
+
+        // 创建 Duration 对象
+        private val DATA_TIMEOUT_DURATION: Duration = Duration.ofMillis(DATA_TIMEOUT_MS.toLong())
+       // private val CONNECTION_TIMEOUT_DURATION: Duration = Duration.ofMillis(CONNECTION_TIMEOUT_MS.toLong())
     }
 
     /**
@@ -82,7 +91,7 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
             val startPosition = dataSpec.position
 
             // 范围验证 - 类似 HttpDataSource 的 416 处理
-            if (startPosition < 0 || startPosition > fileLength) {
+            if (startPosition !in 0..fileLength) {
                 closeConnectionQuietly()
                 throw DataSourceException(PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE)
             }
@@ -150,6 +159,8 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
                 controlEncoding = "UTF-8"
                 bufferSize = BUFFER_SIZE
                 connectTimeout = CONNECTION_TIMEOUT_MS
+                defaultTimeout = SOCKET_TIMEOUT_MS
+                dataTimeout = DATA_TIMEOUT_DURATION
             }
 
             // 连接到服务器
@@ -171,6 +182,7 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
             ftpClient?.apply {
                 setFileType(FTP.BINARY_FILE_TYPE)
                 enterLocalPassiveMode()
+
             }
 
             Log.i(TAG, "FTP 连接建立成功")
@@ -233,7 +245,7 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
     }
 
     /**
-     * 读取数据，借鉴 HttpDataSource 的读取模式
+     * 读取数据，修复可能的逻辑问题
      */
     @Throws(IOException::class)
     override fun read(buffer: ByteArray, offset: Int, readLength: Int): Int {
@@ -241,7 +253,8 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
             throw IOException("数据源未打开")
         }
 
-        if (bytesRead == bytesToRead) {
+        // 修复：检查是否已经读取完所有数据
+        if (bytesRead >= bytesToRead) {
             return C.RESULT_END_OF_INPUT
         }
 
@@ -252,14 +265,14 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
         ).toInt().coerceAtLeast(0)
 
         if (bytesToReadNow == 0) {
-            return 0
+            return C.RESULT_END_OF_INPUT  // 修复：返回 END_OF_INPUT 而不是 0
         }
 
         return readInternal(buffer, offset, bytesToReadNow)
     }
 
     /**
-     * 内部读取实现，包含性能监控
+     * 内部读取实现，简化连接检查
      */
     @Throws(IOException::class)
     private fun readInternal(buffer: ByteArray, offset: Int, length: Int): Int {
@@ -269,8 +282,9 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
             val bytesReadFromStream = inputStream.read(buffer, offset, length)
 
             if (bytesReadFromStream == -1) {
-                Log.d(TAG, "已到达文件末尾 (EOF)")
-                logAverageSpeed(true)
+                Log.d(TAG, "已到达文件末尾 (EOF)，已读取: $bytesRead/$bytesToRead 字节")
+                // 修复：确保标记为完全读取
+                bytesRead = bytesToRead
                 return C.RESULT_END_OF_INPUT
             }
 
@@ -281,15 +295,30 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
             // 通知传输进度
             bytesTransferred(bytesReadFromStream)
 
-            // 性能监控
-            logAverageSpeed(false)
+            // 性能监控（可选）
+            if (bytesReadFromStream > 0) {
+                logAverageSpeed(false)
+            }
 
             return bytesReadFromStream
 
         } catch (e: IOException) {
-            throw IOException("从 FTP 文件读取时出错", e)
+            Log.e(TAG, "从 FTP 文件读取时发生 IO 异常", e)
+            throw IOException("从 FTP 文件读取时出错: ${e.message}", e)
         } catch (e: Exception) {
+            Log.e(TAG, "从 FTP 文件读取时发生未知异常", e)
             throw IOException("从 FTP 文件读取时发生未知错误", e)
+        }
+    }
+
+    /**
+     * 检查 FTP 连接是否仍然有效
+     */
+    private fun isConnectionHealthy(): Boolean {
+        return try {
+            ftpClient?.isConnected == true && ftpClient?.sendNoOp() == true
+        } catch (e: Exception) {
+            false
         }
     }
 
@@ -355,7 +384,7 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
     }
 
     /**
-     * 静默关闭连接，类似 HttpDataSource 的 closeConnectionQuietly
+     * 静默关闭连接，增强对服务器主动断开连接的处理
      */
     private fun closeConnectionQuietly() {
         var inputStreamException: Exception? = null
@@ -368,52 +397,73 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
                 Log.d(TAG, "InputStream 已关闭")
             } catch (e: IOException) {
                 inputStreamException = e
-                Log.w(TAG, "关闭 InputStream 时出错", e)
+                Log.d(TAG, "关闭 InputStream 时发生非关键错误", e)
             }
         }
         fileInputStream = null
 
-        // 2. 完成 FTP 命令
+        // 2. 检查 FTP 客户端状态
         ftpClient?.let { client ->
-            if (client.isConnected) {
-                try {
-                    val completed = client.completePendingCommand()
-                    val completeReplyCode = client.replyCode
-                    if (completed) {
-                        Log.d(TAG, "FTP completePendingCommand 成功。回复码: $completeReplyCode")
-                    } else {
-                        Log.w(TAG, "FTP completePendingCommand 失败。回复码: $completeReplyCode")
+            try {
+                // 检查连接是否仍然有效
+                val isStillConnected = try {
+                    client.isConnected && client.sendNoOp()
+                } catch (e: Exception) {
+                    false
+                }
+
+                if (isStillConnected) {
+                    // 只有在连接仍然活跃时才尝试完成命令和登出
+                    try {
+                        val completed = client.completePendingCommand()
+                        val completeReplyCode = client.replyCode
+                        if (completed) {
+                            Log.d(TAG, "FTP completePendingCommand 成功。回复码: $completeReplyCode")
+                        } else {
+                            Log.d(TAG, "FTP completePendingCommand 返回失败，但可能已完成传输。回复码: $completeReplyCode")
+                        }
+                    } catch (e: FTPConnectionClosedException) {
+                        Log.d(TAG, "FTP 连接已被服务器关闭，假设传输已完成")
+                    } catch (e: Exception) {
+                        completeCommandException = e
+                        Log.d(TAG, "FTP completePendingCommand 时发生非关键错误", e)
                     }
-                } catch (e: FTPConnectionClosedException) {
-                    completeCommandException = e
-                    Log.i(TAG, "FTP 连接已被服务器关闭，假设传输已完成")
-                } catch (e: Exception) {
-                    completeCommandException = e
-                    Log.w(TAG, "FTP completePendingCommand 时发生错误", e)
+
+                    // 尝试登出
+                    try {
+                        client.logout()
+                        Log.d(TAG, "FTP logout 成功")
+                    } catch (e: FTPConnectionClosedException) {
+                        Log.d(TAG, "FTP logout 时因连接已关闭而跳过")
+                    } catch (e: Exception) {
+                        Log.d(TAG, "FTP logout 时发生非关键错误", e)
+                    }
+                } else {
+                    Log.d(TAG, "FTP 连接已断开，跳过命令完成和登出")
                 }
 
-                // 3. 断开连接
+                // 3. 断开连接（如果仍然连接）
                 try {
-                    client.logout()
-                } catch (e: FTPConnectionClosedException) {
-                    Log.i(TAG, "FTP logout 时因连接已关闭而失败")
+                    if (client.isConnected) {
+                        client.disconnect()
+                        Log.d(TAG, "FTP disconnect 成功")
+                    }
                 } catch (e: Exception) {
-                    Log.w(TAG, "FTP logout 时发生错误", e)
+                    Log.d(TAG, "FTP disconnect 时发生非关键错误", e)
                 }
 
-                try {
-                    client.disconnect()
-                    Log.d(TAG, "FTP disconnect 成功")
-                } catch (e: Exception) {
-                    Log.w(TAG, "FTP disconnect 时发生错误", e)
-                }
+            } catch (e: Exception) {
+                Log.d(TAG, "FTP 连接状态检查时发生异常", e)
             }
         }
         ftpClient = null
 
-        // 如果有严重错误，可以考虑记录或抛出
+        // 记录非关键错误（降低日志级别）
         if (inputStreamException != null) {
-            Log.e(TAG, "关闭 InputStream 时发生严重错误", inputStreamException)
+            Log.d(TAG, "关闭 InputStream 时发生非关键错误", inputStreamException)
+        }
+        if (completeCommandException != null) {
+            Log.d(TAG, "FTP 命令完成时发生非关键错误", completeCommandException)
         }
     }
 }

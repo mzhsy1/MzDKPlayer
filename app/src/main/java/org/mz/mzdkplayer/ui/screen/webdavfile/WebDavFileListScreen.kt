@@ -35,6 +35,8 @@ import org.mz.mzdkplayer.ui.screen.vm.WebDavConnectionStatus // 导入状态类
 import org.mz.mzdkplayer.ui.style.myListItemColor
 import java.net.URLEncoder
 import androidx.core.net.toUri
+import org.mz.mzdkplayer.MzDkPlayerApplication
+import org.mz.mzdkplayer.logic.model.AudioItem
 import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 
@@ -151,6 +153,7 @@ fun WebDavFileListScreen(
                                 // Sardine 库中的 DavResource 通常提供了 isDirectory 方法
                                 val isDirectory = file.isDirectory
                                 val fileName = file.name ?: "Unknown"
+                                //Log.d("WebDav",file.path)
 
                                 ListItem(
                                     selected = false,
@@ -208,10 +211,41 @@ fun WebDavFileListScreen(
                                                         )}")
                                                     }
                                                     Tools.containsAudioFormat(fileExtension) -> {
+                                                        // ✅ 构建音频文件列表
+                                                        val audioFiles = fileList.filter { webdavFile ->
+                                                            Tools.containsAudioFormat(Tools.extractFileExtension(webdavFile.name))
+                                                        }
+
+                                                        // ✅ 构建文件名到索引的映射（O(N) 一次构建）
+                                                        val nameToIndexMap = audioFiles.withIndex().associateBy({ it.value.name }, { it.index })
+
+                                                        // ✅ 快速查找索引（O(1)）
+                                                        val currentAudioIndex = nameToIndexMap[file.name] ?: -1
+                                                        if (currentAudioIndex == -1) {
+                                                            Log.e("SMBFileListScreen", "未找到文件在音频列表中: ${file.name}")
+                                                            return@launch
+
+                                                        }
+
+                                                        // ✅ 构建播放列表
+                                                        val audioItems = audioFiles.map { webdavFile ->
+                                                            AudioItem(
+                                                                uri = webdavFile.path.toUri().buildUpon()
+                                                                .encodedAuthority(newAuthority).scheme(uri.scheme) // 👈 设置完整的 authority（含 userinfo@host:port）
+                                                                .build().toString(),
+                                                                fileName = webdavFile.name,
+                                                                dataSourceType = "WEBDAV"
+                                                            )
+                                                        }
+
+                                                        // 设置数据
+                                                        MzDkPlayerApplication.clearStringList("audio_playlist")
+                                                        MzDkPlayerApplication.setStringList("audio_playlist", audioItems)
+
                                                         navController.navigate("AudioPlayer/$encodedFileUrl/WEBDAV/${ URLEncoder.encode(
                                                             fileName,
                                                             "UTF-8"
-                                                        )}/0")
+                                                        )}/$currentAudioIndex")
                                                         //navController.navigate("AudioPlayer/$encodedUri/SMB/$encodedFileName")
                                                     }
                                                     else -> {
