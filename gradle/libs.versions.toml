@@ -31,7 +31,6 @@ activityCompose = "1.11.0"
 datastorePreferences = "1.1.7"
 navigationCompose = "2.9.5"
 ui = "1.9.4"
-animationCore = "1.9.4"
 
 [libraries]
 #noinspection SimilarGradleDependency
@@ -72,7 +71,6 @@ nfs-client = { module = "com.emc.ecs:nfs-client", version.ref = "nfsClient" }
 
 smbj = { module = "com.hierynomus:smbj", version.ref = "smbj" }
 thegrizzlylabs-sardine-android = { module = "com.github.thegrizzlylabs:sardine-android", version.ref = "sardineAndroidVersion" }
-androidx-compose-animation-core = { group = "androidx.compose.animation", name = "animation-core", version.ref = "animationCore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
