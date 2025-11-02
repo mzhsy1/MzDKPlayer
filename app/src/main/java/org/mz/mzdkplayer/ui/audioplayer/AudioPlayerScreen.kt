@@ -53,6 +53,8 @@ import org.mz.mzdkplayer.tool.extractAudioInfoAndLyricsFromStream
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
 
 import org.mz.mzdkplayer.ui.audioplayer.components.*
+
+
 import org.mz.mzdkplayer.ui.screen.vm.AudioPlayerViewModel
 import org.mz.mzdkplayer.ui.videoplayer.BackPress
 
@@ -95,6 +97,7 @@ fun AudioPlayerScreen(
     // 添加Seek状态，用于跟踪快速Seek操作
     var isSeeking by remember { mutableStateOf(false) }
     var lastSeekTime by remember { mutableLongStateOf(0L) }
+// 替换原来的模拟实现
 
     BuilderMzAudioPlayer(
         context,
@@ -364,6 +367,7 @@ fun AudioPlayerScreen(
         showToast = true
     }
 
+
     val pulseState = rememberAudioPlayerPulseState()
     val focusRequester = remember { FocusRequester() }
     Box(
@@ -383,11 +387,14 @@ fun AudioPlayerScreen(
 
         // 创建水平布局容器
         // 优化 1: 使用 fillMaxSize() 确保 Row 占据整个可用空间
+        // 在频谱显示组件中使用：
+
         Row(
             modifier = Modifier
                 .fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
-        ) {
+        )
+        {
             // 优化 1: 使用 remember 来缓存解码后的 Bitmap
             val coverBitmap: Bitmap? = remember(audioInfo?.artworkData) { // 依赖 artworkData
                 // 当 artworkData 改变时，才重新执行 lambda
@@ -411,7 +418,7 @@ fun AudioPlayerScreen(
                     .offset(x = 56.dp, y = (-38).dp), contentAlignment = Alignment.CenterStart
             ) { // 使用 wrapContentSize 并居中对齐到末端
 
-                AlbumCoverDisplay(coverBitmap)
+                AlbumCoverDisplay(coverBitmap,isPlaying)
 
             }
             Column(
@@ -532,6 +539,7 @@ fun AudioPlayerScreen(
             },
             atpFocus = audioPlayerViewModel.atpFocus
         )
+        // 在频谱显示组件中
 
         // 音轨/字幕选择面板的动画可见性
         AnimatedVisibility(
