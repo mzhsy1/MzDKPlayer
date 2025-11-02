@@ -1,6 +1,7 @@
 package org.mz.mzdkplayer.ui.screen.vm
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -11,5 +12,6 @@ class AudioPlayerViewModel:ViewModel() {
 
     var selectedAorVorS by mutableStateOf("L")
 
-    var selectedAtIndex by mutableStateOf(0)
+    var selectedAtIndex by mutableIntStateOf(0)
+    var conFocus by mutableStateOf(false)
 }

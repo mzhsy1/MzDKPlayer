@@ -95,7 +95,8 @@ fun AudioPlayerControls(
                     exoPlayer.seekTo(seekPosition)
                 },
                 contentProgress = contentCurrentPosition.milliseconds, // 使用安全的当前位置
-                contentDuration = contentDuration // 使用传入的安全 Duration
+                contentDuration = contentDuration, // 使用传入的安全 Duration,
+                exoPlayer
             )
         },
         more = null

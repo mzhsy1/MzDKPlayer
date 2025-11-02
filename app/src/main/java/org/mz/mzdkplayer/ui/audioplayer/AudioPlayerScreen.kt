@@ -1,9 +1,5 @@
 package org.mz.mzdkplayer.ui.audioplayer
-
-
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
 import android.widget.Toast
@@ -67,80 +63,6 @@ import java.util.Locale
 
 import kotlin.time.Duration.Companion.milliseconds
 
-// --- 数据类 ---
-data class AudioMetadata(
-    val title: String = "未知标题",
-    val artist: String = "未知艺术家",
-    val album: String = "未知专辑",
-    val year: String = "",
-    val genre: String = "",
-    val duration: String = "", // 注意：这个已经是格式化后的字符串了
-    val coverArt: Bitmap? = null,
-    val extras: Bundle? = null,
-    // 注意：不再直接存储歌词，因为我们从 audioInfo 获取
-)
-
-// --- 工具函数 ---
-
-@OptIn(UnstableApi::class)
-fun extractAudioMetadataFromPlayer(exoPlayer: ExoPlayer): AudioMetadata {
-    val mediaMetadata = exoPlayer.mediaMetadata
-
-    val title = mediaMetadata.title?.toString() ?: "未知标题"
-    val artist = mediaMetadata.artist?.toString() ?: "未知艺术家"
-    val album = mediaMetadata.albumTitle?.toString() ?: "未知专辑"
-    val recordingYear = mediaMetadata.releaseYear?.toString() ?: ""
-    val genre = mediaMetadata.genre?.toString() ?: ""
-    val durationMs = exoPlayer.duration
-
-    val extras = mediaMetadata.extras
-
-    var coverBitmap: Bitmap? = null
-    try {
-        val artworkData = mediaMetadata.artworkData
-        if (artworkData != null) {
-            coverBitmap = BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
-            Log.d(
-                "artworkData",
-                "Cover bitmap created with size: ${coverBitmap?.width}x${coverBitmap?.height}"
-            )
-        } else {
-            Log.d("artworkData", "No artwork data available")
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
-        Log.e("artworkData", "Error decoding artwork data", e)
-    }
-
-    // 格式化时长，处理 C.TIME_UNSET (-1) 的情况
-    val formattedDuration = if (durationMs != C.TIME_UNSET) {
-        formatDuration(durationMs.toInt())
-    } else {
-        "--:--"
-    }
-
-    return AudioMetadata(
-        title = title,
-        artist = artist,
-        album = album,
-        year = recordingYear,
-        genre = genre,
-        duration = formattedDuration, // 使用格式化后的字符串
-        coverArt = coverBitmap,
-        extras = extras
-    )
-}
-
-fun formatDuration(durationMs: Int?): String {
-    // 处理 null 或无效值
-    if (durationMs == null || durationMs <= 0) return "--:--"
-    val totalSeconds = durationMs / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
-}
-
-
 // --- 主要 Composable ---
 
 @OptIn(UnstableApi::class)
@@ -162,14 +84,17 @@ fun AudioPlayerScreen(
     var isPlaying: Boolean by remember { mutableStateOf(exoPlayer.isPlaying) }
     var sampleMimeType: String by remember { mutableStateOf("") }
 
-    var audioMetadata by remember { mutableStateOf(AudioMetadata()) }
-    var audioInfo: AudioInfo? by remember { mutableStateOf(null) } // 关键：存储 audioInfo
+    var audioInfo: AudioInfo? by remember { mutableStateOf(null) } // 存储 audioInfo，包含所有音频信息
     var currentMediaUri by remember { mutableStateOf(mediaUri) }
     var currentFileName by remember { mutableStateOf(fileName) } // 替换原来的 fileName 状态
+    var isAudioInfoLoading by remember { mutableStateOf(false) } // 添加加载状态
 
     // 添加缓存状态，用于在单曲循环时恢复音频信息
     var cachedAudioInfo by remember { mutableStateOf<AudioInfo?>(null) }
-    var cachedAudioMetadata by remember { mutableStateOf(AudioMetadata()) }
+
+    // 添加Seek状态，用于跟踪快速Seek操作
+    var isSeeking by remember { mutableStateOf(false) }
+    var lastSeekTime by remember { mutableLongStateOf(0L) }
 
     BuilderMzAudioPlayer(
         context,
@@ -187,76 +112,114 @@ fun AudioPlayerScreen(
         }
     }
 
+    // 加载音频信息和歌词 - 使用 currentMediaUri 作为依赖项
+    LaunchedEffect(currentMediaUri,audioPlayerViewModel.selectedAtIndex) {
+        Log.d("AudioPlayerScreen", "Loading audio info for URI: $currentMediaUri")
+        isAudioInfoLoading = true
 
-    // 加载音频信息和歌词
-    LaunchedEffect(currentMediaUri, sampleMimeType) {
-        Log.e("sampleMimeType", sampleMimeType)
-        if (sampleMimeType.isNotEmpty()) {
-            withContext(Dispatchers.IO) {
-                try {
-                    val inputStream: InputStream? =
-                        when (currentMediaUri.toUri().scheme?.lowercase()) {
-                            "smb" -> SmbUtils.openSmbFileInputStream(
-                                currentMediaUri.toUri(),
-                                sampleMimeType
-                            )
+        // 获取当前媒体项的 MIME 类型 - 改进逻辑
+        var mimeType: String? = null
 
-                            "http", "https" -> {
-                                when (dataSourceType) {
-                                    "WEBDAV" -> SmbUtils.openWebDavFileInputStream(
-                                        currentMediaUri.toUri(),
-                                        sampleMimeType
-                                    )
+        // 首先尝试从文件扩展名推断
+        val fileExtension = currentMediaUri.substringAfterLast(".", "").lowercase()
+        val mimeTypeFromExtension = when (fileExtension) {
+            "flac" -> "audio/flac"
+            "mp3" -> "audio/mpeg"
+            "wav" -> "audio/wav"
+            "aac" -> "audio/aac"
+            "m4a" -> "audio/mp4"
+            else -> null
+        }
 
-                                    "HTTP" -> SmbUtils.openHTTPLinkXmlInputStream(
-                                        currentMediaUri,
-                                        sampleMimeType
-                                    )
+        Log.e("sampleMimeType1", currentMediaUri + (mimeTypeFromExtension?.toString() ?: "null"))
 
-                                    else -> URL(currentMediaUri).openStream()
-                                }
-                            }
+        // 尝试从播放器获取实际 MIME 类型
+        var retryCount = 0
+        val maxRetries = 10 // 最多重试10次，每次等待100ms，总共1秒
+        while (retryCount < maxRetries) {
+            delay(100) // 等待100ms让播放器准备好
+            val playerMimeType = exoPlayer.audioFormat?.sampleMimeType
+            if (playerMimeType != null) {
+                mimeType = playerMimeType
+                break
+            }
+            retryCount++
+        }
 
-                            "file" -> context.contentResolver.openInputStream(currentMediaUri.toUri())
-                                ?: throw java.io.IOException("Could not open file input stream for $currentMediaUri")
+        Log.e("sampleMimeType2", currentMediaUri + (mimeType?.toString() ?: "null"))
 
-                            "ftp" -> SmbUtils.openFtpFileInputStream(
-                                currentMediaUri.toUri(),
-                                sampleMimeType
-                            )
+        // 如果播放器获取失败，使用从扩展名推断的 MIME 类型
+        if (mimeType == null) {
+            mimeType = mimeTypeFromExtension ?: "audio/mpeg" // 默认为 mp3
+        }
 
-                            "nfs" -> SmbUtils.openNfsFileInputStream(
-                                currentMediaUri.toUri(),
-                                sampleMimeType
-                            )
+        Log.e("sampleMimeType3", currentMediaUri + mimeType)
 
-                            else -> {
-                                Log.w(
-                                    "AudioPlayerScreen",
-                                    "Unsupported scheme for URI: $currentMediaUri"
+        withContext(Dispatchers.IO) {
+            try {
+                val inputStream: InputStream? =
+                    when (currentMediaUri.toUri().scheme?.lowercase()) {
+                        "smb" -> SmbUtils.openSmbFileInputStream(
+                            currentMediaUri.toUri(),
+                            mimeType
+                        )
+
+                        "http", "https" -> {
+                            when (dataSourceType) {
+                                "WEBDAV" -> SmbUtils.openWebDavFileInputStream(
+                                    currentMediaUri.toUri(),
+                                    mimeType
                                 )
-                                null
+
+                                "HTTP" -> SmbUtils.openHTTPLinkXmlInputStream(
+                                    currentMediaUri,
+                                    mimeType
+                                )
+
+                                else -> URL(currentMediaUri).openStream()
                             }
                         }
 
-                    Log.d("AudioPlayerScreen", "Opened input stream")
+                        "file" -> context.contentResolver.openInputStream(currentMediaUri.toUri())
+                            ?: throw java.io.IOException("Could not open file input stream for $currentMediaUri")
 
-                    inputStream.use { stream ->
-                        // 关键：调用工具函数获取 audioInfo，其中包含 lyrics
-                        val info =
-                            extractAudioInfoAndLyricsFromStream(context, stream, sampleMimeType)
-                        audioInfo = info // 更新状态
-                        cachedAudioInfo = info // 同时缓存一份
+                        "ftp" -> SmbUtils.openFtpFileInputStream(
+                            currentMediaUri.toUri(),
+                            mimeType
+                        )
 
-                        Log.i("AudioPlayerScreen", "Loaded audio info and lyrics")
+                        "nfs" -> SmbUtils.openNfsFileInputStream(
+                            currentMediaUri.toUri(),
+                            mimeType
+                        )
+
+                        else -> {
+                            Log.w(
+                                "AudioPlayerScreen",
+                                "Unsupported scheme for URI: $currentMediaUri"
+                            )
+                            null
+                        }
                     }
-                } catch (e: Exception) {
-                    Log.e(
-                        "AudioPlayerScreen",
-                        "Failed to load audio info or lyrics from $currentMediaUri",
-                        e
-                    )
-                }
+
+                Log.d("AudioPlayerScreen", "Opened input stream for $currentMediaUri with MIME: $mimeType")
+
+                inputStream?.use { stream ->
+                    // 关键：调用工具函数获取 audioInfo，其中包含 lyrics
+                    val info = extractAudioInfoAndLyricsFromStream(context, stream, mimeType)
+                    audioInfo = info // 更新状态
+                    cachedAudioInfo = info // 同时缓存一份
+
+                    Log.i("AudioPlayerScreen", "Loaded audio info and lyrics for $currentMediaUri")
+                } ?: Log.e("AudioPlayerScreen", "Failed to open input stream for $currentMediaUri")
+            } catch (e: Exception) {
+                Log.e(
+                    "AudioPlayerScreen",
+                    "Failed to load audio info or lyrics from $currentMediaUri",
+                    e
+                )
+            } finally {
+                isAudioInfoLoading = false
             }
         }
     }
@@ -266,19 +229,14 @@ fun AudioPlayerScreen(
         exoPlayer.addListener(object : Player.Listener {
             override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
                 super.onMediaMetadataChanged(mediaMetadata)
-                val newMetadata = extractAudioMetadataFromPlayer(exoPlayer)
-                audioMetadata = newMetadata
-                cachedAudioMetadata = newMetadata // 同时缓存一份
+                // 不再单独处理 metadata，因为所有信息都从 audioInfo 获取
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 when (playbackState) {
                     Player.STATE_READY -> {
                         sampleMimeType = exoPlayer.audioFormat?.sampleMimeType.toString()
-                        // Player 准备好后，更新元数据（可能包含更准确的时长）
-                        val newMetadata = extractAudioMetadataFromPlayer(exoPlayer)
-                        audioMetadata = newMetadata
-                        cachedAudioMetadata = newMetadata
+                        Log.d("AudioPlayerScreen", "Player ready, MIME type: $sampleMimeType")
                     }
 
                     Player.STATE_BUFFERING -> {}
@@ -287,9 +245,6 @@ fun AudioPlayerScreen(
                         if (exoPlayer.repeatMode == Player.REPEAT_MODE_ONE) {
                             if (cachedAudioInfo != null) {
                                 audioInfo = cachedAudioInfo
-                            }
-                            if (cachedAudioMetadata.title != "未知标题") {
-                                audioMetadata = cachedAudioMetadata
                             }
                         }
                     }
@@ -305,8 +260,10 @@ fun AudioPlayerScreen(
 
                 if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) {
                     val newUri = mediaItem?.localConfiguration?.uri?.toString() ?: return
+                    Log.d("onMediaItemTransition", "Transitioning to new URI: $newUri")
                     currentMediaUri = newUri
-                    audioInfo = null
+                    audioInfo = null // 重置音频信息，触发重新加载
+                    isAudioInfoLoading = true // 设置加载状态
                     currentFileName = Tools.extractFileNameFromUri(newUri)
 
                     // ✅ 查找当前 URI 在 extraList 中的索引
@@ -327,20 +284,68 @@ fun AudioPlayerScreen(
 
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
+                Log.e("AudioPlayerScreen", "Player error: ${error.message}", error)
+
+                // 如果是FLAC格式的解析错误，尝试使用通用音频格式
+                if (error.cause?.message?.contains("contentIsMalformed") == true) {
+                    Log.w("AudioPlayerScreen", "FLAC parsing error detected, continuing...")
+                    // 不要中断播放，只是记录错误
+                }
+            }
+
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int
+            ) {
+                super.onPositionDiscontinuity(oldPosition, newPosition, reason)
+                // 当发生位置跳跃时，标记正在Seek
+                if (reason == Player.DISCONTINUITY_REASON_SEEK ||
+                    reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT
+                ) {
+                    isSeeking = true
+                    lastSeekTime = System.currentTimeMillis()
+                }
             }
         })
-        delay(500)
-        val initialMetadata = extractAudioMetadataFromPlayer(exoPlayer)
-        audioMetadata = initialMetadata
-        cachedAudioMetadata = initialMetadata
     }
 
-    LaunchedEffect(Unit) {
+    // 处理播放进度更新，使用防抖机制避免快速Seek时的问题
+    LaunchedEffect(exoPlayer) {
+        var lastUpdateTime = System.currentTimeMillis()
+        val debounceDelay = 300L // 300ms防抖延迟
+
         while (true) {
-            delay(300) // 更频繁地更新进度
-            contentCurrentPosition = exoPlayer.currentPosition
+
+            delay(100) // 检查间隔改为100ms
+
+            val currentTime = System.currentTimeMillis()
+            val currentPosition = exoPlayer.currentPosition
+
+            // 检查是否仍在Seek状态中
+            val isCurrentlySeeking = isSeeking && (currentTime - lastSeekTime < 1000) // 1秒内认为仍在Seek
+
+            // 只有当时间间隔超过防抖延迟且不在Seek状态时才更新位置
+            if (!isCurrentlySeeking && currentTime - lastUpdateTime > debounceDelay) {
+                contentCurrentPosition = currentPosition
+                lastUpdateTime = currentTime
+            }
+
+            // 如果Seek状态持续超过1秒，重置Seek状态
+            if (isSeeking && currentTime - lastSeekTime > 1000) {
+                isSeeking = false
+            }
         }
     }
+
+    // 处理Seek结束状态
+    LaunchedEffect(contentCurrentPosition) {
+        // 当位置更新时，重置Seek状态
+        if (isSeeking) {
+            isSeeking = false
+        }
+    }
+
     // 显示 "再按一次退出" Toast
     if (showToast) {
         Toast.makeText(context, "再按一次退出", Toast.LENGTH_SHORT).show()
@@ -360,15 +365,21 @@ fun AudioPlayerScreen(
     }
 
     val pulseState = rememberAudioPlayerPulseState()
-
+    val focusRequester = remember { FocusRequester() }
     Box(
         Modifier
-            .dPadEvents(exoPlayer, audioPlayerState, pulseState, audioPlayerViewModel)
+            .dPadEvents(
+                exoPlayer,
+                audioPlayerState,
+                pulseState,
+                audioPlayerViewModel,
+                focusRequester
+            )
             .background(Color.Black)
             .focusable()
             .fillMaxSize()
     ) {
-        val focusRequester = remember { FocusRequester() }
+
 
         // 创建水平布局容器
         // 优化 1: 使用 fillMaxSize() 确保 Row 占据整个可用空间
@@ -377,7 +388,7 @@ fun AudioPlayerScreen(
                 .fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 1. 使用 remember 来缓存解码后的 Bitmap
+            // 优化 1: 使用 remember 来缓存解码后的 Bitmap
             val coverBitmap: Bitmap? = remember(audioInfo?.artworkData) { // 依赖 artworkData
                 // 当 artworkData 改变时，才重新执行 lambda
                 // 为了性能，也可以考虑在这里直接用 BitmapFactory.decodeByteArray
@@ -417,14 +428,15 @@ fun AudioPlayerScreen(
                 ) {
                     Column {
                         Text(
-                            text = audioInfo?.title ?: "未知标题",
+                            text = if (isAudioInfoLoading) "加载中..." else audioInfo?.title
+                                ?: "未知标题",
                             style = MaterialTheme.typography.headlineSmall,
                             color = Color.White,
                             maxLines = 1
                         )
                         Row(Modifier.padding(top = 8.dp)) {
                             Text(
-                                text = "艺术家 : ${audioInfo?.artist ?: "未知歌手"}",
+                                text = "艺术家 : ${if (isAudioInfoLoading) "加载中..." else audioInfo?.artist ?: "未知歌手"}",
                                 color = Color.Gray,
                                 fontSize = 16.sp,
                                 maxLines = 1
@@ -432,7 +444,7 @@ fun AudioPlayerScreen(
 
                             Text(text = " · ", color = Color.Gray)
                             Text(
-                                text = "专辑 : ${audioInfo?.album ?: "未知专辑"}",
+                                text = "专辑 : ${if (isAudioInfoLoading) "加载中..." else audioInfo?.album ?: "未知专辑"}",
                                 color = Color.Gray,
                                 fontSize = 16.sp,
                                 maxLines = 1
@@ -444,14 +456,19 @@ fun AudioPlayerScreen(
                 // 优化 3: 使用 weight(1f) 让歌词部分占据剩余空间
                 Box(
                     modifier = Modifier
-                        .fillMaxHeight(0.82f)
+                        .fillMaxHeight(0.72f)
                         .fillMaxWidth()
                         .offset(90.dp, y = (-30).dp), contentAlignment = Alignment.CenterStart
                 ) {
 
                     // 使用您提供的 LRC 解析器
-                    val parsedLyrics =
-                        remember(audioInfo?.lyrics) { parseLrc(audioInfo?.lyrics) }
+                    val parsedLyrics = remember(audioInfo?.lyrics) {
+                        if (audioInfo?.lyrics != null) {
+                            parseLrc(audioInfo!!.lyrics)
+                        } else {
+                            emptyList() // 返回空列表而不是null
+                        }
+                    }
                     // 优化 4: ScrollableLyricsView 现在会撑满其父 Box
                     ScrollableLyricsView(
                         currentPosition = contentCurrentPosition.milliseconds,
@@ -475,7 +492,10 @@ fun AudioPlayerScreen(
 
         // 控制层叠在底部
         AudioPlayerOverlay(
-            modifier = Modifier.align(Alignment.BottomCenter),
+            modifier = Modifier.align(Alignment.BottomCenter) .onFocusChanged {
+                audioPlayerViewModel.conFocus =
+                    it.isFocused
+            }, // 底部居中,
             state = audioPlayerState,
             isPlaying = isPlaying,
             subtitles = { },
@@ -499,7 +519,13 @@ fun AudioPlayerScreen(
                             } - " +
                             "${audioInfo?.bit ?: "--"} Kbps",
 
-                    "时长: ${audioMetadata.duration}", // 直接使用已格式化的字符串
+                    "时长: ${
+                        if (safeDurationMs != 0L) {
+                            formatDuration(safeDurationMs.toInt())
+                        } else {
+                            "--:--"
+                        }
+                    }", // 直接使用 exoPlayer.duration 格式化后的字符串
                     audioPlayerViewModel,
                     safeDurationMs.milliseconds // 传递安全的 Duration
                 )
@@ -513,7 +539,7 @@ fun AudioPlayerScreen(
             enter = fadeIn(), // 淡入动画
             exit = fadeOut(), // 淡出动画
             modifier = Modifier
-                .widthIn(200.dp, 420.dp) // 宽度范围
+                .widthIn(200.dp, 360.dp) // 宽度范围
                 .fillMaxHeight() // 高度范围
                 .align(AbsoluteAlignment.CenterRight) // 右侧居中
                 // 向左偏移
@@ -528,11 +554,14 @@ fun AudioPlayerScreen(
                     onLeft = { true }    // ✅ 关键：向左按键在面板内消耗，不传递到控制栏
                 )
                 // 处理焦点变化
-                .onFocusChanged {
+                .onFocusChanged { focusState ->
+                    // 隐藏控制栏
+                    audioPlayerViewModel.atpFocus = focusState.isFocused
 
-                        // 隐藏控制栏
-                        audioPlayerViewModel.atpFocus = it.isFocused
-
+//                    // ✅ 关键：当面板失去焦点且不可见时，将焦点返回到控制栏
+//                    if (!focusState.isFocused && !audioPlayerViewModel.atpVisibility) {
+//                        focusRequester.requestFocus()
+//                    }
                 }) {
             // 根据 ViewModel 中的选择显示不同的面板
             when (audioPlayerViewModel.selectedAorVorS) {
@@ -550,6 +579,7 @@ fun AudioPlayerScreen(
             BackHandler(true) {
                 audioPlayerViewModel.atpVisibility = false
                 audioPlayerViewModel.atpFocus = false // 隐藏时重置焦点状态
+                focusRequester.requestFocus()
             }
         }
     }
@@ -561,14 +591,22 @@ private fun Modifier.dPadEvents(
     exoPlayer: ExoPlayer,
     audioPlayerState: AudioPlayerState,
     pulseState: AudioPlayerPulseState,
-    audioPlayerViewModel: AudioPlayerViewModel
+    audioPlayerViewModel: AudioPlayerViewModel,
+    focusRequester: FocusRequester
 ): Modifier = handleDPadKeyEvents(
     onLeft = {
 //        // 面板可见时，不处理向左事件
+        if (!audioPlayerViewModel.conFocus) {
+            focusRequester.requestFocus()
+        }
+
         true
     },
     onRight = {
-//       !audioPlayerViewModel.atpVisibility
+        if (!audioPlayerViewModel.conFocus) {
+            focusRequester.requestFocus()
+        }
+        true
     },
     onUp = {
         true
@@ -590,7 +628,11 @@ private fun Modifier.dPadEvents(
 //        }
     },
     onEnter = {
-            exoPlayer.pause()
+        focusRequester.requestFocus()
+        exoPlayer.pause()
+        true
+
+
     },
 ).onKeyEvent { keyEvent ->
     when (keyEvent.key) {
@@ -618,5 +660,17 @@ private fun Modifier.dPadEvents(
         }
     }
 }
+
+// 格式化时长的工具函数
+fun formatDuration(durationMs: Int?): String {
+    // 处理 null 或无效值
+    if (durationMs == null || durationMs <= 0) return "--:--"
+    val totalSeconds = durationMs / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+}
+
+
 
 

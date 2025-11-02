@@ -18,12 +18,18 @@ package org.mz.mzdkplayer.ui.audioplayer.components
 
 import org.mz.mzdkplayer.R
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import androidx.media3.exoplayer.ExoPlayer
+import kotlinx.coroutines.delay
 
 
 import kotlin.time.Duration
@@ -36,8 +42,13 @@ fun AudioPlayerSeeker(
     onPlayPauseToggle: (Boolean) -> Unit,
     onSeek: (Float) -> Unit,
     contentProgress: Duration,
-    contentDuration: Duration
+    contentDuration: Duration,
+    exoPlayer: ExoPlayer
 ) {
+    LaunchedEffect(Unit) {
+        delay(100)
+        focusRequester.requestFocus()
+    }
     val contentProgressString =
         contentProgress.toComponents { h, m, s, _ ->
             if (h > 0) {
@@ -56,17 +67,34 @@ fun AudioPlayerSeeker(
         }
 
     Row(
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+
     ) {
         AudioPlayerControlsIcon(
-            modifier = Modifier.focusRequester(focusRequester),
+            modifier = Modifier.padding(end = 8.dp) ,
+            icon = painterResource(id = R.drawable.skipprevious),
+            onClick = { exoPlayer.seekToPreviousMediaItem() },
+            state = state,
+            isPlaying = isPlaying,
+        )
+        AudioPlayerControlsIcon(
+            modifier = Modifier.focusRequester(focusRequester).padding(horizontal = 8.dp) ,
             icon = if (!isPlaying) painterResource(id = R.drawable.baseline_play_arrow_24) else painterResource(
                 id = R.drawable.baseline_pause_24
             ),
+            iconSize = 50,
             onClick = { onPlayPauseToggle(!isPlaying) },
             state = state,
             isPlaying = isPlaying,
         )
+        AudioPlayerControlsIcon(
+            modifier = Modifier.padding(horizontal = 8.dp),
+            icon = painterResource(id = R.drawable.skipnext),
+            onClick = { exoPlayer.seekToNextMediaItem() },
+            state = state,
+            isPlaying = isPlaying,
+        )
+
         AudioPlayerControllerText(text = contentProgressString)
         AudioPlayerControllerIndicator(
             progress = (contentProgress / contentDuration).toFloat(),

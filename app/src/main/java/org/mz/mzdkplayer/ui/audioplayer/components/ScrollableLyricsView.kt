@@ -142,7 +142,7 @@ fun ScrollableLyricsView(currentPosition: Duration, parsedLyrics: List<LyricEntr
                         textAlign = TextAlign.Start,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                            .padding(horizontal = 0.dp, vertical = 4.dp)
                             .alpha(if (index == highlightedIndex) 1f else 0.7f)
                     )
                 }

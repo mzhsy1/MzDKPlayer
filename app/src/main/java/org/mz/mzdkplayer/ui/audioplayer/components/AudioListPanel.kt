@@ -4,6 +4,7 @@ package org.mz.mzdkplayer.ui.audioplayer.components
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 
@@ -83,7 +84,7 @@ fun AudioListPanel(
         startY = 0f,
         endY = with(density) { blurHeight.toPx() }
     )
-    Box() {
+    Box(Modifier.fillMaxSize()) {
         //Log.d("sampleRate",lists[index].getTrackFormat(0).sampleRate.toString())
         LazyColumn(
             modifier = Modifier
@@ -128,7 +129,7 @@ fun AudioListPanel(
                                 end = 15.dp,
                             )
                             .height(40.dp),
-                        selected = index == selectedIndex,
+                        selected =false,
                         colors = ListItemDefaults.colors(
                             containerColor = Color(0, 0, 0),
                             contentColor = Color(255, 255, 255),

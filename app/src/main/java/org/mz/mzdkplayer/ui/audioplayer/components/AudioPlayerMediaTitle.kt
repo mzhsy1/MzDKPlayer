@@ -53,7 +53,7 @@ fun AudioPlayerMediaTitle(
     }
     Column(modifier.fillMaxWidth()) {
         if (title != null) {
-            Text(title, style = MaterialTheme.typography.headlineSmall, color = Color.White, maxLines = 1)
+            Text(title, style = MaterialTheme.typography.titleMedium, color = Color.White, maxLines = 1)
         }
         Spacer(Modifier.height(4.dp))
         Row {

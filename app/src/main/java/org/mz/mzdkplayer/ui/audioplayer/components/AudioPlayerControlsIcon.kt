@@ -42,20 +42,21 @@ fun AudioPlayerControlsIcon(
     state: AudioPlayerState,
     isPlaying: Boolean,
     icon: Painter,
+    iconSize:Int = 40,
     contentDescription: String? = null,
     onClick: () -> Unit = {}
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
 
-    LaunchedEffect(isFocused && isPlaying) {
-        if (isFocused && isPlaying) {
-            state.showControls()
-        }
-    }
+//    LaunchedEffect(isFocused && isPlaying) {
+//        if (isFocused && isPlaying) {
+//            state.showControls()
+//        }
+//    }
 
     Surface(
-        modifier = modifier.size(40.dp),
+        modifier = modifier.size(iconSize.dp),
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
         colors = ClickableSurfaceDefaults.colors(

@@ -60,14 +60,14 @@ fun RowScope.AudioPlayerControllerIndicator(
     )
     var seekProgress by remember { mutableFloatStateOf(0f) }
 
-    LaunchedEffect(isFocused) {
-        if (isFocused) {
-            state.showControls(seconds = Int.MAX_VALUE)
-        } else {
-            state.showControls()
-        }
-
-    }
+//    LaunchedEffect(isFocused) {
+//        if (isFocused) {
+//            state.showControls(seconds = Int.MAX_VALUE)
+//        } else {
+//            state.showControls()
+//        }
+//
+//    }
 
 
     val handleSeekEventModifier = Modifier.handleDPadKeyEvents(
