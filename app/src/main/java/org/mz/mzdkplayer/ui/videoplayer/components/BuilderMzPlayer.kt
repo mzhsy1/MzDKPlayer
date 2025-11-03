@@ -99,8 +99,8 @@ fun BuilderMzPlayer(
                 // 检测是否有SRT字幕轨道被选中
                 var hasSrtTrackSelected = false
                 var hasPGSTrackSelected = false
-                var hasASSTrackSelected =false
-                var hasVTTTrackSelected =false
+                var hasASSTrackSelected = false
+                var hasVTTTrackSelected = false
                 for (trackGroup in trackGroups) {
                     // Group level information.
                     val trackType = trackGroup.type
@@ -150,11 +150,11 @@ fun BuilderMzPlayer(
                         videoPlayerViewModel.updateSubtitleVisibility(View.GONE)
                         videoPlayerViewModel.updateCusSubtitleVisibility(true)
 
-                    } else if (hasASSTrackSelected){
+                    } else if (hasASSTrackSelected) {
                         videoPlayerViewModel.updateSubtitleVisibility(View.GONE)
                         Log.d("SDS1", "SubtitleView set to VISIBLE because ASS track is selected.")
                         videoPlayerViewModel.updateCusSubtitleVisibility(true)
-                    }else {
+                    } else {
                         Log.d(
                             "SDS1", "SubtitleView set to VISIBLE because no SRT track is selected."
                         )
@@ -365,11 +365,12 @@ fun rememberPlayer(context: Context, mediaUri: String, dataSourceType: String) =
 //            }
 //        }
         // 配置 RenderersFactory
-        val renderersFactory = DefaultRenderersFactory(context).forceEnableMediaCodecAsynchronousQueueing().apply {
-            //setMediaCodecSelector(avcAwareCodecSelector)
-            setExtensionRendererMode(EXTENSION_RENDERER_MODE_PREFER)
+        val renderersFactory =
+            DefaultRenderersFactory(context).forceEnableMediaCodecAsynchronousQueueing().apply {
+                //setMediaCodecSelector(avcAwareCodecSelector)
+                setExtensionRendererMode(EXTENSION_RENDERER_MODE_PREFER)
 
-        }
+            }
 
         // 根据 URI 协议选择合适的数据源工厂
         val dataSourceFactory = if (mediaUri.startsWith("smb://") && dataSourceType == "SMB") {
@@ -401,17 +402,19 @@ fun rememberPlayer(context: Context, mediaUri: String, dataSourceType: String) =
             // 其他情况（如 http/https），使用默认的 HTTP 数据源
             DefaultHttpDataSource.Factory()
         }
+
 //        val loadControl = DefaultLoadControl.Builder()
 //            .setBufferDurationsMs(
-//                30000,  // minBufferMs: 最小缓冲时间 (例如 15秒)
-//                150000,  // maxBufferMs: 最大缓冲时间 (例如 60秒)
-//                5000,   // bufferForPlaybackMs: 开始播放前至少要缓冲的时间 (例如 2.5秒)
-//                5000    // bufferForPlaybackAfterRebufferMs: 重新缓冲后恢复播放前至少要缓冲的时间 (例如 5秒)
+//                30000,  // minBufferMs: 最小缓冲时间
+//                120000, // maxBufferMs: 最大缓冲时间 (减少到 2 分钟)
+//                2000,   // bufferForPlaybackMs: 开始播放前缓冲时间
+//                5000    // bufferForPlaybackAfterRebufferMs: 重新缓冲后恢复播放前缓冲时间
 //            )
-//            .setTargetBufferBytes(C.LENGTH_UNSET) // 不使用字节数限制
-//            .setPrioritizeTimeOverSizeThresholds(true) // 优先时间阈值
+//            .setTargetBufferBytes(C.LENGTH_UNSET)
+//            .setPrioritizeTimeOverSizeThresholds(true)
+//            .setBackBuffer(5000, true) // 添加回退缓冲，允许 seek 回退 5 秒
 //            .build()
-        ExoPlayer.Builder(context).setSeekForwardIncrementMs(10000).setSeekBackIncrementMs(10000)
+        ExoPlayer.Builder(context).setSeekForwardIncrementMs(60000).setSeekBackIncrementMs(60000)
             //.setLoadControl(loadControl)
             .setMediaSourceFactory(
                 DefaultMediaSourceFactory(

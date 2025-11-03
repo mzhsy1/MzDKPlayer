@@ -143,18 +143,20 @@ fun rememberAudioPlayer(context: Context, mediaUri: String, dataSourceType: Stri
 
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                30000,  // minBufferMs: 最小缓冲时间 (例如 15秒)
-                150000,  // maxBufferMs: 最大缓冲时间 (例如 60秒)
-                5000,   // bufferForPlaybackMs: 开始播放前至少要缓冲的时间 (例如 2.5秒)
-                5000    // bufferForPlaybackAfterRebufferMs: 重新缓冲后恢复播放前至少要缓冲的时间 (例如 5秒)
+                30000,  // minBufferMs: 最小缓冲时间
+                120000, // maxBufferMs: 最大缓冲时间 (减少到 2 分钟)
+                2000,   // bufferForPlaybackMs: 开始播放前缓冲时间
+                5000    // bufferForPlaybackAfterRebufferMs: 重新缓冲后恢复播放前缓冲时间
             )
-            .setTargetBufferBytes(C.LENGTH_UNSET) // 不使用字节数限制
-            .setPrioritizeTimeOverSizeThresholds(true) // 优先时间阈值
+            .setTargetBufferBytes(C.LENGTH_UNSET)
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .setBackBuffer(5000, true) // 添加回退缓冲，允许 seek 回退 5 秒
             .build()
 
+
         ExoPlayer.Builder(context)
-            .setSeekForwardIncrementMs(10000)
-            .setSeekBackIncrementMs(10000)
+            .setSeekForwardIncrementMs(60000)
+            .setSeekBackIncrementMs(60000)
             .setMediaSourceFactory(
                 DefaultMediaSourceFactory(dataSourceFactory)
             )
