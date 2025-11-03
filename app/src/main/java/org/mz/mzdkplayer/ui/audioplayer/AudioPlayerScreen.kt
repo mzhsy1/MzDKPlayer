@@ -326,7 +326,7 @@ fun AudioPlayerScreen(
             val currentPosition = exoPlayer.currentPosition
 
             // 检查是否仍在Seek状态中
-            val isCurrentlySeeking = isSeeking && (currentTime - lastSeekTime < 1000) // 1秒内认为仍在Seek
+            val isCurrentlySeeking = isSeeking && (currentTime - lastSeekTime < 600) // 1秒内认为仍在Seek
 
             // 只有当时间间隔超过防抖延迟且不在Seek状态时才更新位置
             if (!isCurrentlySeeking && currentTime - lastUpdateTime > debounceDelay) {
@@ -335,7 +335,7 @@ fun AudioPlayerScreen(
             }
 
             // 如果Seek状态持续超过1秒，重置Seek状态
-            if (isSeeking && currentTime - lastSeekTime > 1000) {
+            if (isSeeking && currentTime - lastSeekTime > 600) {
                 isSeeking = false
             }
         }

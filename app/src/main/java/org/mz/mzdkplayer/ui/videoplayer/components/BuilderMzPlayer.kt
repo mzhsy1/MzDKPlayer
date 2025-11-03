@@ -222,6 +222,7 @@ fun BuilderMzPlayer(
 
 
     LaunchedEffect(exoPlayer) {
+
         Log.d("exoPlayerInit", "开始初始化exoPlayer")
         //delay(150.microseconds)
     }
@@ -364,10 +365,10 @@ fun rememberPlayer(context: Context, mediaUri: String, dataSourceType: String) =
 //            }
 //        }
         // 配置 RenderersFactory
-        val renderersFactory = DefaultRenderersFactory(context).apply {
+        val renderersFactory = DefaultRenderersFactory(context).forceEnableMediaCodecAsynchronousQueueing().apply {
             //setMediaCodecSelector(avcAwareCodecSelector)
             setExtensionRendererMode(EXTENSION_RENDERER_MODE_PREFER)
-            forceDisableMediaCodecAsynchronousQueueing()
+
         }
 
         // 根据 URI 协议选择合适的数据源工厂
@@ -419,6 +420,7 @@ fun rememberPlayer(context: Context, mediaUri: String, dataSourceType: String) =
             ).setRenderersFactory(renderersFactory).build().apply {
                 playWhenReady = true
                 repeatMode = Player.REPEAT_MODE_ONE
+
             }
     }
 //            .buildWithAssSupport(context = context, renderType = AssRenderType.LEGACY,
