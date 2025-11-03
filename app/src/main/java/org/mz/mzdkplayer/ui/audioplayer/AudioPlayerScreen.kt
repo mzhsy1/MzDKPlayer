@@ -541,7 +541,7 @@ fun AudioPlayerScreen(
         )
         // 在频谱显示组件中
 
-        // 音轨/字幕选择面板的动画可见性
+        // 音乐列表
         AnimatedVisibility(
             audioPlayerViewModel.atpVisibility, // 根据 ViewModel 状态显示/隐藏
             enter = fadeIn(), // 淡入动画

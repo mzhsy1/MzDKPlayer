@@ -367,6 +367,7 @@ fun rememberPlayer(context: Context, mediaUri: String, dataSourceType: String) =
         val renderersFactory = DefaultRenderersFactory(context).apply {
             //setMediaCodecSelector(avcAwareCodecSelector)
             setExtensionRendererMode(EXTENSION_RENDERER_MODE_PREFER)
+            forceDisableMediaCodecAsynchronousQueueing()
         }
 
         // 根据 URI 协议选择合适的数据源工厂

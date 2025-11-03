@@ -21,6 +21,7 @@ material3 = "1.4.0"
 media3UiCompose = "1.8.0"
 nfsClient = "1.1.0"
 
+paletteKtx = "1.0.0"
 sardineAndroidVersion = "0.9"
 smbj = "0.14.0"
 tvFoundation = "1.0.0-alpha12"
@@ -41,6 +42,7 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
 androidx-media3-ui-compose = { module = "androidx.media3:media3-ui-compose", version.ref = "media3UiCompose" }
+androidx-palette-ktx = { module = "androidx.palette:palette-ktx", version.ref = "paletteKtx" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" ,version.ref = "ui"  }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
