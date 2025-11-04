@@ -4,6 +4,7 @@ package org.mz.mzdkplayer.ui.screen.nfs
 
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,6 +21,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
@@ -47,6 +49,7 @@ import java.net.URLEncoder
  * @param navController 导航控制器
  * @param nfsConnection NFS 连接信息数据类
  */
+@OptIn(UnstableApi::class)
 @Composable
 fun NFSFileListScreen(
     sharePath: String, // NFS 共享的根路径/movies

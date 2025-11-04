@@ -40,7 +40,6 @@ import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.NFSConnection // 引入 NFS 数据模型
 import org.mz.mzdkplayer.tool.Tools
-import org.mz.mzdkplayer.ui.screen.vm.HTTPLinkConnectionStatus
 import org.mz.mzdkplayer.ui.screen.vm.NFSConViewModel
 
 import org.mz.mzdkplayer.ui.screen.vm.NFSConnectionStatus // 引入 NFS 状态枚举

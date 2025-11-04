@@ -27,7 +27,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 
-import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalContext
@@ -39,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.ButtonScale
 import androidx.tv.material3.ClickableSurfaceColors
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -116,6 +114,9 @@ fun TvTextField(
                         when (it.nativeKeyEvent.keyCode) {
                             KeyEvent.KEYCODE_DPAD_DOWN -> {
                                 focusManager.moveFocus(FocusDirection.Down)
+                            }
+                            KeyEvent.KEYCODE_DPAD_CENTER -> {
+                                focusManager.moveFocus(FocusDirection.Enter)
                             }
 
                             KeyEvent.KEYCODE_DPAD_UP -> {
