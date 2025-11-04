@@ -342,6 +342,10 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
             }
 
             is SMBConnectionStatus.Connected, is SMBConnectionStatus.LoadingFiled -> {
+                if (files.isEmpty()&&!isLoading){
+                    FileEmptyScreen("此目录为空")
+                    return@Box
+                }
                 if (isLoading) {
                     LoadingScreen(
                         "正在加载SMB文件",
@@ -372,18 +376,6 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                             fontSize = 16.sp,
                                             modifier = Modifier.padding(8.dp)
                                         )
-                                    }
-                                }
-                            } else if (filteredFiles.isEmpty() && seaText.isEmpty() && !isLoading) {
-                                // 显示原始文件列表为空
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .fillMaxHeight(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        FileEmptyScreen("此目录为空")
                                     }
                                 }
                             } else if (!isLoading) {
