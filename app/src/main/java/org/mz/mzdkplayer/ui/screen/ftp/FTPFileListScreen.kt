@@ -70,13 +70,14 @@ fun FTPFileListScreen(
 
         when (connectionStatus) {
             is FTPConnectionStatus.Connected -> {
-                delay(300)
+
                 // 已连接，可以安全地列出文件
                 Log.d("FTPFileListScreen", "Already connected, listing files for path: $path")
                 viewModel.listFiles(path ?: "")
             }
 
             is FTPConnectionStatus.Disconnected -> {
+                delay(300)
                 // 未连接，尝试连接
                 Log.d("FTPFileListScreen", "Disconnected. Attempting to connect.")
                 viewModel.connectToFTP(

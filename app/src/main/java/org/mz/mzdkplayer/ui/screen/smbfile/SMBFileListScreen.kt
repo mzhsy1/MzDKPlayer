@@ -99,6 +99,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
 
         when (connectionStatus) {
             is SMBConnectionStatus.Disconnected -> {
+                delay(300)
                 Log.d("SMBFileListScreen", "未连接，开始连接: ${smbConfig.server}")
                 viewModel.connectToSMB(
                     smbConfig.server,
@@ -109,7 +110,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
             }
 
             is SMBConnectionStatus.Connected -> {
-                delay(300)
+
                 Log.d("SMBFileListScreen", "已连接，列出文件: ${smbConfig.path}")
                 viewModel.listSMBFiles(smbConfig)
             }
@@ -451,17 +452,6 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                 }
 
                 SMBConnectionStatus.Disconnected -> {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            "未连接到 SMB 服务器",
-                            color = Color.White,
-                            fontSize = 20.sp
-                        )
-                        // 可以添加连接按钮
-                    }
                 }
 
                 is SMBConnectionStatus.Error -> {

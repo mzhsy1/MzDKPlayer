@@ -4,6 +4,7 @@ package org.mz.mzdkplayer.ui.screen.webdavfile
 
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -35,12 +36,14 @@ import org.mz.mzdkplayer.ui.screen.vm.WebDavConnectionStatus // 导入状态类
 import org.mz.mzdkplayer.ui.style.myListItemColor
 import java.net.URLEncoder
 import androidx.core.net.toUri
+import androidx.media3.common.util.UnstableApi
 import kotlinx.coroutines.delay
 import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.logic.model.AudioItem
 import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 
+@OptIn(UnstableApi::class)
 @Composable
 fun WebDavFileListScreen(
     // path 现在是相对于 WebDAV 根目录的路径

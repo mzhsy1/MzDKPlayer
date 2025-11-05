@@ -87,7 +87,7 @@ fun HTTPLinkFileListScreen(
 
             when (connectionStatus) {
                 is HTTPLinkConnectionStatus.Connected -> {
-                    delay(300)
+
                     // 已连接，直接尝试列出指定路径
                     Log.d(
                         "HTTPLinkFileListScreen",
@@ -98,6 +98,7 @@ fun HTTPLinkFileListScreen(
 
                 is HTTPLinkConnectionStatus.Disconnected,
                 is HTTPLinkConnectionStatus.Error -> {
+                    delay(300)
                     // 未连接或之前有错误，尝试连接到根路径
                     Log.d(
                         "HTTPLinkFileListScreen",

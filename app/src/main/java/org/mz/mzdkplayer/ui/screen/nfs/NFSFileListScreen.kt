@@ -83,7 +83,7 @@ fun NFSFileListScreen(
 
         when (connectionStatus) {
             is NFSConnectionStatus.Connected -> {
-                delay(300)
+
                 // 已连接，可以安全地列出文件
                 //Log.d("NFSFileListScreen", "Already connected, listing files for subPath: $subPath")
                 Log.d("sharePath", sharePath)
@@ -91,6 +91,7 @@ fun NFSFileListScreen(
             }
 
             is NFSConnectionStatus.Disconnected -> {
+                delay(300)
                 // 未连接，尝试连接
                 Log.d("NFSFileListScreen", "Disconnected. Attempting to connect.")
                 Log.d("sharePath", sharePath)
