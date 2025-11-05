@@ -39,6 +39,7 @@ import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.vm.NFSConViewModel
 import org.mz.mzdkplayer.ui.screen.vm.NFSConnectionStatus // 假设存在对应的状态类
+import org.mz.mzdkplayer.ui.screen.vm.SMBConnectionStatus
 import org.mz.mzdkplayer.ui.style.myListItemColor
 import java.net.URLEncoder
 
@@ -71,7 +72,8 @@ fun NFSFileListScreen(
     var focusedMediaUri by remember { mutableStateOf("") }
     // ViewModel 内部可能需要维护当前完整路径或子路径，这里假设它维护的是相对于共享根的子路径
     //val currentSubPath by viewModel.currentSubPath.collectAsState()
-
+// 是否正在加载
+    var isLoading by remember { mutableStateOf(true) }
     // 当传入的 subPath 参数变化时，或者首次进入时，尝试加载文件列表
     LaunchedEffect(sharePath, connectionStatus) { // 依赖 subPath
         Log.d(
@@ -100,6 +102,7 @@ fun NFSFileListScreen(
             is NFSConnectionStatus.Connecting -> {
                 // 正在连接，等待...
                 Log.d("NFSFileListScreen", "Connecting...")
+                isLoading = true
             }
 
             is NFSConnectionStatus.Error -> {
@@ -107,6 +110,17 @@ fun NFSFileListScreen(
                 val errorMessage = (connectionStatus as NFSConnectionStatus.Error).message
                 Log.e("NFSFileListScreen", "Error state: $errorMessage")
                 Toast.makeText(context, "NFS 错误: $errorMessage", Toast.LENGTH_LONG).show()
+            }
+
+            is NFSConnectionStatus.LoadingFile -> {
+                Log.d("SMBFileListScreen", "正在加载文件...")
+                isLoading = true
+            }
+
+            is NFSConnectionStatus.LoadingFiled -> {
+                Log.d("SMBFileListScreen", "文件加载完成")
+                isLoading = false
+
             }
         }
     }
@@ -127,11 +141,11 @@ fun NFSFileListScreen(
     ) {
         when (connectionStatus) {
             is NFSConnectionStatus.Connecting -> {
-                LoadingScreen(
-                    "正在连接NFS服务器", Modifier
-                        .fillMaxSize()
-                        .background(Color.Black)
-                )
+//                LoadingScreen(
+//                    "正在连接NFS服务器", Modifier
+//                        .fillMaxSize()
+//                        .background(Color.Black)
+//                )
             }
 
             is NFSConnectionStatus.Error -> {
@@ -147,10 +161,19 @@ fun NFSFileListScreen(
                 // 可以添加一个重试按钮
             }
 
-            is NFSConnectionStatus.Connected -> {
-                if (fileList.isEmpty()) {
+            is NFSConnectionStatus.Connected ,is NFSConnectionStatus.LoadingFiled-> {
+                if (fileList.isEmpty()&& !isLoading) {
                     FileEmptyScreen("此目录为空")
-                } else {
+                    return@Box
+                }
+                if (isLoading) {
+                    LoadingScreen(
+                        "正在加载NFS文件",
+                        Modifier
+                            .fillMaxSize()
+                            .background(Color.Black)
+                    )
+                } else  {
                     // 已连接，显示文件列表
                     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                         LazyColumn(
@@ -374,6 +397,17 @@ fun NFSFileListScreen(
                     // 可以添加一个按钮来触发连接
                 }
             }
+
+            NFSConnectionStatus.LoadingFile -> {
+                LoadingScreen(
+                    "正在加载NFS文件",
+                    Modifier
+                        .fillMaxSize()
+                        .background(Color.Black)
+                )
+            }
+
+
         }
     }
 }
