@@ -25,6 +25,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
@@ -86,6 +87,7 @@ fun HTTPLinkFileListScreen(
 
             when (connectionStatus) {
                 is HTTPLinkConnectionStatus.Connected -> {
+                    delay(300)
                     // 已连接，直接尝试列出指定路径
                     Log.d(
                         "HTTPLinkFileListScreen",

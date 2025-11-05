@@ -35,6 +35,7 @@ import org.mz.mzdkplayer.ui.screen.vm.WebDavConnectionStatus // 导入状态类
 import org.mz.mzdkplayer.ui.style.myListItemColor
 import java.net.URLEncoder
 import androidx.core.net.toUri
+import kotlinx.coroutines.delay
 import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.logic.model.AudioItem
 import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
@@ -62,6 +63,7 @@ fun WebDavFileListScreen(
     // 当传入的 path 参数变化时，或者首次进入时，尝试加载文件列表
     // 注意：这里不再直接调用 listFiles，而是在 LaunchedEffect 中根据状态处理
     LaunchedEffect(path) { // 依赖 path
+
         Log.d(
             "WebDavFileListScreen",
             "LaunchedEffect triggered with path: $path, status: $connectionStatus"
@@ -69,6 +71,7 @@ fun WebDavFileListScreen(
 
         when (connectionStatus) {
             is WebDavConnectionStatus.Connected -> {
+                delay(300)
                 // 已连接，可以安全地列出文件
                 Log.d("WebDavFileListScreen", "Already connected, listing files for path: $path")
                 viewModel.listFiles(path ?: "")

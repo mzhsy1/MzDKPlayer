@@ -37,6 +37,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.logic.model.AudioItem
@@ -71,7 +72,8 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
     var filteredFiles by remember { mutableStateOf(emptyList<FileListItemData>()) }
     // 是否正在加载
     var isLoading by remember { mutableStateOf(true) }
-
+    // 添加首次加载标志
+    var isFirstLoad by remember { mutableStateOf(true) }
     // 处理路径变化和连接状态
     LaunchedEffect(path, connectionStatus) {
         val decodedPath = try {
@@ -107,6 +109,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
             }
 
             is SMBConnectionStatus.Connected -> {
+                delay(300)
                 Log.d("SMBFileListScreen", "已连接，列出文件: ${smbConfig.path}")
                 viewModel.listSMBFiles(smbConfig)
             }
@@ -125,6 +128,9 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
             is SMBConnectionStatus.LoadingFiled -> {
                 Log.d("SMBFileListScreen", "文件加载完成")
                 isLoading = false
+                if (isFirstLoad) {
+                    isFirstLoad = false
+                }
             }
 
             is SMBConnectionStatus.Connecting -> {
@@ -290,25 +296,25 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                 Log.d("SMBFileListScreen", "准备播放视频: $focusedFileName")
 
                 try {
-                    exoPlayer = withContext(Dispatchers.Main) {
-                        builderPlayer(mediaUri = focusedMediaUri, context, dataSourceType = "SMB")
-                    }
+//                    exoPlayer = withContext(Dispatchers.Main) {
+//                        builderPlayer(mediaUri = focusedMediaUri, context, dataSourceType = "SMB")
+//                    }
 
-                    withContext(Dispatchers.Main) {
-                        setupPlayer(
-                            exoPlayer!!,
-                            focusedMediaUri,
-                            "SMB",
-                            context,
-                            { mediaInfoMap ->
-                                Log.d("SMBFileListScreen", "媒体信息: $mediaInfoMap")
-                            },
-                            onError = { errorMessage ->
-                                Log.e("SMBFileListScreen", "播放错误: $errorMessage")
-                                //Toast.makeText(context, "播放错误: $errorMessage", Toast.LENGTH_SHORT).show()
-                            }
-                        )
-                    }
+//                    withContext(Dispatchers.Main) {
+//                        setupPlayer(
+//                            exoPlayer!!,
+//                            focusedMediaUri,
+//                            "SMB",
+//                            context,
+//                            { mediaInfoMap ->
+//                                Log.d("SMBFileListScreen", "媒体信息: $mediaInfoMap")
+//                            },
+//                            onError = { errorMessage ->
+//                                Log.e("SMBFileListScreen", "播放错误: $errorMessage")
+//                                //Toast.makeText(context, "播放错误: $errorMessage", Toast.LENGTH_SHORT).show()
+//                            }
+//                        )
+//                    }
                 } catch (e: Exception) {
                     Log.e("SMBFileListScreen", "播放器初始化失败: ${e.message}", e)
                     // Toast.makeText(context, "播放器初始化失败", Toast.LENGTH_SHORT).show()
@@ -325,136 +331,158 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
             viewModel.disconnectSMB()
         }
     }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .background(Color.Black) // 👈 先铺满黑色背景
     ) {
-        when (connectionStatus) {
-            is SMBConnectionStatus.Connecting -> {
-                LoadingScreen(
-                    "正在连接SMB服务器",
-                    Modifier
-                        .fillMaxSize()
-                        .background(Color.Black)
-                )
-            }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()// 👈 防止底层界面透出
+                .padding(16.dp)
+        ) {
+            when (connectionStatus) {
+                is SMBConnectionStatus.Connecting -> {
 
-            is SMBConnectionStatus.Connected, is SMBConnectionStatus.LoadingFiled -> {
-                if (files.isEmpty()&&!isLoading){
-                    FileEmptyScreen("此目录为空")
-                    return@Box
+//                LoadingScreen(
+//                    "正在连接SMB服务器",
+//                    Modifier
+//                        .fillMaxSize()
+//                        .background(Color.Black)
+//                )
                 }
-                if (isLoading) {
+
+
+                is SMBConnectionStatus.Connected, is SMBConnectionStatus.LoadingFiled -> {
+                    if (files.isEmpty() && !isLoading) {
+                        FileEmptyScreen("此目录为空")
+                        return@Box
+                    }
+                    if (isLoading) {
+                        LoadingScreen(
+                            "正在加载SMB文件",
+                            Modifier
+                                .fillMaxSize()
+                                .background(Color.Black)
+                        )
+                    } else {
+                        Row(
+                            Modifier.fillMaxSize(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .padding(10.dp)
+                                    .fillMaxHeight()
+                                    .weight(0.7f)
+                            ) {
+                                if (filteredFiles.isEmpty() && seaText.isNotEmpty()) {
+                                    // 显示搜索结果为空的提示
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                "搜索结果为空",
+                                                color = Color.White,
+                                                fontSize = 16.sp,
+                                                modifier = Modifier.padding(8.dp)
+                                            )
+                                        }
+                                    }
+                                } else if (!isLoading) {
+                                    // 显示过滤后的文件列表
+                                    items(filteredFiles) { file ->
+                                        CommonFileListItem(
+                                            file,
+                                            context = context,
+                                            navController,
+                                            onFocused = {
+                                                focusedFileName = file.fileName
+                                                focusedIsDir = file.isDirectory
+                                                focusedMediaUri =
+                                                    file.filePath // 因为它已经是 smb://... 形式
+                                                Log.d(
+                                                    "SMBFileListScreen",
+                                                    "焦点变化: ${file.fileName}, 是目录: $focusedIsDir"
+                                                )
+                                            })
+                                    }
+                                }
+                            }
+
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .weight(0.3f),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                TvTextField(
+                                    seaText,
+                                    onValueChange = { seaText = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    placeholder = "请输入文件名",
+                                    colors = myTTFColor(),
+                                    textStyle = TextStyle(color = Color.White)
+                                )
+                                VideoBigIcon(
+                                    focusedIsDir,
+                                    focusedFileName,
+                                    modifier = Modifier
+                                        .height(200.dp)
+                                        .fillMaxWidth()
+                                )
+                                focusedFileName?.let { fileName ->
+                                    Text(
+                                        fileName,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                SMBConnectionStatus.Disconnected -> {
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            "未连接到 SMB 服务器",
+                            color = Color.White,
+                            fontSize = 20.sp
+                        )
+                        // 可以添加连接按钮
+                    }
+                }
+
+                is SMBConnectionStatus.Error -> {
+                    val errorMessage = (connectionStatus as SMBConnectionStatus.Error).message
+                    Text(
+                        "加载失败: $errorMessage",
+                        modifier = Modifier.align(Alignment.Center),
+                        color = Color.Red,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                }
+
+                SMBConnectionStatus.LoadingFile -> {
                     LoadingScreen(
                         "正在加载SMB文件",
                         Modifier
                             .fillMaxSize()
                             .background(Color.Black)
                     )
-                } else {
-                    Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                        LazyColumn(
-                            modifier = Modifier
-                                .padding(10.dp)
-                                .fillMaxHeight()
-                                .weight(0.7f)
-                        ) {
-                            if (filteredFiles.isEmpty() && seaText.isNotEmpty()) {
-                                // 显示搜索结果为空的提示
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            "搜索结果为空",
-                                            color = Color.White,
-                                            fontSize = 16.sp,
-                                            modifier = Modifier.padding(8.dp)
-                                        )
-                                    }
-                                }
-                            } else if (!isLoading) {
-                                // 显示过滤后的文件列表
-                                items(filteredFiles) { file ->
-                                    CommonFileListItem(file, context = context, navController, onFocused = {
-                                        focusedFileName = file.fileName
-                                        focusedIsDir = file.isDirectory
-                                        focusedMediaUri = file.filePath // 因为它已经是 smb://... 形式
-                                        Log.d("SMBFileListScreen", "焦点变化: ${file.fileName}, 是目录: $focusedIsDir")
-                                    })
-                                }
-                            }
-                        }
-
-                        Column(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .weight(0.3f),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            TvTextField(seaText, onValueChange = { seaText = it },
-                                modifier = Modifier.fillMaxWidth(), placeholder = "请输入文件名",
-                                colors = myTTFColor(),
-                                textStyle = TextStyle(color = Color.White))
-                            VideoBigIcon(
-                                focusedIsDir,
-                                focusedFileName,
-                                modifier = Modifier
-                                    .height(200.dp)
-                                    .fillMaxWidth()
-                            )
-                            focusedFileName?.let { fileName ->
-                                Text(
-                                    fileName,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp,
-                                    modifier = Modifier.padding(start = 8.dp)
-                                )
-                            }
-                        }
-                    }
                 }
-            }
-
-            SMBConnectionStatus.Disconnected -> {
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        "未连接到 SMB 服务器",
-                        color = Color.White,
-                        fontSize = 20.sp
-                    )
-                    // 可以添加连接按钮
-                }
-            }
-
-            is SMBConnectionStatus.Error -> {
-                val errorMessage = (connectionStatus as SMBConnectionStatus.Error).message
-                Text(
-                    "加载失败: $errorMessage",
-                    modifier = Modifier.align(Alignment.Center),
-                    color = Color.Red,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                )
-            }
-
-            SMBConnectionStatus.LoadingFile -> {
-                LoadingScreen(
-                    "正在加载SMB文件",
-                    Modifier
-                        .fillMaxSize()
-                        .background(Color.Black)
-                )
             }
         }
     }

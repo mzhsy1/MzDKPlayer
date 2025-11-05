@@ -38,6 +38,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
+import kotlinx.coroutines.delay
 import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.AudioItem
@@ -58,6 +59,7 @@ fun LocalFileScreen(path: String?, navController: NavHostController) {
     var focusedIsDir by remember { mutableStateOf(false) }
     var focusedMediaUri by remember { mutableStateOf("") }
     LaunchedEffect(path) {
+        delay(300)
         files.clear()
         val decodedPath = URLDecoder.decode(path ?: "", "UTF-8")
         if (decodedPath.isEmpty()) return@LaunchedEffect
