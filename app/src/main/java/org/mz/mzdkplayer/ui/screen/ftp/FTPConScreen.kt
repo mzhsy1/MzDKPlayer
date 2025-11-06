@@ -39,9 +39,10 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.FTPConnection // 引入 FTP 数据模型
+import org.mz.mzdkplayer.logic.model.FileConnectionStatus
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.ui.screen.vm.FTPConViewModel // 引入 FTP ViewModel
-import org.mz.mzdkplayer.ui.screen.vm.FTPConnectionStatus // 引入 FTP 状态枚举
+
 import org.mz.mzdkplayer.ui.screen.vm.FTPListViewModel // 引入 FTP List ViewModel
 import org.mz.mzdkplayer.ui.style.myTTFColor
 import org.mz.mzdkplayer.ui.theme.MyIconButton
@@ -100,9 +101,11 @@ fun FTPConScreen(
                     painter = painterResource(R.drawable.baseline_circle_24), // 确保有此图标资源
                     contentDescription = null,
                     tint = when (connectionStatus) {
-                        is FTPConnectionStatus.Connected -> Color.Green
-                        is FTPConnectionStatus.Connecting -> Color.Yellow
-                        is FTPConnectionStatus.Error -> Color.Red
+                        is FileConnectionStatus.Connected -> Color.Green
+                        is FileConnectionStatus.Connecting -> Color.Yellow
+                        is FileConnectionStatus.Error -> Color.Red
+                        is FileConnectionStatus.LoadingFile -> Color.Yellow
+                        is FileConnectionStatus.FilesLoaded -> Color.Cyan
                         else -> Color.Gray // Disconnected
                     }
                 )
@@ -182,7 +185,7 @@ fun FTPConScreen(
                     text = "测试连接",
                     imageVector = Icons.Outlined.Check,
                     modifier = Modifier.weight(1f) .padding(end = 8.dp), // 可选：加点右边距，避免贴太紧,// ⬅️ 平分宽度,
-                    enabled = connectionStatus != FTPConnectionStatus.Connecting, // 连接中时禁用
+                    enabled = connectionStatus != FileConnectionStatus.Connecting, // 连接中时禁用
                     onClick = {
                         keyboardController?.hide() // 隐藏键盘
                         if (!Tools.validateConnectionParams(context, server, shareName = shareName)) {
@@ -198,7 +201,7 @@ fun FTPConScreen(
                     imageVector = Icons.Outlined.Star,
                     modifier = Modifier.weight(1f).padding(start = 8.dp), // 可选：加点右边距，避免贴太紧 ,// ⬅️ 平分宽度,
                     // 只有在已连接时才允许保存
-                    // enabled = connectionStatus is FTPConnectionStatus.Connected,
+                    // enabled = connectionStatus is FileConnectionStatus.Connected,
                     onClick = {
 
                         keyboardController?.hide()
@@ -206,7 +209,7 @@ fun FTPConScreen(
                         if (!Tools.validateConnectionParams(context, server, shareName = shareName)) {
                             return@MyIconButton
                         }
-                        if (connectionStatus !is FTPConnectionStatus.Connected){
+                        if (!ftpConViewModel.isConnected()){
                             Toast.makeText(context, "请先连接成功后再保存", Toast.LENGTH_SHORT).show()
                             return@MyIconButton
                         }
@@ -236,9 +239,9 @@ fun FTPConScreen(
                 imageVector = Icons.Outlined.Delete,
                 modifier = Modifier.fillMaxWidth(),
                 // 只有在已连接或连接出错时才允许断开
-//                enabled = connectionStatus is FTPConnectionStatus.Connected ||
-//                        connectionStatus is FTPConnectionStatus.Error ||
-//                        connectionStatus is FTPConnectionStatus.Connecting,
+//                enabled = connectionStatus is FileConnectionStatus.Connected ||
+//                        connectionStatus is FileConnectionStatus.Error ||
+//                        connectionStatus is FileConnectionStatus.Connecting,
                 onClick = {
                     keyboardController?.hide()
                     ftpConViewModel.disconnectFTP()
@@ -257,123 +260,146 @@ fun FTPConScreen(
 
         // 右侧：文件列表
         // 只有在已连接且有文件时才显示列表
-        if (connectionStatus is FTPConnectionStatus.Connected && fileList.isNotEmpty()) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxHeight().fillMaxWidth(0.5f)
-                    .weight(1f) // 占据剩余空间
-            ) {
-                // 文件/文件夹列表项
-                itemsIndexed(fileList) { index, ftpFile ->
-                    val resourceName = ftpFile.name ?: "Unknown"
-                    // FTPFile 使用 isDirectory 方法判断
-                    val isDirectory = ftpFile.isDirectory
+        when (connectionStatus) {
+            is FileConnectionStatus.FilesLoaded if fileList.isNotEmpty() -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxHeight().fillMaxWidth(0.5f)
+                        .weight(1f) // 占据剩余空间
+                ) {
+                    // 文件/文件夹列表项
+                    itemsIndexed(fileList) { index, ftpFile ->
+                        val resourceName = ftpFile.name ?: "Unknown"
+                        // FTPFile 使用 isDirectory 方法判断
+                        val isDirectory = ftpFile.isDirectory
 
-                    // 过滤掉 "." 和 ".." 目录项 (如果 FTP 服务器返回了它们)
-                    if (resourceName != "." && resourceName != "..") {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = ftpConViewModel.isConnected()) { // 只有连接时才能点击
-                                    if (isDirectory) {
-                                        // 点击文件夹：进入子目录
-                                        // FTPConViewModel 的 listFiles 方法期望相对路径 (不带开头的 /)
-                                        val newPath = if (currentPath.isEmpty()) {
-                                            resourceName
-                                        } else {
-                                            "${currentPath}/$resourceName"
-                                        }
-                                        Log.d("FtpConScreen", "进入目录: $newPath")
-                                        ftpConViewModel.listFiles(newPath)
-                                    } else {
-                                        // 点击文件：可以触发下载或其他操作
-                                        Toast.makeText(context, "点击了文件: $resourceName", Toast.LENGTH_SHORT).show()
-
-                                    }
-                                }
-                                .padding(8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // 图标 (简单区分文件夹和文件)
-                            Icon(
-                                painter = painterResource(
-                                    if (isDirectory) R.drawable.localfile else R.drawable.baseline_insert_drive_file_24 // 替换为您的图标资源
-                                ),
-                                contentDescription = if (isDirectory) "Folder" else "File",
-                                tint = if (isDirectory) Color.White else Color.White
-                            )
-                            // 名称
-                            Text(
-                                text = resourceName,
+                        // 过滤掉 "." 和 ".." 目录项 (如果 FTP 服务器返回了它们)
+                        if (resourceName != "." && resourceName != "..") {
+                            Row(
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .padding(start = 8.dp),
-                                color = Color.White,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            // 大小 (可选) - FTPFile 使用 getSize()
-                            val size = ftpFile.size
+                                    .fillMaxWidth()
+                                    .clickable(enabled = ftpConViewModel.isConnected()) { // 只有连接时才能点击
+                                        if (isDirectory) {
+                                            // 点击文件夹：进入子目录
+                                            // FTPConViewModel 的 listFiles 方法期望相对路径 (不带开头的 /)
+                                            val newPath = if (currentPath.isEmpty()) {
+                                                resourceName
+                                            } else {
+                                                "${currentPath}/$resourceName"
+                                            }
+                                            Log.d("FtpConScreen", "进入目录: $newPath")
+                                            ftpConViewModel.listFiles(newPath)
+                                        } else {
+                                            // 点击文件：可以触发下载或其他操作
+                                            Toast.makeText(
+                                                context,
+                                                "点击了文件: $resourceName",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
 
-                            if (size >= 0) { // getSize() 返回 -1 表示大小未知
-                                val sizeText = when {
-                                    size >= 1024 * 1024 * 1024 -> {
-                                        // GB
-                                        String.format(Locale.US,"%.1f GB", size.toDouble() / (1024 * 1024 * 1024))
+                                        }
                                     }
-                                    size >= 1024 * 1024 -> {
-                                        // MB
-                                        String.format(Locale.US,"%.1f MB", size.toDouble() / (1024 * 1024))
-                                    }
-                                    size >= 1024 -> {
-                                        // KB
-                                        String.format(Locale.US,"%.1f KB", size.toDouble() / 1024)
-                                    }
-                                    else -> {
-                                        // Bytes
-                                        "$size B"
-                                    }
-                                }
-                                Text(
-                                    text = sizeText, // 简单转换为 KB
-                                    color = Color.Gray,
-                                    style = MaterialTheme.typography.bodySmall
+                                    .padding(8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // 图标 (简单区分文件夹和文件)
+                                Icon(
+                                    painter = painterResource(
+                                        if (isDirectory) R.drawable.localfile else R.drawable.baseline_insert_drive_file_24 // 替换为您的图标资源
+                                    ),
+                                    contentDescription = if (isDirectory) "Folder" else "File",
+                                    tint = if (isDirectory) Color.White else Color.White
                                 )
+                                // 名称
+                                Text(
+                                    text = resourceName,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(start = 8.dp),
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                // 大小 (可选) - FTPFile 使用 getSize()
+                                val size = ftpFile.size
+
+                                if (size >= 0) { // getSize() 返回 -1 表示大小未知
+                                    val sizeText = when {
+                                        size >= 1024 * 1024 * 1024 -> {
+                                            // GB
+                                            String.format(
+                                                Locale.US,
+                                                "%.1f GB",
+                                                size.toDouble() / (1024 * 1024 * 1024)
+                                            )
+                                        }
+
+                                        size >= 1024 * 1024 -> {
+                                            // MB
+                                            String.format(
+                                                Locale.US,
+                                                "%.1f MB",
+                                                size.toDouble() / (1024 * 1024)
+                                            )
+                                        }
+
+                                        size >= 1024 -> {
+                                            // KB
+                                            String.format(Locale.US, "%.1f KB", size.toDouble() / 1024)
+                                        }
+
+                                        else -> {
+                                            // Bytes
+                                            "$size B"
+                                        }
+                                    }
+                                    Text(
+                                        text = sizeText, // 简单转换为 KB
+                                        color = Color.Gray,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
-        } else if (connectionStatus is FTPConnectionStatus.Connecting) {
-            // 显示连接中提示
-            Text(
-                text = "正在连接...",
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(1f)
-                    .padding(16.dp),
-                color = Color.Gray
-            )
-        } else if (connectionStatus is FTPConnectionStatus.Error) {
-            // 显示错误信息
-            Text(
-                text = (connectionStatus as FTPConnectionStatus.Error).message,
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(1f)
-                    .padding(16.dp),
-                color = Color.Red
-            )
-        } else {
-            // Disconnected 或 Connected 但列表为空
-            Text(
-                text = "无文件",
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(1f)
-                    .padding(16.dp),
-                color = Color.Gray
-            )
+
+            is FileConnectionStatus.Connecting -> {
+                // 显示连接中提示
+                Text(
+                    text = "正在连接...",
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(1f)
+                        .padding(16.dp),
+                    color = Color.Gray
+                )
+            }
+
+            is FileConnectionStatus.Error -> {
+                // 显示错误信息
+                Text(
+                    text = (connectionStatus as FileConnectionStatus.Error).message,
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(1f)
+                        .padding(16.dp),
+                    color = Color.Red
+                )
+            }
+
+            else -> {
+                // Disconnected 或 Connected 但列表为空
+                Text(
+                    text = "无文件",
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(1f)
+                        .padding(16.dp),
+                    color = Color.Gray
+                )
+            }
         }
     }
 }

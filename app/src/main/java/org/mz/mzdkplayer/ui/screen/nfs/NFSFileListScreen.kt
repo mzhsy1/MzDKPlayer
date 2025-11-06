@@ -32,14 +32,15 @@ import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.AudioItem
+import org.mz.mzdkplayer.logic.model.FileConnectionStatus
 import org.mz.mzdkplayer.logic.model.NFSConnection
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.vm.NFSConViewModel
-import org.mz.mzdkplayer.ui.screen.vm.NFSConnectionStatus // 假设存在对应的状态类
-import org.mz.mzdkplayer.ui.screen.vm.SMBConnectionStatus
+
+
 import org.mz.mzdkplayer.ui.style.myListItemColor
 import java.net.URLEncoder
 
@@ -82,7 +83,7 @@ fun NFSFileListScreen(
         )
 
         when (connectionStatus) {
-            is NFSConnectionStatus.Connected -> {
+            is FileConnectionStatus.Connected -> {
 
                 // 已连接，可以安全地列出文件
                 //Log.d("NFSFileListScreen", "Already connected, listing files for subPath: $subPath")
@@ -90,7 +91,7 @@ fun NFSFileListScreen(
                 viewModel.listFiles(sharePath)
             }
 
-            is NFSConnectionStatus.Disconnected -> {
+            is FileConnectionStatus.Disconnected -> {
                 delay(300)
                 // 未连接，尝试连接
                 Log.d("NFSFileListScreen", "Disconnected. Attempting to connect.")
@@ -100,25 +101,25 @@ fun NFSFileListScreen(
                 )
             }
 
-            is NFSConnectionStatus.Connecting -> {
+            is FileConnectionStatus.Connecting -> {
                 // 正在连接，等待...
                 Log.d("NFSFileListScreen", "Connecting...")
                 isLoading = true
             }
 
-            is NFSConnectionStatus.Error -> {
+            is FileConnectionStatus.Error -> {
                 // 连接或列表错误
-                val errorMessage = (connectionStatus as NFSConnectionStatus.Error).message
+                val errorMessage = (connectionStatus as FileConnectionStatus.Error).message
                 Log.e("NFSFileListScreen", "Error state: $errorMessage")
                 Toast.makeText(context, "NFS 错误: $errorMessage", Toast.LENGTH_LONG).show()
             }
 
-            is NFSConnectionStatus.LoadingFile -> {
+            is FileConnectionStatus.LoadingFile -> {
                 Log.d("SMBFileListScreen", "正在加载文件...")
                 isLoading = true
             }
 
-            is NFSConnectionStatus.LoadingFiled -> {
+            is FileConnectionStatus.FilesLoaded -> {
                 Log.d("SMBFileListScreen", "文件加载完成")
                 isLoading = false
 
@@ -141,7 +142,7 @@ fun NFSFileListScreen(
             .padding(16.dp)
     ) {
         when (connectionStatus) {
-            is NFSConnectionStatus.Connecting -> {
+            is FileConnectionStatus.Connecting -> {
 //                LoadingScreen(
 //                    "正在连接NFS服务器", Modifier
 //                        .fillMaxSize()
@@ -149,9 +150,9 @@ fun NFSFileListScreen(
 //                )
             }
 
-            is NFSConnectionStatus.Error -> {
+            is FileConnectionStatus.Error -> {
                 // 显示错误信息
-                val errorMessage = (connectionStatus as NFSConnectionStatus.Error).message
+                val errorMessage = (connectionStatus as FileConnectionStatus.Error).message
                 Text(
                     "加载失败: $errorMessage",
                     modifier = Modifier.align(Alignment.Center),
@@ -162,7 +163,7 @@ fun NFSFileListScreen(
                 // 可以添加一个重试按钮
             }
 
-            is NFSConnectionStatus.Connected ,is NFSConnectionStatus.LoadingFiled-> {
+            is FileConnectionStatus.Connected ,is FileConnectionStatus.FilesLoaded-> {
                 if (fileList.isEmpty()&& !isLoading) {
                     FileEmptyScreen("此目录为空")
                     return@Box
@@ -388,7 +389,7 @@ fun NFSFileListScreen(
                 }
             }
 
-            is NFSConnectionStatus.Disconnected -> {
+            is FileConnectionStatus.Disconnected -> {
                 // 显示未连接提示
                 Column(
                     modifier = Modifier.align(Alignment.Center),
@@ -399,7 +400,7 @@ fun NFSFileListScreen(
                 }
             }
 
-            NFSConnectionStatus.LoadingFile -> {
+            FileConnectionStatus.LoadingFile -> {
                 LoadingScreen(
                     "正在加载NFS文件",
                     Modifier

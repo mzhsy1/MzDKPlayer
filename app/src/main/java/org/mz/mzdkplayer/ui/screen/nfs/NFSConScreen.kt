@@ -1,4 +1,3 @@
-
 package org.mz.mzdkplayer.ui.screen.nfs
 
 import android.util.Log
@@ -38,11 +37,12 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.logic.model.FileConnectionStatus
 import org.mz.mzdkplayer.logic.model.NFSConnection // 引入 NFS 数据模型
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.ui.screen.vm.NFSConViewModel
 
-import org.mz.mzdkplayer.ui.screen.vm.NFSConnectionStatus // 引入 NFS 状态枚举
+
 import org.mz.mzdkplayer.ui.screen.vm.NFSListViewModel // 假设你也有一个管理 NFS 连接列表的 ViewModel
 import org.mz.mzdkplayer.ui.style.myTTFColor
 import org.mz.mzdkplayer.ui.theme.MyIconButton
@@ -99,9 +99,11 @@ fun NFSConScreen(
                     painter = painterResource(R.drawable.baseline_circle_24), // 确保有此图标资源
                     contentDescription = null,
                     tint = when (connectionStatus) {
-                        is NFSConnectionStatus.Connected -> Color.Green
-                        is NFSConnectionStatus.Connecting -> Color.Yellow
-                        is NFSConnectionStatus.Error -> Color.Red
+                        is FileConnectionStatus.Connected -> Color.Green
+                        is FileConnectionStatus.Connecting -> Color.Yellow
+                        is FileConnectionStatus.Error -> Color.Red
+                        is FileConnectionStatus.LoadingFile -> Color.Yellow
+                        is FileConnectionStatus.FilesLoaded -> Color.Cyan
                         else -> Color.Gray // Disconnected
                     }
                 )
@@ -148,12 +150,12 @@ fun NFSConScreen(
                     modifier = Modifier
                         .weight(1f)
                         .padding(end = 8.dp), // 平分宽度并加右边距
-                    enabled = connectionStatus != NFSConnectionStatus.Connecting, // 连接中时禁用
+                    enabled = connectionStatus != FileConnectionStatus.Connecting, // 连接中时禁用
                     onClick = {
                         keyboardController?.hide() // 隐藏键盘
-                        if (!Tools.validateConnectionParams(context,serverAddress,shareName)) {
+                        if (!Tools.validateConnectionParams(context, serverAddress, shareName)) {
                             return@MyIconButton
-                    }
+                        }
                         // 创建临时连接对象用于测试
                         val tempConnection = NFSConnection(
                             id = UUID.randomUUID().toString(), // 临时 ID
@@ -162,7 +164,8 @@ fun NFSConScreen(
                             shareName
 
                         )
-                        nfsConViewModel.connectToNFS(tempConnection)
+                        nfsConViewModel.connectToNFS(tempConnection, true)
+                        // nfsConViewModel.listFiles("/")
                     },
                 )
 
@@ -175,11 +178,12 @@ fun NFSConScreen(
                         .padding(start = 8.dp), // 平分宽度并加左边距
                     onClick = {
                         keyboardController?.hide()
-                        if (!Tools.validateConnectionParams(context,serverAddress,shareName)) {
+                        if (!Tools.validateConnectionParams(context, serverAddress, shareName)) {
                             return@MyIconButton
                         }
-                        if (connectionStatus !is NFSConnectionStatus.Connected){
-                            Toast.makeText(context, "请先连接成功后再保存", Toast.LENGTH_SHORT).show()
+                        if (!nfsConViewModel.isConnected()) {
+                            Toast.makeText(context, "请先连接成功后再保存", Toast.LENGTH_SHORT)
+                                .show()
                             return@MyIconButton
                         }
                         // 创建 NfsConnection 数据对象
@@ -210,9 +214,6 @@ fun NFSConScreen(
                 imageVector = Icons.Outlined.Delete,
                 modifier = Modifier.fillMaxWidth(),
                 // 只有在已连接或连接出错时才允许断开
-                enabled = connectionStatus is NFSConnectionStatus.Connected ||
-                        connectionStatus is NFSConnectionStatus.Error ||
-                        connectionStatus is NFSConnectionStatus.Connecting,
                 onClick = {
                     keyboardController?.hide()
                     nfsConViewModel.disconnectNfs()
@@ -221,7 +222,7 @@ fun NFSConScreen(
 
             // 显示当前路径 (可选)
             Text(
-                text = "当前路径: /$currentPath",
+                text = "当前路径: $currentPath",
                 color = Color.LightGray,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 8.dp)
@@ -235,143 +236,143 @@ fun NFSConScreen(
                 .fillMaxWidth() // 剩余的右半边
                 .weight(1f) // 占据剩余空间
         ) {
-            if (connectionStatus is NFSConnectionStatus.Connected) {
-                if (fileList.isNotEmpty()) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        // 文件/文件夹列表项
-                        itemsIndexed(fileList) { index, nfsFile ->
-                            val resourceName = nfsFile.name ?: "Unknown"
-                            // NfsFile 使用 isDirectory 属性判断
-                            val isDirectory = nfsFile.isDirectory
+            when (connectionStatus) {
+                is FileConnectionStatus.FilesLoaded -> {
+                    if (fileList.isNotEmpty()) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            // 文件/文件夹列表项
+                            itemsIndexed(fileList) { index, nfsFile ->
+                                val resourceName = nfsFile.name ?: "Unknown"
+                                // NfsFile 使用 isDirectory 属性判断
+                                val isDirectory = nfsFile.isDirectory
 
-                            // 过滤掉 "." 和 ".." 目录项 (如果 NFS 服务器返回了它们)
-                            if (resourceName != "." && resourceName != "..") {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable(enabled = nfsConViewModel.isConnected()) { // 只有连接时才能点击
-                                            if (isDirectory) {
-                                                // 点击文件夹：进入子目录
-                                                nfsConViewModel.navigateToSubdirectory(resourceName)
-                                                Log.d("NfsConScreen", "进入目录: $resourceName")
-                                            } else {
-                                                // 点击文件：可以触发播放或其他操作
-                                                Toast.makeText(
-                                                    context,
-                                                    "点击了文件: $resourceName",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-
-                                                // 可以使用 nfsFile 的路径等信息
-                                            }
-                                        }
-                                        .padding(8.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    // 图标 (简单区分文件夹和文件)
-                                    Icon(
-                                        painter = painterResource(
-                                            if (isDirectory) R.drawable.localfile else R.drawable.baseline_insert_drive_file_24 // 替换为您的图标资源
-                                        ),
-                                        contentDescription = if (isDirectory) "Folder" else "File",
-                                        tint = if (isDirectory) Color.White else Color.White
-                                    )
-                                    // 名称
-                                    Text(
-                                        text = resourceName,
+                                // 过滤掉 "." 和 ".." 目录项 (如果 NFS 服务器返回了它们)
+                                if (resourceName != "." && resourceName != "..") {
+                                    Row(
                                         modifier = Modifier
-                                            .weight(1f)
-                                            .padding(start = 8.dp),
-                                        color = Color.White,
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                    // 大小 (可选) - NfsFile 使用 getSize()
-                                    val size = nfsFile.lengthEx()
+                                            .fillMaxWidth()
+                                            .clickable(enabled = nfsConViewModel.isConnected()) { // 只有连接时才能点击
+                                                if (isDirectory) {
+                                                    // 点击文件夹：进入子目录
+                                                    nfsConViewModel.navigateToSubdirectory(
+                                                        resourceName
+                                                    )
+                                                    Log.d("NfsConScreen", "进入目录: $resourceName")
+                                                } else {
+                                                    // 点击文件：可以触发播放或其他操作
+                                                    Toast.makeText(
+                                                        context,
+                                                        "点击了文件: $resourceName",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
 
-                                    if (size >= 0) { // getSize() 返回 -1 表示大小未知
-                                        val sizeText = when {
-                                            size >= 1024 * 1024 * 1024 -> {
-                                                // GB
-                                                String.format(
-                                                    Locale.US,
-                                                    "%.1f GB",
-                                                    size.toDouble() / (1024 * 1024 * 1024)
-                                                )
+                                                    // 可以使用 nfsFile 的路径等信息
+                                                }
                                             }
-
-                                            size >= 1024 * 1024 -> {
-                                                // MB
-                                                String.format(
-                                                    Locale.US,
-                                                    "%.1f MB",
-                                                    size.toDouble() / (1024 * 1024)
-                                                )
-                                            }
-
-                                            size >= 1024 -> {
-                                                // KB
-                                                String.format(
-                                                    Locale.US,
-                                                    "%.1f KB",
-                                                    size.toDouble() / 1024
-                                                )
-                                            }
-
-                                            else -> {
-                                                // Bytes
-                                                "$size B"
-                                            }
-                                        }
-                                        Text(
-                                            text = sizeText,
-                                            color = Color.Gray,
-                                            style = MaterialTheme.typography.bodySmall
+                                            .padding(8.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // 图标 (简单区分文件夹和文件)
+                                        Icon(
+                                            painter = painterResource(
+                                                if (isDirectory) R.drawable.localfile else R.drawable.baseline_insert_drive_file_24 // 替换为您的图标资源
+                                            ),
+                                            contentDescription = if (isDirectory) "Folder" else "File",
+                                            tint = if (isDirectory) Color.White else Color.White
                                         )
+                                        // 名称
+                                        Text(
+                                            text = resourceName,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(start = 8.dp),
+                                            color = Color.White,
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                        // 大小 (可选) - NfsFile 使用 getSize()
+                                        val size = nfsFile.lengthEx()
+
+                                        if (size >= 0) { // getSize() 返回 -1 表示大小未知
+                                            val sizeText = when {
+                                                size >= 1024 * 1024 * 1024 -> {
+                                                    // GB
+                                                    String.format(
+                                                        Locale.US,
+                                                        "%.1f GB",
+                                                        size.toDouble() / (1024 * 1024 * 1024)
+                                                    )
+                                                }
+
+                                                size >= 1024 * 1024 -> {
+                                                    // MB
+                                                    String.format(
+                                                        Locale.US,
+                                                        "%.1f MB",
+                                                        size.toDouble() / (1024 * 1024)
+                                                    )
+                                                }
+
+                                                size >= 1024 -> {
+                                                    // KB
+                                                    String.format(
+                                                        Locale.US,
+                                                        "%.1f KB",
+                                                        size.toDouble() / 1024
+                                                    )
+                                                }
+
+                                                else -> {
+                                                    // Bytes
+                                                    "$size B"
+                                                }
+                                            }
+                                            Text(
+                                                text = sizeText,
+                                                color = Color.Gray,
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
+                    } else {
+                        // Connected 但列表为空
+                        Text(
+                            text = "目录为空",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            color = Color.Gray
+                        )
                     }
-                } else {
-                    // Connected 但列表为空
+                }
+
+                is FileConnectionStatus.Error -> {
+                    // 显示错误信息
                     Text(
-                        text = "目录为空",
+                        text = (connectionStatus as FileConnectionStatus.Error).message,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        color = Color.Red
+                    )
+                }
+
+                else -> {
+                    // 显示连接中提示
+                    Text(
+                        text = "正在准备获取文件...",
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(16.dp),
                         color = Color.Gray
                     )
                 }
-            } else if (connectionStatus is NFSConnectionStatus.Connecting) {
-                // 显示连接中提示
-                Text(
-                    text = "正在连接...",
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    color = Color.Gray
-                )
-            } else if (connectionStatus is NFSConnectionStatus.Error) {
-                // 显示错误信息
-                Text(
-                    text = (connectionStatus as NFSConnectionStatus.Error).message,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    color = Color.Red
-                )
-            } else {
-                // Disconnected 状态
-                Text(
-                    text = "请先连接 NFS 服务器",
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    color = Color.Gray
-                )
+
             }
         }
     }

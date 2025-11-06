@@ -41,6 +41,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.logic.model.AudioItem
+import org.mz.mzdkplayer.logic.model.FileConnectionStatus
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
 import org.mz.mzdkplayer.tool.builderPlayer
@@ -50,7 +51,7 @@ import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 import org.mz.mzdkplayer.ui.screen.common.FileListItemData
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.vm.SMBConViewModel
-import org.mz.mzdkplayer.ui.screen.vm.SMBConnectionStatus
+
 import org.mz.mzdkplayer.ui.style.myTTFColor
 import org.mz.mzdkplayer.ui.theme.TvTextField
 import java.net.URLDecoder
@@ -98,43 +99,38 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
         }
 
         when (connectionStatus) {
-            is SMBConnectionStatus.Disconnected -> {
+            is FileConnectionStatus.Disconnected -> {
                 delay(300)
                 Log.d("SMBFileListScreen", "未连接，开始连接: ${smbConfig.server}")
                 viewModel.connectToSMB(
-                    smbConfig.server,
-                    smbConfig.username,
-                    smbConfig.password,
-                    smbConfig.share
+                    smbConfig.server, smbConfig.username, smbConfig.password, smbConfig.share
                 )
             }
 
-            is SMBConnectionStatus.Connected -> {
+            is FileConnectionStatus.Connected -> {
 
                 Log.d("SMBFileListScreen", "已连接，列出文件: ${smbConfig.path}")
                 viewModel.listSMBFiles(smbConfig)
             }
 
-            is SMBConnectionStatus.Error -> {
-                val errorMessage = (connectionStatus as SMBConnectionStatus.Error).message
+            is FileConnectionStatus.Error -> {
+                val errorMessage = (connectionStatus as FileConnectionStatus.Error).message
                 Log.e("SMBFileListScreen", "连接错误: $errorMessage")
                 Toast.makeText(context, "SMB错误: $errorMessage", Toast.LENGTH_LONG).show()
             }
 
-            is SMBConnectionStatus.LoadingFile -> {
+            is FileConnectionStatus.LoadingFile -> {
                 Log.d("SMBFileListScreen", "正在加载文件...")
                 isLoading = true
             }
 
-            is SMBConnectionStatus.LoadingFiled -> {
+            is FileConnectionStatus.FilesLoaded -> {
                 Log.d("SMBFileListScreen", "文件加载完成")
                 isLoading = false
-                if (isFirstLoad) {
-                    isFirstLoad = false
-                }
+
             }
 
-            is SMBConnectionStatus.Connecting -> {
+            is FileConnectionStatus.Connecting -> {
                 Log.d("SMBFileListScreen", "正在连接...")
                 isLoading = true
             }
@@ -144,8 +140,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
     // 根据搜索文本过滤文件列表
     LaunchedEffect(files, seaText, connectionStatus) {
         // 只有在连接完成且文件列表已加载时才进行过滤
-        if (connectionStatus is SMBConnectionStatus.Connected ||
-            connectionStatus is SMBConnectionStatus.LoadingFiled) {
+        if (connectionStatus is FileConnectionStatus.Connected || connectionStatus is FileConnectionStatus.FilesLoaded) {
 
             val filtered = if (seaText.isEmpty()) {
                 files.map { file ->
@@ -161,18 +156,14 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                         }
 
                         // 构建文件名到索引的映射（O(N) 一次构建）
-                        val nameToIndexMap = audioFiles.withIndex()
-                            .associateBy(
-                                { it.value.name },
-                                { it.index })
+                        val nameToIndexMap =
+                            audioFiles.withIndex().associateBy({ it.value.name }, { it.index })
 
                         // 快速查找索引（O(1)）
-                        currentAudioIndex =
-                            nameToIndexMap[file.name] ?: -1
+                        currentAudioIndex = nameToIndexMap[file.name] ?: -1
                         if (currentAudioIndex == -1) {
                             Log.e(
-                                "SMBFileListScreen",
-                                "未找到文件在音频列表中: ${file.name}"
+                                "SMBFileListScreen", "未找到文件在音频列表中: ${file.name}"
                             )
                         }
 
@@ -188,17 +179,12 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                         // 设置数据
                         MzDkPlayerApplication.clearStringList("audio_playlist")
                         MzDkPlayerApplication.setStringList(
-                            "audio_playlist",
-                            audioItems
+                            "audio_playlist", audioItems
                         )
                     }
 
                     val newPath = viewModel.buildSMBPath(
-                        file.server,
-                        file.share,
-                        file.fullPath,
-                        file.username,
-                        file.password
+                        file.server, file.share, file.fullPath, file.username, file.password
                     )
 
                     FileListItemData(
@@ -226,18 +212,14 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                         }
 
                         // 构建文件名到索引的映射（O(N) 一次构建）
-                        val nameToIndexMap = audioFiles.withIndex()
-                            .associateBy(
-                                { it.value.name },
-                                { it.index })
+                        val nameToIndexMap =
+                            audioFiles.withIndex().associateBy({ it.value.name }, { it.index })
 
                         // 快速查找索引（O(1)）
-                        currentAudioIndex =
-                            nameToIndexMap[file.name] ?: -1
+                        currentAudioIndex = nameToIndexMap[file.name] ?: -1
                         if (currentAudioIndex == -1) {
                             Log.e(
-                                "SMBFileListScreen",
-                                "未找到文件在音频列表中: ${file.name}"
+                                "SMBFileListScreen", "未找到文件在音频列表中: ${file.name}"
                             )
                         }
 
@@ -253,17 +235,12 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                         // 设置数据
                         MzDkPlayerApplication.clearStringList("audio_playlist")
                         MzDkPlayerApplication.setStringList(
-                            "audio_playlist",
-                            audioItems
+                            "audio_playlist", audioItems
                         )
                     }
 
                     val newPath = viewModel.buildSMBPath(
-                        file.server,
-                        file.share,
-                        file.fullPath,
-                        file.username,
-                        file.password
+                        file.server, file.share, file.fullPath, file.username, file.password
                     )
 
                     FileListItemData(
@@ -323,7 +300,6 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
             }
         }
     }
-
     // 清理资源
     DisposableEffect(Unit) {
         onDispose {
@@ -343,119 +319,92 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                 .padding(16.dp)
         ) {
             when (connectionStatus) {
-                is SMBConnectionStatus.Connecting -> {
-
-//                LoadingScreen(
-//                    "正在连接SMB服务器",
-//                    Modifier
-//                        .fillMaxSize()
-//                        .background(Color.Black)
-//                )
-                }
-
-
-                is SMBConnectionStatus.Connected, is SMBConnectionStatus.LoadingFiled -> {
+                is FileConnectionStatus.FilesLoaded -> {
                     if (files.isEmpty() && !isLoading) {
                         FileEmptyScreen("此目录为空")
                         return@Box
                     }
-                    if (isLoading) {
-                        LoadingScreen(
-                            "正在加载SMB文件",
-                            Modifier
-                                .fillMaxSize()
-                                .background(Color.Black)
-                        )
-                    } else {
-                        Row(
-                            Modifier.fillMaxSize(),
-                            verticalAlignment = Alignment.CenterVertically
+                    Row(
+                        Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .padding(10.dp)
+                                .fillMaxHeight()
+                                .weight(0.7f)
                         ) {
-                            LazyColumn(
-                                modifier = Modifier
-                                    .padding(10.dp)
-                                    .fillMaxHeight()
-                                    .weight(0.7f)
-                            ) {
-                                if (filteredFiles.isEmpty() && seaText.isNotEmpty()) {
-                                    // 显示搜索结果为空的提示
-                                    item {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(16.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                "搜索结果为空",
-                                                color = Color.White,
-                                                fontSize = 16.sp,
-                                                modifier = Modifier.padding(8.dp)
+                            if (filteredFiles.isEmpty() && seaText.isNotEmpty()) {
+                                // 显示搜索结果为空的提示
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth().fillMaxHeight()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            "搜索结果为空",
+                                            color = Color.White,
+                                            fontSize = 16.sp,
+                                            modifier = Modifier.padding(8.dp)
+                                        )
+                                    }
+                                }
+                            } else {
+                                // 显示过滤后的文件列表
+                                items(filteredFiles) { file ->
+                                    CommonFileListItem(
+                                        file, context = context, navController, onFocused = {
+                                            focusedFileName = file.fileName
+                                            focusedIsDir = file.isDirectory
+                                            focusedMediaUri =
+                                                file.filePath // 因为它已经是 smb://... 形式
+                                            Log.d(
+                                                "SMBFileListScreen",
+                                                "焦点变化: ${file.fileName}, 是目录: $focusedIsDir"
                                             )
-                                        }
-                                    }
-                                } else if (!isLoading) {
-                                    // 显示过滤后的文件列表
-                                    items(filteredFiles) { file ->
-                                        CommonFileListItem(
-                                            file,
-                                            context = context,
-                                            navController,
-                                            onFocused = {
-                                                focusedFileName = file.fileName
-                                                focusedIsDir = file.isDirectory
-                                                focusedMediaUri =
-                                                    file.filePath // 因为它已经是 smb://... 形式
-                                                Log.d(
-                                                    "SMBFileListScreen",
-                                                    "焦点变化: ${file.fileName}, 是目录: $focusedIsDir"
-                                                )
-                                            })
-                                    }
+                                        })
                                 }
                             }
+                        }
 
-                            Column(
+                        Column(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .weight(0.3f),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            TvTextField(
+                                seaText,
+                                onValueChange = { seaText = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = "请输入文件名",
+                                colors = myTTFColor(),
+                                textStyle = TextStyle(color = Color.White)
+                            )
+                            VideoBigIcon(
+                                focusedIsDir,
+                                focusedFileName,
                                 modifier = Modifier
-                                    .fillMaxHeight()
-                                    .weight(0.3f),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                TvTextField(
-                                    seaText,
-                                    onValueChange = { seaText = it },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    placeholder = "请输入文件名",
-                                    colors = myTTFColor(),
-                                    textStyle = TextStyle(color = Color.White)
+                                    .height(200.dp)
+                                    .fillMaxWidth()
+                            )
+                            focusedFileName?.let { fileName ->
+                                Text(
+                                    fileName,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                    modifier = Modifier.padding(start = 8.dp)
                                 )
-                                VideoBigIcon(
-                                    focusedIsDir,
-                                    focusedFileName,
-                                    modifier = Modifier
-                                        .height(200.dp)
-                                        .fillMaxWidth()
-                                )
-                                focusedFileName?.let { fileName ->
-                                    Text(
-                                        fileName,
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 18.sp,
-                                        modifier = Modifier.padding(start = 8.dp)
-                                    )
-                                }
                             }
                         }
                     }
                 }
 
-                SMBConnectionStatus.Disconnected -> {
-                }
-
-                is SMBConnectionStatus.Error -> {
-                    val errorMessage = (connectionStatus as SMBConnectionStatus.Error).message
+                is FileConnectionStatus.Error -> {
+                    val errorMessage = (connectionStatus as FileConnectionStatus.Error).message
                     Text(
                         "加载失败: $errorMessage",
                         modifier = Modifier.align(Alignment.Center),
@@ -465,16 +414,16 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                     )
                 }
 
-                SMBConnectionStatus.LoadingFile -> {
+                else -> {
                     LoadingScreen(
-                        "正在加载SMB文件",
-                        Modifier
+                        "正在加载SMB文件", Modifier
                             .fillMaxSize()
                             .background(Color.Black)
                     )
                 }
             }
         }
+
     }
 }
 

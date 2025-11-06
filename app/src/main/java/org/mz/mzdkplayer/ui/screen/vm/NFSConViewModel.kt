@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import org.mz.mzdkplayer.logic.model.FileConnectionStatus
 import org.mz.mzdkplayer.logic.model.NFSConnection
 import java.io.IOException
 
@@ -27,8 +28,8 @@ class NFSConViewModel(application: Application) : AndroidViewModel(application) 
     private val appContext = application
 
     // 明确指定 MutableStateFlow 的泛型类型
-    private val _connectionStatus: MutableStateFlow<NFSConnectionStatus> = MutableStateFlow(NFSConnectionStatus.Disconnected)
-    val connectionStatus: StateFlow<NFSConnectionStatus> = _connectionStatus
+    private val _connectionStatus: MutableStateFlow<FileConnectionStatus> = MutableStateFlow(FileConnectionStatus.Disconnected)
+    val connectionStatus: StateFlow<FileConnectionStatus> = _connectionStatus
 
     // 存储 NFS 文件/文件夹列表 (使用 NfsFile)
     private val _fileList: MutableStateFlow<List<Nfs3File>> = MutableStateFlow(emptyList())
@@ -49,10 +50,10 @@ class NFSConViewModel(application: Application) : AndroidViewModel(application) 
      *
      * @param connection NFS 连接配置对象
      */
-    fun connectToNFS(connection: NFSConnection) {
+    fun connectToNFS(connection: NFSConnection,isTest: Boolean = false) {
         viewModelScope.launch {
             mutex.withLock {
-                _connectionStatus.value = NFSConnectionStatus.Connecting
+                _connectionStatus.value = FileConnectionStatus.Connecting
                 try {
                     withContext(Dispatchers.IO) {
                         // 验证配置
@@ -77,22 +78,24 @@ class NFSConViewModel(application: Application) : AndroidViewModel(application) 
                         if (!rootDir.exists()) {
                             throw IOException("无法访问 NFS 根目录")
                         }
-
+                        _connectionStatus.value = FileConnectionStatus.Connected
                         // 连接成功，保存客户端实例和连接配置
                         nfsClient = client
                         // 初始列出根目录内容
-                        listFiles("/")
+                        if (isTest) {
+                             listFiles("/")
+                        }
                     }
                     _currentPath.value = "" // 重置路径为根目录
-                    _connectionStatus.value = NFSConnectionStatus.Connected
+
                     Log.d("NfsConViewModel", "连接成功到 ${connection.name} (${connection.serverAddress}:${connection.shareName})")
                 } catch (e: IOException) {
                     Log.e("NfsConViewModel", "NFS IO 连接失败", e)
-                    _connectionStatus.value = NFSConnectionStatus.Error("IO 错误: ${e.message ?: "网络或挂载失败"}")
+                    _connectionStatus.value = FileConnectionStatus.Error("IO 错误: ${e.message ?: "网络或挂载失败"}")
                     _fileList.value = emptyList()
                 } catch (e: Exception) {
                     Log.e("NfsConViewModel", "NFS 连接失败", e)
-                    _connectionStatus.value = NFSConnectionStatus.Error("连接失败: ${e.message ?: "未知错误"}")
+                    _connectionStatus.value = FileConnectionStatus.Error("连接失败: ${e.message ?: "未知错误"}")
                     _fileList.value = emptyList()
                 }
             }
@@ -105,11 +108,12 @@ class NFSConViewModel(application: Application) : AndroidViewModel(application) 
      */
     fun listFiles(path: String = "") {
         viewModelScope.launch {
-            if (_connectionStatus.value != NFSConnectionStatus.Connected) {
-                _connectionStatus.value = NFSConnectionStatus.Error("未连接到服务器")
+            if (_connectionStatus.value != FileConnectionStatus.Connected &&
+                _connectionStatus.value !is FileConnectionStatus.FilesLoaded) {
+                _connectionStatus.value = FileConnectionStatus.Error("未连接")
                 return@launch
             }
-            _connectionStatus.value = NFSConnectionStatus.LoadingFile
+            _connectionStatus.value = FileConnectionStatus.LoadingFile
             mutex.withLock {
                 try {
                     withContext(Dispatchers.IO) {
@@ -122,26 +126,19 @@ class NFSConViewModel(application: Application) : AndroidViewModel(application) 
                         _fileList.value = files?.filterNotNull()?.map { it }?.toList() ?: emptyList()
                     }
                     _currentPath.value = path // 更新当前路径状态
-                    _connectionStatus.value = NFSConnectionStatus.LoadingFiled
+                    _connectionStatus.value = FileConnectionStatus.FilesLoaded
                     Log.d("NfsConViewModel", "列出文件成功: $path")
 
                 } catch (e: Exception) {
                     Log.e("NfsConViewModel", "获取文件列表失败: $path", e)
 
-                    _connectionStatus.value = NFSConnectionStatus.Error("获取文件失败: ${e.message}")
+                    _connectionStatus.value = FileConnectionStatus.Error("获取文件失败: ${e.message}")
                     _fileList.value = emptyList()
                 }
             }
         }
     }
 
-    /**
-     * 在 IO 线程中执行实际的 NFS 文件列表获取
-     * @param path 相对于 NFS 根目录的路径
-     */
-    private fun listFilesInternal(path: String) {
-
-    }
 
     /**
      * 断开与 NFS 服务器的连接
@@ -160,7 +157,7 @@ class NFSConViewModel(application: Application) : AndroidViewModel(application) 
                 } finally {
                     // 确保在 Main 线程更新状态
                     withContext(Dispatchers.Main) {
-                        _connectionStatus.value = NFSConnectionStatus.Disconnected
+                        _connectionStatus.value = FileConnectionStatus.Disconnected
                         _fileList.value = emptyList() // 清空列表
                         _currentPath.value = "" // 重置路径
                     }
@@ -173,7 +170,9 @@ class NFSConViewModel(application: Application) : AndroidViewModel(application) 
      * 检查当前是否已连接
      */
     fun isConnected(): Boolean {
-        return _connectionStatus.value == NFSConnectionStatus.Connected
+        return _connectionStatus.value == FileConnectionStatus.Connected ||
+                _connectionStatus.value == FileConnectionStatus.FilesLoaded ||
+                _connectionStatus.value is FileConnectionStatus.LoadingFile
     }
 
     /**
@@ -229,26 +228,5 @@ class NFSConViewModel(application: Application) : AndroidViewModel(application) 
 }
 
 // --- 状态密封类 ---
-sealed class NFSConnectionStatus {
-    object Disconnected : NFSConnectionStatus()
-    object Connecting : NFSConnectionStatus()
-    object Connected : NFSConnectionStatus()
-    object LoadingFile : NFSConnectionStatus()
-    object LoadingFiled : NFSConnectionStatus()
-    data class Error(val message: String) : NFSConnectionStatus()
-
-    // 添加一个用于 UI 显示的描述方法
-    override fun toString(): String {
-        return when (this) {
-            Disconnected -> "已断开"
-            Connecting -> "连接中..."
-            Connected -> "已连接"
-            LoadingFile -> "正在加载文件"
-            LoadingFiled -> "加载文件完成"
-            is Error -> "错误: $message"
-        }
-    }
-}
-
 
 

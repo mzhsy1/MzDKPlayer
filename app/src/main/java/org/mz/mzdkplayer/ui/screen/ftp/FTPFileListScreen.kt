@@ -31,12 +31,13 @@ import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.AudioItem
 import org.mz.mzdkplayer.logic.model.FTPConnection
+import org.mz.mzdkplayer.logic.model.FileConnectionStatus
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.vm.FTPConViewModel
-import org.mz.mzdkplayer.ui.screen.vm.FTPConnectionStatus // 导入状态类
+
 import org.mz.mzdkplayer.ui.style.myListItemColor
 import java.net.URLEncoder
 import kotlin.text.ifEmpty
@@ -62,21 +63,21 @@ fun FTPFileListScreen(
     var focusedIsDir by remember { mutableStateOf(false) }
     var focusedMediaUri by remember { mutableStateOf("") }
     // 当传入的 path 参数变化时，或者首次进入时，尝试加载文件列表
-    LaunchedEffect(path) { // 依赖 path
+    LaunchedEffect(path,connectionStatus) { // 依赖 path
         Log.d(
             "FTPFileListScreen",
             "LaunchedEffect triggered with path: $path, status: $connectionStatus"
         )
 
         when (connectionStatus) {
-            is FTPConnectionStatus.Connected -> {
+            is FileConnectionStatus.Connected -> {
 
                 // 已连接，可以安全地列出文件
                 Log.d("FTPFileListScreen", "Already connected, listing files for path: $path")
                 viewModel.listFiles(path ?: "")
             }
 
-            is FTPConnectionStatus.Disconnected -> {
+            is FileConnectionStatus.Disconnected -> {
                 delay(300)
                 // 未连接，尝试连接
                 Log.d("FTPFileListScreen", "Disconnected. Attempting to connect.")
@@ -89,17 +90,19 @@ fun FTPFileListScreen(
                 )
             }
 
-            is FTPConnectionStatus.Connecting -> {
+            is FileConnectionStatus.Connecting -> {
                 // 正在连接，等待...
                 Log.d("FTPFileListScreen", "Connecting...")
             }
 
-            is FTPConnectionStatus.Error -> {
+            is FileConnectionStatus.Error -> {
                 // 连接或列表错误
-                val errorMessage = (connectionStatus as FTPConnectionStatus.Error).message
+                val errorMessage = (connectionStatus as FileConnectionStatus.Error).message
                 Log.e("FTPFileListScreen", "Error state: $errorMessage")
                 Toast.makeText(context, "FTP 错误: $errorMessage", Toast.LENGTH_LONG).show()
             }
+
+            else -> {}
         }
     }
 
@@ -118,18 +121,10 @@ fun FTPFileListScreen(
             .padding(16.dp)
     ) {
         when (connectionStatus) {
-            is FTPConnectionStatus.Connecting -> {
-                // 显示加载指示器
-                LoadingScreen(
-                    "正在连接FTP服务器", Modifier
-                        .fillMaxSize()
-                        .background(Color.Black)
-                )
-            }
 
-            is FTPConnectionStatus.Error -> {
+            is FileConnectionStatus.Error -> {
                 // 显示错误信息
-                val errorMessage = (connectionStatus as FTPConnectionStatus.Error).message
+                val errorMessage = (connectionStatus as FileConnectionStatus.Error).message
                 Text(
                     "加载失败: $errorMessage",
                     modifier = Modifier.align(Alignment.Center),
@@ -139,8 +134,7 @@ fun FTPFileListScreen(
                 )
                 // 可以添加一个重试按钮
             }
-
-            is FTPConnectionStatus.Connected -> {
+            is FileConnectionStatus.FilesLoaded -> {
                 if (fileList.isEmpty()) {
                     FileEmptyScreen("此目录为空")
 
@@ -317,16 +311,12 @@ fun FTPFileListScreen(
 
             }
 
-            is FTPConnectionStatus.Disconnected -> {
-                // 显示未连接提示
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("未连接到 FTP 服务器")
-                    // 可以添加一个按钮来触发连接
-                }
-            }
+            else -> { // 显示加载指示器
+                LoadingScreen(
+                    "正在连接FTP服务器", Modifier
+                        .fillMaxSize()
+                        .background(Color.Black)
+                )}
         }
     }
 }

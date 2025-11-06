@@ -1,4 +1,4 @@
-package org.mz.mzdkplayer.ui.screen.nfs
+package org.mz.mzdkplayer.ui.screen.httplink
 
 import android.util.Log
 import android.widget.Toast
@@ -30,17 +30,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.logic.model.FileConnectionStatus
 import org.mz.mzdkplayer.logic.model.HTTPLinkConnection // 使用提供的数据模型
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.ui.screen.vm.HTTPLinkConViewModel
-import org.mz.mzdkplayer.ui.screen.vm.HTTPLinkConnectionStatus
+
 import org.mz.mzdkplayer.ui.screen.vm.HTTPLinkListViewModel // 假设你也有一个管理 HTTPLink 连接列表的 ViewModel
 import org.mz.mzdkplayer.ui.style.myTTFColor
 import org.mz.mzdkplayer.ui.theme.MyIconButton
@@ -62,17 +62,17 @@ fun HTTPLinkConScreen(
     // UI 状态由 ViewModel 管理
     val connectionStatus by httpLinkConViewModel.connectionStatus.collectAsState()
     val fileList by httpLinkConViewModel.fileList.collectAsState()
-    val currentPath by httpLinkConViewModel.currentPath.collectAsState()
+
 
     // 用户输入状态 - HTTPLink 需要服务器地址和共享名称
     var serverAddress by remember { mutableStateOf("http://192.168.1.4:81") } // HTTP 服务器地址 (例如 http://192.168.1.4:81)
-    var shareName by remember { mutableStateOf("/movies") } // HTTPLink 共享路径 (例如 /movies)
+    var shareName by remember { mutableStateOf("/nas/movies") } // HTTPLink 共享路径 (例如 /movies)
     var aliasName by remember { mutableStateOf("My HTTP Link Server") } // 连接别名
 
     // 用于控制键盘
     val keyboardController = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
-
+    var currentPath by remember { mutableStateOf("") }
     Row(modifier = Modifier.fillMaxSize()) {
         // 左侧：连接配置和控制面板
         Column(
@@ -96,9 +96,11 @@ fun HTTPLinkConScreen(
                     painter = painterResource(R.drawable.baseline_circle_24), // 确保有此图标资源
                     contentDescription = null,
                     tint = when (connectionStatus) {
-                        is HTTPLinkConnectionStatus.Connected -> Color.Green
-                        is HTTPLinkConnectionStatus.Connecting -> Color.Yellow
-                        is HTTPLinkConnectionStatus.Error -> Color.Red
+                        is FileConnectionStatus.Connected -> Color.Green
+                        is FileConnectionStatus.Connecting -> Color.Yellow
+                        is FileConnectionStatus.Error -> Color.Red
+                        is FileConnectionStatus.LoadingFile -> Color.Yellow
+                        is FileConnectionStatus.FilesLoaded -> Color.Cyan
                         else -> Color.Gray // Disconnected
                     }
                 )
@@ -147,6 +149,7 @@ fun HTTPLinkConScreen(
                         .padding(end = 8.dp), // 平分宽度并加右边距
                     onClick = {
                         keyboardController?.hide() // 隐藏键盘
+                        currentPath =""
                         if (!Tools.validateConnectionParams(context, serverAddress, shareName = shareName)) {
                             return@MyIconButton
                         }
@@ -164,7 +167,6 @@ fun HTTPLinkConScreen(
                         }
                         Log.d("HTTPLinkConScreen", "构建的完整 URL: $normalizedUrl")
                         // 创建临时连接对象用于连接
-
                         httpLinkConViewModel.connectToHTTPLink(normalizedUrl) // 传递确保以 / 结尾的完整 URL
                     },
                 )
@@ -177,13 +179,14 @@ fun HTTPLinkConScreen(
                         .weight(1f)
                         .padding(start = 8.dp), // 平分宽度并加左边距
                     // 只有在已连接时才允许保存
-                    //enabled = connectionStatus is HTTPLinkConnectionStatus.Connected,
+                    //enabled = connectionStatus is FileConnectionStatus.Connected,
                     onClick = {
                         keyboardController?.hide()
+                        currentPath =""
                         if (!Tools.validateConnectionParams(context, serverAddress, shareName = shareName)) {
                             return@MyIconButton
                         }
-                        if (connectionStatus !is HTTPLinkConnectionStatus.Connected){
+                        if (!httpLinkConViewModel.isConnected()){
                             Toast.makeText(context, "请先连接成功后再保存", Toast.LENGTH_SHORT).show()
                             return@MyIconButton
                         }
@@ -217,13 +220,14 @@ fun HTTPLinkConScreen(
                 // 只有在已连接或连接出错时才允许断开
                 onClick = {
                     keyboardController?.hide()
+                    currentPath =""
                     httpLinkConViewModel.disconnectHTTPLink()
                 },
             )
 
             // 显示当前路径 (可选)
             Text(
-                text = "当前路径: ${httpLinkConViewModel.getCurrentFullUrl()}",
+                text = "当前路径: $serverAddress$shareName/${currentPath}",
                 color = Color.LightGray,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 8.dp)
@@ -237,7 +241,7 @@ fun HTTPLinkConScreen(
                 .fillMaxWidth() // 剩余的右半边
                 .weight(1f) // 占据剩余空间
         ) {
-            if (connectionStatus is HTTPLinkConnectionStatus.Connected) {
+            if (connectionStatus is FileConnectionStatus.FilesLoaded) {
                 if (fileList.isNotEmpty()) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize()
@@ -255,16 +259,18 @@ fun HTTPLinkConScreen(
                                         .clickable(enabled = httpLinkConViewModel.isConnected()) { // 只有连接时才能点击
                                             if (isDirectory) {
                                                 // 点击文件夹：进入子目录
-                                                val newSubPath = if (currentPath.isEmpty() || currentPath == "/") {
-                                                    resource.path // 如果在根目录，直接使用 resource.path
-                                                } else {
-                                                    "$currentPath/${resource.path}" // 否则拼接当前路径
-                                                }
-                                                httpLinkConViewModel.listFiles(newSubPath) // 传递相对路径
-                                                Log.d("HTTPLinkConScreen", "进入目录: $resourceName, path: $newSubPath")
+                                                currentPath += resource.path
+                                                httpLinkConViewModel.listFiles("$serverAddress$shareName/${currentPath}") // 传递相对路径
+                                                Log.d(
+                                                    "HTTPLinkConScreen",
+                                                    "进入目录: $serverAddress$shareName${currentPath}/, path: "
+                                                )
                                             } else {
                                                 // 点击文件：可以触发播放或其他操作
-                                                val fileUrl = httpLinkConViewModel.getResourceFullUrl(resourceName)
+                                                val fileUrl =
+                                                    httpLinkConViewModel.getResourceFullUrl(
+                                                        resourceName
+                                                    )
                                                 Toast.makeText(
                                                     context,
                                                     "点击了文件: $resourceName\nURL: $fileUrl",
@@ -318,7 +324,7 @@ fun HTTPLinkConScreen(
                         color = Color.Gray
                     )
                 }
-            } else if (connectionStatus is HTTPLinkConnectionStatus.Connecting) {
+            } else if (connectionStatus is FileConnectionStatus.Connecting) {
                 // 显示连接中提示
                 Text(
                     text = "正在连接...",
@@ -327,10 +333,10 @@ fun HTTPLinkConScreen(
                         .padding(16.dp),
                     color = Color.Gray
                 )
-            } else if (connectionStatus is HTTPLinkConnectionStatus.Error) {
+            } else if (connectionStatus is FileConnectionStatus.Error) {
                 // 显示错误信息
                 Text(
-                    text = (connectionStatus as HTTPLinkConnectionStatus.Error).message,
+                    text = (connectionStatus as FileConnectionStatus.Error).message,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(16.dp),
@@ -350,14 +356,7 @@ fun HTTPLinkConScreen(
     }
 }
 
-// --- 预览 (如果需要) ---
-@Preview(showBackground = true)
-@Composable
-fun HTTPLinkConScreenPreview() {
-    // 注意：预览时 ViewModel 需要特殊处理或使用 Hilt 注入
-    // 这里只是一个简单的结构预览
-    HTTPLinkConScreen()
-}
+
 
 
 

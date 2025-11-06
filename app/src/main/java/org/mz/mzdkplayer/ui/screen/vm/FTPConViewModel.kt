@@ -13,12 +13,13 @@ import kotlinx.coroutines.withContext
 import org.apache.commons.net.ftp.FTP
 import org.apache.commons.net.ftp.FTPClient
 import org.apache.commons.net.ftp.FTPFile
+import org.mz.mzdkplayer.logic.model.FileConnectionStatus
 import java.io.IOException
 
 class FTPConViewModel : ViewModel() {
 
-    private val _connectionStatus: MutableStateFlow<FTPConnectionStatus> = MutableStateFlow(FTPConnectionStatus.Disconnected)
-    val connectionStatus: StateFlow<FTPConnectionStatus> = _connectionStatus
+    private val _connectionStatus: MutableStateFlow<FileConnectionStatus> = MutableStateFlow(FileConnectionStatus.Disconnected)
+    val connectionStatus: StateFlow<FileConnectionStatus> = _connectionStatus
 
     // 使用 FTPFile 来表示 FTP 服务器上的文件/目录
     private val _fileList: MutableStateFlow<List<FTPFile>> = MutableStateFlow(emptyList())
@@ -56,7 +57,7 @@ class FTPConViewModel : ViewModel() {
         Log.d("shareName", shareName.toString())
         viewModelScope.launch {
             mutex.withLock {
-                _connectionStatus.value = FTPConnectionStatus.Connecting
+                _connectionStatus.value = FileConnectionStatus.Connecting
                 try {
                     withContext(Dispatchers.IO) {
                         // 初始化 FTPClient
@@ -88,7 +89,7 @@ class FTPConViewModel : ViewModel() {
                         // 进入被动模式 (PASV) - 通常对客户端防火墙更友好
 
                         ftpClient?.enterLocalPassiveMode()
-
+                        _connectionStatus.value = FileConnectionStatus.Connected
                         // --- 修改部分开始 ---
                         // 确保 shareName 以 '/' 开头，便于构建路径
                         val initialPath = if (shareName?.startsWith("/") ?: true) shareName else "/$shareName"
@@ -96,18 +97,22 @@ class FTPConViewModel : ViewModel() {
                         val initialDirPath = if (initialPath?.endsWith("/") ?: true) initialPath else "$initialPath/"
 
                         // 尝试列出 shareName 指定的目录内容
-                        val initialFiles = ftpClient?.listFiles(initialDirPath) ?: throw IOException("无法列出初始目录: $initialDirPath")
-                        _fileList.value = initialFiles.toList()
+                        //val initialFiles = ftpClient?.listFiles(initialDirPath) ?: throw IOException("无法列出初始目录: $initialDirPath")
+                        //.value = initialFiles.toList()
+                        if (initialDirPath!=null){
+                            listFiles(initialDirPath)
+                        }
+
                         // 更新当前路径为 shareName (去除开头的 '/' 以便于后续路径拼接)
                         _currentPath.value = initialPath?.removePrefix("/").toString()
                         // --- 修改部分结束 ---
                     }
                     // _currentPath 已在 IO 线程中设置
-                    _connectionStatus.value = FTPConnectionStatus.Connected
+
                     Log.d("FTPConViewModel", "连接成功到 $server:$port, 初始路径: ${_currentPath.value}")
                 } catch (e: Exception) {
                     Log.e("FTPConViewModel", "连接失败", e)
-                    _connectionStatus.value = FTPConnectionStatus.Error("连接失败: ${e.message}")
+                    _connectionStatus.value = FileConnectionStatus.Error("连接失败: ${e.message}")
                     // 连接失败时清理
                     cleanupFTPClient()
                 }
@@ -122,11 +127,12 @@ class FTPConViewModel : ViewModel() {
      */
     fun listFiles(path: String = "") {
         viewModelScope.launch {
-            if (_connectionStatus.value != FTPConnectionStatus.Connected) {
-                _connectionStatus.value = FTPConnectionStatus.Error("未连接到服务器")
+            if (_connectionStatus.value != FileConnectionStatus.Connected &&
+                _connectionStatus.value !is FileConnectionStatus.FilesLoaded) {
+                _connectionStatus.value = FileConnectionStatus.Error("未连接")
                 return@launch
             }
-
+            _connectionStatus.value = FileConnectionStatus.LoadingFile
             mutex.withLock {
                 try {
                     withContext(Dispatchers.IO) {
@@ -140,15 +146,12 @@ class FTPConViewModel : ViewModel() {
                         // val filteredFiles = files.filter { it.name != "." && it.name != ".." }
                         _fileList.value = files.toList()
                         _currentPath.value = path // 更新当前路径 (不带开头的 /)
+                        _connectionStatus.value = FileConnectionStatus.FilesLoaded
                     }
                     Log.d("FTPConViewModel", "列出文件成功: $path")
                 } catch (e: Exception) {
                     Log.e("FTPConViewModel", "获取文件列表失败: $path", e)
-                    _connectionStatus.value = FTPConnectionStatus.Error("获取文件失败: ${e.message}")
-                    // 可以根据错误类型决定是否断开连接
-                    // if (isSevereError(e)) {
-                    //     disconnectFTP()
-                    // }
+                    _connectionStatus.value = FileConnectionStatus.Error("获取文件失败: ${e.message}")
                 }
             }
         }
@@ -166,7 +169,7 @@ class FTPConViewModel : ViewModel() {
                     Log.w("FTPConViewModel", "断开连接时发生异常", e)
                 } finally {
                     withContext(Dispatchers.Main) {
-                        _connectionStatus.value = FTPConnectionStatus.Disconnected
+                        _connectionStatus.value = FileConnectionStatus.Disconnected
                         _fileList.value = emptyList()
                         _currentPath.value = ""
                         this@FTPConViewModel.username = ""
@@ -182,7 +185,9 @@ class FTPConViewModel : ViewModel() {
      * 检查当前是否已连接
      */
     fun isConnected(): Boolean {
-        return _connectionStatus.value == FTPConnectionStatus.Connected
+        return _connectionStatus.value == FileConnectionStatus.Connected ||
+                _connectionStatus.value == FileConnectionStatus.FilesLoaded ||
+                _connectionStatus.value is FileConnectionStatus.LoadingFile
     }
 
     /**
@@ -255,21 +260,7 @@ class FTPConViewModel : ViewModel() {
 }
 
 // --- 状态枚举 ---
-sealed class FTPConnectionStatus {
-    object Disconnected : FTPConnectionStatus()
-    object Connecting : FTPConnectionStatus()
-    object Connected : FTPConnectionStatus()
-    data class Error(val message: String) : FTPConnectionStatus()
 
-    override fun toString(): String {
-        return when (this) {
-            Disconnected -> "已断开"
-            Connecting -> "连接中..."
-            Connected -> "已连接"
-            is Error -> "错误: $message"
-        }
-    }
-}
 
 
 

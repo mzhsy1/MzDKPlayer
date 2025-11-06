@@ -18,13 +18,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import org.mz.mzdkplayer.logic.model.FileConnectionStatus
 
 import kotlin.collections.forEach
 
 class SMBConViewModel : ViewModel() {
-    private val _connectionStatus: MutableStateFlow<SMBConnectionStatus> =
-        MutableStateFlow(SMBConnectionStatus.Disconnected)
-    val connectionStatus: StateFlow<SMBConnectionStatus> = _connectionStatus
+    private val _connectionStatus: MutableStateFlow<FileConnectionStatus> =
+        MutableStateFlow(FileConnectionStatus.Disconnected)
+    val connectionStatus: StateFlow<FileConnectionStatus> = _connectionStatus
     private val _fileList = MutableStateFlow<List<SMBFileItem>>(emptyList())
     val fileList: StateFlow<List<SMBFileItem>> = _fileList
 
@@ -40,6 +41,7 @@ class SMBConViewModel : ViewModel() {
 //            withContext(Dispatchers.Main) {
 //                _connectionStatus.value = "正在尝试连接"
 //            }
+            _connectionStatus.value = FileConnectionStatus.Connecting
             mutex.withLock {
                 try {
 
@@ -57,11 +59,11 @@ class SMBConViewModel : ViewModel() {
                     }
 
 
-                    _connectionStatus.value = SMBConnectionStatus.Connected
+                    _connectionStatus.value = FileConnectionStatus.Connected
                     Log.d("_connectionStatus1", _connectionStatus.value.toString())
                 } catch (e: Exception) {
                     Log.e("SMB", "连接失败$e", e)
-                    _connectionStatus.value = SMBConnectionStatus.Error("连接失败: ${e.message}")
+                    _connectionStatus.value = FileConnectionStatus.Error("连接失败: ${e.message}")
                     //disconnectSMB()
                 }
             }
@@ -75,12 +77,12 @@ class SMBConViewModel : ViewModel() {
 //            withContext(Dispatchers.Main) {
 //                _connectionStatus.value = "正在尝试连接"
 //            }
-            _connectionStatus.value = SMBConnectionStatus.Connecting
+
             mutex.withLock {
                 try {
 
                     withContext(Dispatchers.IO) {
-
+                        _connectionStatus.value = FileConnectionStatus.Connecting
                         if (!isConnected()) {  // 避免重复连接
                             client = SMBClient()
 
@@ -93,12 +95,12 @@ class SMBConViewModel : ViewModel() {
                     }
 
 
-                    _connectionStatus.value = SMBConnectionStatus.Connected
+                    _connectionStatus.value = FileConnectionStatus.Connected
                     listSMBFiles(SMBConfig(ip, shareName, "/", username, password)) // 获取文件列表
                     Log.d("_connectionStatus1", _connectionStatus.value.toString())
                 } catch (e: Exception) {
                     Log.e("SMB", "连接失败$e", e)
-                    _connectionStatus.value = SMBConnectionStatus.Error("连接失败: ${e.message}")
+                    _connectionStatus.value = FileConnectionStatus.Error("连接失败: ${e.message}")
                     _fileList.value = emptyList()
                     //disconnectSMB()
                 }
@@ -108,8 +110,9 @@ class SMBConViewModel : ViewModel() {
 
     fun listSMBFiles(config: SMBConfig) {
         viewModelScope.launch {
-            if (_connectionStatus.value != SMBConnectionStatus.Connected) {
-                _connectionStatus.value = SMBConnectionStatus.Error("未连接到服务器")
+            if (_connectionStatus.value != FileConnectionStatus.Connected &&
+                _connectionStatus.value !is FileConnectionStatus.FilesLoaded) {
+                _connectionStatus.value = FileConnectionStatus.Error("未连接")
                 return@launch
             }
 
@@ -117,7 +120,7 @@ class SMBConViewModel : ViewModel() {
             mutex.withLock {
                 try {
                     // 只更新一次状态为加载中
-                    _connectionStatus.value = SMBConnectionStatus.LoadingFile
+                    _connectionStatus.value = FileConnectionStatus.LoadingFile
 
                     // 在 IO 线程执行所有繁重工作
                     val files = withContext(Dispatchers.IO) {
@@ -169,11 +172,11 @@ class SMBConViewModel : ViewModel() {
 
                     // 一次性更新最终状态
                     _fileList.value = files
-                    _connectionStatus.value = SMBConnectionStatus.LoadingFiled
+                    _connectionStatus.value = FileConnectionStatus.FilesLoaded
 
                 } catch (e: Exception) {
                     Log.e("SMBConViewModel", "连接失败", e)
-                    _connectionStatus.value = SMBConnectionStatus.Error("连接失败: ${e.message}")
+                    _connectionStatus.value = FileConnectionStatus.Error("连接失败: ${e.message}")
                     disconnectSMB()
                 }
             }
@@ -210,7 +213,7 @@ class SMBConViewModel : ViewModel() {
             }
 
             withContext(Dispatchers.Main) {
-                _connectionStatus.value = SMBConnectionStatus.Disconnected
+                _connectionStatus.value = FileConnectionStatus.Disconnected
                 _fileList.value = emptyList()
             }
         }
@@ -269,26 +272,7 @@ class SMBConViewModel : ViewModel() {
 }
 
 // --- 状态枚举 ---
-sealed class SMBConnectionStatus {
-    object Disconnected : SMBConnectionStatus()
-    object Connecting : SMBConnectionStatus()
-    object Connected : SMBConnectionStatus()
-    object LoadingFile : SMBConnectionStatus()
-    object LoadingFiled : SMBConnectionStatus()
-    data class Error(val message: String) : SMBConnectionStatus()
 
-    // 添加一个用于 UI 显示的描述方法
-    override fun toString(): String {
-        return when (this) {
-            Disconnected -> "已断开"
-            Connecting -> "连接中..."
-            Connected -> "已连接"
-            LoadingFile -> "正在加载文件"
-            LoadingFiled -> "加载文件完成"
-            is Error -> "错误: $message"
-        }
-    }
-}
 
 data class SMBConfig(
     val server: String,

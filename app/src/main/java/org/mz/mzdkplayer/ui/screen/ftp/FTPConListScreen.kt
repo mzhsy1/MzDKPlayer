@@ -1,6 +1,6 @@
 // File: FTPConListScreen.kt
 
-package org.mz.mzdkplayer.ui.screen.ftp // 请根据你的实际包名修改
+package org.mz.mzdkplayer.ui.screen.ftp
 
 import android.annotation.SuppressLint
 import android.util.Log

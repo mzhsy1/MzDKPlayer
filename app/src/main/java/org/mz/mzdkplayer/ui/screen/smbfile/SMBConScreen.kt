@@ -39,6 +39,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.logic.model.FileConnectionStatus
 
 import org.mz.mzdkplayer.logic.model.SMBConnection
 import org.mz.mzdkplayer.tool.Tools
@@ -46,7 +47,7 @@ import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.ui.theme.TvTextField
 
 import org.mz.mzdkplayer.ui.screen.vm.SMBConViewModel
-import org.mz.mzdkplayer.ui.screen.vm.SMBConnectionStatus
+
 import org.mz.mzdkplayer.ui.screen.vm.SMBListViewModel
 import org.mz.mzdkplayer.ui.style.myTTFColor
 import org.mz.mzdkplayer.ui.theme.MyIconButton
@@ -79,7 +80,9 @@ fun SMBConScreen() {
     //val shareNameError = if (!isShareNameValid) "分享名称不能以'/'开头" else ""
 
     // 检查是否已连接
-    val isConnected = connectionStatus is SMBConnectionStatus.LoadingFiled
+    val isConnected = connectionStatus is FileConnectionStatus.Connected ||
+            connectionStatus is FileConnectionStatus.FilesLoaded ||
+            connectionStatus is FileConnectionStatus.LoadingFile
 
     Row(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -101,11 +104,11 @@ fun SMBConScreen() {
                     painter = painterResource(R.drawable.baseline_circle_24), // 确保有此图标资源
                     contentDescription = null,
                     tint = when (connectionStatus) {
-                        is SMBConnectionStatus.Connected -> Color.Green
-                        is SMBConnectionStatus.Connecting -> Color.Yellow
-                        is SMBConnectionStatus.Error -> Color.Red
-                        is SMBConnectionStatus.LoadingFile -> Color.Yellow
-                        is SMBConnectionStatus.LoadingFiled -> Color.Green
+                        is FileConnectionStatus.Connected -> Color.Green
+                        is FileConnectionStatus.Connecting -> Color.Yellow
+                        is FileConnectionStatus.Error -> Color.Red
+                        is FileConnectionStatus.LoadingFile -> Color.Yellow
+                        is FileConnectionStatus.FilesLoaded -> Color.Cyan
                         else -> Color.Gray // Disconnected
                     }
                 )
