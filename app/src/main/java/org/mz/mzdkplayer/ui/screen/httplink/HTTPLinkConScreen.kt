@@ -194,8 +194,8 @@ fun HTTPLinkConScreen(
                         val newConnection = HTTPLinkConnection(
                             id = UUID.randomUUID().toString(),
                             name = aliasName.ifBlank { "未命名HTTP连接" },
-                            serverAddress = serverAddress,
-                            shareName = shareName
+                            serverAddress = serverAddress.trimEnd('/'),
+                            shareName = if (!shareName.endsWith("/")) shareName.plus("/")  else shareName
                         )
                         // 假设 HTTPLinkListViewModel 有 addConnection 方法
                         if (httpLinkListViewModel.addConnection(newConnection)) {
@@ -227,7 +227,7 @@ fun HTTPLinkConScreen(
 
             // 显示当前路径 (可选)
             Text(
-                text = "当前路径: $serverAddress$shareName/${currentPath}",
+                text = "当前路径: ${serverAddress.trimEnd('/')}/${shareName.trimEnd('/').trimStart('/')}/${currentPath}",
                 color = Color.LightGray,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 8.dp)
@@ -260,10 +260,10 @@ fun HTTPLinkConScreen(
                                             if (isDirectory) {
                                                 // 点击文件夹：进入子目录
                                                 currentPath += resource.path
-                                                httpLinkConViewModel.listFiles("$serverAddress$shareName/${currentPath}") // 传递相对路径
+                                                httpLinkConViewModel.listFiles("${serverAddress.trimEnd('/')}/${shareName.trimEnd('/').trimStart('/')}/${currentPath}") // 传递相对路径
                                                 Log.d(
                                                     "HTTPLinkConScreen",
-                                                    "进入目录: $serverAddress$shareName${currentPath}/, path: "
+                                                    "进入目录: ${serverAddress.trimEnd('/')}/${shareName.trimEnd('/').trimStart('/')}/${currentPath}/, path: "
                                                 )
                                             } else {
                                                 // 点击文件：可以触发播放或其他操作

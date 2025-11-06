@@ -86,15 +86,10 @@ class HTTPLinkConViewModel : ViewModel() {
     /**
      * 内部列出文件方法，直接使用完整 URL
      */
-    public fun listFiles(fullUrl: String) {
+    fun listFiles(fullUrl: String) {
         viewModelScope.launch {
-            if (_connectionStatus.value != FileConnectionStatus.Connected &&
-                _connectionStatus.value !is FileConnectionStatus.FilesLoaded) {
-                _connectionStatus.value = FileConnectionStatus.Error("未连接")
-                return@launch
-            }
-            _connectionStatus.value = FileConnectionStatus.LoadingFile
 
+            _connectionStatus.value = FileConnectionStatus.LoadingFile
             mutex.withLock {
                 try {
                     withContext(Dispatchers.IO) {
