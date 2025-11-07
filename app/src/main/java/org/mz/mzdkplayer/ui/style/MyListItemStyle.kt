@@ -25,13 +25,13 @@ fun myListItemColor(): ListItemColors {
 }
 @Composable
 fun myListItemCoverColor(): ListItemColors {
-    return     ListItemDefaults.colors(
-        containerColor = Color.DarkGray,
+    return ListItemDefaults.colors(
+        containerColor = Color(32, 32, 32), // 更深的灰色
         contentColor = Color.White,
-        selectedContainerColor = Color.Gray,
-        selectedContentColor =Color.White,
-        focusedSelectedContentColor =Color.White,
-        focusedSelectedContainerColor = Color.Gray,
+        selectedContainerColor = Color(32, 32, 32), // 更深的灰色
+        selectedContentColor = Color.White,
+        focusedSelectedContentColor = Color.White,
+        focusedSelectedContainerColor = Color(32, 32, 32), // 更深的灰色
         focusedContainerColor = Color(255, 255, 255),
         focusedContentColor = Color(0, 0, 0)
     )

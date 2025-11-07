@@ -61,7 +61,7 @@ fun HomeScreen(mainNavController: NavHostController) {
             ) {
                 itemsIndexed(items) { index, item ->
                     ListItem(
-                        selected = selectPanel == item,
+                        selected = false,
                         onClick = {
                             //val primaryStoragePath = Environment.getExternalStorageState(File("/storage/emulated"))
                             //Log.d("primaryStoragePath",primaryStoragePath.toString())

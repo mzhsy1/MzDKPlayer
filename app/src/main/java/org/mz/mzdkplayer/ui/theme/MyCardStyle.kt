@@ -15,9 +15,9 @@ import androidx.tv.material3.ListItemColors
 @Composable
 fun myCardColor(): CardColors {
     return CardDefaults.colors(
-        containerColor = Color.Black,
+        containerColor = Color(32, 32, 32), // 更深的灰色
         contentColor = Color.White,
-        focusedContentColor = Color.Black,
+        focusedContentColor = Color(32, 32, 32),
         focusedContainerColor = Color.White
     )
 }
@@ -25,13 +25,13 @@ fun myCardColor(): CardColors {
 @Composable
 fun myCardBorderStyle(): CardBorder {
     return CardDefaults.border(
-                Border(
-                    border = BorderStroke(width = 2.dp, color = Color.Gray),
-                    shape = RoundedCornerShape(5),
+        border=Border(
+                    border = BorderStroke(width = 0.dp, color = Color.Black),
+                    shape = RoundedCornerShape(10),
                 ),
         focusedBorder = Border(
             border = BorderStroke(width = 0.dp, color = Color(0, 0, 0, 0)),
-            shape = RoundedCornerShape(5),
+            shape = RoundedCornerShape(0),
         ),
     )
 }

@@ -6,6 +6,10 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.media3.common.util.UnstableApi
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import org.mz.mzdkplayer.ui.MzDKPlayerAPP
@@ -80,7 +84,13 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MzDKPlayerAPP()
+            var showSplash by remember { mutableStateOf(true) }
+            if (showSplash) {
+                LaunchScreen(onFinish = { showSplash = false })
+            } else {
+                MzDKPlayerAPP()
+            }
+
         }
     }
 

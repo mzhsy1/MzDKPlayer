@@ -37,10 +37,6 @@ class SMBConViewModel : ViewModel() {
     fun connectToSMB(ip: String, username: String, password: String, shareName: String) {
 
         viewModelScope.launch {
-            disconnectSMB()  // 先清理旧连接
-//            withContext(Dispatchers.Main) {
-//                _connectionStatus.value = "正在尝试连接"
-//            }
             _connectionStatus.value = FileConnectionStatus.Connecting
             mutex.withLock {
                 try {
@@ -49,7 +45,7 @@ class SMBConViewModel : ViewModel() {
 
                         if (!isConnected()) {  // 避免重复连接
                             client = SMBClient()
-
+                            Log.d("_connectionStatus1", _connectionStatus.value.toString())
                             connection = client?.connect(ip)
                             val auth = AuthenticationContext(username, password.toCharArray(), null)
                             session = connection!!.authenticate(auth)
@@ -60,7 +56,7 @@ class SMBConViewModel : ViewModel() {
 
 
                     _connectionStatus.value = FileConnectionStatus.Connected
-                    Log.d("_connectionStatus1", _connectionStatus.value.toString())
+
                 } catch (e: Exception) {
                     Log.e("SMB", "连接失败$e", e)
                     _connectionStatus.value = FileConnectionStatus.Error("连接失败: ${e.message}")
@@ -165,8 +161,7 @@ class SMBConViewModel : ViewModel() {
 
                             sortedList
                         } finally {
-                            share?.close()
-                            connection?.close()
+
                         }
                     }
 
@@ -220,17 +215,10 @@ class SMBConViewModel : ViewModel() {
     }
 
     fun isConnected(): Boolean {
-        return connection?.isConnected == true && isSessionActive()
+        return connection?.isConnected == true &&
+                share != null
     }
 
-    fun isSessionActive(): Boolean {
-        return try {
-            share?.list("")  // 尝试列出根目录（不抛出异常说明连接正常）
-            true
-        } catch (e: Exception) {
-            false  // 抛出异常说明连接已断开
-        }
-    }
 
     fun parseSMBPath(path: String): SMBConfig {
         // 格式: smb://username:password@server/share/path/to/directory

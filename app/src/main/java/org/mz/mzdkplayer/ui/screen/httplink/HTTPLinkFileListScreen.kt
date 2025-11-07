@@ -4,6 +4,7 @@ package org.mz.mzdkplayer.ui.screen.httplink
 
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
@@ -47,6 +49,7 @@ import java.net.URLEncoder
  * @param path HTTP 服务器地址和共享路径完整路径 w(e.g., "http://192.168.1.100:8080/nas/movies/")
  * @param navController 导航控制器
  */
+@OptIn(UnstableApi::class)
 @Composable
 fun HTTPLinkFileListScreen(
     path: String?,
