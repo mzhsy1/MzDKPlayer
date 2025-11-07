@@ -149,7 +149,7 @@ class WebDavConViewModel : ViewModel() {
                         _currentPath.value = fullPath // 更新当前完整路径
 
                         filteredResources
-                        //Log.d("WebDavConViewModel", "fileConverList${webDavFileItemList[1]}")
+                        Log.d("WebDavConViewModel", "fileConverList${webDavFileItemList[1]}")
                     }
                     _connectionStatus.value = FileConnectionStatus.FilesLoaded
                     Log.d(

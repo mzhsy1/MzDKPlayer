@@ -171,48 +171,32 @@ fun WebDavFileListScreen(
                                         // 处理文件点击
                                         val fileExtension = Tools.extractFileExtension(file.name)
                                         val fullFileUrl = path ?: "" // 直接使用文件的完整路径
-
-                                        val userInfo =
-                                            "${webDavConnection.username}:${webDavConnection.password}"
-                                        val uri = fullFileUrl.toUri()
-                                        val newAuthority = "$userInfo@${uri.authority}"
-
-                                        val authenticatedUrl = uri.buildUpon()
-                                            .encodedAuthority(newAuthority)
-                                            .build()
+                                        val authenticatedUrl =viewModel.buildAuthenticatedUrl(fullFileUrl,
+                                            username = webDavConnection.username?:""
+                                            , password = webDavConnection.password?:"")
                                         val encodedFileUrl = URLEncoder.encode(
                                             "${authenticatedUrl}/${
                                                 fileName.trimEnd('/').trimStart('/')
                                             }",
                                             "UTF-8"
                                         )
-                                        Log.d(
-                                            "WebDavFileListScreen",
-                                            "Navigating to media player: $fullFileUrl (encoded: $encodedFileUrl)"
-                                        )
+//                                        Log.d(
+//                                            "WebDavFileListScreen",
+//                                            "Navigating to media player: $fullFileUrl (encoded: $encodedFileUrl)"
+//                                        )
                                         ListItem(
                                             selected = false,
                                             onClick = {
                                                 coroutineScope.launch {
                                                     if (isDirectory) {
                                                         // 构建子目录的完整 URL 路径
-                                                        val newPath = if (path.isNullOrEmpty()) {
-                                                            file.path
-                                                        } else {
-                                                            // 确保路径格式正确
-                                                            val basePath = path.trimEnd('/')
-                                                            "$basePath/$fileName"
-                                                        }
-                                                        val encodedNewPath =
-                                                            URLEncoder.encode(newPath, "UTF-8")
+                                                        val encodedNewPath = URLEncoder.encode("${path?:"".trimEnd('/')}/${fileName.trimEnd('/').trimStart('/')}/", "UTF-8")
                                                         Log.d(
                                                             "WebDavFileListScreen",
-                                                            "Navigating to subdirectory: $newPath (encoded: $encodedNewPath)"
+                                                            "Navigating to subdirectory: ${path?.trimEnd('/')}/${fileName}(encoded: $encodedNewPath)"
                                                         )
                                                         navController.navigate("WebDavFileListScreen/$encodedNewPath/${webDavConnection.username}/${webDavConnection.password}")
                                                     } else {
-
-
                                                         when {
                                                             Tools.containsVideoFormat(fileExtension) -> {
                                                                 Log.d(
@@ -254,19 +238,12 @@ fun WebDavFileListScreen(
                                                                     )
                                                                     return@launch
                                                                 }
-
                                                                 val audioItems =
                                                                     audioFiles.map { webdavFile ->
-                                                                        val audioUri =
-                                                                            webdavFile.path.toUri()
-                                                                                .buildUpon()
-                                                                                .encodedAuthority(
-                                                                                    newAuthority
-                                                                                )
-                                                                                .scheme(uri.scheme)
-                                                                                .build().toString()
                                                                         AudioItem(
-                                                                            uri = audioUri,
+                                                                            uri = "${authenticatedUrl}/${
+                                                                                webdavFile.name.trimEnd('/').trimStart('/')
+                                                                            }",
                                                                             fileName = webdavFile.name,
                                                                             dataSourceType = "WEBDAV"
                                                                         )
