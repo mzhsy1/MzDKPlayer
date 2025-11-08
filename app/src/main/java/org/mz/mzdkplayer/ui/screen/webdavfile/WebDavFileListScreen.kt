@@ -92,9 +92,9 @@ fun WebDavFileListScreen(
             is FileConnectionStatus.Connected -> {
                 delay(300)
                 // 已连接，可以安全地列出文件
-                Log.d("WebDavFileListScreen", "Already connected, listing files for path: $path")
+                //Log.d("WebDavFileListScreen", "Already connected, listing files for path: $path")
                 viewModel.listFiles(
-                    path ?: "",
+                    path ?.trimEnd('/').plus('/'),
                     webDavConnection.username,
                     webDavConnection.password
                 )
@@ -107,12 +107,12 @@ fun WebDavFileListScreen(
                     webDavConnection.username,
                     webDavConnection.password
                 )
-                Log.d("WebDavFileListScreen", "Disconnected. Waiting for connection trigger.")
+              //  Log.d("WebDavFileListScreen", "Disconnected. Waiting for connection trigger.")
             }
 
             is FileConnectionStatus.Connecting -> {
                 // 正在连接，等待...
-                Log.d("WebDavFileListScreen", "Connecting...")
+               // Log.d("WebDavFileListScreen", "Connecting...")
             }
 
             is FileConnectionStatus.Error -> {
@@ -190,10 +190,14 @@ fun WebDavFileListScreen(
                                                 coroutineScope.launch {
                                                     if (isDirectory) {
                                                         // 构建子目录的完整 URL 路径
-                                                        val encodedNewPath = URLEncoder.encode("${path?:"".trimEnd('/')}/${fileName.trimEnd('/').trimStart('/')}/", "UTF-8")
+                                                        val encodedNewPath = URLEncoder.encode("${path?.trimEnd('/') ?:""}/${fileName.trimEnd('/').trimStart('/')}/", "UTF-8")
                                                         Log.d(
                                                             "WebDavFileListScreen",
-                                                            "Navigating to subdirectory: ${path?.trimEnd('/')}/${fileName}(encoded: $encodedNewPath)"
+                                                            "Navigating to subdirectory: $path to ${path?.trimEnd('/')}/${fileName.trimEnd('/').trimStart('/')}/"
+                                                        )
+                                                        Log.d(
+                                                            "WebDavFileListScreen",
+                                                            "$encodedNewPath"
                                                         )
                                                         navController.navigate("WebDavFileListScreen/$encodedNewPath/${webDavConnection.username}/${webDavConnection.password}")
                                                     } else {

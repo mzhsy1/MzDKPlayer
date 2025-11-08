@@ -126,36 +126,37 @@ class WebDavConViewModel : ViewModel() {
             mutex.withLock {
                 try {
                     withContext(Dispatchers.IO) {
-                        val resources =
-                            sardine?.list(fullPath) ?: throw Exception("Sardine 未初始化或连接失败")
-                        // 过滤掉 "." 和 ".."
-                        val webDavFileItemList = mutableListOf<WebDavFileItem>()
-                        val filteredResources =
-                            resources.filter { it.name != "." && it.name != ".." }
-                                .forEach { resource ->
-                                    webDavFileItemList.add(
-                                        WebDavFileItem(
-                                            name = resource.name,
-                                            fullPath = fullPath,
-                                            isDirectory = resource.isDirectory,
-                                            path = resource.path,
-                                            username = username ?: "",
-                                            password = password ?: "",
-                                            size = resource.contentLength
-                                        )
-                                    )
-                                }
-                        _fileList.value = webDavFileItemList
-                        _currentPath.value = fullPath // 更新当前完整路径
+                        val resources = sardine?.list(fullPath.trimEnd('/').plus("/"))
+                            ?: throw Exception("Sardine 未初始化或连接失败")
 
-                        filteredResources
-                        Log.d("WebDavConViewModel", "fileConverList${webDavFileItemList[1]}")
+                        // 先去掉第一个元素（如果存在）
+                        val withoutFirst = if (resources.isNotEmpty()) resources.drop(1) else emptyList()
+
+                        // 再过滤掉 "." 和 ".."
+                        val filteredResources = withoutFirst.filter { it.name != "." && it.name != ".." }
+
+                        // 构建 WebDavFileItem 列表
+                        val webDavFileItemList = filteredResources.map { resource ->
+                            WebDavFileItem(
+                                name = resource.name,
+                                fullPath = fullPath,
+                                isDirectory = resource.isDirectory,
+                                path = resource.path,
+                                username = username ?: "",
+                                password = password ?: "",
+                                size = resource.contentLength
+                            )
+                        }.toMutableList()
+
+                        _fileList.value = webDavFileItemList
+                        _currentPath.value = fullPath
+
+                        Log.d(
+                            "WebDavConViewModel",
+                            "列出文件成功: $fullPath, 文件数量: ${webDavFileItemList.size}"
+                        )
                     }
                     _connectionStatus.value = FileConnectionStatus.FilesLoaded
-                    Log.d(
-                        "WebDavConViewModel",
-                        "列出文件成功: $fullPath, 文件数量: ${_fileList.value.size}"
-                    )
                 } catch (e: Exception) {
                     Log.e("WebDavConViewModel", "获取文件列表失败: $fullPath", e)
                     _connectionStatus.value =
