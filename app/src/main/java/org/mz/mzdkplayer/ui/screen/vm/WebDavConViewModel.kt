@@ -25,6 +25,8 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 import androidx.core.net.toUri
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 class WebDavConViewModel : ViewModel() {
 
@@ -50,7 +52,7 @@ class WebDavConViewModel : ViewModel() {
      * @param username 用户名
      * @param password 密码
      */
-    fun connectToWebDav(fullPath: String?, username: String?, password: String?) {
+    fun connectToWebDav(fullPath: String?, username: String?, password: String?,isTest: Boolean =false) {
         viewModelScope.launch {
             mutex.withLock {
                 _connectionStatus.value = FileConnectionStatus.Connecting
@@ -93,17 +95,12 @@ class WebDavConViewModel : ViewModel() {
                         sardine?.setCredentials(username, password)
 
                         // 存储基础URL用于后续认证
-                        fullPath?.let { path ->
-                            // 从完整路径中提取基础URL（协议+主机+端口）
-                            val uri = java.net.URI.create(path)
-                            baseUrl =
-                                "${uri.scheme}://${uri.host}${if (uri.port != -1) ":${uri.port}" else ""}"
-                        }
+
 
                         _connectionStatus.value = FileConnectionStatus.Connected
 
-                        // 连接成功后立即列出文件
-                        if (!fullPath.isNullOrEmpty()) {
+                       //  连接成功后立即列出文件
+                        if (!fullPath.isNullOrEmpty()&&isTest) {
                             listFiles(fullPath, username, password)
                         }
                     }
@@ -116,6 +113,8 @@ class WebDavConViewModel : ViewModel() {
         }
     }
 
+
+
     /**
      * 列出指定完整路径下的文件和文件夹
      * @param fullPath 完整的 WebDAV URL 路径
@@ -126,7 +125,8 @@ class WebDavConViewModel : ViewModel() {
             mutex.withLock {
                 try {
                     withContext(Dispatchers.IO) {
-                        val resources = sardine?.list(fullPath.trimEnd('/').plus("/"))
+                        Log.d("WebDavCon","fullPath ${encodeWebDavPath(fullPath)}")
+                        val resources = sardine?.list(encodeWebDavPath(fullPath))
                             ?: throw Exception("Sardine 未初始化或连接失败")
 
                         // 先去掉第一个元素（如果存在）
@@ -166,6 +166,37 @@ class WebDavConViewModel : ViewModel() {
         }
     }
 
+    // 添加 URL 编码函数
+    private fun encodeWebDavPath(path: String): String {
+        return try {
+            // 分割协议和路径部分
+            val protocolSeparator = "://"
+            if (path.contains(protocolSeparator)) {
+                val parts = path.split(protocolSeparator)
+                val protocol = parts[0]
+                val hostAndPath = parts[1]
+
+                val hostPathParts = hostAndPath.split("/", limit = 2)
+                val host = hostPathParts[0]
+                val pathPart = if (hostPathParts.size > 1) hostPathParts[1] else ""
+
+                // 对路径部分进行编码，使用 %20 而不是 +
+                val encodedPath = pathPart.split("/").joinToString("/") { segment ->
+                    URLEncoder.encode(segment, "UTF-8").replace("+", "%20")
+                }
+
+                "$protocol$protocolSeparator$host/$encodedPath"
+            } else {
+                // 如果没有协议，直接编码整个路径
+                path.split("/").joinToString("/") { segment ->
+                    URLEncoder.encode(segment, "UTF-8").replace("+", "%20")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("WebDavCon", "URL编码失败: $path", e)
+            path // 如果编码失败，返回原路径
+        }
+    }
     /**
      * 断开与 WebDAV 服务器的连接
      */

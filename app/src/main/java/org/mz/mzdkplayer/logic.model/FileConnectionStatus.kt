@@ -23,3 +23,9 @@ sealed class FileConnectionStatus {
         }
     }
 }
+
+sealed class LocalFileLoadStatus {
+    object LoadingFile : LocalFileLoadStatus()
+    object FilesLoaded : LocalFileLoadStatus()
+    data class Error(val message: String) : LocalFileLoadStatus()
+}

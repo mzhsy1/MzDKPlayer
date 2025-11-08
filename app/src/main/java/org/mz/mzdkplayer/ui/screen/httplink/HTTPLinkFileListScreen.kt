@@ -2,6 +2,7 @@
 
 package org.mz.mzdkplayer.ui.screen.httplink
 
+import NoSearchResult
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.OptIn
@@ -16,6 +17,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -38,8 +40,11 @@ import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
+import org.mz.mzdkplayer.ui.screen.common.VAErrorScreen
 import org.mz.mzdkplayer.ui.screen.vm.HTTPLinkConViewModel
 import org.mz.mzdkplayer.ui.style.myListItemColor
+import org.mz.mzdkplayer.ui.style.myTTFColor
+import org.mz.mzdkplayer.ui.theme.TvTextField
 import java.net.URLEncoder
 
 
@@ -69,7 +74,20 @@ fun HTTPLinkFileListScreen(
     var focusedIsDir by remember { mutableStateOf(false) }
     var focusedMediaUri by remember { mutableStateOf("") }
     // 当传入的 serverAddressAndShare, effectiveSubPath 参数变化时，或者首次进入时，尝试加载文件列表
-// 标准化 path：确保非空时以 "/" 结尾
+    var seaText by remember { mutableStateOf("") }
+    //  新增：过滤后的文件列表
+    val filteredFiles by remember(fileList, seaText) {
+        derivedStateOf {
+            if (seaText.isBlank()) {
+                fileList
+            } else {
+                fileList.filter { file ->
+                    file.name.contains(seaText, ignoreCase = true)
+                }
+            }
+        }
+    }
+    // 标准化 path：确保非空时以 "/" 结尾
     val normalizedPath = path?.let { p ->
         if (p.endsWith("/")) p else "$p/"
     }
@@ -132,31 +150,9 @@ fun HTTPLinkFileListScreen(
             is FileConnectionStatus.Error -> {
                 // 显示错误信息
                 val errorMessage = (connectionStatus as FileConnectionStatus.Error).message
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.baseline_error_24),
-                        contentDescription = null,
-                        tint = Color.Red,
-                        modifier = Modifier.size(64.dp)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        "加载失败",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        errorMessage,
-                        color = Color.White.copy(alpha = 0.8f),
-                        fontSize = 16.sp
-                    )
-                }
+                VAErrorScreen(
+                    "加载失败: $errorMessage",
+                )
             }
 
             is FileConnectionStatus.FilesLoaded -> {
@@ -173,175 +169,197 @@ fun HTTPLinkFileListScreen(
                         ) {
 
                             // Log.d("HTTPLinkFileListScreen", "Displaying fileList: $fileList")
+                            when {
+                                // 搜索无结果
+                                filteredFiles.isEmpty() && seaText.isNotBlank() -> {
+                                    item {
+                                        NoSearchResult(text = "没有匹配 \"$seaText\" 的文件")
+                                    }
+                                }
 
-                            items(fileList) { resource ->
-                                // 这里假设 resource 有 isDirectory: Boolean 和 name: String, path: String 属性
-                                val isDirectory = resource.isDirectory
-                                val resourceName = resource.name // 这里应该已经是完整的文件/目录名
-                                val resourcePath = resource.path // 相对于 baseUrl 的路径
+                                // 目录本身为空（未搜索时）
 
-                                ListItem(
-                                    selected = false,
-                                    onClick = {
-                                        coroutineScope.launch {
-                                            if (isDirectory) {
+                                else -> {
+                                    items(filteredFiles) { resource ->
+                                        // 这里假设 resource 有 isDirectory: Boolean 和 name: String, path: String 属性
+                                        val isDirectory = resource.isDirectory
+                                        val resourceName = resource.name // 这里应该已经是完整的文件/目录名
+                                        // val resourcePath = resource.path // 相对于 baseUrl 的路径
+
+                                        ListItem(
+                                            selected = false,
+                                            onClick = {
+                                                coroutineScope.launch {
+                                                    if (isDirectory) {
 
 
-                                                // normalizedPath 已带 /，所以直接拼接 resourceName 即可
-                                                val newFullPath = "${normalizedPath}${resourceName}"
-                                                val encodedNewSubPath =
-                                                    URLEncoder.encode(newFullPath, "UTF-8")
-                                                navController.navigate("HTTPLinkFileListScreen/$encodedNewSubPath")
-                                            } else {
-                                                // 处理文件点击 - 导航到 VideoPlayer
-                                                // 构造完整的 HTTP URL
-                                                val fullFileUrl =
-                                                    viewModel.getResourceFullUrl(resourceName)
-
-                                                Log.d(
-                                                    "HTTPLinkFileListScreen",
-                                                    "Full file URL before encoding: $fullFileUrl"
-                                                )
-
-                                                val encodedFileUrl =
-                                                    URLEncoder.encode(fullFileUrl, "UTF-8")
-                                                Log.d(
-                                                    "HTTPLinkFileListScreen",
-                                                    "Encoded file URL: $encodedFileUrl"
-                                                )
-
-                                                val fileExtension =
-                                                    Tools.extractFileExtension(resource.name)
-                                                when {
-                                                    Tools.containsVideoFormat(fileExtension) -> {
-                                                        // 导航到视频播放器
-                                                        navController.navigate(
-                                                            "VideoPlayer/$encodedFileUrl/HTTP/${
-                                                                URLEncoder.encode(
-                                                                    resource.name,
-                                                                    "UTF-8"
-                                                                )
-                                                            }"
-                                                        )
-                                                    }
-
-                                                    Tools.containsAudioFormat(fileExtension) -> {
-                                                        // ✅ 构建音频文件列表
-                                                        val audioFiles =
-                                                            fileList.filter { httpFile ->
-                                                                Tools.containsAudioFormat(
-                                                                    Tools.extractFileExtension(
-                                                                        httpFile.name
-                                                                    )
-                                                                )
-                                                            }
-
-                                                        // ✅ 构建文件名到索引的映射（O(N) 一次构建）
-                                                        val nameToIndexMap = audioFiles.withIndex()
-                                                            .associateBy(
-                                                                { it.value.name },
-                                                                { it.index })
-
-                                                        // ✅ 快速查找索引（O(1)）
-                                                        val currentAudioIndex =
-                                                            nameToIndexMap[resource.name] ?: -1
-                                                        if (currentAudioIndex == -1) {
-                                                            Log.e(
-                                                                "HTTPFileListScreen",
-                                                                "未找到文件在音频列表中: ${resource.name}"
+                                                        // normalizedPath 已带 /，所以直接拼接 resourceName 即可
+                                                        val newFullPath =
+                                                            "${normalizedPath}${resourceName}"
+                                                        val encodedNewSubPath =
+                                                            URLEncoder.encode(newFullPath, "UTF-8")
+                                                        navController.navigate("HTTPLinkFileListScreen/$encodedNewSubPath")
+                                                    } else {
+                                                        // 处理文件点击 - 导航到 VideoPlayer
+                                                        // 构造完整的 HTTP URL
+                                                        val fullFileUrl =
+                                                            viewModel.getResourceFullUrl(
+                                                                resourceName
                                                             )
-                                                            return@launch
 
-                                                        }
+                                                        Log.d(
+                                                            "HTTPLinkFileListScreen",
+                                                            "Full file URL before encoding: $fullFileUrl"
+                                                        )
 
-                                                        // ✅ 构建播放列表
-                                                        val audioItems =
-                                                            audioFiles.map { httpFile ->
-                                                                AudioItem(
-                                                                    uri = viewModel.getResourceFullUrl(
-                                                                        httpFile.name
-                                                                    ),
-                                                                    fileName = httpFile.name,
-                                                                    dataSourceType = "HTTP"
+                                                        val encodedFileUrl =
+                                                            URLEncoder.encode(fullFileUrl, "UTF-8")
+                                                        Log.d(
+                                                            "HTTPLinkFileListScreen",
+                                                            "Encoded file URL: $encodedFileUrl"
+                                                        )
+
+                                                        val fileExtension =
+                                                            Tools.extractFileExtension(resource.name)
+                                                        when {
+                                                            Tools.containsVideoFormat(fileExtension) -> {
+                                                                // 导航到视频播放器
+                                                                navController.navigate(
+                                                                    "VideoPlayer/$encodedFileUrl/HTTP/${
+                                                                        URLEncoder.encode(
+                                                                            resource.name,
+                                                                            "UTF-8"
+                                                                        )
+                                                                    }"
                                                                 )
                                                             }
-                                                        // 设置数据
-                                                        MzDkPlayerApplication.clearStringList("audio_playlist")
-                                                        MzDkPlayerApplication.setStringList(
-                                                            "audio_playlist",
-                                                            audioItems
-                                                        )
-                                                        navController.navigate(
-                                                            "AudioPlayer/$encodedFileUrl/HTTP/${
-                                                                URLEncoder.encode(
-                                                                    resource.name,
-                                                                    "UTF-8"
-                                                                )
-                                                            }/$currentAudioIndex"
-                                                        )
-                                                        //navController.navigate("AudioPlayer/$encodedUri/SMB/$encodedFileName")
-                                                    }
 
-                                                    else -> {
-                                                        Toast.makeText(
-                                                            context,
-                                                            "不支持的文件格式: $fileExtension",
-                                                            Toast.LENGTH_SHORT
-                                                        ).show()
+                                                            Tools.containsAudioFormat(fileExtension) -> {
+                                                                //  构建音频文件列表
+                                                                val audioFiles =
+                                                                    fileList.filter { httpFile ->
+                                                                        Tools.containsAudioFormat(
+                                                                            Tools.extractFileExtension(
+                                                                                httpFile.name
+                                                                            )
+                                                                        )
+                                                                    }
+
+                                                                //  构建文件名到索引的映射（O(N) 一次构建）
+                                                                val nameToIndexMap =
+                                                                    audioFiles.withIndex()
+                                                                        .associateBy(
+                                                                            { it.value.name },
+                                                                            { it.index })
+
+                                                                //  快速查找索引（O(1)）
+                                                                val currentAudioIndex =
+                                                                    nameToIndexMap[resource.name]
+                                                                        ?: -1
+                                                                if (currentAudioIndex == -1) {
+                                                                    Log.e(
+                                                                        "HTTPFileListScreen",
+                                                                        "未找到文件在音频列表中: ${resource.name}"
+                                                                    )
+                                                                    return@launch
+
+                                                                }
+
+                                                                //  构建播放列表
+                                                                val audioItems =
+                                                                    audioFiles.map { httpFile ->
+                                                                        AudioItem(
+                                                                            uri = viewModel.getResourceFullUrl(
+                                                                                httpFile.name
+                                                                            ),
+                                                                            fileName = httpFile.name,
+                                                                            dataSourceType = "HTTP"
+                                                                        )
+                                                                    }
+                                                                // 设置数据
+                                                                MzDkPlayerApplication.clearStringList(
+                                                                    "audio_playlist"
+                                                                )
+                                                                MzDkPlayerApplication.setStringList(
+                                                                    "audio_playlist",
+                                                                    audioItems
+                                                                )
+                                                                navController.navigate(
+                                                                    "AudioPlayer/$encodedFileUrl/HTTP/${
+                                                                        URLEncoder.encode(
+                                                                            resource.name,
+                                                                            "UTF-8"
+                                                                        )
+                                                                    }/$currentAudioIndex"
+                                                                )
+                                                                //navController.navigate("AudioPlayer/$encodedUri/SMB/$encodedFileName")
+                                                            }
+
+                                                            else -> {
+                                                                Toast.makeText(
+                                                                    context,
+                                                                    "不支持的文件格式: $fileExtension",
+                                                                    Toast.LENGTH_SHORT
+                                                                ).show()
+                                                            }
+                                                        }
                                                     }
                                                 }
-                                            }
-                                        }
-                                    },
-                                    colors = myListItemColor(),
-                                    modifier = Modifier
-                                        .padding(end = 10.dp)
-                                        .height(40.dp)
-                                        .onFocusChanged {
-                                            if (it.isFocused) {
-                                                focusedFileName = resource.name;
-                                                focusedIsDir = isDirectory
-                                                focusedMediaUri =
-                                                    viewModel.getResourceFullUrl(resourceName)
-                                            }
-                                        },
-                                    scale = ListItemDefaults.scale(
-                                        scale = 1.0f,
-                                        focusedScale = 1.01f
-                                    ),
-                                    leadingContent = {
-                                        Icon(
-                                            painter = if (resource.isDirectory) {
-                                                painterResource(R.drawable.baseline_folder_24)
-                                            } else if (Tools.containsVideoFormat(
-                                                    Tools.extractFileExtension(resource.name)
-                                                )
-                                            ) {
-
-                                                painterResource(R.drawable.moviefileicon)
-                                            } else if (Tools.containsAudioFormat(
-                                                    Tools.extractFileExtension(resource.name)
-                                                )
-                                            ) {
-
-                                                painterResource(R.drawable.baseline_music_note_24)
-                                            } else {
-                                                painterResource(R.drawable.baseline_insert_drive_file_24)
                                             },
-                                            contentDescription = null,
+                                            colors = myListItemColor(),
+                                            modifier = Modifier
+                                                .padding(end = 10.dp)
+                                                .height(40.dp)
+                                                .onFocusChanged {
+                                                    if (it.isFocused) {
+                                                        focusedFileName = resource.name;
+                                                        focusedIsDir = isDirectory
+                                                        focusedMediaUri =
+                                                            viewModel.getResourceFullUrl(
+                                                                resourceName
+                                                            )
+                                                    }
+                                                },
+                                            scale = ListItemDefaults.scale(
+                                                scale = 1.0f,
+                                                focusedScale = 1.01f
+                                            ),
+                                            leadingContent = {
+                                                Icon(
+                                                    painter = if (resource.isDirectory) {
+                                                        painterResource(R.drawable.baseline_folder_24)
+                                                    } else if (Tools.containsVideoFormat(
+                                                            Tools.extractFileExtension(resource.name)
+                                                        )
+                                                    ) {
 
-                                            )
-                                    },
-                                    headlineContent = {
-                                        // 显示完整的文件名
-                                        Text(
-                                            resourceName, maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis, fontSize = 10.sp
+                                                        painterResource(R.drawable.moviefileicon)
+                                                    } else if (Tools.containsAudioFormat(
+                                                            Tools.extractFileExtension(resource.name)
+                                                        )
+                                                    ) {
+
+                                                        painterResource(R.drawable.baseline_music_note_24)
+                                                    } else {
+                                                        painterResource(R.drawable.baseline_insert_drive_file_24)
+                                                    },
+                                                    contentDescription = null,
+
+                                                    )
+                                            },
+                                            headlineContent = {
+                                                // 显示完整的文件名
+                                                Text(
+                                                    resourceName,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    fontSize = 10.sp
+                                                )
+                                            }
+                                            // supportingContent = { Text(resource.rawListing ?: "") } // 可以显示原始信息
                                         )
                                     }
-                                    // supportingContent = { Text(resource.rawListing ?: "") } // 可以显示原始信息
-                                )
-                            }
+                                }}
 
                         }
                         Column(
@@ -351,6 +369,14 @@ fun HTTPLinkFileListScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
+                            TvTextField(
+                                value = seaText,
+                                onValueChange = { seaText = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = myTTFColor(),
+                                placeholder = "请输入文件名",
+                                textStyle = TextStyle(color = Color.White),
+                            )
                             VideoBigIcon(
                                 focusedIsDir,
                                 focusedFileName,

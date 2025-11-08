@@ -173,7 +173,7 @@ fun WebDavFileListScreen(
                                         val fullFileUrl = path ?: "" // 直接使用文件的完整路径
                                         val authenticatedUrl =viewModel.buildAuthenticatedUrl(fullFileUrl,
                                             username = webDavConnection.username?:""
-                                            , password = webDavConnection.password?:"")
+                                            , password = webDavConnection.password?:"").trimEnd('/')
                                         val encodedFileUrl = URLEncoder.encode(
                                             "${authenticatedUrl}/${
                                                 fileName.trimEnd('/').trimStart('/')

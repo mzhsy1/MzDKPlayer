@@ -151,7 +151,7 @@ fun WebDavConScreen() {
                     if (!Tools.validateWebConnectionParams(context, serverAddress = baseUrl)) {
                         return@MyIconButton
                     }
-                    webDavConViewModel.connectToWebDav(baseUrl, username, password)
+                    webDavConViewModel.connectToWebDav(baseUrl, username, password,true)
                 },
             )
 
