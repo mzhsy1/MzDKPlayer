@@ -45,6 +45,7 @@ import androidx.tv.material3.Card
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import org.mz.mzdkplayer.R
 // --- 导入 NFS 相关的模型和 ViewModel ---
 import org.mz.mzdkplayer.logic.model.NFSConnection // 使用 NFS 数据模型
 import org.mz.mzdkplayer.ui.screen.vm.NFSListViewModel // 使用 NFS ViewModel
@@ -109,7 +110,7 @@ fun NFSConListScreen(mainNavController: NavHostController) {
             // 添加新连接按钮
             MyIconButton(
                 "添加新NFS链接",
-                Icons.Outlined.Add,
+                icon = R.drawable.add24dp,
                 Modifier.padding(10.dp),
                 onClick = { mainNavController.navigate("NFSConScreen") } // 导航到添加NFS连接屏幕
             )

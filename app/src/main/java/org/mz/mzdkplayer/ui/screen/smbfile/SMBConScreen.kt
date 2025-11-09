@@ -167,7 +167,7 @@ fun SMBConScreen() {
 
             MyIconButton(
                 text = "测试连接",
-                imageVector = Icons.Outlined.Check,
+                icon = R.drawable.check24dp,
                 modifier = Modifier.fillMaxWidth(0.5f),
                 enabled = true,
                 onClick = {
@@ -181,7 +181,7 @@ fun SMBConScreen() {
 
             MyIconButton(
                 text = "保存连接",
-                imageVector = Icons.Outlined.Star,
+                icon = R.drawable.save24dp,
 
                 modifier = Modifier.fillMaxWidth(0.5f),
                 onClick = {
@@ -214,7 +214,7 @@ fun SMBConScreen() {
 
             MyIconButton(
                 text = "断开连接",
-                imageVector = Icons.Outlined.Delete,
+                icon = R.drawable.linkoff24dp,
 
                 modifier = Modifier.fillMaxWidth(0.5f),
                 onClick = { viewModel.disconnectSMB() },

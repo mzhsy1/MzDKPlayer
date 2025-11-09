@@ -43,6 +43,7 @@ import androidx.tv.material3.Card
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.WebDavConnection // 使用新的数据模型
 import org.mz.mzdkplayer.ui.screen.vm.WebDavListViewModel // 使用新的 ViewModel
 import org.mz.mzdkplayer.ui.theme.MyIconButton
@@ -105,7 +106,7 @@ fun WebDavConListScreen(mainNavController: NavHostController) {
             // 添加新连接按钮
             MyIconButton(
                 "添加新WebDav链接",
-                Icons.Outlined.Add,
+                icon = R.drawable.add24dp,
                 Modifier.padding(10.dp),
                 onClick = { mainNavController.navigate("WebDavConScreen") } // 导航到添加连接屏幕
             )

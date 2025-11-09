@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.VisualTransformation
@@ -165,7 +166,7 @@ fun TvTextField(
 @Composable
 fun MyIconButton(
     text: String,
-    imageVector: ImageVector,
+    icon: Int,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
     enabled: Boolean = true,
@@ -186,7 +187,7 @@ fun MyIconButton(
 
     ) {
         Icon(
-            imageVector = imageVector,
+            painter = painterResource(icon),
             contentDescription = null
         )
         Spacer(Modifier.size(8.dp))

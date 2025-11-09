@@ -143,7 +143,7 @@ fun WebDavConScreen() {
             // 操作按钮
             MyIconButton(
                 text = "测试连接",
-                imageVector = Icons.Outlined.Check,
+                icon = R.drawable.check24dp,
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
                     keyboardController?.hide()
@@ -157,7 +157,7 @@ fun WebDavConScreen() {
 
             MyIconButton(
                 text = "保存连接",
-                imageVector = Icons.Outlined.Star,
+                icon = R.drawable.save24dp,
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
                     keyboardController?.hide()
@@ -189,7 +189,7 @@ fun WebDavConScreen() {
 
             MyIconButton(
                 text = "断开连接",
-                imageVector = Icons.Outlined.Delete,
+                icon = R.drawable.linkoff24dp,
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
                     keyboardController?.hide()

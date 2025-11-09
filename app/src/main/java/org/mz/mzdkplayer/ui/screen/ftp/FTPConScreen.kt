@@ -183,7 +183,7 @@ fun FTPConScreen(
                 // 操作按钮
                 MyIconButton(
                     text = "测试连接",
-                    imageVector = Icons.Outlined.Check,
+                    icon = R.drawable.check24dp,
                     modifier = Modifier.weight(1f) .padding(end = 8.dp), // 可选：加点右边距，避免贴太紧,// ⬅️ 平分宽度,
                     enabled = connectionStatus != FileConnectionStatus.Connecting, // 连接中时禁用
                     onClick = {
@@ -198,7 +198,7 @@ fun FTPConScreen(
 
                 MyIconButton(
                     text = "保存连接",
-                    imageVector = Icons.Outlined.Star,
+                    icon = R.drawable.save24dp,
                     modifier = Modifier.weight(1f).padding(start = 8.dp), // 可选：加点右边距，避免贴太紧 ,// ⬅️ 平分宽度,
                     // 只有在已连接时才允许保存
                     // enabled = connectionStatus is FileConnectionStatus.Connected,
@@ -236,7 +236,7 @@ fun FTPConScreen(
             }
             MyIconButton(
                 text = "断开连接",
-                imageVector = Icons.Outlined.Delete,
+                icon = R.drawable.linkoff24dp,
                 modifier = Modifier.fillMaxWidth(),
                 // 只有在已连接或连接出错时才允许断开
 //                enabled = connectionStatus is FileConnectionStatus.Connected ||

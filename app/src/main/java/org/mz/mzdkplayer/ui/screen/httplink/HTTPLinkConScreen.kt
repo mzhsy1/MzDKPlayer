@@ -143,7 +143,7 @@ fun HTTPLinkConScreen(
                 // 操作按钮 - 连接
                 MyIconButton(
                     text = "测试连接",
-                    imageVector = Icons.Outlined.Check,
+                    icon = R.drawable.check24dp,
                     modifier = Modifier
                         .weight(1f)
                         .padding(end = 8.dp), // 平分宽度并加右边距
@@ -174,7 +174,7 @@ fun HTTPLinkConScreen(
                 // 操作按钮 - 保存连接 (假设你有 HTTPLinkListViewModel)
                 MyIconButton(
                     text = "保存连接",
-                    imageVector = Icons.Outlined.Star,
+                    icon = R.drawable.save24dp,
                     modifier = Modifier
                         .weight(1f)
                         .padding(start = 8.dp), // 平分宽度并加左边距
@@ -215,7 +215,7 @@ fun HTTPLinkConScreen(
             // 断开连接按钮
             MyIconButton(
                 text = "断开连接",
-                imageVector = Icons.Outlined.Delete,
+                icon = R.drawable.linkoff24dp,
                 modifier = Modifier.fillMaxWidth(),
                 // 只有在已连接或连接出错时才允许断开
                 onClick = {

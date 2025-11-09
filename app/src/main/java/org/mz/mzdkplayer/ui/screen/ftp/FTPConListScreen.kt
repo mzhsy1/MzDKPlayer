@@ -45,6 +45,7 @@ import androidx.tv.material3.Card
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import org.mz.mzdkplayer.R
 // --- 导入 FTP 相关的模型和 ViewModel ---
 import org.mz.mzdkplayer.logic.model.FTPConnection // 使用 FTP 数据模型
 import org.mz.mzdkplayer.ui.screen.vm.FTPListViewModel // 使用 FTP ViewModel
@@ -109,7 +110,7 @@ fun FTPConListScreen(mainNavController: NavHostController) {
             // 添加新连接按钮
             MyIconButton(
                 "添加新FTP链接",
-                Icons.Outlined.Add,
+                icon  = R.drawable.add24dp,
                 Modifier.padding(10.dp),
                 onClick = { mainNavController.navigate("FTPConScreen") } // 导航到添加FTP连接屏幕
             )
