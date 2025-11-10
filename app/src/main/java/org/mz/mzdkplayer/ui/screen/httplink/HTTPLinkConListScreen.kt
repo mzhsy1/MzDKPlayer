@@ -48,6 +48,7 @@ import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 // --- 导入 HTTP 相关的模型和 ViewModel ---
 import org.mz.mzdkplayer.logic.model.HTTPLinkConnection // 使用 HTTP 数据模型
+import org.mz.mzdkplayer.ui.screen.common.FCLMainTitle
 import org.mz.mzdkplayer.ui.screen.vm.HTTPLinkListViewModel // 使用 HTTP ViewModel
 // --- ---
 import org.mz.mzdkplayer.ui.theme.MyIconButton
@@ -105,15 +106,12 @@ fun HTTPLinkConListScreen(mainNavController: NavHostController) {
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
-                .padding(20.dp)
+                .padding()
         ) {
-            // 添加新链接按钮
-            MyIconButton(
-                "添加新HTTP链接",
-                icon = R.drawable.add24dp,
-                Modifier.padding(10.dp),
-                onClick = { mainNavController.navigate("HTTPLinkConScreen") } // 导航到添加HTTP链接屏幕
-            )
+            // 标题
+            FCLMainTitle(mainNavController = mainNavController, "NGINX文件共享", "HTTPConScreen")
+
+
 
             if (connections.isEmpty()) {
                 Text(

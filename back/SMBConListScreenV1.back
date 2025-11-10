@@ -103,6 +103,7 @@ fun SMBConListScreen(mainNavController: NavHostController) {
             listState.animateScrollToItem(selectedIndex)
         }
     }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -338,6 +339,138 @@ fun OperationListItem(
 
     )
 }
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+fun ConnectionCard1(
+    index: Int,
+    connection: SMBConnection,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+    onLogClick: () -> Unit,
+    viewModel: SMBListViewModel,
+    isOPanelShow: Boolean
+)
+{
+    val focusRequester = remember { FocusRequester() }
+    val isSelected = viewModel.selectedIndex.collectAsState().value == index && !isOPanelShow
+
+    LaunchedEffect(isOPanelShow) {
+        if (isSelected) {
+            focusRequester.requestFocus()
+        }
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(110.dp)
+            .focusRequester(focusRequester),
+        onClick = onClick,
+        onLongClick = onLogClick,
+        colors = CardDefaults.colors(
+            containerColor = Color(0xFF2D2D2D), // 卡片背景色
+            contentColor = Color.White, // 内容文字颜色
+            focusedContainerColor = Color.White, // 聚焦时背景色
+            focusedContentColor = Color.Black,
+            pressedContainerColor = Color(0xFF37474F), // 按下时背景色
+            pressedContentColor = Color.White
+        ),
+        scale = CardDefaults.scale(
+            scale = 1f,
+            focusedScale = 1.03f, // 聚焦时轻微放大
+            pressedScale = 0.98f // 按下时轻微缩小
+        ),
+        border = myCardBorderStyle(),
+        glow = CardDefaults.glow(
+            glow = Glow.None,
+//            focusedGlow = androidx.tv.material3.Glow(
+//                color = Color.White.copy(alpha = 0.2f), // 聚焦时光晕效果
+//                radius = 12.dp
+//            ),
+            pressedGlow = Glow.None
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 图标区域
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .background(
+                        color = if (isSelected) Color(0xFF424242) else Color(0xFF37474F),
+                        shape = RoundedCornerShape(10.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.storage24dp),
+                    contentDescription = "SMB Connection",
+                    tint = if (isSelected) Color.White else Color(0xFFB0B0B0),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // 内容区域
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                // 连接名称
+                connection.name?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // 连接详情
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    ConnectionInfoItem(
+                        label = "服务器",
+                        value = connection.ip
+                    )
+
+                    ConnectionInfoItem(
+                        label = "共享目录",
+                        value = connection.shareName
+                    )
+
+                    if (connection.username?.isNotEmpty() ?: true) {
+                        ConnectionInfoItem(
+                            label = "用户名",
+                            value = connection.username
+                        )
+                    }
+                }
+            }
+
+            // 状态指示器
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .background(
+                        color = Color(0xFF4CAF50), // 绿色在线状态
+                        shape = RoundedCornerShape(3.dp)
+                    )
+            )
+        }
+    }
+}
+
 @Composable
 fun ConnectionInfoItem(
     label: String,

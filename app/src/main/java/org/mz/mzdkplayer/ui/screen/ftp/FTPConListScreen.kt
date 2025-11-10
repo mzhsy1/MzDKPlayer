@@ -48,6 +48,9 @@ import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 // --- 导入 FTP 相关的模型和 ViewModel ---
 import org.mz.mzdkplayer.logic.model.FTPConnection // 使用 FTP 数据模型
+import org.mz.mzdkplayer.ui.screen.common.ConnectionCard
+import org.mz.mzdkplayer.ui.screen.common.ConnectionCardInfo
+import org.mz.mzdkplayer.ui.screen.common.FCLMainTitle
 import org.mz.mzdkplayer.ui.screen.vm.FTPListViewModel // 使用 FTP ViewModel
 // --- ---
 import org.mz.mzdkplayer.ui.theme.MyIconButton
@@ -68,7 +71,7 @@ fun FTPConListScreen(mainNavController: NavHostController) {
     val connections by ftpListViewModel.connections.collectAsState()
     val isOPanelShow by ftpListViewModel.isOPanelShow.collectAsState()
     // isLongPressInProgress 可能未在此处直接使用，但保留以匹配原始逻辑结构
-    val isLongPressInProgress by ftpListViewModel.isLongPressInProgress.collectAsState()
+
 
     LaunchedEffect(isOPanelShow) {
         Log.d("FTPList", "isOPanelShow changed: $isOPanelShow")
@@ -105,15 +108,11 @@ fun FTPConListScreen(mainNavController: NavHostController) {
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
-                .padding(20.dp)
+                .padding().background(Color(0xFF121212)) // 深黑背景
         ) {
-            // 添加新连接按钮
-            MyIconButton(
-                "添加新FTP链接",
-                icon  = R.drawable.add24dp,
-                Modifier.padding(10.dp),
-                onClick = { mainNavController.navigate("FTPConScreen") } // 导航到添加FTP连接屏幕
-            )
+            // 标题
+            FCLMainTitle(mainNavController = mainNavController, "FTP文件共享", "SMBConScreen")
+
 
             if (connections.isEmpty()) {
                 Text(
@@ -129,22 +128,23 @@ fun FTPConListScreen(mainNavController: NavHostController) {
                     modifier = Modifier.focusRequester(listFocusRequester)
                 ) {
                     itemsIndexed(connections) { index, conn ->
-                        FTPConnectionCard(
+                        ConnectionCard(
                             index = index,
-                            connection = conn,
+                            connectionCardInfo = ConnectionCardInfo(
+                                name = conn.name?:"未知",
+                                address = conn.ip?:"未知",
+                                shareName = conn.shareName?:"未知",
+                                username = conn.username?:"无",
+                            ),
                             onClick = {
                                 // 构建用于导航到 FTP 文件列表的参数
                                 // 注意：在实际应用中，直接传递密码可能不安全。
-                                // 更好的做法是在 ViewModel 或 Repository 中处理认证，
-                                // 或者使用更安全的令牌机制。
-                                // 这里为了简化导航示例，暂时采用此方式。
                                 try {
                                     // 对参数进行 URL 编码以处理特殊字符
                                     val encodedIp = URLEncoder.encode(conn.ip, "UTF-8")
                                     val encodedUsername = URLEncoder.encode(conn.username, "UTF-8")
                                     val encodedPassword = URLEncoder.encode(conn.password, "UTF-8")
                                     val encodedShareName = URLEncoder.encode(conn.shareName, "UTF-8")
-
                                     Log.d(
                                         "FTPList", "Navigating to FTPFileListScreen with " +
                                                 "IP: $encodedIp, User: $encodedUsername, " +
@@ -161,16 +161,13 @@ fun FTPConListScreen(mainNavController: NavHostController) {
                                 }
                             },
                             onLogClick = {
-                                // 触发长按逻辑（尽管这里用的是 onClick，但可能是模拟长按或不同交互）
-                                ftpListViewModel.setIsLongPressInProgress(true)
                                 ftpListViewModel.openOPlane()
                                 ftpListViewModel.setSelectedIndex(index)
                                 ftpListViewModel.setSelectedId(conn.id)
                                 Log.d("FTPList", "Operation panel opened for index: $index, id: ${conn.id}")
-                                ftpListViewModel.setIsLongPressInProgress(false)
                             },
                             onDelete = { /* 删除逻辑通常在 ViewModel 或操作面板中处理 */ },
-                            viewModel = ftpListViewModel,
+                            isSelected = ftpListViewModel.selectedIndex.value == index && !isOPanelShow,
                             isOPanelShow = isOPanelShow
                         )
                     }
@@ -279,57 +276,6 @@ fun FTPConListScreen(mainNavController: NavHostController) {
                     )
                 }
             }
-        }
-    }
-}
-
-/**
- * 单个 FTP 连接卡片
- */
-@Composable
-fun FTPConnectionCard(
-    index: Int,
-    connection: FTPConnection,
-    onClick: () -> Unit,
-    onDelete: () -> Unit,
-    onLogClick: () -> Unit, // 这个回调现在用于触发操作面板
-    viewModel: FTPListViewModel,
-    isOPanelShow: Boolean
-) {
-    val focusRequester = remember { FocusRequester() }
-
-    // 当操作面板显示/隐藏状态改变时，如果当前卡片是选中的，则请求焦点
-    LaunchedEffect(isOPanelShow) {
-        if (viewModel.selectedIndex.value == index && !isOPanelShow) {
-            Log.d("FTPCard", "Requesting focus for selected card at index: $index")
-            focusRequester.requestFocus()
-        }
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-            .focusRequester(focusRequester),
-        onClick = onClick, // 点击进入文件列表
-        colors = myCardColor(),
-        border = myCardBorderStyle(),
-        scale = myCardScaleStyle(),
-        onLongClick = onLogClick // 长按（或点击）打开操作面板
-    ) {
-
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                connection.name?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
-            }
-            // 根据 FTPConnection 数据模型显示信息
-            Text("IP: ${connection.ip}")
-            Text("用户: ${connection.username}")
-            Text("共享: ${connection.shareName}")
-            // 密码通常不显示
         }
     }
 }

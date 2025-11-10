@@ -45,6 +45,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.WebDavConnection // 使用新的数据模型
+import org.mz.mzdkplayer.ui.screen.common.FCLMainTitle
 import org.mz.mzdkplayer.ui.screen.vm.WebDavListViewModel // 使用新的 ViewModel
 import org.mz.mzdkplayer.ui.theme.MyIconButton
 import org.mz.mzdkplayer.ui.theme.myCardBorderStyle
@@ -103,13 +104,9 @@ fun WebDavConListScreen(mainNavController: NavHostController) {
             modifier = Modifier
                 .padding(20.dp)
         ) {
-            // 添加新连接按钮
-            MyIconButton(
-                "添加新WebDav链接",
-                icon = R.drawable.add24dp,
-                Modifier.padding(10.dp),
-                onClick = { mainNavController.navigate("WebDavConScreen") } // 导航到添加连接屏幕
-            )
+            // 标题
+            FCLMainTitle(mainNavController = mainNavController,"WebDav文件共享","WebDavConScreen")
+            // ====== 内容区域m ======
 
             if (connections.isEmpty()) {
                 Text(
@@ -132,7 +129,7 @@ fun WebDavConListScreen(mainNavController: NavHostController) {
                                 // 构建带认证信息的 URL 用于导航
                                 // 注意：在实际应用中，直接在 URL 中暴露密码可能不安全。
                                 // 更好的做法是在 ViewModel 或 Repository 中处理认证。
-                                // 这里为了简化导航示例，暂时采用此方式。
+
                                 val authPart = if (conn.username?.isNotBlank() == true && conn.password?.isNotBlank() == true) {
                                     "${conn.username}:${conn.password}@"
                                 } else {
