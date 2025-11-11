@@ -31,7 +31,7 @@ fun myCardColor(): CardColors {
         containerColor = Color(0xFF2D2D2D), // 保持原有的深色背景
         contentColor = Color(255, 248, 240), // 暖白色替代纯白
         focusedContainerColor = Color(255, 250, 245), // 米白色替代纯白
-        focusedContentColor = Color(80, 70, 60), // 暖深灰替代纯黑
+        focusedContentColor = Color(0, 0, 0), // 纯黑
         pressedContainerColor = Color(0xFF4A4540), // 调整为暖色调的深灰
         pressedContentColor = Color(255, 248, 240) // 暖白色
     )

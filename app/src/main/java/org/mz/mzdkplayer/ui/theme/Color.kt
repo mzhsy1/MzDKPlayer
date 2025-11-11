@@ -42,7 +42,7 @@ fun MyListItemCoverColor(): ListItemColors {
         focusedSelectedContentColor = Color(255, 248, 240), // 暖白色
         focusedSelectedContainerColor = Color(32, 32, 32), // 保持深色背景
         focusedContainerColor = Color(255, 250, 245), // 米白色替代纯白
-        focusedContentColor = Color(80, 70, 60) // 暖深灰替代纯黑
+        focusedContentColor = Color(0, 0, 0) // 纯黑
     )
 }
 /**
@@ -58,7 +58,7 @@ fun MyFileListItemColor(): ListItemColors {
         focusedSelectedContentColor = Color(255, 248, 240), // 暖白色
         focusedSelectedContainerColor = Color(32, 32, 32), // 保持深色背景
         focusedContainerColor = Color(255, 250, 245), // 米白色替代纯白
-        focusedContentColor = Color(80, 70, 60) // 暖深灰替代纯黑
+        focusedContentColor = Color(0, 0, 0) // 纯黑
     )
 }
 

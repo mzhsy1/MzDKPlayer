@@ -13,12 +13,15 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -61,6 +64,7 @@ import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavConListScreen
 import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavConScreen
 import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavFileListScreen
 import org.mz.mzdkplayer.ui.screen.setting.SettingsScreen
+import org.mz.mzdkplayer.ui.theme.MySideListItemColor
 
 import org.mz.mzdkplayer.ui.videoplayer.VideoPlayerScreen
 import java.net.URLDecoder
@@ -86,8 +90,13 @@ fun MzDKPlayerAPP() {
         startDestination = "MainPage",
         modifier = Modifier.background(Color.Black)
     ) {
+
         composable("MainPage") {
             val homeNavController = rememberNavController()
+            val sideFocusRequest = remember { FocusRequester() }
+            LaunchedEffect(Unit) {
+                sideFocusRequest.requestFocus()
+            }
             NavigationDrawer(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -99,13 +108,13 @@ fun MzDKPlayerAPP() {
                             .fillMaxHeight()
                             .padding(6.dp)
                             .widthIn(50.dp, 50.dp)
-                            .selectableGroup(),
+                            .selectableGroup().focusRequester(focusRequester = sideFocusRequest),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items.forEachIndexed { index, item ->
                             val (text, icon) = item
                             ListItem(
-                                selected = selectedIndex == index,
+                                selected = false,
                                 modifier = if (index == len - 0 || index == len - 1) Modifier
                                     .widthIn(
                                         50.dp
@@ -131,16 +140,7 @@ fun MzDKPlayerAPP() {
                                     )
                                     // Text(text, color = Color.White)
                                 },
-                                colors = ListItemDefaults.colors(
-                                    containerColor = Color(38, 38, 42, 255),
-                                    contentColor = Color(255, 248, 240), // 暖白色
-                                    selectedContainerColor = Color(255, 250, 245), // 米白色
-                                    selectedContentColor = Color(80, 70, 60), // 暖深灰
-                                    focusedSelectedContentColor = Color(80, 70, 60),
-                                    focusedSelectedContainerColor = Color(255, 250, 245),
-                                    focusedContainerColor = Color(255, 250, 245),
-                                    focusedContentColor = Color(80, 70, 60)
-                                ),
+                                colors = MySideListItemColor(),
                                 headlineContent = {},
                             )
                         }
