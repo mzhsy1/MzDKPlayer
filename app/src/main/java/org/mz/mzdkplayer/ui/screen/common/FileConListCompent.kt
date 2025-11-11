@@ -52,7 +52,12 @@ import org.mz.mzdkplayer.ui.theme.MyListItemCoverColor
  * ====== 标题栏 ======
  */
 @Composable
-fun FCLMainTitle(mainNavController: NavHostController, titleText: String, addTargetRouter: String) {
+fun FCLMainTitle(
+    mainNavController: NavHostController,
+    titleText: String,
+    addTargetRouter: String = "",
+    isLocalFile: Boolean = false
+) {
 
     Column(
         modifier = Modifier
@@ -67,7 +72,9 @@ fun FCLMainTitle(mainNavController: NavHostController, titleText: String, addTar
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    painter = painterResource(id = R.drawable.storage24dp),
+                    painter = if (!isLocalFile) painterResource(id = R.drawable.storage24dp) else painterResource(
+                        id = R.drawable.localfile
+                    ),
                     contentDescription = "SMB",
                     tint = Color.White,
                     modifier = Modifier.size(32.dp)
@@ -81,7 +88,7 @@ fun FCLMainTitle(mainNavController: NavHostController, titleText: String, addTar
                         color = Color.White
                     )
                     Text(
-                        text = "网络存储",
+                        text = if (!isLocalFile) "网络存储" else "本地存储",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color(0xFFB0B0B0) // 浅灰色
                     )
@@ -90,12 +97,14 @@ fun FCLMainTitle(mainNavController: NavHostController, titleText: String, addTar
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // 添加新连接按钮
-                MyIconButton(
-                    modifier = Modifier.padding(end = 12.dp),
-                    onClick = { mainNavController.navigate(addTargetRouter) },
-                    text = "添加连接",
-                    icon = R.drawable.add24dp,
-                )
+                if (!isLocalFile) {
+                    MyIconButton(
+                        modifier = Modifier.padding(end = 12.dp),
+                        onClick = { mainNavController.navigate(addTargetRouter) },
+                        text = "添加连接",
+                        icon = R.drawable.add24dp,
+                    )
+                }
 
                 MyIconButton(
                     onClick = { /**TODO 转到设置帮助页面**/ },
@@ -202,7 +211,7 @@ fun ConnectionCard(
         onClick = onClick,
         onLongClick = onLogClick,
         interactionSource = interactionSource,
-        colors =myCardColor(),
+        colors = myCardColor(),
         scale = CardDefaults.scale(
             scale = 1f,
             focusedScale = 1.03f, // 聚焦时轻微放大

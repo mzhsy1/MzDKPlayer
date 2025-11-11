@@ -15,6 +15,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -121,7 +122,12 @@ fun FTPConListScreen(mainNavController: NavHostController) {
                     // 连接卡片列表
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier.focusRequester(listFocusRequester)
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(top = 16.dp)
+                            .focusRequester(listFocusRequester),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(bottom = 24.dp)
                     ) {
                         itemsIndexed(connections) { index, conn ->
                             ConnectionCard(

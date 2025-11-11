@@ -17,8 +17,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.NavHostController
 import androidx.tv.material3.Card
 import androidx.tv.material3.Text
+import org.mz.mzdkplayer.ui.screen.common.FCLMainTitle
 import org.mz.mzdkplayer.ui.theme.myCardBorderStyle
 import org.mz.mzdkplayer.ui.theme.myCardColor
 import org.mz.mzdkplayer.ui.theme.myFileTypeCardScaleStyle
@@ -28,7 +30,7 @@ import java.net.URLEncoder
 @SuppressLint("SdCardPath")
 @Composable
 
-fun LocalFileTypeScreen(mainNavController: NavController) {
+fun LocalFileTypeScreen(mainNavController: NavHostController) {
     val filesPaths = remember {
         mutableStateListOf<String>(
             Environment.getExternalStorageDirectory().absolutePath,
@@ -52,15 +54,16 @@ fun LocalFileTypeScreen(mainNavController: NavController) {
         )
     }
 
-    LazyColumn(modifier = Modifier.padding(16.dp).fillMaxSize()) {
+    LazyColumn(modifier = Modifier.padding().fillMaxSize()) {
         item {
-            Text(text = "请选择文件存储路径",fontSize = 24.sp, color = Color.White)
+            // 标题
+            FCLMainTitle(mainNavController = mainNavController, "本地文件", "",true)
         }
         itemsIndexed(filesPaths) { index, conn ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp),
+                    .padding(10.dp),
                 onClick = {
                     mainNavController.navigate(
                         "LocalFileScreen/${URLEncoder.encode(filesPaths[index], "UTF-8")}"
