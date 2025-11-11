@@ -1,15 +1,13 @@
-package org.mz.mzdkplayer.ui.theme
-import android.content.ActivityNotFoundException
+package org.mz.mzdkplayer.ui.screen.common
+import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 
@@ -35,10 +33,10 @@ fun FilePermissionScreen() {
 
     // 对于 Android 10 及以下版本，请求读写权限
     val readPermissionState = rememberPermissionState(
-        android.Manifest.permission.READ_EXTERNAL_STORAGE
+        Manifest.permission.READ_EXTERNAL_STORAGE
     )
     val writePermissionState = rememberPermissionState(
-        android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+        Manifest.permission.WRITE_EXTERNAL_STORAGE
     )
 
     Column(

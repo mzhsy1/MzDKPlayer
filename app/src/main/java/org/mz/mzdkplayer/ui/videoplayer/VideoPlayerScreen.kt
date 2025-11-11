@@ -574,7 +574,8 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
                 backPressState = BackPress.Idle // 重置状态
             }
         }
-        LaunchedEffect(videoPlayerViewModel.conFocus) {   Log.d("conFocus",videoPlayerViewModel.conFocus.toString()) }
+        LaunchedEffect(videoPlayerViewModel.conFocus) {
+            Log.d("conFocus",videoPlayerViewModel.conFocus.toString()) }
 //        BackHandler(backPressState == BackPress.Idle) { // 移除 !videoPlayerState.controlsVisible 条件
 //
 //
@@ -600,11 +601,11 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
 
 
         }
-//        BackHandler(videoPlayerState.controlsVisible) {
-//            if(!videoPlayerViewModel.conFocus){
-//                videoPlayerState.hideControls()
-//            }
-//        }
+        BackHandler(videoPlayerState.controlsVisible) {
+            if(!videoPlayerViewModel.conFocus){
+                videoPlayerState.hideControls()
+            }
+        }
 
 
 

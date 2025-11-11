@@ -108,11 +108,11 @@ class NFSConViewModel(application: Application) : AndroidViewModel(application) 
      */
     fun listFiles(path: String = "") {
         viewModelScope.launch {
-            if (_connectionStatus.value != FileConnectionStatus.Connected &&
-                _connectionStatus.value !is FileConnectionStatus.FilesLoaded) {
-                _connectionStatus.value = FileConnectionStatus.Error("未连接")
-                return@launch
-            }
+//            if (_connectionStatus.value != FileConnectionStatus.Connected &&
+//                _connectionStatus.value !is FileConnectionStatus.FilesLoaded) {
+//                _connectionStatus.value = FileConnectionStatus.Error("未连接")
+//                return@launch
+//            }
             _connectionStatus.value = FileConnectionStatus.LoadingFile
             mutex.withLock {
                 try {

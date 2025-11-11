@@ -33,9 +33,7 @@ import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.logic.model.WebDavConnection
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.ui.screen.vm.WebDavConViewModel
-import org.mz.mzdkplayer.ui.style.myListItemColor
 import java.net.URLEncoder
-import androidx.core.net.toUri
 import androidx.media3.common.util.UnstableApi
 import kotlinx.coroutines.delay
 import org.mz.mzdkplayer.MzDkPlayerApplication
@@ -46,8 +44,10 @@ import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.common.VAErrorScreen
-import org.mz.mzdkplayer.ui.style.myTTFColor
-import org.mz.mzdkplayer.ui.theme.TvTextField
+import org.mz.mzdkplayer.ui.theme.myTTFColor
+import org.mz.mzdkplayer.ui.theme.MyFileListItemColor
+
+import org.mz.mzdkplayer.ui.screen.common.TvTextField
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -282,7 +282,7 @@ fun WebDavFileListScreen(
                                                     }
                                                 }
                                             },
-                                            colors = myListItemColor(),
+                                            colors = MyFileListItemColor(),
                                             modifier = Modifier
                                                 .padding(end = 10.dp)
                                                 .height(40.dp)

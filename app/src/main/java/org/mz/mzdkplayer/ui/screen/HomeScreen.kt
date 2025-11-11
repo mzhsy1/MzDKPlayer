@@ -1,15 +1,12 @@
 package org.mz.mzdkplayer.ui.screen
 
 
-import android.os.Environment
-import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -28,13 +25,7 @@ import androidx.tv.material3.ListItem
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 
-import org.mz.mzdkplayer.ui.theme.FilePermissionScreen
-
-import org.mz.mzdkplayer.ui.style.myListItemBorder
-import org.mz.mzdkplayer.ui.style.myListItemColor
-import org.mz.mzdkplayer.ui.style.myListItemCoverColor
-import java.io.File
-import java.net.URLEncoder
+import org.mz.mzdkplayer.ui.theme.MyListItemCoverColor
 
 
 @Composable
@@ -78,7 +69,7 @@ fun HomeScreen(mainNavController: NavHostController) {
                         };
                         },
                         modifier = Modifier.padding(top = 20.dp),
-                        colors = myListItemCoverColor(),
+                        colors = MyListItemCoverColor(),
                         //border = myListItemBorder(),
                         leadingContent = {
                             Icon(

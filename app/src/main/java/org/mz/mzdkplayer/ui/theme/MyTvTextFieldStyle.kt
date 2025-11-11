@@ -1,4 +1,4 @@
-package org.mz.mzdkplayer.ui.style
+package org.mz.mzdkplayer.ui.theme
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
@@ -9,8 +9,6 @@ import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceBorder
 import androidx.tv.material3.ClickableSurfaceColors
 import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.ListItemColors
-import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 
 @Composable

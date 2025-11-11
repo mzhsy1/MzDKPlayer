@@ -3,7 +3,6 @@ package org.mz.mzdkplayer.ui.screen.ftp
 import NoSearchResult
 import android.util.Log
 import android.widget.Toast
-import android.widget.ViewAnimator
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -42,9 +41,11 @@ import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.common.VAErrorScreen
 import org.mz.mzdkplayer.ui.screen.vm.FTPConViewModel
 
-import org.mz.mzdkplayer.ui.style.myListItemColor
-import org.mz.mzdkplayer.ui.style.myTTFColor
-import org.mz.mzdkplayer.ui.theme.TvTextField
+
+import org.mz.mzdkplayer.ui.theme.myTTFColor
+import org.mz.mzdkplayer.ui.theme.MyFileListItemColor
+
+import org.mz.mzdkplayer.ui.screen.common.TvTextField
 import java.net.URLEncoder
 import kotlin.text.ifEmpty
 
@@ -304,7 +305,7 @@ fun FTPFileListScreen(
                                                     }
                                                 }
                                             },
-                                            colors = myListItemColor(),
+                                            colors = MyFileListItemColor(),
                                             modifier = Modifier
                                                 .padding(end = 10.dp)
                                                 .height(40.dp)

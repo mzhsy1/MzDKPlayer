@@ -2,30 +2,25 @@ package org.mz.mzdkplayer.ui.screen.smbfile
 
 import android.annotation.SuppressLint
 import android.util.Log
+import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.BorderStroke
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -33,39 +28,30 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+
+
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import androidx.tv.material3.Border
 
-import androidx.tv.material3.Card
-import androidx.tv.material3.CardDefaults
-import androidx.tv.material3.ExperimentalTvMaterial3Api
-import androidx.tv.material3.Glow
-import androidx.tv.material3.Icon
-import androidx.tv.material3.ListItem
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
-import org.mz.mzdkplayer.R
-import org.mz.mzdkplayer.logic.model.SMBConnection
+
+import kotlinx.coroutines.delay
+import org.mz.mzdkplayer.ui.screen.common.ConOpPanel
+
 import org.mz.mzdkplayer.ui.screen.common.ConnectionCard
 import org.mz.mzdkplayer.ui.screen.common.ConnectionCardInfo
+import org.mz.mzdkplayer.ui.screen.common.ConnectionListEmpty
+import org.mz.mzdkplayer.ui.screen.common.ConnectionListTitle
 import org.mz.mzdkplayer.ui.screen.common.FCLMainTitle
 import org.mz.mzdkplayer.ui.screen.vm.SMBListViewModel
-import org.mz.mzdkplayer.ui.style.myListItemBorder
-import org.mz.mzdkplayer.ui.style.myListItemCoverColor
-import org.mz.mzdkplayer.ui.theme.MyIconButton
-import org.mz.mzdkplayer.ui.theme.myCardBorderStyle
+
 import java.net.URLEncoder
 
 @SuppressLint("StateFlowValueCalledInComposition")
@@ -77,7 +63,7 @@ fun SMBConListScreen(mainNavController: NavHostController) {
     val selectedIndex by smbListViewModel.selectedIndex.collectAsState()
     val selectedId by smbListViewModel.selectedId.collectAsState()
     val listState = rememberLazyListState()
-    val context = LocalContext.current
+    //val context = LocalContext.current
 
     LaunchedEffect(isOPanelShow) {
         Log.d("isOPanelShow", isOPanelShow.toString())
@@ -88,22 +74,36 @@ fun SMBConListScreen(mainNavController: NavHostController) {
 
     LaunchedEffect(isOPanelShow) {
         if (isOPanelShow) {
+            delay(350) // 200ms动画 + 100ms保险
             panelFocusRequester.requestFocus()
         } else {
+            if (selectedIndex != -1) {
+                listState.animateScrollToItem(selectedIndex)
+            }
+            // 精确等待滚动完成
+            while (listState.isScrollInProgress) {
+                delay(200)
+            }
+            panelFocusRequester.freeFocus()
             listFocusRequester.requestFocus()
+
         }
     }
+
 
     BackHandler(enabled = isOPanelShow) {
         smbListViewModel.closeOPanel()
+        panelFocusRequester.freeFocus()
     }
 
-    LaunchedEffect(isOPanelShow) {
-        if (!isOPanelShow && selectedIndex != -1) {
-            listState.animateScrollToItem(selectedIndex)
-        }
-    }
-    Box(modifier = Modifier.fillMaxSize()) {
+//    LaunchedEffect(isOPanelShow) {
+//        if (!isOPanelShow && selectedIndex != -1) {
+//            listState.animateScrollToItem(selectedIndex)
+//        }
+//    }
+    Box(modifier = Modifier
+        .fillMaxSize()
+        ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -111,7 +111,7 @@ fun SMBConListScreen(mainNavController: NavHostController) {
         )
         {
             // 标题
-            FCLMainTitle(mainNavController = mainNavController,"SMB文件共享","SMBConScreen")
+            FCLMainTitle(mainNavController = mainNavController, "SMB文件共享", "SMBConScreen")
             // ====== 内容区域m ======
             Column(
                 modifier = Modifier
@@ -120,54 +120,11 @@ fun SMBConListScreen(mainNavController: NavHostController) {
             ) {
                 if (connections.isEmpty()) {
                     // 空状态设计
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
-                    )
-                    {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.storage24dp),
-                                contentDescription = "Empty",
-                                tint = Color(0xFF666666),
-                                modifier = Modifier.size(64.dp)
-                            )
-                            Text(
-                                text = "暂无 SMB 连接",
-                                color = Color(0xFF999999),
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = "点击右上角按钮添加您的第一个 SMB 连接",
-                                color = Color(0xFF777777),
-                                fontSize = 14.sp,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
+                    ConnectionListEmpty("SMB")
                 } else {
                     // 连接列表标题
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 20.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "已保存的连接 (${connections.size})",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = Color.White,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-
+                    ConnectionListTitle(connections.size)
+                    // 卡片列表
                     LazyColumn(
                         state = listState,
                         modifier = Modifier
@@ -180,13 +137,38 @@ fun SMBConListScreen(mainNavController: NavHostController) {
                         itemsIndexed(connections) { index, conn ->
                             ConnectionCard(
                                 index = index,
+                                modifier = Modifier.onKeyEvent { keyEvent ->
+                                    // 检查是否是菜单键 (Key.Menu)
+                                    if (keyEvent.key == Key.Menu) {
+                                        if (!isOPanelShow) {
+                                            smbListViewModel.openOPlane()
+                                            smbListViewModel.setSelectedIndex(index)
+                                            smbListViewModel.setSelectedId(conn.id)
+                                        }
+                                        true // 表示已处理
+                                    } else {
+                                        // 检查原生键码
+                                        when (keyEvent.nativeKeyEvent.keyCode) {
+                                            KeyEvent.KEYCODE_MENU -> {
+                                                if (!isOPanelShow) {
+                                                    smbListViewModel.openOPlane()
+                                                    smbListViewModel.setSelectedIndex(index)
+                                                    smbListViewModel.setSelectedId(conn.id)
+                                                }
+                                                true // 消费事件
+                                            }
+                                            else -> false
+                                        }
+                                    }
+                                },
                                 connectionCardInfo = ConnectionCardInfo(
-                                    name = conn.name?:"未知",
-                                    address = conn.ip?:"未知",
-                                    shareName = conn.shareName?:"未知",
-                                    username = conn.username?:"无",
+                                    name = conn.name ?: "未知",
+                                    address = conn.ip ?: "未知",
+                                    shareName = conn.shareName ?: "未知",
+                                    username = conn.username ?: "无",
                                 ),
                                 onClick = {
+                                    Log.d("SMBClick", "SMBClick")
                                     mainNavController.navigate(
                                         "SMBFileListScreen/${
                                             URLEncoder.encode(
@@ -195,15 +177,19 @@ fun SMBConListScreen(mainNavController: NavHostController) {
                                             )
                                         }"
                                     )
+                                    smbListViewModel.setSelectedIndex(index)
+                                    smbListViewModel.setSelectedId(conn.id)
                                 },
                                 onLogClick = {
+                                    Log.d("SMBClick", "SMBClickL")
                                     smbListViewModel.openOPlane()
                                     smbListViewModel.setSelectedIndex(index)
                                     smbListViewModel.setSelectedId(conn.id)
                                 },
                                 onDelete = { },
                                 isSelected = smbListViewModel.selectedIndex.collectAsState().value == index && !isOPanelShow,
-                                isOPanelShow = isOPanelShow
+                                isOPanelShow = isOPanelShow,
+                                selectedIndex = smbListViewModel.selectedIndex.value
                             )
                         }
                     }
@@ -217,146 +203,29 @@ fun SMBConListScreen(mainNavController: NavHostController) {
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.7f))
-                    .clickable(enabled = false) {}
+                    .focusable(enabled = false)
             )
         }
-
         // 操作面板（右侧弹出）
-        AnimatedVisibility(
-            visible = isOPanelShow,
+        ConOpPanel(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = 30.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .background(
-                        Color(0xFF2D2D2D),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .width(260.dp)
-                    .focusRequester(panelFocusRequester)
-                    .focusable()
-                    .clip(RoundedCornerShape(12.dp))
-            ) {
-                // 面板标题
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFF424242))
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "连接操作",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+                .padding(end = 30.dp),
+            isOPanelShow,
+            panelFocusRequester,
+            onClickForDel = {
+                Log.d("selectedId",selectedId)
+                smbListViewModel.deleteConnection(selectedId)
+                smbListViewModel.closeOPanel()
+            },
+            onClickForCancel = {
+                smbListViewModel.closeOPanel()
+            })
 
-                // 使用 Column 替代 LazyColumn 确保内容居中
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OperationListItem(
-                        text = "删除连接",
-                        textColor = Color(0xFFF44336),
-                        true,
-                        onClick = {
-                            smbListViewModel.deleteConnection(selectedId)
-                            smbListViewModel.closeOPanel()
-                        }
-                    )
 
-                    OperationListItem(
-                        text = "编辑信息",
-                        textColor = Color.White,
-                        onClick = { /* TODO: 编辑逻辑 */ }
-                    )
-
-                    OperationListItem(
-                        text = "取消",
-                        textColor = Color(0xFFB0B0B0),
-                        onClick = { smbListViewModel.closeOPanel() }
-                    )
-                }
-            }
-        }
 
 
     }
 }
 
-@Composable
-fun OperationListItem(
-    text: String,
-    textColor: Color,
-    isDel: Boolean = false,
-    onClick: () -> Unit
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
 
-    ListItem(
-        modifier = Modifier
-            .width(220.dp)
-            .padding(vertical = 6.dp)
-            .clip(RoundedCornerShape(8.dp)),
-        selected = false,
-        onClick = {
-            if (isPressed) {
-                onClick()
-            }
-        },
-        interactionSource = interactionSource,
-        colors = myListItemCoverColor(),
-        //border = myListItemBorder(),
-        headlineContent = {
-            if (isDel) {
-                Text(
-                    text = text,
-                    textAlign = TextAlign.Center,
-                    color = textColor,
-                    modifier = Modifier.fillMaxWidth(),
-                    fontWeight = FontWeight.Medium
-                )
-            } else {
-                Text(
-                    text = text,
-                    textAlign = TextAlign.Center,
-
-                    modifier = Modifier.fillMaxWidth(),
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
-
-    )
-}
-@Composable
-fun ConnectionInfoItem(
-    label: String,
-    value: String?
-) {
-    Column {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = Color(0xFFB0B0B0), // 浅灰色标签
-            fontSize = 12.sp
-        )
-        if (value != null) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                fontSize = 14.sp
-            )
-        }
-    }
-}

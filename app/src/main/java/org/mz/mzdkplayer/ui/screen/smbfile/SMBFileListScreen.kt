@@ -62,9 +62,9 @@ import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.common.VAErrorScreen
 import org.mz.mzdkplayer.ui.screen.vm.SMBConViewModel
 
-import org.mz.mzdkplayer.ui.style.myListItemColor
-import org.mz.mzdkplayer.ui.style.myTTFColor
-import org.mz.mzdkplayer.ui.theme.TvTextField
+import org.mz.mzdkplayer.ui.theme.myTTFColor
+import org.mz.mzdkplayer.ui.theme.MyFileListItemColor
+import org.mz.mzdkplayer.ui.screen.common.TvTextField
 import java.net.URLDecoder
 import java.net.URLEncoder
 
@@ -403,7 +403,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                                     }
                                                 }
                                             },
-                                            colors = myListItemColor(),
+                                            colors = MyFileListItemColor(),
                                             modifier = Modifier
                                                 .padding(end = 10.dp)
                                                 .height(40.dp)

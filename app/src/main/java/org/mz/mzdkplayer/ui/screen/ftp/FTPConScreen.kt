@@ -15,10 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -44,9 +40,9 @@ import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.ui.screen.vm.FTPConViewModel // 引入 FTP ViewModel
 
 import org.mz.mzdkplayer.ui.screen.vm.FTPListViewModel // 引入 FTP List ViewModel
-import org.mz.mzdkplayer.ui.style.myTTFColor
-import org.mz.mzdkplayer.ui.theme.MyIconButton
-import org.mz.mzdkplayer.ui.theme.TvTextField
+import org.mz.mzdkplayer.ui.theme.myTTFColor
+import org.mz.mzdkplayer.ui.screen.common.MyIconButton
+import org.mz.mzdkplayer.ui.screen.common.TvTextField
 import java.util.Locale
 
 import java.util.UUID

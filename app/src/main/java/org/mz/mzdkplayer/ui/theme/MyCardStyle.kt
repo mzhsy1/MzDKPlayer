@@ -10,24 +10,14 @@ import androidx.tv.material3.CardBorder
 import androidx.tv.material3.CardColors
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.CardScale
-import androidx.tv.material3.ListItemColors
 
-@Composable
-fun myCardColor(): CardColors {
-    return CardDefaults.colors(
-        containerColor = Color(32, 32, 32), // 更深的灰色
-        contentColor = Color.White,
-        focusedContentColor = Color(32, 32, 32),
-        focusedContainerColor = Color.White
-    )
-}
 
 @Composable
 fun myCardBorderStyle(): CardBorder {
     return CardDefaults.border(
         border=Border(
-                    border = BorderStroke(width = 0.dp, color = Color.Black),
-                    shape = RoundedCornerShape(10),
+                    border = BorderStroke(width = 0.dp, color = Color.Transparent),
+                    shape = RoundedCornerShape(0),
                 ),
         focusedBorder = Border(
             border = BorderStroke(width = 0.dp, color = Color(0, 0, 0, 0)),
@@ -36,11 +26,18 @@ fun myCardBorderStyle(): CardBorder {
     )
 }
 @Composable
-fun myCardScaleStyle(): CardScale {
-    return CardDefaults.scale(
-        focusedScale = 1.03f,
+fun myCardColor(): CardColors {
+    return CardDefaults.colors(
+        containerColor = Color(0xFF2D2D2D), // 保持原有的深色背景
+        contentColor = Color(255, 248, 240), // 暖白色替代纯白
+        focusedContainerColor = Color(255, 250, 245), // 米白色替代纯白
+        focusedContentColor = Color(80, 70, 60), // 暖深灰替代纯黑
+        pressedContainerColor = Color(0xFF4A4540), // 调整为暖色调的深灰
+        pressedContentColor = Color(255, 248, 240) // 暖白色
     )
+
 }
+
 @Composable
 fun myFileTypeCardScaleStyle(): CardScale {
     return CardDefaults.scale(

@@ -39,9 +39,8 @@ import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.vm.NFSConViewModel
+import org.mz.mzdkplayer.ui.theme.MyFileListItemColor
 
-
-import org.mz.mzdkplayer.ui.style.myListItemColor
 import java.net.URLEncoder
 
 /**
@@ -311,7 +310,7 @@ fun NFSFileListScreen(
                                             }
                                         }
                                     },
-                                    colors = myListItemColor(),
+                                    colors = MyFileListItemColor(),
                                     modifier = Modifier
                                         .padding(end = 10.dp)
                                         .height(40.dp)

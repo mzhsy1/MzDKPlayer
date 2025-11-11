@@ -106,11 +106,11 @@ class SMBConViewModel : ViewModel() {
 
     fun listSMBFiles(config: SMBConfig) {
         viewModelScope.launch {
-            if (_connectionStatus.value != FileConnectionStatus.Connected &&
-                _connectionStatus.value !is FileConnectionStatus.FilesLoaded) {
-                _connectionStatus.value = FileConnectionStatus.Error("未连接")
-                return@launch
-            }
+//            if (_connectionStatus.value != FileConnectionStatus.Connected &&
+//                _connectionStatus.value !is FileConnectionStatus.FilesLoaded) {
+//                _connectionStatus.value = FileConnectionStatus.Error("未连接")
+//                return@launch
+//            }
 
             Log.d("listSMBFiles", "正在列出文件")
             mutex.withLock {

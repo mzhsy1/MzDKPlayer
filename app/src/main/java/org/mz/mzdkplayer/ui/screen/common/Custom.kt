@@ -1,4 +1,4 @@
-package org.mz.mzdkplayer.ui.theme
+package org.mz.mzdkplayer.ui.screen.common
 
 import android.view.KeyEvent
 import androidx.compose.animation.animateColorAsState
@@ -27,7 +27,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -48,6 +47,7 @@ import androidx.tv.material3.ShapeDefaults
 import androidx.tv.material3.Surface
 
 import androidx.tv.material3.Text
+import org.mz.mzdkplayer.ui.theme.MyIconButtonColor
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -178,12 +178,7 @@ fun MyIconButton(
         contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
         shape = ButtonDefaults.shape(shape = ShapeDefaults.ExtraSmall),
         scale = ButtonDefaults.scale( focusedScale = 1.03f),
-        colors = ButtonDefaults.colors(
-            Color.DarkGray, // background
-            Color.White, // content
-            Color.White, // disabled background
-            Color.Black  // disabled content
-        )
+        colors = MyIconButtonColor()
 
     ) {
         Icon(

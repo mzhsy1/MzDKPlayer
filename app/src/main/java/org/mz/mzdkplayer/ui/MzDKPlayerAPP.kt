@@ -133,13 +133,13 @@ fun MzDKPlayerAPP() {
                                 },
                                 colors = ListItemDefaults.colors(
                                     containerColor = Color(38, 38, 42, 255),
-                                    contentColor = Color(255, 255, 255),
-                                    selectedContainerColor = Color(251, 114, 153, 220),
-                                    selectedContentColor = Color(0, 0, 0),
-                                    focusedSelectedContentColor = Color(0, 0, 0),
-                                    focusedSelectedContainerColor = Color(255, 255, 255),
-                                    focusedContainerColor = Color(255, 255, 255),
-                                    focusedContentColor = Color(0, 0, 0)
+                                    contentColor = Color(255, 248, 240), // 暖白色
+                                    selectedContainerColor = Color(255, 250, 245), // 米白色
+                                    selectedContentColor = Color(80, 70, 60), // 暖深灰
+                                    focusedSelectedContentColor = Color(80, 70, 60),
+                                    focusedSelectedContainerColor = Color(255, 250, 245),
+                                    focusedContainerColor = Color(255, 250, 245),
+                                    focusedContentColor = Color(80, 70, 60)
                                 ),
                                 headlineContent = {},
                             )
