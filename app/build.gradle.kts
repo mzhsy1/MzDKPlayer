@@ -71,7 +71,8 @@ dependencies {
     implementation(libs.logback.android)
    // implementation(libs.androidx.media3.ui.compose)
     implementation(libs.gson)
-    implementation(libs.ass.media)
+    // 暂时不需要原生ass显示
+    //implementation(libs.ass.media)
     // 👇 修改这一行：排除 xpp3 和 stax
     implementation(libs.thegrizzlylabs.sardine.android) {
         exclude(group = "xpp3", module = "xpp3")

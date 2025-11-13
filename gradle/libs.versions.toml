@@ -4,7 +4,7 @@ accompanistPermissions = "0.37.3"
 agp = "8.13.0"
 akdanmaku = "1.0.3"
 
-assMedia = "0.3.0-rc04"
+assMedia = "0.3.0-rc05"
 
 commonsNet = "3.12.0"
 gson = "2.13.2"

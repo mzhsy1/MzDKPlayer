@@ -1,4 +1,4 @@
-package org.mz.mzdkplayer.ui.screen
+package org.mz.mzdkplayer.ui.screen.home
 
 
 import androidx.compose.foundation.layout.Arrangement

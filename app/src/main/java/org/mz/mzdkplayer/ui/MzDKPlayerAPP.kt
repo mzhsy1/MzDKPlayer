@@ -43,7 +43,7 @@ import org.mz.mzdkplayer.logic.model.WebDavConnection
 import org.mz.mzdkplayer.ui.audioplayer.AudioPlayerScreen
 
 
-import org.mz.mzdkplayer.ui.screen.HomeScreen
+import org.mz.mzdkplayer.ui.screen.home.HomeScreen
 import org.mz.mzdkplayer.ui.screen.ftp.FTPConListScreen
 import org.mz.mzdkplayer.ui.screen.ftp.FTPConScreen
 import org.mz.mzdkplayer.ui.screen.ftp.FTPFileListScreen
@@ -78,7 +78,7 @@ fun MzDKPlayerAPP() {
     val items =
         listOf(
             "主页" to painterResource(id = R.drawable.baseline_home_24),
-            "我的" to painterResource(id = R.drawable.baseline_account_circle_24),
+            "我的" to painterResource(id = R.drawable.history24dp),
             "设置" to painterResource(id = R.drawable.baseline_settings_24),
         )
 

@@ -497,7 +497,7 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
 
         // 显示 SRT/PSG/ ASS(ASS暂时由PlayerView显示,SubtitleView不显示)
         if (videoPlayerViewModel.isCusSubtitleViewVis) {
-            // 字幕视图，显示 SRT/PSG/ASS(ASS暂时由PlayerView显示) 字幕 (从 CueGroup 中获取)
+            // 字幕视图，显示 SRT/PSG/ASS 字幕 (从 CueGroup 中获取)
             SubtitleView(
                 cueGroup = currentCueGroup, // 传递当前字幕组
                 subtitleStyle = customSubtitleStyle, // 使用自定义字幕样式(只影响srt字幕)
