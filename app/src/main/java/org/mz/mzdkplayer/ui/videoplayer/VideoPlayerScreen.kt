@@ -35,7 +35,6 @@ import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.FocusState
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -84,6 +83,7 @@ import org.mz.mzdkplayer.tool.handleDPadKeyEvents
 
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.common.VAErrorScreen
+import org.mz.mzdkplayer.ui.screen.vm.MediaHistoryViewModel
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerStatus
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 import org.mz.mzdkplayer.ui.videoplayer.components.AkDanmakuPlayer
@@ -118,7 +118,12 @@ import kotlin.time.Duration.Companion.milliseconds
  */
 @OptIn(UnstableApi::class)
 @Composable
-fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String = "未知文件名") {
+fun VideoPlayerScreen(
+    mediaUri: String,
+    dataSourceType: String,
+    fileName: String = "未知文件名",
+    connectionName: String
+) {
     // 获取当前 Compose 上下文
     val context = LocalContext.current
     // 记住并创建 ExoPlayer 实例
@@ -164,12 +169,24 @@ fun VideoPlayerScreen(mediaUri: String, dataSourceType: String, fileName: String
 
     // 弹幕设置管理器
     val settingsManager = remember { DanmakuSettingsManager(context) }
-
+    val mediaHistoryViewModel: MediaHistoryViewModel = viewModel()
     // 构建播放器 (设置媒体源等)
     BuilderMzPlayer(context, mediaUri, exoPlayer, dataSourceType)
     // 当 Composable 离开组合时，释放资源
     DisposableEffect(Unit) {
         onDispose {
+            mediaHistoryViewModel.saveVideoHistory(
+                videoUri = mediaUri,
+                fileName = fileName,
+                playbackPosition = exoPlayer.currentPosition,
+                videoDuration = exoPlayer.duration,
+                protocolName =  when(dataSourceType){
+                    "LOCAL" -> "本地文件"
+                    else -> dataSourceType
+                },
+                connectionName = connectionName,
+                serverAddress = "test",
+            )
             exoPlayer.release()
             mDanmakuPlayer.release() // 释放弹幕播放器
         }

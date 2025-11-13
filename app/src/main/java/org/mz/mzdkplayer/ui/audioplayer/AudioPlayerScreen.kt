@@ -56,6 +56,7 @@ import org.mz.mzdkplayer.ui.audioplayer.components.*
 
 
 import org.mz.mzdkplayer.ui.screen.vm.AudioPlayerViewModel
+import org.mz.mzdkplayer.ui.screen.vm.MediaHistoryViewModel
 import org.mz.mzdkplayer.ui.videoplayer.BackPress
 
 
@@ -74,7 +75,8 @@ fun AudioPlayerScreen(
     dataSourceType: String,
     fileName: String,
     extraList: List<AudioItem>,
-    currentIndex: String
+    currentIndex: String,
+    connectionName: String
 ) {
     val context = LocalContext.current
     val exoPlayer = rememberAudioPlayer(context, mediaUri, dataSourceType)
@@ -97,7 +99,7 @@ fun AudioPlayerScreen(
     // 添加Seek状态，用于跟踪快速Seek操作
     var isSeeking by remember { mutableStateOf(false) }
     var lastSeekTime by remember { mutableLongStateOf(0L) }
-// 替换原来的模拟实现
+    val mediaHistoryViewModel: MediaHistoryViewModel = viewModel()
 
     BuilderMzAudioPlayer(
         context,
@@ -111,6 +113,19 @@ fun AudioPlayerScreen(
 
     DisposableEffect(Unit) {
         onDispose {
+
+            mediaHistoryViewModel.saveAudioHistory(
+                audioUri = mediaUri,
+                fileName = fileName,
+                playbackPosition = exoPlayer.currentPosition,
+                audioDuration = exoPlayer.duration,
+                protocolName = when(dataSourceType){
+                    "LOCAL" -> "本地文件"
+                    else -> dataSourceType
+                },
+                connectionName = connectionName,
+                serverAddress = "test",
+            )
             exoPlayer.release()
         }
     }

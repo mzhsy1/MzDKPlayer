@@ -7,8 +7,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.mz.mzdkplayer.logic.model.MediaHistoryRecord
 import org.mz.mzdkplayer.logic.model.MediaHistoryRepository
-import org.mz.mzdkplayer.logic.model.MediaHistoryRepository.MediaHistoryRecord
 
 /**
  * 优化的通用媒体播放历史记录ViewModel，支持视频和音频

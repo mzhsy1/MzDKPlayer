@@ -168,14 +168,14 @@ fun SMBConListScreen(mainNavController: NavHostController) {
                                     username = conn.username ?: "无",
                                 ),
                                 onClick = {
-                                    Log.d("SMBClick", "SMBClick")
+                                    Log.d("SMBConListScreen", conn.name.toString())
                                     mainNavController.navigate(
                                         "SMBFileListScreen/${
                                             URLEncoder.encode(
                                                 "smb://${conn.username}:${conn.password}@${conn.ip}/${conn.shareName}/",
                                                 "UTF-8"
                                             )
-                                        }"
+                                        }/${URLEncoder.encode(conn.name,"UTF-8")}"
                                     )
                                     smbListViewModel.setSelectedIndex(index)
                                     smbListViewModel.setSelectedId(conn.id)

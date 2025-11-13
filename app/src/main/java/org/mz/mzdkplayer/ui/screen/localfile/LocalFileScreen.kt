@@ -179,7 +179,10 @@ fun LocalFileScreen(path: String?, navController: NavHostController) {
                                                                 file.name,
                                                                 "UTF-8"
                                                             )
-                                                        }"
+                                                        }/${ URLEncoder.encode(
+                                                            "本地文件",
+                                                            "UTF-8"
+                                                        )}"
                                                     )
                                                 } else if (Tools.containsAudioFormat(
                                                         Tools.extractFileExtension(file.name)
@@ -228,7 +231,10 @@ fun LocalFileScreen(path: String?, navController: NavHostController) {
                                                                 file.name,
                                                                 "UTF-8"
                                                             )
-                                                        }/$currentAudioIndex"
+                                                        }/$currentAudioIndex/${ URLEncoder.encode(
+                                                            "本地文件",
+                                                            "UTF-8"
+                                                        )}"
                                                     )
                                                 } else {
                                                     Toast.makeText(

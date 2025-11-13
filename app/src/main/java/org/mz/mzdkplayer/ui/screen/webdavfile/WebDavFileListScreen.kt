@@ -199,7 +199,10 @@ fun WebDavFileListScreen(
                                                             "WebDavFileListScreen",
                                                             "$encodedNewPath"
                                                         )
-                                                        navController.navigate("WebDavFileListScreen/$encodedNewPath/${webDavConnection.username}/${webDavConnection.password}")
+                                                        navController.navigate("WebDavFileListScreen/$encodedNewPath/${webDavConnection.username}/${webDavConnection.password}/${ URLEncoder.encode(
+                                                            webDavConnection.name,
+                                                            "UTF-8"
+                                                        )}")
                                                     } else {
                                                         when {
                                                             Tools.containsVideoFormat(fileExtension) -> {
@@ -267,7 +270,10 @@ fun WebDavFileListScreen(
                                                                             fileName,
                                                                             "UTF-8"
                                                                         )
-                                                                    }/$currentAudioIndex"
+                                                                    }/$currentAudioIndex/${ URLEncoder.encode(
+                                                                        webDavConnection.name,
+                                                                        "UTF-8"
+                                                                    )}"
                                                                 )
                                                             }
 

@@ -262,7 +262,10 @@ fun NFSFileListScreen(
                                                                 file.name,
                                                                 "UTF-8"
                                                             )
-                                                        }"
+                                                        }/${ URLEncoder.encode(
+                                                            nfsConnection.name,
+                                                            "UTF-8"
+                                                        )}"
                                                     )
                                                 } else if (Tools.containsAudioFormat(Tools.extractFileExtension(file.name))) {
                                                     // ✅ 构建音频文件列表
@@ -298,7 +301,10 @@ fun NFSFileListScreen(
                                                                 file.name,
                                                                 "UTF-8"
                                                             )
-                                                        }/$currentAudioIndex"
+                                                        }/${ URLEncoder.encode(
+                                                            nfsConnection.name,
+                                                            "UTF-8"
+                                                        )}/$currentAudioIndex"
                                                     )
                                                 } else {
                                                     Toast.makeText(

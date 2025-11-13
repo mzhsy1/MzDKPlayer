@@ -178,7 +178,7 @@ fun HTTPLinkConListScreen(mainNavController: NavHostController) {
                                         )
                                         // 导航到 HTTP 文件列表屏幕，传递编码后的参数
                                         mainNavController.navigate(
-                                            "HTTPLinkFileListScreen/$encodedServerAddress$encodedShareName"
+                                            "HTTPLinkFileListScreen/${conn.name}/$encodedServerAddress$encodedShareName"
                                         )
                                     } catch (e: Exception) {
                                         Log.e(

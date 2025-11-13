@@ -59,7 +59,8 @@ import java.net.URLEncoder
 @Composable
 fun HTTPLinkFileListScreen(
     path: String?,
-    navController: NavHostController
+    navController: NavHostController,
+    connectionName: String=""
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -199,7 +200,7 @@ fun HTTPLinkFileListScreen(
                                                             "${normalizedPath}${resourceName}"
                                                         val encodedNewSubPath =
                                                             URLEncoder.encode(newFullPath, "UTF-8")
-                                                        navController.navigate("HTTPLinkFileListScreen/$encodedNewSubPath")
+                                                        navController.navigate("HTTPLinkFileListScreen/$connectionName/$encodedNewSubPath")
                                                     } else {
                                                         // 处理文件点击 - 导航到 VideoPlayer
                                                         // 构造完整的 HTTP URL
@@ -231,7 +232,10 @@ fun HTTPLinkFileListScreen(
                                                                             resource.name,
                                                                             "UTF-8"
                                                                         )
-                                                                    }"
+                                                                    }/${ URLEncoder.encode(
+                                                                        connectionName,
+                                                                        "UTF-8"
+                                                                    )}"
                                                                 )
                                                             }
 

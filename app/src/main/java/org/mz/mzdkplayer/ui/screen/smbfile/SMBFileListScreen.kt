@@ -70,7 +70,7 @@ import java.net.URLEncoder
 
 @OptIn(UnstableApi::class)
 @Composable
-fun SMBFileListScreen(path: String?, navController: NavHostController) {
+fun SMBFileListScreen(path: String?, navController: NavHostController,connectionName: String="") {
     val context = LocalContext.current
     val viewModel: SMBConViewModel = viewModel()
     val files by viewModel.fileList.collectAsState()
@@ -91,6 +91,9 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                 }
             }
         }
+    }
+    LaunchedEffect(connectionName) {
+        Log.d("SMBFileListScreenF","connectionNameF:$connectionName")
     }
     // 处理路径变化和连接状态
     LaunchedEffect(path, connectionStatus) {
@@ -259,7 +262,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                                         ).show()
 
                                                     }
-                                                    navController.navigate("SMBFileListScreen/$encodedPath")
+                                                    navController.navigate("SMBFileListScreen/$encodedPath/$connectionName")
                                                 } else {
                                                     // 处理文件点击
                                                     val fileExtension =
@@ -303,7 +306,8 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                                                 return@ListItem
 
                                                             }
-                                                            navController.navigate("VideoPlayer/$encodedUri/SMB/$encodedFileName")
+                                                            Log.d("SMBFileListScreen","connectionName:$connectionName")
+                                                            navController.navigate("VideoPlayer/$encodedUri/SMB/$encodedFileName/${connectionName}")
                                                         }
 
                                                         Tools.containsAudioFormat(fileExtension) -> {
@@ -390,7 +394,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController) {
                                                             }
 
                                                             //  传递当前音频项在播放列表中的索引
-                                                            navController.navigate("AudioPlayer/$encodedUri/SMB/$encodedFileName/$currentAudioIndex")
+                                                            navController.navigate("AudioPlayer/$encodedUri/SMB/$encodedFileName/${connectionName}/$currentAudioIndex")
                                                         }
 
                                                         else -> {

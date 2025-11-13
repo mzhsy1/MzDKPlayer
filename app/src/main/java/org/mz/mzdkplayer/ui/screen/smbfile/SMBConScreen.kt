@@ -166,7 +166,7 @@ fun SMBConScreen() {
                 modifier = Modifier.fillMaxWidth(0.5f),
                 enabled = true,
                 onClick = {
-                    if (!Tools.validateSMBConnectionParams(context,ip,shareName)) {
+                    if (!Tools.validateSMBConnectionParams(context,ip,shareName,aliasName)) {
                         return@MyIconButton
                     }
                     viewModel.testConnectSMB(ip, username, password, shareName)
@@ -180,7 +180,7 @@ fun SMBConScreen() {
 
                 modifier = Modifier.fillMaxWidth(0.5f),
                 onClick = {
-                    if (!Tools.validateSMBConnectionParams(context,ip,shareName)) {
+                    if (!Tools.validateSMBConnectionParams(context,ip,shareName, aliasName)) {
                         return@MyIconButton
                     }
 

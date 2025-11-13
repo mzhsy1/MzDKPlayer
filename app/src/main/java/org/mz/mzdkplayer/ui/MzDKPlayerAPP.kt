@@ -41,6 +41,7 @@ import org.mz.mzdkplayer.logic.model.FTPConnection
 import org.mz.mzdkplayer.logic.model.NFSConnection
 import org.mz.mzdkplayer.logic.model.WebDavConnection
 import org.mz.mzdkplayer.ui.audioplayer.AudioPlayerScreen
+import org.mz.mzdkplayer.ui.screen.MediaHistoryScreen
 
 
 import org.mz.mzdkplayer.ui.screen.home.HomeScreen
@@ -108,7 +109,8 @@ fun MzDKPlayerAPP() {
                             .fillMaxHeight()
                             .padding(6.dp)
                             .widthIn(50.dp, 50.dp)
-                            .selectableGroup().focusRequester(focusRequester = sideFocusRequest),
+                            .selectableGroup()
+                            .focusRequester(focusRequester = sideFocusRequest),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items.forEachIndexed { index, item ->
@@ -130,6 +132,7 @@ fun MzDKPlayerAPP() {
                                     selectedIndex = index
                                     when (selectedIndex) {
                                         0 -> homeNavController.navigate("HomePage")
+                                        1 -> homeNavController.navigate("HistoryPage")
                                         2 -> homeNavController.navigate("SettingsPage")
                                     }
                                 },
@@ -166,6 +169,10 @@ fun MzDKPlayerAPP() {
                             //页面路由对应的页面组件
                             SettingsScreen(mainNavController)
                         }
+                        composable("HistoryPage") {
+                            //页面路由对应的页面组件
+                            MediaHistoryScreen(mainNavController)
+                        }
 
                     }
                 })
@@ -182,42 +189,58 @@ fun MzDKPlayerAPP() {
 
             }
         }
-        composable("VideoPlayer/{sourceUri}/{dataSourceType}/{fileName}") { backStackEntry ->
+        composable("VideoPlayer/{sourceUri}/{dataSourceType}/{fileName}/{connectionName}") { backStackEntry ->
 
             //页面路由对应的页面组件
             val sourceUri = backStackEntry.arguments?.getString("sourceUri")
             val dataSourceType = backStackEntry.arguments?.getString("dataSourceType")
             val fileName = backStackEntry.arguments?.getString("fileName")
+            val connectionName = backStackEntry.arguments?.getString("connectionName") ?: "未知"
             // 检查参数是否不为空，并渲染屏幕
-            if (sourceUri != null && dataSourceType != null&& fileName!=null) {
+            if (sourceUri != null && dataSourceType != null && fileName != null) {
                 Log.d("sourceUri", sourceUri)
                 Log.d("dataSourceType", dataSourceType)
-                VideoPlayerScreen(URLDecoder.decode(sourceUri, "UTF-8"), dataSourceType,URLDecoder.decode(fileName,"UTF-8"))
+                VideoPlayerScreen(
+                    URLDecoder.decode(sourceUri, "UTF-8"),
+                    dataSourceType,
+                    URLDecoder.decode(fileName, "UTF-8"),
+                    URLDecoder.decode(connectionName, "UTF-8")
+                )
             }
         }
-        composable("AudioPlayer/{sourceUri}/{dataSourceType}/{fileName}/{currentIndex}") { backStackEntry ->
+        composable("AudioPlayer/{sourceUri}/{dataSourceType}/{fileName}/{connectionName}/{currentIndex}") { backStackEntry ->
 
             //页面路由对应的页面组件
             val sourceUri = backStackEntry.arguments?.getString("sourceUri")
             val dataSourceType = backStackEntry.arguments?.getString("dataSourceType")
             val fileName = backStackEntry.arguments?.getString("fileName")
-            val currentIndex = backStackEntry.arguments?.getString("currentIndex")?:"1"
+            val currentIndex = backStackEntry.arguments?.getString("currentIndex") ?: "1"
+            val connectionName = backStackEntry.arguments?.getString("connectionName") ?: "未知"
             // 获取特定的字符串列表
             val extraList = MzDkPlayerApplication.getStringList("audio_playlist")
             // 检查参数是否不为空，并渲染屏幕
             if (sourceUri != null && dataSourceType != null) {
                 Log.d("sourceUri", sourceUri)
                 Log.d("dataSourceType", dataSourceType)
-                AudioPlayerScreen(URLDecoder.decode(sourceUri, "UTF-8"), dataSourceType,URLDecoder.decode(fileName,"UTF-8")?:"未知文件名",extraList,currentIndex)
+                AudioPlayerScreen(
+                    URLDecoder.decode(sourceUri, "UTF-8"),
+                    dataSourceType,
+                    URLDecoder.decode(fileName, "UTF-8") ?: "未知文件名",
+                    extraList,
+                    currentIndex = currentIndex,
+                    URLDecoder.decode(connectionName, "UTF-8")
+
+                )
             }
         }
-        composable("SMBFileListScreen/{path}") { backStackEntry ->
+        composable("SMBFileListScreen/{path}/{connectionName}") { backStackEntry ->
             val encodedPath = backStackEntry.arguments?.getString("path")
+            val connectionName = backStackEntry.arguments?.getString("connectionName")?:"未知"
             if (encodedPath != null) {
 
                 val path = URLDecoder.decode(encodedPath, "UTF-8")
                 Log.d("encodedPath", path)
-                SMBFileListScreen(path, mainNavController)
+                SMBFileListScreen(path, mainNavController,connectionName)
             }
         }
         composable("WebDavFileListScreen/{path}/{username}/{pw}") { backStackEntry ->
@@ -259,7 +282,7 @@ fun MzDKPlayerAPP() {
                     FTPConnection(
                         "1",
                         "ftp",
-                        ip=encodedIp,
+                        ip = encodedIp,
                         21,
                         URLDecoder.decode(encodedUsername, "UTF-8"),
                         URLDecoder.decode(encodedPassword, "UTF-8"),
@@ -290,13 +313,14 @@ fun MzDKPlayerAPP() {
                 )
             }
         }
-        composable("HTTPLinkFileListScreen/{newSubPath}") { backStackEntry ->
+        composable("HTTPLinkFileListScreen/{connectionName}/{newSubPath}") { backStackEntry ->
             val newSubPath = backStackEntry.arguments?.getString("newSubPath")
+            val connectionName = backStackEntry.arguments?.getString("connectionName") ?: "未知"
             //URLEncoder.encode(conn.shareName, "UTF-8")
             if (newSubPath != null) {
                 //val path = URLDecoder.decode(URLDecoder.decode(encodedIp, "UTF-8"), "UTF-8")
                 Log.d("encodedPath", "${URLDecoder.decode(newSubPath, "UTF-8")}")
-                HTTPLinkFileListScreen(URLDecoder.decode(newSubPath, "UTF-8"), mainNavController)
+                HTTPLinkFileListScreen(URLDecoder.decode(newSubPath, "UTF-8"), mainNavController,connectionName)
             }
         }
         composable("SMBListScreen") {
@@ -329,6 +353,7 @@ fun MzDKPlayerAPP() {
         composable("HTTPLinkConListScreen") {
             HTTPLinkConListScreen(mainNavController)
         }
+
     }
 
 }
