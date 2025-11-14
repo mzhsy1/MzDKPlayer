@@ -231,10 +231,10 @@ fun LocalFileScreen(path: String?, navController: NavHostController) {
                                                                 file.name,
                                                                 "UTF-8"
                                                             )
-                                                        }/$currentAudioIndex/${ URLEncoder.encode(
+                                                        }/${ URLEncoder.encode(
                                                             "本地文件",
                                                             "UTF-8"
-                                                        )}"
+                                                        )}/$currentAudioIndex"
                                                     )
                                                 } else {
                                                     Toast.makeText(

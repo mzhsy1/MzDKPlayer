@@ -33,7 +33,7 @@ fun MyIconButtonColor(): ButtonColors{
  * Home等ListItem颜色 OperationListItem
  */
 @Composable
-fun MyListItemCoverColor(): ListItemColors {
+fun myListItemCoverColor(): ListItemColors {
     return ListItemDefaults.colors(
         containerColor = Color(32, 32, 32), // 保持深色背景
         contentColor = Color(255, 248, 240), // 暖白色替代纯白

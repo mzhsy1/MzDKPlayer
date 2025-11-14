@@ -46,7 +46,8 @@ import org.mz.mzdkplayer.R
 
 import org.mz.mzdkplayer.ui.theme.myCardBorderStyle
 import org.mz.mzdkplayer.ui.theme.myCardColor
-import org.mz.mzdkplayer.ui.theme.MyListItemCoverColor
+import org.mz.mzdkplayer.ui.theme.myListItemCoverColor
+
 
 /**
  * ====== 标题栏 ======
@@ -327,7 +328,7 @@ fun OperationListItem(
             }
         },
         interactionSource = interactionSource,
-        colors = MyListItemCoverColor(),
+        colors = myListItemCoverColor(),
         //border = myListItemBorder(),
         headlineContent = {
             if (isDel) {

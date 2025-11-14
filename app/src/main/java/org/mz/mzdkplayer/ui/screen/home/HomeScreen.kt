@@ -24,8 +24,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
-
-import org.mz.mzdkplayer.ui.theme.MyListItemCoverColor
+import org.mz.mzdkplayer.ui.theme.myListItemCoverColor
 
 
 @Composable
@@ -69,7 +68,7 @@ fun HomeScreen(mainNavController: NavHostController) {
                         };
                         },
                         modifier = Modifier.padding(top = 20.dp),
-                        colors = MyListItemCoverColor(),
+                        colors = myListItemCoverColor(),
                         //border = myListItemBorder(),
                         leadingContent = {
                             Icon(

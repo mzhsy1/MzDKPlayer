@@ -1,5 +1,6 @@
 package org.mz.mzdkplayer.ui.screen
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -43,8 +45,10 @@ import androidx.tv.material3.Text
 
 
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.ui.screen.common.MyIconButton
 import org.mz.mzdkplayer.ui.screen.common.TvTextField
-import org.mz.mzdkplayer.ui.theme.MyListItemCoverColor
+import org.mz.mzdkplayer.ui.theme.myListItemCoverColor
+
 import org.mz.mzdkplayer.ui.theme.myTTFColor
 import java.util.Locale
 import kotlin.collections.isNotEmpty
@@ -98,14 +102,6 @@ fun MediaHistoryScreen(
         Spacer(modifier = Modifier.height(20.dp))
 
         // 搜索栏
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = CardDefaults.shape(shape = MaterialTheme.shapes.medium),
-            onClick = {}
-//            colors = CardDefaults.colors(
-//                containerColor = Color(0xFF2D2D2D)
-//            )
-        ) {
             TvTextField(
                 value = searchText,
                 onValueChange = {
@@ -125,7 +121,7 @@ fun MediaHistoryScreen(
                 ,
                 textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
             )
-        }
+
 
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -182,12 +178,7 @@ fun MediaHistoryScreen(
         }
 
         // 统计信息
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            onClick = {}
-        ) {
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -210,7 +201,7 @@ fun MediaHistoryScreen(
             }
         }
     }
-}
+
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -219,163 +210,109 @@ fun HistoryListItem(
     onItemClick: () -> Unit,
     onItemLongClick: () -> Unit
 ) {
-    Card(
+    ListItem(
+        selected = false,
         onClick = onItemClick,
         onLongClick = onItemLongClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = CardDefaults.shape(shape = MaterialTheme.shapes.medium),
-        colors = CardDefaults.colors(
-            containerColor = Color(0xFF2D2D2D),
-            focusedContainerColor = Color(0xFF3D3D3D)
-        ),
-        scale = CardDefaults.scale(focusedScale = 1.02f),
-    ) {
-        ListItem(
-            modifier = Modifier.padding(16.dp),
-            colors = MyListItemCoverColor(),
-            selected = false,
-            onClick = {},
-            headlineContent = {
+        enabled = true,
+        headlineContent = {
+            Text(
+                text = record.fileName,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        overlineContent = {
+            Text(
+                text = "${record.protocolName} • ${record.connectionName}",
+                style = MaterialTheme.typography.labelSmall,
+            )
+        },
+        supportingContent = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 播放进度信息
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = record.fileName,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
-                        maxLines = 1,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    // 媒体类型标签
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                color = if (record.isVideo()) Color(0xFF2196F3) else Color(0xFF9C27B0),
-                                shape = MaterialTheme.shapes.small
-                            )
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = if (record.isVideo()) "视频" else "音频",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-            },
-            supportingContent = {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    // 协议和连接信息
+                    // 进度文本
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         Text(
-                            text = "${record.protocolName} • ${record.connectionName}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFFCCCCCC)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // 播放进度和日期
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // 播放进度
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "进度: ${record.getFormattedPosition()}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF4CAF50)
-                            )
-
-                            if (record.mediaDuration > 0) {
-                                Text(
-                                    text = " / ${record.getFormattedDuration()}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFF888888)
-                                )
-
-                                // 进度条
-                                Box(
-                                    modifier = Modifier
-                                        .padding(start = 8.dp)
-                                        .width(80.dp)
-                                        .height(4.dp)
-                                        .background(Color(0xFF444444), MaterialTheme.shapes.small)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .height(4.dp)
-                                            .width((80 * record.getPlaybackPercentage() / 100).dp)
-                                            .background(Color(0xFF4CAF50), MaterialTheme.shapes.small)
-                                    )
-                                }
-                            }
-                        }
-
-                        // 播放日期
-                        Text(
-                            text = record.getFormattedDate(),
+                            text = "进度: ${record.getFormattedPosition()}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF888888)
                         )
+
+                        if (record.mediaDuration > 0) {
+                            Text(
+                                text = "/ ${record.getFormattedDuration()}",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+
+                    if (record.mediaDuration > 0) {
+                        Log.d("getPlaybackPercentage",record.getPlaybackPercentage().toString())
+                        Box(
+                            modifier = Modifier
+                                .width(180.dp)
+                                .height(4.dp)
+                                .align(Alignment.CenterVertically)
+                                .background(Color(0xFF444444), MaterialTheme.shapes.small)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .height(4.dp)
+                                    .width((180 * record.getPlaybackPercentage() / 100).dp)
+                                    .background(Color(0xFF4CAF50), MaterialTheme.shapes.small)
+                            )
+                        }
                     }
                 }
             }
-        )
-    }
+        },
+        trailingContent = {
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // 播放日期
+                Text(
+                    text = record.getFormattedDate(),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = if (record.isVideo()) Color(0xFF64B5F6) else Color(0xFFBA68C8), // 使用更浅的颜色
+                            shape = RoundedCornerShape(50) // 使用更圆润的圆角
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp) // 稍微增加内边距
+                ) {
+                    Icon(
+                        painter = if (record.isVideo()) painterResource(R.drawable.moviefileicon)else  painterResource(R.drawable.baseline_music_note_24),
+
+                        contentDescription = "icon",
+                        tint = Color.White,
+
+                    )
+                }
+            }
+        },
+        colors = myListItemCoverColor(),
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+    )
 }
 
 
 
-@Composable
-fun MyIconButton(
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-    text: String,
-    icon: Int
-) {
-    Card(
-        onClick = onClick,
-        modifier = modifier,
-        shape = CardDefaults.shape(shape = MaterialTheme.shapes.medium),
-        colors = CardDefaults.colors(
-            containerColor = Color(0xFF2D2D2D),
-            focusedContainerColor = Color(0xFF3D3D3D)
-        ),
-        scale = CardDefaults.scale(focusedScale = 1.05f),
-//        border = CardDefaults.border(
-//            focusedBorderWidth = 2.dp,
-//            focusedBorderColor = Color(0xFF4CAF50)
-//        )
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                painter = painterResource(id = icon),
-                contentDescription = text,
-                tint = Color.White
-            )
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White
-            )
-        }
-    }
-}
+
 
 // 扩展函数，用于格式化媒体时长
 fun MediaHistoryRecord.getFormattedDuration(): String {
@@ -384,7 +321,3 @@ fun MediaHistoryRecord.getFormattedDuration(): String {
     val seconds = totalSeconds % 60
     return String.format(Locale.getDefault(),"%02d:%02d", minutes, seconds)
 }
-
-// 注意：您需要在res/drawable目录中添加以下图标资源：
-// - history_icon.xml (历史图标)
-// - history_empty_icon.xml (空状态图标)
