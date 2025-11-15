@@ -1,4 +1,4 @@
-package org.mz.mzdkplayer.ui.screen
+package org.mz.mzdkplayer.ui.screen.history
 
 import android.util.Log
 import androidx.compose.foundation.background
@@ -38,14 +38,17 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import org.mz.mzdkplayer.MzDkPlayerApplication
 
 
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.data.model.AudioItem
 import org.mz.mzdkplayer.ui.screen.common.MyIconButton
 import org.mz.mzdkplayer.ui.screen.common.TvTextField
 import org.mz.mzdkplayer.ui.theme.myListItemCoverColor
 
 import org.mz.mzdkplayer.ui.theme.myTTFColor
+import java.net.URLEncoder
 import java.util.Locale
 import kotlin.collections.isNotEmpty
 
@@ -135,6 +138,29 @@ fun MediaHistoryScreen(
                         onItemClick = {
                             // 处理历史记录项点击
                             viewModel.selectHistoryRecord(record)
+                            val mediaUri = URLEncoder.encode(record.mediaUri, "UTF-8")
+                            val fileName = URLEncoder.encode(record.fileName, "UTF-8")
+
+                            if (record.isVideo()){
+                                navController.navigate("VideoPlayer/$mediaUri/${record.protocolName}/$fileName/${record.connectionName}")
+
+
+                            }else{
+                                // 设置数据
+                                MzDkPlayerApplication.clearStringList("audio_playlist")
+                                MzDkPlayerApplication.setStringList(
+                                    "audio_playlist",
+                                    listOf(AudioItem(
+                                        uri = record.mediaUri,
+                                        fileName = record.fileName,
+                                        dataSourceType = record.protocolName
+                                    ))
+                                )
+                                Log.d("audio_playlist",MzDkPlayerApplication.getStringList("audio_playlist").toString())
+                                navController.navigate("AudioPlayer/$mediaUri/${record.protocolName}/$fileName/${record.connectionName}/0")
+                            }
+                            //navController.navigate("VideoPlayer/${record.mediaUri}/${record.protocolName}/$encodedFileName/${connectionName}")
+
                         },
                         onItemLongClick = {
                             // 处理长按删除
@@ -235,26 +261,25 @@ fun HistoryListItem(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // 进度文本
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
+                    // 进度文本：始终显示已播时间
+                    if (record.mediaDuration >= 0) {
+                    Text(
+                        text = "进度: ${record.getFormattedPosition()}",
+                        style = MaterialTheme.typography.bodySmall,
+                    )}else{
                         Text(
-                            text = "进度: ${record.getFormattedPosition()}",
+                            text = "进度: ${record.getFormattedPosition()} 可能播放失败",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+
+                    // 仅当 duration 有效时才显示 "/ 总时长" 和进度条
+                    if (record.mediaDuration > 0) {
+                        Text(
+                            text = "/ ${record.getFormattedDuration()}",
                             style = MaterialTheme.typography.bodySmall,
                         )
 
-                        if (record.mediaDuration > 0) {
-                            Text(
-                                text = "/ ${record.getFormattedDuration()}",
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                    }
-
-                    if (record.mediaDuration > 0) {
-                        Log.d("getPlaybackPercentage",record.getPlaybackPercentage().toString())
                         Box(
                             modifier = Modifier
                                 .width(180.dp)
@@ -262,14 +287,16 @@ fun HistoryListItem(
                                 .align(Alignment.CenterVertically)
                                 .background(Color(0xFF444444), MaterialTheme.shapes.small)
                         ) {
+                            val progressPercent = record.getPlaybackPercentage().coerceIn(0, 100)
                             Box(
                                 modifier = Modifier
                                     .height(4.dp)
-                                    .width((180 * record.getPlaybackPercentage() / 100).dp)
+                                    .width((180 * progressPercent / 100).dp)
                                     .background(Color(0xFF4CAF50), MaterialTheme.shapes.small)
                             )
                         }
                     }
+                    // 如果 mediaDuration <= 0，就不显示总时长和进度条（当前逻辑已满足）
                 }
             }
         },
@@ -278,33 +305,23 @@ fun HistoryListItem(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // 播放日期
                 Text(
                     text = record.getFormattedDate(),
                     style = MaterialTheme.typography.bodySmall,
                 )
-                Box(
-                    modifier = Modifier
-//                        .background(
-//                            color = if (record.isVideo()) Color(0xFF64B5F6) else Color(0xFFBA68C8), // 使用更浅的颜色
-//                            shape = RoundedCornerShape(50) // 使用更圆润的圆角
-//                        )
-                        .padding(horizontal = 8.dp, vertical = 4.dp) // 稍微增加内边距
-                ) {
-                    Icon(
-                        painter = if (record.isVideo()) painterResource(R.drawable.moviefileicon)else  painterResource(R.drawable.baseline_music_note_24),
-
-                        contentDescription = "icon",
-
-                    )
-                }
+                Icon(
+                    painter = if (record.isVideo())
+                        painterResource(R.drawable.moviefileicon)
+                    else
+                        painterResource(R.drawable.baseline_music_note_24),
+                    contentDescription = if (record.isVideo()) "视频" else "音频",
+                )
             }
         },
         colors = myListItemCoverColor(),
         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
     )
 }
-
 
 
 

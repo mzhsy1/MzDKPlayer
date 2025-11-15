@@ -60,9 +60,8 @@ data class MediaHistoryRecord(
      * 获取播放进度百分比
      */
     fun getPlaybackPercentage(): Int {
-        return if (mediaDuration > 0) {
-            ((playbackPosition.toDouble() / mediaDuration) * 100).toInt().coerceIn(0, 100)
-        } else 0
+        if (mediaDuration <= 0) return 0
+        return ((playbackPosition.toDouble() / mediaDuration) * 100).toInt().coerceIn(0, 100)
     }
 
     /**

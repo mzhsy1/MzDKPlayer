@@ -187,8 +187,7 @@ class MediaHistoryRepository(private val context: Context) {
             record.mediaUri.isNotBlank() &&
                     record.fileName.isNotBlank() &&
                     record.protocolName.isNotBlank() &&
-                    record.playbackPosition >= 0 &&
-                    record.mediaDuration >= 0
+                    record.playbackPosition >= 0
         } catch (e: Exception) {
             Log.w(TAG, "发现无效的播放记录", e)
             false
