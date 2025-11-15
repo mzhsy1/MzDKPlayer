@@ -187,7 +187,7 @@ fun NFSConListScreen(mainNavController: NavHostController) {
                                                     "/",
                                                     "UTF-8"
                                                 )
-                                            }"
+                                            }/${URLEncoder.encode(conn.name,"UTF-8")}"
                                             // 如果需要传递端口或其他选项，可以在这里添加
                                             // "NFSFileListScreen/$encodedIp/${conn.port}/$encodedSharePath?options=${conn.options}"
                                         )

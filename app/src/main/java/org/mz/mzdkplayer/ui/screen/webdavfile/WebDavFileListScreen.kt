@@ -216,7 +216,11 @@ fun WebDavFileListScreen(
                                                                             fileName,
                                                                             "UTF-8"
                                                                         )
-                                                                    }"
+                                                                    }/${
+                                                                        URLEncoder.encode(
+                                                                            webDavConnection.name,
+                                                                            "UTF-8"
+                                                                        )}"
                                                                 )
                                                             }
 
@@ -270,10 +274,10 @@ fun WebDavFileListScreen(
                                                                             fileName,
                                                                             "UTF-8"
                                                                         )
-                                                                    }/$currentAudioIndex/${ URLEncoder.encode(
+                                                                    }/${ URLEncoder.encode(
                                                                         webDavConnection.name,
                                                                         "UTF-8"
-                                                                    )}"
+                                                                    )}/$currentAudioIndex"
                                                                 )
                                                             }
 

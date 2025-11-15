@@ -219,7 +219,7 @@ fun NFSFileListScreen(
                                                             nfsConnection.shareName,
                                                             "UTF-8"
                                                         )
-                                                    }/$encodedNewSubPath"
+                                                    }/$encodedNewSubPath/${URLEncoder.encode(nfsConnection.name,"UTF-8")}"
                                                 )
                                             } else {
                                                 // 处理文件点击 - 导航到 VideoPlayer

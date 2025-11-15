@@ -101,7 +101,6 @@ class SMBListViewModel(application: Application) : AndroidViewModel(application)
                     (existing.ip == newConnection.ip &&
                             existing.username == newConnection.username &&
                             existing.shareName == newConnection.shareName &&
-                            existing.name == newConnection.name &&
                             existing.password == newConnection.password)
         }
     }

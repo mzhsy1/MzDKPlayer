@@ -153,8 +153,7 @@ class NFSListViewModel(application: Application) : AndroidViewModel(application)
             // 基于 ID 检查重复
             existing.id == newConnection.id ||
                     // 或者基于关键字段检查逻辑重复 (可根据需求调整)
-                    (existing.name == newConnection.name &&
-                            existing.serverAddress == newConnection.serverAddress )
+                    (existing.serverAddress == newConnection.serverAddress )
             // 注意：比较密码可能不合适
         }
     }

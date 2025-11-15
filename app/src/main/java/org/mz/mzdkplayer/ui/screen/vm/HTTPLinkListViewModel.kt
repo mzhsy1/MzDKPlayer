@@ -154,11 +154,10 @@ class HTTPLinkListViewModel(application: Application) : AndroidViewModel(applica
             // 基于 ID 检查重复
             existing.id == newConnection.id ||
                     // 或者基于关键字段检查逻辑重复 (可根据需求调整)
-                    (existing.name == newConnection.name &&
+                    (
                             existing.serverAddress == newConnection.serverAddress &&
                             existing.shareName == newConnection.shareName)
-            // 注意：比较其他字段（如 shareName）可能不合适，因为用户可能想为同一服务器保存不同名称的共享
-            // 如果需要更严格的检查，可以包含更多字段，但要注意业务逻辑
+
         }
     }
 

@@ -243,10 +243,11 @@ fun MzDKPlayerAPP() {
                 SMBFileListScreen(path, mainNavController,connectionName)
             }
         }
-        composable("WebDavFileListScreen/{path}/{username}/{pw}") { backStackEntry ->
+        composable("WebDavFileListScreen/{path}/{username}/{pw}/{connectionName}") { backStackEntry ->
             val encodedPath = backStackEntry.arguments?.getString("path")
             val username = backStackEntry.arguments?.getString("username")
             val pw = backStackEntry.arguments?.getString("pw")
+            val connectionName = backStackEntry.arguments?.getString("connectionName")?:"未知"
             if (encodedPath != null && username != null && pw != null) {
 
                 val path = URLDecoder.decode(encodedPath, "UTF-8")
@@ -254,15 +255,16 @@ fun MzDKPlayerAPP() {
                 WebDavFileListScreen(
                     path,
                     mainNavController,
-                    WebDavConnection("1", "webdav", path, username, pw)
+                    WebDavConnection("1", connectionName, path, username, pw)
                 )
             }
         }
-        composable("FTPFileListScreen/{encodedIp}/{encodedUsername}/{encodedPassword}/{port}/{encodedShareName}") { backStackEntry ->
+        composable("FTPFileListScreen/{encodedIp}/{encodedUsername}/{encodedPassword}/{port}/{encodedShareName}/{connectionName}") { backStackEntry ->
             val encodedIp = backStackEntry.arguments?.getString("encodedIp")
             val encodedUsername = backStackEntry.arguments?.getString("encodedUsername")
             val encodedPassword = backStackEntry.arguments?.getString("encodedPassword")
             val encodedShareName = backStackEntry.arguments?.getString("encodedShareName")
+            val connectionName = backStackEntry.arguments?.getString("connectionName")?:"未知"
             //URLEncoder.encode(conn.shareName, "UTF-8")
             if (encodedIp != null) {
 
@@ -281,7 +283,7 @@ fun MzDKPlayerAPP() {
                     mainNavController,
                     FTPConnection(
                         "1",
-                        "ftp",
+                        connectionName,
                         ip = encodedIp,
                         21,
                         URLDecoder.decode(encodedUsername, "UTF-8"),
@@ -291,10 +293,11 @@ fun MzDKPlayerAPP() {
                 )
             }
         }
-        composable("NFSFileListScreen/{encodedIp}/{encodedShareName}/{newSubPath}") { backStackEntry ->
+        composable("NFSFileListScreen/{encodedIp}/{encodedShareName}/{newSubPath}/{connectionName}") { backStackEntry ->
             val encodedIp = backStackEntry.arguments?.getString("encodedIp")
             val encodedShareName = backStackEntry.arguments?.getString("encodedShareName")
             val newSubPath = backStackEntry.arguments?.getString("newSubPath")
+            val connectionName = backStackEntry.arguments?.getString("connectionName")?:"未知"
             //URLEncoder.encode(conn.shareName, "UTF-8")
             if (encodedIp != null) {
 
@@ -305,7 +308,7 @@ fun MzDKPlayerAPP() {
                     mainNavController,
                     NFSConnection(
                         "1",
-                        "ftp",
+                        connectionName,
 
                         URLDecoder.decode(encodedIp, "UTF-8"),
                         URLDecoder.decode(encodedShareName, "UTF-8"),

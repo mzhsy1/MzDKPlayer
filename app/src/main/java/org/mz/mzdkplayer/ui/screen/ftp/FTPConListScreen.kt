@@ -184,7 +184,7 @@ fun FTPConListScreen(mainNavController: NavHostController) {
                                         // 导航到 FTP 文件列表屏幕，传递编码后的参数
                                         mainNavController.navigate(
                                             "FTPFileListScreen/$encodedIp/" +
-                                                    "$encodedUsername/$encodedPassword/${conn.port}/$encodedShareName"
+                                                    "$encodedUsername/$encodedPassword/${conn.port}/$encodedShareName/${URLEncoder.encode(conn.name,"UTF-8")}"
                                         )
                                     } catch (e: Exception) {
                                         Log.e(

@@ -174,7 +174,7 @@ fun WebDavConListScreen(mainNavController: NavHostController) {
                                             "WebDavList",
                                             "Navigating to WebDavFileListScreen with URL: $encodedUrl"
                                         )
-                                        mainNavController.navigate("WebDavFileListScreen/$encodedUrl/${conn.username}/${conn.password}")
+                                        mainNavController.navigate("WebDavFileListScreen/$encodedUrl/${conn.username}/${conn.password}/${URLEncoder.encode(conn.name,"UTF-8")}")
                                     } catch (e: Exception) {
                                         Log.e("WebDavList", "Error encoding URL: ${e.message}")
 

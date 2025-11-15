@@ -155,11 +155,8 @@ class WebDavListViewModel(application: Application) : AndroidViewModel(applicati
             // 基于 ID 检查重复
             existing.id == newConnection.id ||
                     // 或者基于关键字段检查逻辑重复 (可根据需求调整)
-                    (existing.name == newConnection.name &&
-                            existing.baseUrl == newConnection.baseUrl &&
+                    (existing.baseUrl == newConnection.baseUrl &&
                             existing.username == newConnection.username)
-            // 注意：比较密码可能不合适，因为用户可能想为同一账户保存不同名称的连接
-            // 如果需要更严格的检查，可以包含密码，但要注意安全性
         }
     }
 

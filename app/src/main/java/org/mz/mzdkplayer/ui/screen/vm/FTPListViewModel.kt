@@ -142,7 +142,6 @@ class FTPListViewModel(application: Application) : AndroidViewModel(application)
                     (existing.ip == newConnection.ip &&
                             existing.username == newConnection.username &&
                             existing.shareName == newConnection.shareName && // 注意：FTPConnection 中是 shareName
-                            existing.name == newConnection.name &&
                             existing.password == newConnection.password)
         }
     }
