@@ -106,7 +106,7 @@ fun HTTPLinkConListScreen(mainNavController: NavHostController) {
                 .padding()
         ) {
             // 标题
-            FCLMainTitle(mainNavController = mainNavController, "NGINX文件共享", "HTTPConScreen")
+            FCLMainTitle(mainNavController = mainNavController, "NGINX文件共享", "HTTPLinkConScreen")
             Column(
                 modifier = Modifier
                     .fillMaxSize()

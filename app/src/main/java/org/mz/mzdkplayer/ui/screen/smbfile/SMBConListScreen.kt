@@ -56,8 +56,8 @@ import java.net.URLEncoder
 
 @SuppressLint("StateFlowValueCalledInComposition")
 @Composable
-fun SMBConListScreen(mainNavController: NavHostController) {
-    val smbListViewModel: SMBListViewModel = viewModel()
+fun SMBConListScreen(mainNavController: NavHostController,smbListViewModel: SMBListViewModel = viewModel()) {
+
     val connections by smbListViewModel.connections.collectAsState()
     val isOPanelShow by smbListViewModel.isOPanelShow.collectAsState()
     val selectedIndex by smbListViewModel.selectedIndex.collectAsState()
@@ -68,7 +68,10 @@ fun SMBConListScreen(mainNavController: NavHostController) {
     LaunchedEffect(isOPanelShow) {
         Log.d("isOPanelShow", isOPanelShow.toString())
     }
-
+//    LaunchedEffect(Unit)
+//    {
+//        smbListViewModel.loadConnections()
+//    }
     val panelFocusRequester = remember { FocusRequester() }
     val listFocusRequester = remember { FocusRequester() }
 

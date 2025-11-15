@@ -295,7 +295,10 @@ fun HTTPLinkFileListScreen(
                                                                             resource.name,
                                                                             "UTF-8"
                                                                         )
-                                                                    }/$currentAudioIndex"
+                                                                    }/${ URLEncoder.encode(
+                                                                        connectionName,
+                                                                        "UTF-8"
+                                                                    )}/$currentAudioIndex"
                                                                 )
                                                                 //navController.navigate("AudioPlayer/$encodedUri/SMB/$encodedFileName")
                                                             }

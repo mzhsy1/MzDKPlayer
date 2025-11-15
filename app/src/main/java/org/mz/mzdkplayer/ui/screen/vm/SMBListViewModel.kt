@@ -31,7 +31,7 @@ class SMBListViewModel(application: Application) : AndroidViewModel(application)
     /**
      * load
      */
-    private fun loadConnections() {
+     fun loadConnections() {
         _connections.value = repository.getConnections()
     }
 

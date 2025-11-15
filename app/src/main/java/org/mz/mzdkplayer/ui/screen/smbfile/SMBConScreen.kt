@@ -53,9 +53,8 @@ import java.util.UUID
  */
 @Composable
 
-fun SMBConScreen() {
+fun SMBConScreen(smbListViewModel: SMBListViewModel = viewModel()) {
     val viewModel: SMBConViewModel = viewModel()
-    val smbListViewModel: SMBListViewModel = viewModel()
     var ip by remember { mutableStateOf("192.168.1.4") }
     var username by remember { mutableStateOf("wang") }
     var password by remember { mutableStateOf("Wa541888") }
