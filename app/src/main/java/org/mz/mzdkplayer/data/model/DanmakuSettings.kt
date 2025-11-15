@@ -1,4 +1,4 @@
-package org.mz.mzdkplayer.logic.model
+package org.mz.mzdkplayer.data.model
 
 data class DanmakuSettings(
     val isSwitchEnabled: Boolean,

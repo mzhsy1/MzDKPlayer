@@ -1,4 +1,4 @@
-package org.mz.mzdkplayer.logic.model
+package org.mz.mzdkplayer.data.model
 
 /**
  * 数据类，用于封装从音频文件中提取出的基本信息、歌词和专辑封面。

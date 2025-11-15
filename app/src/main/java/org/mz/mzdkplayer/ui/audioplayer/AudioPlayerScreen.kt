@@ -43,8 +43,8 @@ import androidx.tv.material3.Text
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import org.mz.mzdkplayer.logic.model.AudioInfo
-import org.mz.mzdkplayer.logic.model.AudioItem
+import org.mz.mzdkplayer.data.model.AudioInfo
+import org.mz.mzdkplayer.data.model.AudioItem
 
 import org.mz.mzdkplayer.tool.SmbUtils
 import org.mz.mzdkplayer.tool.Tools

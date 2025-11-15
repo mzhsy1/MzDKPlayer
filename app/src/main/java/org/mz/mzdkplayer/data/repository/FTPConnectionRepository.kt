@@ -1,4 +1,4 @@
-package org.mz.mzdkplayer.logic.model // 请根据你的实际包名修改
+package org.mz.mzdkplayer.data.repository // 请根据你的实际包名修改
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -6,7 +6,7 @@ import android.util.Log
 import androidx.core.content.edit
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import java.util.UUID
+import org.mz.mzdkplayer.data.model.FTPConnection
 
 /**
  * 管理 FTPConnection 对象的本地存储 (使用 SharedPreferences)

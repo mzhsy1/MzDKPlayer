@@ -5,8 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import org.mz.mzdkplayer.logic.model.NFSConnection
-import org.mz.mzdkplayer.logic.model.NFSConnectionRepository
+import org.mz.mzdkplayer.data.model.NFSConnection
+import org.mz.mzdkplayer.data.repository.NFSConnectionRepository
 
 /**
  * NFS 连接 ViewModel，用来操作储存在本地的 NFS 连接数据

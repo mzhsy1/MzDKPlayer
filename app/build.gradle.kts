@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -18,6 +20,14 @@ android {
             //noinspection ChromeOsAbiSupport
             abiFilters += listOf( "armeabi-v7a","x86")
         }
+        val localProperties = rootProject.file("local.properties")
+        val properties = Properties().apply {
+            if (localProperties.exists()) {
+                load(localProperties.inputStream())
+            }
+        }
+        val tmdbApiKey = properties.getProperty("TMDB_API_KEY", "")
+        buildConfigField("String", "TMDB_API_KEY", "\"$tmdbApiKey\"")
     }
 
     buildTypes {
@@ -38,6 +48,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -71,6 +82,10 @@ dependencies {
     implementation(libs.logback.android)
    // implementation(libs.androidx.media3.ui.compose)
     implementation(libs.gson)
+    implementation(libs.coil3.coil.compose)
+    implementation(libs.coil.network.okhttp)
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
     // 暂时不需要原生ass显示
     //implementation(libs.ass.media)
     // 👇 修改这一行：排除 xpp3 和 stax

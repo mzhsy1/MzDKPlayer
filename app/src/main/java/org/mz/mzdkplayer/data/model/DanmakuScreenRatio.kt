@@ -1,21 +1,19 @@
-package org.mz.mzdkplayer.logic.model
+package org.mz.mzdkplayer.data.model
 
-
-
-import android.content.Context
+import android.R
 import kotlin.math.abs
 
 /**
  * 弹幕显示区域枚举
  */
 enum class DanmakuScreenRatio(val ratioValue: Float, private val strRes: Int) {
-    HALF(0.5f, android.R.string.untitled), // 实际应使用应用内的字符串资源
-    QUARTER(0.25f, android.R.string.untitled),
-    ONE_SIXTH(0.166f, android.R.string.untitled),
-    ONE_EIGHTH(0.125f, android.R.string.untitled),
-    ONE_TENTH(0.1f, android.R.string.untitled),
-    ONE_TWELFTH(0.083f, android.R.string.untitled),
-    FULL(1.0f, android.R.string.untitled);
+    HALF(0.5f, R.string.untitled), // 实际应使用应用内的字符串资源
+    QUARTER(0.25f, R.string.untitled),
+    ONE_SIXTH(0.166f, R.string.untitled),
+    ONE_EIGHTH(0.125f, R.string.untitled),
+    ONE_TENTH(0.1f, R.string.untitled),
+    ONE_TWELFTH(0.083f, R.string.untitled),
+    FULL(1.0f, R.string.untitled);
 
     companion object {
         // 显示名称列表，用于UI显示

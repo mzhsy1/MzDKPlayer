@@ -6,8 +6,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-import org.mz.mzdkplayer.logic.model.SMBConnection
-import org.mz.mzdkplayer.logic.model.SMBConnectionRepository
+import org.mz.mzdkplayer.data.model.SMBConnection
+import org.mz.mzdkplayer.data.repository.SMBConnectionRepository
 
 /**
  * SMB连接vm,用来操作储存在本地的smb连接数据

@@ -37,9 +37,9 @@ import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.NavigationDrawer
 import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
-import org.mz.mzdkplayer.logic.model.FTPConnection
-import org.mz.mzdkplayer.logic.model.NFSConnection
-import org.mz.mzdkplayer.logic.model.WebDavConnection
+import org.mz.mzdkplayer.data.model.FTPConnection
+import org.mz.mzdkplayer.data.model.NFSConnection
+import org.mz.mzdkplayer.data.model.WebDavConnection
 import org.mz.mzdkplayer.ui.audioplayer.AudioPlayerScreen
 import org.mz.mzdkplayer.ui.screen.MediaHistoryScreen
 

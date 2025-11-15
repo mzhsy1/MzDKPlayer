@@ -54,10 +54,10 @@ import androidx.tv.material3.Text
 
 import com.kuaishou.akdanmaku.ext.RETAINER_BILIBILI
 import com.kuaishou.akdanmaku.ui.DanmakuPlayer
-import org.mz.mzdkplayer.logic.model.DanmakuScreenRatio
+import org.mz.mzdkplayer.data.model.DanmakuScreenRatio
 
-import org.mz.mzdkplayer.logic.model.DanmakuSettingsManager
-import org.mz.mzdkplayer.logic.model.DanmakuType
+import org.mz.mzdkplayer.data.repository.DanmakuSettingsManager
+import org.mz.mzdkplayer.data.model.DanmakuType
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 
 // 公共圆形按钮组件

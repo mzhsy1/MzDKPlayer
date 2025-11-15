@@ -74,9 +74,9 @@ import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.danmaku.DanmakuData
 import org.mz.mzdkplayer.danmaku.DanmakuResponse
 import org.mz.mzdkplayer.danmaku.getDanmakuXmlFromFile
-import org.mz.mzdkplayer.logic.model.DanmakuScreenRatio
+import org.mz.mzdkplayer.data.model.DanmakuScreenRatio
 
-import org.mz.mzdkplayer.logic.model.DanmakuSettingsManager
+import org.mz.mzdkplayer.data.repository.DanmakuSettingsManager
 import org.mz.mzdkplayer.tool.SmbUtils
 import org.mz.mzdkplayer.tool.SubtitleView
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
@@ -189,6 +189,12 @@ fun VideoPlayerScreen(
             )
             exoPlayer.release()
             mDanmakuPlayer.release() // 释放弹幕播放器
+        }
+    }
+    LaunchedEffect(Unit) {
+        val playbackPosition=mediaHistoryViewModel.getPlaybackPositionByUri(mediaUri = mediaUri)
+        if (playbackPosition!=0L){
+            exoPlayer.seekTo(playbackPosition)
         }
     }
 

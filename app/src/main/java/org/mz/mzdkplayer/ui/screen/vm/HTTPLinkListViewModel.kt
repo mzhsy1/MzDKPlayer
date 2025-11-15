@@ -6,8 +6,8 @@ import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import org.mz.mzdkplayer.logic.model.HTTPLinkConnection
-import org.mz.mzdkplayer.logic.model.HTTPLinkConnectionRepository
+import org.mz.mzdkplayer.data.model.HTTPLinkConnection
+import org.mz.mzdkplayer.data.repository.HTTPLinkConnectionRepository
 
 /**
  * HTTP Link 连接 ViewModel，用来操作储存在本地的 HTTP Link 连接数据

@@ -1,4 +1,4 @@
-package org.mz.mzdkplayer.logic.model
+package org.mz.mzdkplayer.data.model
 
 import java.util.UUID
 
@@ -19,4 +19,3 @@ data class NFSConnection(
     val serverAddress: String?, // NFS 服务器地址
     val shareName: String?
 )
-

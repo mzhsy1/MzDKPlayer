@@ -1,4 +1,4 @@
-package org.mz.mzdkplayer.logic.model
+package org.mz.mzdkplayer.data.model
 
 /**
  * 各个协议连接统一状态

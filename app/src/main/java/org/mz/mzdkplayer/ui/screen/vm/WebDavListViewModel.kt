@@ -7,8 +7,8 @@ import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import org.mz.mzdkplayer.logic.model.WebDavConnection
-import org.mz.mzdkplayer.logic.model.WebDavConnectionRepository
+import org.mz.mzdkplayer.data.model.WebDavConnection
+import org.mz.mzdkplayer.data.repository.WebDavConnectionRepository
 
 /**
  * WebDAV 连接 ViewModel，用来操作储存在本地的 WebDAV 连接数据

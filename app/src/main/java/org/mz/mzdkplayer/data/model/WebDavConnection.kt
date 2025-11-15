@@ -1,5 +1,5 @@
 
-package org.mz.mzdkplayer.logic.model
+package org.mz.mzdkplayer.data.model
 
 import java.util.UUID
 

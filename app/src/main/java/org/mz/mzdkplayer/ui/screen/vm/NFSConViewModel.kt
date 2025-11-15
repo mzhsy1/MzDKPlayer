@@ -15,8 +15,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import org.mz.mzdkplayer.logic.model.FileConnectionStatus
-import org.mz.mzdkplayer.logic.model.NFSConnection
+import org.mz.mzdkplayer.data.model.FileConnectionStatus
+import org.mz.mzdkplayer.data.model.NFSConnection
 import java.io.IOException
 
 /**

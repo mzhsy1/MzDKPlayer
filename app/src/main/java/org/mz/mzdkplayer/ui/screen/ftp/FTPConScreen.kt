@@ -35,8 +35,8 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
-import org.mz.mzdkplayer.logic.model.FTPConnection // 引入 FTP 数据模型
-import org.mz.mzdkplayer.logic.model.FileConnectionStatus
+import org.mz.mzdkplayer.data.model.FTPConnection // 引入 FTP 数据模型
+import org.mz.mzdkplayer.data.model.FileConnectionStatus
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.ui.screen.vm.FTPConViewModel // 引入 FTP ViewModel
 

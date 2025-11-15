@@ -45,8 +45,8 @@ import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
 import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
-import org.mz.mzdkplayer.logic.model.AudioItem
-import org.mz.mzdkplayer.logic.model.LocalFileLoadStatus
+import org.mz.mzdkplayer.data.model.AudioItem
+import org.mz.mzdkplayer.data.model.LocalFileLoadStatus
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen

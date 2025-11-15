@@ -8,7 +8,7 @@ import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
-import org.mz.mzdkplayer.logic.model.AudioItem
+import org.mz.mzdkplayer.data.model.AudioItem
 import java.io.File
 
 @UnstableApi

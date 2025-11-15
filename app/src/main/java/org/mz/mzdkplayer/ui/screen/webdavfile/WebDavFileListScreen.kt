@@ -30,15 +30,15 @@ import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.R
-import org.mz.mzdkplayer.logic.model.WebDavConnection
+import org.mz.mzdkplayer.data.model.WebDavConnection
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.ui.screen.vm.WebDavConViewModel
 import java.net.URLEncoder
 import androidx.media3.common.util.UnstableApi
 import kotlinx.coroutines.delay
 import org.mz.mzdkplayer.MzDkPlayerApplication
-import org.mz.mzdkplayer.logic.model.AudioItem
-import org.mz.mzdkplayer.logic.model.FileConnectionStatus
+import org.mz.mzdkplayer.data.model.AudioItem
+import org.mz.mzdkplayer.data.model.FileConnectionStatus
 import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 

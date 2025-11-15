@@ -10,7 +10,7 @@ import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 
 import org.jaudiotagger.tag.images.Artwork
-import org.mz.mzdkplayer.logic.model.AudioInfo
+import org.mz.mzdkplayer.data.model.AudioInfo
 import java.io.*
 
 

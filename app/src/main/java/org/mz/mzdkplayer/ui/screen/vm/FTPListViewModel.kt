@@ -5,8 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import org.mz.mzdkplayer.logic.model.FTPConnectionRepository // 引用 FTP 的 Repository
-import org.mz.mzdkplayer.logic.model.FTPConnection // 引用 FTP 的数据模型
+import org.mz.mzdkplayer.data.repository.FTPConnectionRepository // 引用 FTP 的 Repository
+import org.mz.mzdkplayer.data.model.FTPConnection // 引用 FTP 的数据模型
 
 /**
  * FTP连接vm,用来操作储存在本地的ftp连接数据

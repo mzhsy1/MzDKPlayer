@@ -1,4 +1,4 @@
-package org.mz.mzdkplayer.logic.model
+package org.mz.mzdkplayer.data.model
 
 import com.kuaishou.akdanmaku.data.DanmakuItemData
 
@@ -6,9 +6,9 @@ import com.kuaishou.akdanmaku.data.DanmakuItemData
  * 弹幕类型枚举
  */
 enum class DanmakuType(val typeName: String, private val typeValue: Int) {
-    ROLLING("滚动", DanmakuItemData.DANMAKU_MODE_ROLLING),      // 1
-    BOTTOM("底部", DanmakuItemData.DANMAKU_MODE_CENTER_BOTTOM), // 4
-    TOP("顶部", DanmakuItemData.DANMAKU_MODE_CENTER_TOP),       // 5
+    ROLLING("滚动", DanmakuItemData.Companion.DANMAKU_MODE_ROLLING),      // 1
+    BOTTOM("底部", DanmakuItemData.Companion.DANMAKU_MODE_CENTER_BOTTOM), // 4
+    TOP("顶部", DanmakuItemData.Companion.DANMAKU_MODE_CENTER_TOP),       // 5
     COLORFUL("彩色", 0);                                       // 0 - 默认显示模式
 
     companion object {
@@ -45,5 +45,3 @@ enum class DanmakuType(val typeName: String, private val typeValue: Int) {
         return typeValue
     }
 }
-
-

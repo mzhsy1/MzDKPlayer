@@ -8,19 +8,18 @@ assMedia = "0.3.0-rc05"
 
 commonsNet = "3.12.0"
 gson = "2.13.2"
-
+converterGson = "3.0.0"
 jaudiotagger = "3.0.1"
-jcifs = "3.0.0"
-jcifsNg = "2.1.10"
+
 kotlin = "2.2.21"
 coreKtx = "1.17.0"
 appcompat = "1.7.1"
 composeBom = "2025.10.01"
 logbackAndroid = "3.0.0"
-material3 = "1.4.0"
-media3UiCompose = "1.8.0"
-nfsClient = "1.1.0"
 
+nfsClient = "1.1.0"
+coilComposeVersion = "3.3.0"
+coilNetworkOkhttp = "3.3.0"
 paletteKtx = "1.0.0"
 sardineAndroidVersion = "0.9"
 smbj = "0.14.0"
@@ -32,7 +31,8 @@ activityCompose = "1.11.0"
 datastorePreferences = "1.1.7"
 navigationCompose = "2.9.5"
 ui = "1.9.4"
-foundation = "1.9.4"
+
+retrofit = "3.0.0"
 
 [libraries]
 #noinspection SimilarGradleDependency
@@ -41,8 +41,7 @@ accompanist-permissions = { module = "com.google.accompanist:accompanist-permiss
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
-androidx-material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
-androidx-media3-ui-compose = { module = "androidx.media3:media3-ui-compose", version.ref = "media3UiCompose" }
+
 androidx-palette-ktx = { module = "androidx.palette:palette-ktx", version.ref = "paletteKtx" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" ,version.ref = "ui"  }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
@@ -60,21 +59,20 @@ androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "medi
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 akdanmaku = { module = "com.kuaishou:akdanmaku", version.ref = "akdanmaku" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
-
+coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coilNetworkOkhttp" }
+coil3-coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coilComposeVersion" }
 ass-media = { module = "io.github.peerless2012:ass-media", version.ref = "assMedia" }
-
+retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 commons-net = { module = "commons-net:commons-net", version.ref = "commonsNet" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
-
+converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "converterGson" }
 jaudiotagger = { module = "net.jthink:jaudiotagger", version.ref = "jaudiotagger" }
-jcifs = { module = "org.codelibs:jcifs", version.ref = "jcifs" }
-jcifs-ng = { module = "eu.agno3.jcifs:jcifs-ng", version.ref = "jcifsNg" }
+
 logback-android = { module = "com.github.tony19:logback-android", version.ref = "logbackAndroid" }
 nfs-client = { module = "com.emc.ecs:nfs-client", version.ref = "nfsClient" }
 
 smbj = { module = "com.hierynomus:smbj", version.ref = "smbj" }
 thegrizzlylabs-sardine-android = { module = "com.github.thegrizzlylabs:sardine-android", version.ref = "sardineAndroidVersion" }
-androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

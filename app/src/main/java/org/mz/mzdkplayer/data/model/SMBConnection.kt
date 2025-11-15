@@ -1,6 +1,4 @@
-package org.mz.mzdkplayer.logic.model
-
-import java.util.UUID
+package org.mz.mzdkplayer.data.model
 
 /**
  * SMB单个连接配置DataClass

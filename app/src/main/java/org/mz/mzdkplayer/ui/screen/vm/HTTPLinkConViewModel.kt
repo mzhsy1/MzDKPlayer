@@ -13,7 +13,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
-import org.mz.mzdkplayer.logic.model.FileConnectionStatus
+import org.mz.mzdkplayer.data.model.FileConnectionStatus
 import java.io.IOException
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets

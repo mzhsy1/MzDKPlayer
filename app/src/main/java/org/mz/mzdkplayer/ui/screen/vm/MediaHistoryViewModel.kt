@@ -7,8 +7,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import org.mz.mzdkplayer.logic.model.MediaHistoryRecord
-import org.mz.mzdkplayer.logic.model.MediaHistoryRepository
+import org.mz.mzdkplayer.data.model.MediaHistoryRecord
+import org.mz.mzdkplayer.data.repository.MediaHistoryRepository
 
 /**
  * 优化的通用媒体播放历史记录ViewModel，支持视频和音频
@@ -68,6 +68,26 @@ class MediaHistoryViewModel(application: Application) : AndroidViewModel(applica
         }
 
         _history.value = filtered
+    }
+
+    /**
+     * 获取指定mediaUri的播放位置
+     * @param mediaUri 媒体URI
+     * @return 播放位置（毫秒），如果找不到记录则返回0
+     */
+    fun getPlaybackPositionByUri(mediaUri: String): Long {
+        return _originalHistory.value
+            .find { it.mediaUri == mediaUri }
+            ?.playbackPosition ?: 0
+    }
+
+    /**
+     * 获取指定mediaUri的播放记录
+     * @param mediaUri 媒体URI
+     * @return MediaHistoryRecord对象，如果找不到则返回null
+     */
+    fun getHistoryRecordByUri(mediaUri: String): MediaHistoryRecord? {
+        return _originalHistory.value.find { it.mediaUri == mediaUri }
     }
 
     /**
@@ -559,6 +579,3 @@ class MediaHistoryViewModel(application: Application) : AndroidViewModel(applica
         _history.value = filtered
     }
 }
-
-
-

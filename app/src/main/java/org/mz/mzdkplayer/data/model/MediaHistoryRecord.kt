@@ -1,4 +1,4 @@
-package org.mz.mzdkplayer.logic.model
+package org.mz.mzdkplayer.data.model
 
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -34,7 +34,7 @@ data class MediaHistoryRecord(
         val totalSeconds = playbackPosition / 1000
         val minutes = totalSeconds / 60
         val seconds = totalSeconds % 60
-        return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+        return String.Companion.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
     }
 
     /**

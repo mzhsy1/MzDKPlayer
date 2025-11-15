@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -32,14 +31,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import org.mz.mzdkplayer.logic.model.MediaHistoryRecord
+import org.mz.mzdkplayer.data.model.MediaHistoryRecord
 import org.mz.mzdkplayer.ui.screen.vm.MediaHistoryViewModel
-import androidx.tv.material3.Card
-import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
-import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 
@@ -289,17 +285,16 @@ fun HistoryListItem(
                 )
                 Box(
                     modifier = Modifier
-                        .background(
-                            color = if (record.isVideo()) Color(0xFF64B5F6) else Color(0xFFBA68C8), // 使用更浅的颜色
-                            shape = RoundedCornerShape(50) // 使用更圆润的圆角
-                        )
+//                        .background(
+//                            color = if (record.isVideo()) Color(0xFF64B5F6) else Color(0xFFBA68C8), // 使用更浅的颜色
+//                            shape = RoundedCornerShape(50) // 使用更圆润的圆角
+//                        )
                         .padding(horizontal = 8.dp, vertical = 4.dp) // 稍微增加内边距
                 ) {
                     Icon(
                         painter = if (record.isVideo()) painterResource(R.drawable.moviefileicon)else  painterResource(R.drawable.baseline_music_note_24),
 
                         contentDescription = "icon",
-                        tint = Color.White,
 
                     )
                 }

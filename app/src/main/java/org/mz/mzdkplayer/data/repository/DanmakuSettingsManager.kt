@@ -1,8 +1,9 @@
-package org.mz.mzdkplayer.logic.model
+package org.mz.mzdkplayer.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import org.mz.mzdkplayer.data.model.DanmakuSettings
 
 // 数据保存工具类
 class DanmakuSettingsManager(context: Context) {
@@ -39,7 +40,8 @@ class DanmakuSettingsManager(context: Context) {
             selectedRatio = prefs.getString(KEY_SELECTED_RATIO, "1/12") ?: "1/12",
             fontSize = prefs.getInt(KEY_FONT_SIZE, 100),
             transparency = prefs.getInt(KEY_TRANSPARENCY, 100),
-            selectedTypes = prefs.getStringSet(KEY_SELECTED_TYPES, emptySet())?.toSet() ?: emptySet()
+            selectedTypes = prefs.getStringSet(KEY_SELECTED_TYPES, emptySet())?.toSet()
+                ?: emptySet()
         )
     }
 }

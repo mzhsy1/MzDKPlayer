@@ -31,9 +31,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
-import org.mz.mzdkplayer.logic.model.AudioItem
-import org.mz.mzdkplayer.logic.model.FTPConnection
-import org.mz.mzdkplayer.logic.model.FileConnectionStatus
+import org.mz.mzdkplayer.data.model.AudioItem
+import org.mz.mzdkplayer.data.model.FTPConnection
+import org.mz.mzdkplayer.data.model.FileConnectionStatus
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen

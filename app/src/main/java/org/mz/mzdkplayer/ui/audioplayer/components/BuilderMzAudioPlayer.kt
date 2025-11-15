@@ -6,7 +6,6 @@ import androidx.annotation.OptIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -19,12 +18,11 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import org.mz.mzdkplayer.tool.SmbDataSourceFactory
-import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 import androidx.core.net.toUri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
-import org.mz.mzdkplayer.logic.model.AudioItem
+import org.mz.mzdkplayer.data.model.AudioItem
 import org.mz.mzdkplayer.tool.FtpDataSourceFactory
 import org.mz.mzdkplayer.tool.NFSDataSourceFactory
 import org.mz.mzdkplayer.tool.SmbDataSourceConfig
