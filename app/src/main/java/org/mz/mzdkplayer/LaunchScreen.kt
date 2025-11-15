@@ -29,7 +29,7 @@ import org.mz.mzdkplayer.R
 @Composable
 fun LaunchScreen(
     onFinish: () -> Unit,
-    durationMillis: Long = 1000 // 默认显示 1.5 秒
+    durationMillis: Long = 100 // 默认显示 0 秒
 ) {
     // 可选：添加淡入淡出动画
     val alpha by animateFloatAsState(

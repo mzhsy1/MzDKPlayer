@@ -8,12 +8,16 @@
     <uses-feature
         android:name="android.software.leanback"
         android:required="false" />
+    <uses-feature
+        android:name="android.hardware.microphone"
+        android:required="false" />
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- 外部存储读取权限 -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
-        tools:ignore="ScopedStorage" /><!--add 2022-2-11 Android11-->
+        tools:ignore="AllFilesAccessPolicy,ScopedStorage" /><!--add 2022-2-11 Android11-->
 
     <!-- 外部存储写入权限 -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
@@ -41,6 +45,40 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+
+            <!-- 1. 支持带 MIME 的标准调用（兼容部分 App） -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:mimeType="video/*" />
+                <data android:scheme="http" android:mimeType="video/*" />
+                <data android:scheme="file" android:mimeType="video/*" />
+            </intent-filter>
+
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- 每个扩展名单独一个 <data> -->
+                <data android:scheme="https" android:host="*" android:pathPattern=".*\\.mp4" />
+                <data android:scheme="https" android:host="*" android:pathPattern=".*\\.mkv" />
+                <data android:scheme="https" android:host="*" android:pathPattern=".*\\.avi" />
+                <data android:scheme="https" android:host="*" android:pathPattern=".*\\.mov" />
+                <data android:scheme="https" android:host="*" android:pathPattern=".*\\.flv" />
+                <data android:scheme="https" android:host="*" android:pathPattern=".*\\.m3u8" />
+                <data android:scheme="https" android:host="*" android:pathPattern=".*\\.m2ts" />
+                <!-- http 同理 -->
+                <data android:scheme="http" android:host="*" android:pathPattern=".*\\.mp4" />
+                <data android:scheme="http" android:host="*" android:pathPattern=".*\\.mkv" />
+                <data android:scheme="http" android:host="*" android:pathPattern=".*\\.m2ts" />
+                <data android:scheme="http" android:host="*" android:pathPattern=".*\\.avi" />
+                <data android:scheme="http" android:host="*" android:pathPattern=".*\\.mov" />
+                <data android:scheme="http" android:host="*" android:pathPattern=".*\\.flv" />
+
+                <!-- file 协议通常自带 MIME，可选 -->
             </intent-filter>
         </activity>
     </application>

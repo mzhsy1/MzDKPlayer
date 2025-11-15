@@ -1,9 +1,7 @@
 package org.mz.mzdkplayer.ui
 
-import android.app.Activity
+import android.net.Uri
 import android.util.Log
-import android.widget.Toast
-import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -81,7 +79,7 @@ import java.net.URLDecoder
 
 @OptIn(UnstableApi::class)
 @Composable
-fun MzDKPlayerAPP() {
+fun MzDKPlayerAPP(externalVideoUri: Uri?) {
 
 
     var selectedIndex by remember { mutableIntStateOf(0) }
@@ -99,6 +97,25 @@ fun MzDKPlayerAPP() {
     val currentRoute = mainNavController.currentBackStackEntryAsState().value?.destination?.route
     // 判断是否为主页面（需要显示侧边栏）
     val isMainPage = currentRoute in listOf("HomePage", "HistoryPage", "SettingsPage")
+
+    // 👇 关键：如果 externalVideoUri 存在，直接播放，不显示主页
+    LaunchedEffect(externalVideoUri) {
+        if (externalVideoUri != null) {
+            val uriString = externalVideoUri.toString()
+            // 简单校验是否为有效视频链接（可选）
+            if (uriString.startsWith("http") &&
+                (uriString.endsWith(".mp4") ||
+                        uriString.endsWith(".mkv") ||
+                        uriString.endsWith(".avi") ||
+                        uriString.contains("video"))) {
+
+                // 直接导航到播放器页面
+                mainNavController.navigate(
+                    "VideoPlayer/${Uri.encode(uriString)}/HTTP/外部视频/122"
+                )
+            }
+        }
+    }
 // 用于双击退出
 //    BackHandler {
 //        val currentDestination = mainNavController.currentDestination?.route
