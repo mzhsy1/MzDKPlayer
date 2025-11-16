@@ -23,6 +23,8 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 import androidx.core.net.toUri
+import org.mz.mzdkplayer.tool.WebDavHttpClient
+import org.mz.mzdkplayer.tool.WebDavHttpClient.Companion.restrictedTrustOkHttpClient
 import java.net.URLEncoder
 
 class WebDavConViewModel : ViewModel() {
@@ -40,7 +42,9 @@ class WebDavConViewModel : ViewModel() {
 
     private var sardine: OkHttpSardine? = null
     private var baseUrl: String = "" // 存储基础认证URL
-
+    private val webDavClient by  lazy{
+        WebDavHttpClient.restrictedTrustOkHttpClient
+    }
     private val mutex = Mutex()
 
     /**
@@ -55,40 +59,9 @@ class WebDavConViewModel : ViewModel() {
                 _connectionStatus.value = FileConnectionStatus.Connecting
                 try {
                     withContext(Dispatchers.IO) {
-                        // 创建不验证证书的 TrustManager
-                        val trustAllCerts = arrayOf<TrustManager>(
-                            @SuppressLint("CustomX509TrustManager")
-                            object : X509TrustManager {
-                                @SuppressLint("TrustAllX509TrustManager")
-                                override fun checkClientTrusted(
-                                    chain: Array<out X509Certificate>?,
-                                    authType: String?
-                                ) {
-                                }
 
-                                @SuppressLint("TrustAllX509TrustManager")
-                                override fun checkServerTrusted(
-                                    chain: Array<out X509Certificate>?,
-                                    authType: String?
-                                ) {
-                                }
 
-                                override fun getAcceptedIssuers(): Array<X509Certificate> =
-                                    arrayOf()
-                            })
-
-                        val sslContext = SSLContext.getInstance("SSL")
-                        sslContext.init(null, trustAllCerts, SecureRandom())
-
-                        val okHttpClient = OkHttpClient.Builder()
-                            .sslSocketFactory(
-                                sslContext.socketFactory,
-                                trustAllCerts[0] as X509TrustManager
-                            )
-                            .hostnameVerifier { _, _ -> true }
-                            .build()
-
-                        sardine = OkHttpSardine(okHttpClient)
+                        sardine = OkHttpSardine(webDavClient)
                         sardine?.setCredentials(username, password)
 
                         // 存储基础URL用于后续认证

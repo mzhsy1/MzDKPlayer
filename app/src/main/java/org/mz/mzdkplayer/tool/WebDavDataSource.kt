@@ -15,6 +15,7 @@ import okhttp3.OkHttpClient
 import java.io.IOException
 import java.io.InputStream
 import java.security.SecureRandom
+import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
@@ -63,32 +64,8 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
         private const val MAX_REDIRECTS = 5 // 最大重定向次数
 
         // 用于信任所有证书的 OkHttpClient
-        private val unsafeOkHttpClient: OkHttpClient by lazy {
-            try {
-                val trustAllCerts = arrayOf<TrustManager>(@SuppressLint("CustomX509TrustManager")
-                object : X509TrustManager {
-                    @SuppressLint("TrustAllX509TrustManager")
-                    override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
-                    @SuppressLint("TrustAllX509TrustManager")
-                    override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
-                    override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-                })
-
-                val sslContext = SSLContext.getInstance("SSL")
-                sslContext.init(null, trustAllCerts, SecureRandom())
-
-                OkHttpClient.Builder()
-                    .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
-                    .hostnameVerifier { _, _ -> true }
-                    .connectTimeout(10, TimeUnit.SECONDS)
-                    .readTimeout(30, TimeUnit.SECONDS)
-                    .writeTimeout(10, TimeUnit.SECONDS)
-                    .followRedirects(true)
-                    .followSslRedirects(true)
-                    .build()
-            } catch (e: Exception) {
-                throw RuntimeException(e)
-            }
+        private val webDavClient by  lazy{
+            WebDavHttpClient.restrictedTrustOkHttpClient
         }
     }
 
@@ -179,7 +156,7 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
 
         try {
             // 初始化 Sardine 客户端
-            sardine = OkHttpSardine(unsafeOkHttpClient)
+            sardine = OkHttpSardine(webDavClient)
             if (username.isNotBlank() || password.isNotBlank()) {
                 sardine?.setCredentials(username, password)
             }

@@ -477,3 +477,14 @@ object Tools {
 
 }
 
+fun isValidHostname(hostname: String): Boolean {
+    // 只允许局域网IP地址
+    return when {
+        hostname.matches(Regex("^192\\.168\\.\\d+\\.\\d+$")) -> true
+        hostname.matches(Regex("^10\\.\\d+\\.\\d+\\.\\d+$")) -> true
+        hostname.matches(Regex("^172\\.(1[6-9]|2[0-9]|3[0-1])\\.\\d+\\.\\d+$")) -> true
+        hostname == "localhost" -> true
+        hostname == "127.0.0.1" -> true
+        else -> false
+    }
+}

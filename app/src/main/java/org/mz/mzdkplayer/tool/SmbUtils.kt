@@ -191,28 +191,12 @@ object SmbUtils {
 
             // 3. 构建基础 URL (不包含文件路径)
             // val baseUrl = "$scheme://$host:$port"
-
-            // 4. 配置忽略 SSL 的 OkHttpClient (与 connectToWebDav 逻辑一致)
-            val trustAllCerts = arrayOf<TrustManager>(@SuppressLint("CustomX509TrustManager")
-            object : X509TrustManager {
-                @SuppressLint("TrustAllX509TrustManager")
-                override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
-                @SuppressLint("TrustAllX509TrustManager")
-                override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
-                override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-            })
-
-            val sslContext = SSLContext.getInstance("SSL").apply {
-                init(null, trustAllCerts, SecureRandom())
-            }
-
-            val okHttpClient = OkHttpClient.Builder()
-                .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
-                .hostnameVerifier { _, _ -> true } // 忽略主机名验证
-                .build()
+              val webDavClient by  lazy{
+                 WebDavHttpClient.restrictedTrustOkHttpClient
+             }
 
             // 5. 创建临时 Sardine 实例
-            val tempSardine: Sardine = OkHttpSardine(okHttpClient)
+            val tempSardine: Sardine = OkHttpSardine(webDavClient)
 
             // 6. 设置认证信息
             tempSardine.setCredentials(username, password)
