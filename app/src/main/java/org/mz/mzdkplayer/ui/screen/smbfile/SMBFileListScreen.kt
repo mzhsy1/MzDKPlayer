@@ -95,6 +95,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController,connection
     val connectionStatus by viewModel.connectionStatus.collectAsState()
     var focusedFileName by remember { mutableStateOf<String?>(null) }
     var focusedIsDir by remember { mutableStateOf(true) }
+    var focusedIsVideo by remember { mutableStateOf(false) }
     var focusedMediaUri by remember { mutableStateOf("") }
     var exoPlayer: ExoPlayer? by remember { mutableStateOf(null) }
     val movieViewModel: MovieViewModel =viewModelWithFactory {
@@ -181,8 +182,8 @@ fun SMBFileListScreen(path: String?, navController: NavHostController,connection
     }
 
     // 处理焦点变化和媒体播放
-    LaunchedEffect(focusedFileName, focusedIsDir) {
-        if (focusedFileName != null && !focusedIsDir) {
+    LaunchedEffect(focusedFileName, focusedIsDir,focusedIsVideo) {
+        if (focusedFileName != null && !focusedIsDir&&focusedIsVideo) {
             // 非目录文件，触发电影搜索
             movieViewModel.searchFocusedMovie(focusedFileName!!, false)
         } else {
@@ -412,6 +413,11 @@ fun SMBFileListScreen(path: String?, navController: NavHostController,connection
                                                     if (focusState.isFocused) {
                                                         focusedFileName = file.name
                                                         focusedIsDir = file.isDirectory
+                                                        focusedIsVideo =  Tools.containsVideoFormat(
+                                                            Tools.extractFileExtension(
+                                                                file.name
+                                                            )
+                                                        )
                                                         focusedMediaUri =
                                                             "smb://${file.username}:${file.password}@${file.server}/${file.share}${file.fullPath}"
                                                         Log.d(
@@ -539,18 +545,12 @@ fun SMBFileListScreen(path: String?, navController: NavHostController,connection
                                         }
                                     }
                                     is Resource.Error -> {
-                                        Box(
+                                        VideoBigIcon(
+                                            focusedIsDir,
+                                            focusedFileName,
                                             modifier = Modifier
                                                 .fillMaxSize()
-                                                .background(Color.DarkGray.copy(alpha = 0.3f)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.error24),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(32.dp)
-                                            )
-                                        }
+                                        )
                                     }
                                 }
                             }
