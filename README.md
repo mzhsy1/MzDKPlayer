@@ -56,7 +56,7 @@
   - ASS/SSA字幕格式支持
   - SRT等常见字幕格式
 
-# 智能电影信息识别 （新增 ✨）
+### 智能电影信息识别 （新增 ✨）
 
 聚焦视频文件时，自动解析片名与年份，调用 TMDB 获取海报与信息，并在侧边栏预览。
 
@@ -145,9 +145,9 @@
 ## 应用演示
 
 ### 主界面与文件列表
-![主界面截图](screenshots/Screenshot_20250925_183027.png))  
-![主界面截图](screenshots/Screenshot_20250918_142046.png)
-![主界面截图](screenshots/Screenshot_20251104_183926.png)
+![主界面截图](screenshots/Screenshot_20251116_164521.png)
+![主界面截图](screenshots/Screenshot_20251116_163213.png)
+![主界面截图](screenshots/Screenshot_20251116_163123.png)
 ### 播放界面与弹幕效果
 ![视频播放界面截图](screenshots/Screenshot_20251104_190350.png)  
 ![视频播放界面截图](screenshots/Screenshot_20251104_190409.png)
