@@ -15,8 +15,8 @@ class TmdbRepository(private val apiService: TmdbApiService) {
         apiService.getTopRatedMovies(page = page)
     }
 
-    suspend fun searchMovies(query: String, page: Int = 1) = safeApiCall {
-        apiService.searchMovies(query = query, page = page)
+    suspend fun searchMovies(query: String, page: Int = 1,year: String) = safeApiCall {
+        apiService.searchMovies(query = query, page = page, year = year)
     }
 
     // 👇 提取通用安全调用逻辑

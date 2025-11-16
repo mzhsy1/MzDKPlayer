@@ -1,7 +1,7 @@
 [versions]
 accompanistPermissions = "0.37.3"
 
-agp = "8.13.0"
+agp = "8.13.1"
 akdanmaku = "1.0.3"
 
 assMedia = "0.3.0-rc05"

@@ -4,27 +4,18 @@ import NoSearchResult
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.OptIn
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -36,16 +27,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.ContentScale.Companion
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,7 +44,6 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
-import coil3.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -65,13 +51,10 @@ import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.model.AudioItem
 import org.mz.mzdkplayer.data.model.FileConnectionStatus
-import org.mz.mzdkplayer.data.repository.Resource
-import org.mz.mzdkplayer.di.RepositoryProvider
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
 import org.mz.mzdkplayer.tool.builderPlayer
 import org.mz.mzdkplayer.tool.setupPlayer
-import org.mz.mzdkplayer.tool.viewModelWithFactory
 
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 
@@ -82,7 +65,6 @@ import org.mz.mzdkplayer.ui.screen.vm.SMBConViewModel
 import org.mz.mzdkplayer.ui.theme.myTTFColor
 import org.mz.mzdkplayer.ui.theme.MyFileListItemColor
 import org.mz.mzdkplayer.ui.screen.common.TvTextField
-import org.mz.mzdkplayer.ui.screen.vm.MovieViewModel
 import java.net.URLDecoder
 import java.net.URLEncoder
 
@@ -97,12 +79,6 @@ fun SMBFileListScreen(path: String?, navController: NavHostController,connection
     var focusedIsDir by remember { mutableStateOf(true) }
     var focusedMediaUri by remember { mutableStateOf("") }
     var exoPlayer: ExoPlayer? by remember { mutableStateOf(null) }
-    val movieViewModel: MovieViewModel =viewModelWithFactory {
-        RepositoryProvider.createMovieViewModel()
-    }// 新增：获取MovieViewModel
-    // 新增：电影信息状态
-    val focusedMovie by movieViewModel.focusedMovie.collectAsState()
-
     var seaText by remember { mutableStateOf("") }
     //  新增：过滤后的文件列表
     val filteredFiles by remember(files, seaText) {
@@ -182,12 +158,39 @@ fun SMBFileListScreen(path: String?, navController: NavHostController,connection
 
     // 处理焦点变化和媒体播放
     LaunchedEffect(focusedFileName, focusedIsDir) {
-        if (focusedFileName != null && !focusedIsDir) {
-            // 非目录文件，触发电影搜索
-            movieViewModel.searchFocusedMovie(focusedFileName!!, false)
-        } else {
-            // 目录或无焦点，清空电影信息
-            movieViewModel.clearFocusedMovie()
+        // 释放之前的播放器
+        exoPlayer?.release()
+
+        if (!focusedIsDir && focusedFileName != null) {
+            val extension = Tools.extractFileExtension(focusedFileName)
+            if (Tools.containsVideoFormat(extension)) {
+                Log.d("SMBFileListScreen", "准备播放视频: $focusedFileName")
+
+                try {
+                    exoPlayer = withContext(Dispatchers.Main) {
+                        builderPlayer(mediaUri = focusedMediaUri, context, dataSourceType = "SMB")
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        setupPlayer(
+                            exoPlayer!!,
+                            focusedMediaUri,
+                            "SMB",
+                            context,
+                            { mediaInfoMap ->
+                                Log.d("SMBFileListScreen", "媒体信息: $mediaInfoMap")
+                            },
+                            onError = { errorMessage ->
+                                Log.e("SMBFileListScreen", "播放错误: $errorMessage")
+                                //Toast.makeText(context, "播放错误: $errorMessage", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                } catch (e: Exception) {
+                    Log.e("SMBFileListScreen", "播放器初始化失败: ${e.message}", e)
+                    // Toast.makeText(context, "播放器初始化失败", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
@@ -463,158 +466,38 @@ fun SMBFileListScreen(path: String?, navController: NavHostController,connection
                             }
 
                         }
+
                         Column(
                             modifier = Modifier
                                 .fillMaxHeight()
                                 .weight(0.3f),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            // 搜索框放在最上面
                             TvTextField(
                                 value = seaText,
                                 onValueChange = { seaText = it },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 8.dp),
+                                modifier = Modifier.fillMaxWidth(),
                                 colors = myTTFColor(),
                                 placeholder = "请输入文件名",
                                 textStyle = TextStyle(color = Color.White),
                             )
-
-                            // 电影海报区域 - 进一步缩小尺寸
-                            Box(
+                            VideoBigIcon(
+                                focusedIsDir,
+                                focusedFileName,
                                 modifier = Modifier
-                                    .widthIn(180.dp,220.dp) // 固定宽度为160dp，在960dp总宽度下看起来合适
-                                    .aspectRatio(800f / 1267f).then(
-                                        when (val movieResult = focusedMovie) {
-                                            is Resource.Success -> {
-                                                if (movieResult.data?.posterPath != null) {
-                                                    Modifier.border(
-                                                        width = 1.dp,
-                                                        color = Color.Gray.copy(alpha = 0.5f),
-                                                        shape = RoundedCornerShape(20.dp)
-                                                    )
-                                                } else {
-                                                    Modifier
-                                                }
-                                            }
-                                            else -> Modifier
-                                        })// 保持9:16的电影海报比例
-                            ) {
-                                when (val movieResult = focusedMovie) {
-                                    is Resource.Success -> {
-                                        val movie = movieResult.data
-                                        if (movie != null && movie.posterPath != null) {
-                                            // 显示电影海报 - 边框现在加在Box上
-                                            AsyncImage(
-                                                model = "https://image.tmdb.org/t/p/w500${movie.posterPath}",
-                                                contentDescription = movie.title,
-                                                contentScale = ContentScale.FillBounds,
-                                                modifier = Modifier
-                                                    .fillMaxSize().clip(RoundedCornerShape(20.dp)) // 增大圆角
-                                            )
-                                        } else {
-                                            // 没有电影海报，显示默认视频图标
-                                            VideoBigIcon(
-                                                focusedIsDir,
-                                                focusedFileName,
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                            )
-                                        }
-                                    }
-                                    is Resource.Loading -> {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(Color.DarkGray.copy(alpha = 0.3f)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                "正在加载...",
-                                                color = Color.White,
-                                                fontSize = 12.sp
-                                            )
-                                        }
-                                    }
-                                    is Resource.Error -> {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(Color.DarkGray.copy(alpha = 0.3f)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.error24),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(32.dp)
-                                            )
-                                        }
-                                    }
-                                }
+                                    .height(200.dp)
+                                    .fillMaxWidth()
+                            )
+                            focusedFileName?.let { fileName ->
+                                Text(
+                                    fileName,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                    modifier = Modifier.padding(start = 8.dp)
+                                )
                             }
-
-                            // 电影信息区域 - 居中显示
-                            when (val movieResult = focusedMovie) {
-                                is Resource.Success -> {
-                                    val movie = movieResult.data
-                                    if (movie != null) {
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 16.dp),
-                                            horizontalAlignment = Alignment.CenterHorizontally
-                                        ) {
-                                            Text(
-                                                movie.title,
-                                                color = Color.White,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 16.sp, // 稍微减小字体
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis,
-                                                textAlign = TextAlign.Center
-                                            )
-                                            Text(
-                                                text = movie.releaseDate?.substring(0, 4) ?: "N/A",
-                                                color = Color.Gray,
-                                                fontSize = 12.sp, // 稍微减小字体
-                                                textAlign = TextAlign.Center
-                                            )
-                                        }
-                                    } else {
-                                        focusedFileName?.let { fileName ->
-                                            Text(
-                                                fileName,
-                                                color = Color.White,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 16.sp,
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis,
-                                                textAlign = TextAlign.Center,
-                                                modifier = Modifier.padding(horizontal = 16.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                                else -> {
-                                    focusedFileName?.let { fileName ->
-                                        Text(
-                                            fileName,
-                                            color = Color.White,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 16.sp,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis,
-                                            textAlign = TextAlign.Center,
-                                            modifier = Modifier.padding(horizontal = 16.dp)
-                                        )
-                                    }
-                                }
-                            }
-
-                            // 添加一个弹性空间，让内容在垂直方向上分布更均匀
-                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
                 }

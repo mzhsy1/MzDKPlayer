@@ -25,7 +25,8 @@ interface TmdbApiService {
     @GET("search/movie")
     suspend fun searchMovies(
         @Query("query") query: String,
-        @Query("language") language: String = "en-US",
+        @Query("language") language: String = "zh-CN",
+        @Query(value = "year") year: String = "",
         @Query("page") page: Int = 1
     ): Response<MovieListResponse>
 }

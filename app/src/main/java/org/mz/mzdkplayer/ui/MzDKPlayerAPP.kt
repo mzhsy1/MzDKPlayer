@@ -76,6 +76,7 @@ import org.mz.mzdkplayer.ui.theme.MySideListItemColor
 
 import org.mz.mzdkplayer.ui.videoplayer.VideoPlayerScreen
 import java.net.URLDecoder
+import java.net.URLEncoder
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -103,17 +104,17 @@ fun MzDKPlayerAPP(externalVideoUri: Uri?) {
         if (externalVideoUri != null) {
             val uriString = externalVideoUri.toString()
             // 简单校验是否为有效视频链接（可选）
-            if (uriString.startsWith("http") &&
-                (uriString.endsWith(".mp4") ||
-                        uriString.endsWith(".mkv") ||
-                        uriString.endsWith(".avi") ||
-                        uriString.contains("video"))) {
+//            if (uriString.startsWith("http") &&
+//                (uriString.endsWith(".mp4") ||
+//                        uriString.endsWith(".mkv") ||
+//                        uriString.endsWith(".avi") ||
+//                        uriString.contains("video"))) {
 
-                // 直接导航到播放器页面
-                mainNavController.navigate(
-                    "VideoPlayer/${Uri.encode(uriString)}/HTTP/外部视频/122"
-                )
-            }
+            // 直接导航到播放器页面
+            mainNavController.navigate(
+                "VideoPlayer/${URLEncoder.encode(uriString, "UTF-8")}/HTTP/外部视频/外部视频"
+            )
+            //}
         }
     }
 // 用于双击退出
@@ -177,25 +178,33 @@ fun MzDKPlayerAPP(externalVideoUri: Uri?) {
                                 onClick = {
                                     selectedIndex = index
                                     when (selectedIndex) {
-                                        0 -> homeNavController.navigate("HomePage" , navOptions = navOptions {
-                                            launchSingleTop = true
-                                            popUpTo("HomePage") {
-                                                inclusive = true
+                                        0 -> homeNavController.navigate(
+                                            "HomePage",
+                                            navOptions = navOptions {
+                                                launchSingleTop = true
+                                                popUpTo("HomePage") {
+                                                    inclusive = true
+                                                }
                                             }
-                                        }
                                         )
-                                        1 -> homeNavController.navigate("HistoryPage",navOptions = navOptions {
-                                            launchSingleTop = true
-                                            popUpTo("HistoryPage") {
-                                                inclusive = true
-                                            }
-                                        } )
-                                        2 -> homeNavController.navigate("SettingsPage",navOptions = navOptions {
-                                            launchSingleTop = true
-                                            popUpTo("SettingsPage") {
-                                                inclusive = true
-                                            }
-                                        })
+
+                                        1 -> homeNavController.navigate(
+                                            "HistoryPage",
+                                            navOptions = navOptions {
+                                                launchSingleTop = true
+                                                popUpTo("HistoryPage") {
+                                                    inclusive = true
+                                                }
+                                            })
+
+                                        2 -> homeNavController.navigate(
+                                            "SettingsPage",
+                                            navOptions = navOptions {
+                                                launchSingleTop = true
+                                                popUpTo("SettingsPage") {
+                                                    inclusive = true
+                                                }
+                                            })
                                     }
                                 },
                                 leadingContent = {
@@ -297,19 +306,19 @@ fun MzDKPlayerAPP(externalVideoUri: Uri?) {
         }
         composable("SMBFileListScreen/{path}/{connectionName}") { backStackEntry ->
             val encodedPath = backStackEntry.arguments?.getString("path")
-            val connectionName = backStackEntry.arguments?.getString("connectionName")?:"未知"
+            val connectionName = backStackEntry.arguments?.getString("connectionName") ?: "未知"
             if (encodedPath != null) {
 
                 val path = URLDecoder.decode(encodedPath, "UTF-8")
                 Log.d("encodedPath", path)
-                SMBFileListScreen(path, mainNavController,connectionName)
+                SMBFileListScreen(path, mainNavController, connectionName)
             }
         }
         composable("WebDavFileListScreen/{path}/{username}/{pw}/{connectionName}") { backStackEntry ->
             val encodedPath = backStackEntry.arguments?.getString("path")
             val username = backStackEntry.arguments?.getString("username")
             val pw = backStackEntry.arguments?.getString("pw")
-            val connectionName = backStackEntry.arguments?.getString("connectionName")?:"未知"
+            val connectionName = backStackEntry.arguments?.getString("connectionName") ?: "未知"
             if (encodedPath != null && username != null && pw != null) {
 
                 val path = URLDecoder.decode(encodedPath, "UTF-8")
@@ -326,7 +335,7 @@ fun MzDKPlayerAPP(externalVideoUri: Uri?) {
             val encodedUsername = backStackEntry.arguments?.getString("encodedUsername")
             val encodedPassword = backStackEntry.arguments?.getString("encodedPassword")
             val encodedShareName = backStackEntry.arguments?.getString("encodedShareName")
-            val connectionName = backStackEntry.arguments?.getString("connectionName")?:"未知"
+            val connectionName = backStackEntry.arguments?.getString("connectionName") ?: "未知"
             //URLEncoder.encode(conn.shareName, "UTF-8")
             if (encodedIp != null) {
 
@@ -359,7 +368,7 @@ fun MzDKPlayerAPP(externalVideoUri: Uri?) {
             val encodedIp = backStackEntry.arguments?.getString("encodedIp")
             val encodedShareName = backStackEntry.arguments?.getString("encodedShareName")
             val newSubPath = backStackEntry.arguments?.getString("newSubPath")
-            val connectionName = backStackEntry.arguments?.getString("connectionName")?:"未知"
+            val connectionName = backStackEntry.arguments?.getString("connectionName") ?: "未知"
             //URLEncoder.encode(conn.shareName, "UTF-8")
             if (encodedIp != null) {
 
@@ -385,12 +394,16 @@ fun MzDKPlayerAPP(externalVideoUri: Uri?) {
             if (newSubPath != null) {
                 //val path = URLDecoder.decode(URLDecoder.decode(encodedIp, "UTF-8"), "UTF-8")
                 Log.d("encodedPath", "${URLDecoder.decode(newSubPath, "UTF-8")}")
-                HTTPLinkFileListScreen(URLDecoder.decode(newSubPath, "UTF-8"), mainNavController,connectionName)
+                HTTPLinkFileListScreen(
+                    URLDecoder.decode(newSubPath, "UTF-8"),
+                    mainNavController,
+                    connectionName
+                )
             }
         }
 
         composable("SMBListScreen") {
-            SMBConListScreen(mainNavController,smbListViewModel)
+            SMBConListScreen(mainNavController, smbListViewModel)
         }
         composable("SMBConScreen") {
             SMBConScreen(smbListViewModel)

@@ -101,7 +101,7 @@ class SmbDataSource(
             val startPosition = dataSpec.position
 
             // 范围验证 - 类似 HttpDataSource 的 416 处理
-            if (startPosition < 0 || startPosition > fileLength) {
+            if (startPosition !in 0..fileLength) {
                 closeConnectionQuietly()
                 throw DataSourceException(PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE)
             }
