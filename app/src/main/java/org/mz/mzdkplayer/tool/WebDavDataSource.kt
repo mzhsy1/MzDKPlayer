@@ -97,6 +97,7 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
             // 范围验证 - 类似 HttpDataSource 的 416 处理
             if (startPosition !in 0..fileLength) {
                 closeConnectionQuietly()
+                opened.set(false) // <-- 修复 1: 范围越界时重置状态
                 throw DataSourceException(PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE)
             }
 
@@ -110,6 +111,7 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
             // 验证计算后的长度
             if (bytesToRead < 0 || startPosition + bytesToRead > fileLength) {
                 closeConnectionQuietly()
+                opened.set(false) // <-- 修复 2: 无效长度时重置状态
                 throw IOException("无效的数据范围: position=$startPosition, length=$bytesToRead, fileSize=$fileLength")
             }
 
@@ -130,6 +132,7 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
 
         } catch (e: Exception) {
             closeConnectionQuietly()
+            opened.set(false) // <-- 修复 3: 捕获到一般异常时重置状态
             when (e) {
                 is IOException -> throw e
                 else -> throw IOException("打开 WebDAV 文件时出错: ${e.message}", e)
@@ -419,12 +422,7 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
 
         if (opened.compareAndSet(true, false)) {
             try {
-                // 先关闭输入流
-                inputStream?.close()
-            } catch (e: IOException) {
-                throw IOException("关闭 WebDAV 输入流时出错", e)
-            } finally {
-                // 清理其他资源
+                // 统一调用静默关闭连接，负责关闭流并置空
                 closeConnectionQuietly()
 
                 // 状态重置
@@ -435,12 +433,15 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
 
                 // 清空引用
                 dataSpec = null
-                inputStream = null
+                // inputStream 已在 closeConnectionQuietly 中处理
                 sardine = null
                 readBuffer = null
 
                 // 打印统计信息
                 logStatistics()
+            } catch (e: Exception) {
+                // 捕获所有异常，确保 close() 能够完成
+                throw IOException("关闭 WebDAV 数据源时出错", e)
             }
         }
     }
@@ -454,7 +455,7 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
         } catch (ignored: Exception) {
             Log.w(TAG, "关闭 InputStream 时出错", ignored)
         } finally {
-            inputStream = null
+            inputStream = null // 确保置空
         }
         // Sardine 使用连接池，不需要显式关闭
     }

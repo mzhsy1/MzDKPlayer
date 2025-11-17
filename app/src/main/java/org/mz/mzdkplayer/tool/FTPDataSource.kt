@@ -57,7 +57,7 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
 
         // 创建 Duration 对象
         private val DATA_TIMEOUT_DURATION: Duration = Duration.ofMillis(DATA_TIMEOUT_MS.toLong())
-       // private val CONNECTION_TIMEOUT_DURATION: Duration = Duration.ofMillis(CONNECTION_TIMEOUT_MS.toLong())
+        // private val CONNECTION_TIMEOUT_DURATION: Duration = Duration.ofMillis(CONNECTION_TIMEOUT_MS.toLong())
     }
 
     /**
@@ -93,6 +93,8 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
             // 范围验证 - 类似 HttpDataSource 的 416 处理
             if (startPosition !in 0..fileLength) {
                 closeConnectionQuietly()
+                // **注意：此处在抛出异常前也应重置状态**
+                opened.set(false)
                 throw DataSourceException(PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE)
             }
 
@@ -106,6 +108,8 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
             // 验证计算后的长度
             if (bytesToRead < 0 || startPosition + bytesToRead > fileLength) {
                 closeConnectionQuietly()
+                // **注意：此处在抛出异常前也应重置状态**
+                opened.set(false)
                 throw IOException("无效的数据范围: position=$startPosition, length=$bytesToRead, fileSize=$fileLength")
             }
 
@@ -130,6 +134,13 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
 
         } catch (e: Exception) {
             closeConnectionQuietly()
+
+            // --- 关键修复 ---
+            // 重置状态，防止 Media3 的 Loader 在捕获异常后
+            // 再次调用 close() 时导致双重关闭
+            opened.set(false)
+            // --- 修复结束 ---
+
             when (e) {
                 is IOException -> throw e
                 else -> throw IOException("打开 FTP 文件时出错: ${e.message}", e)
@@ -200,11 +211,21 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
         val path = dataSpec?.uri?.path ?: throw IOException("无效的 URI: 缺少路径")
 
         return try {
-            val files = ftpClient?.listFiles(path)
-            if (files != null && files.isNotEmpty()) {
-                files[0].size
+            // 修复：使用 mlistFile 获取单个文件的精确信息（如果服务器支持）
+            // 否则 listFiles 可能会有性能问题或返回不准确
+            val ftpFile: FTPFile? = ftpClient?.mlistFile(path)
+
+            if (ftpFile != null && ftpFile.size >= 0) {
+                ftpFile.size
             } else {
-                throw IOException("无法获取远程文件大小: $path")
+                // 回退到 listFiles
+                Log.d(TAG, "mlistFile 失败，回退到 listFiles")
+                val files = ftpClient?.listFiles(path)
+                if (files != null && files.isNotEmpty()) {
+                    files[0].size
+                } else {
+                    throw IOException("无法获取远程文件大小: $path")
+                }
             }
         } catch (e: Exception) {
             throw IOException("获取文件大小时出错: ${e.message}", e)
@@ -374,10 +395,13 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
 
                 // 清空引用
                 dataSpec = null
-                fileInputStream = null
-                ftpClient = null
+                // fileInputStream 和 ftpClient 已在 closeConnectionQuietly 中设为 null
 
             } catch (e: Exception) {
+                // 注意：这里捕获了 Exception，但 close() 声明了 Throws IOException。
+                // 最好是抛出 IOException 或在内部处理掉。
+                // 鉴于 closeConnectionQuietly 已经很健壮，这里抛出异常的概率很低。
+                // 保持原样，但改为抛出 IOException。
                 throw IOException("关闭 FTP 数据源时出错", e)
             }
         }
@@ -456,7 +480,7 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
                 Log.d(TAG, "FTP 连接状态检查时发生异常", e)
             }
         }
-        ftpClient = null
+        ftpClient = null // 确保 ftpClient 被设为 null
 
         // 记录非关键错误（降低日志级别）
         if (inputStreamException != null) {

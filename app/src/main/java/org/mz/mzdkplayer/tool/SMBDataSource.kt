@@ -136,6 +136,7 @@ class SmbDataSource(
 
         } catch (e: Exception) {
             closeConnectionQuietly()
+            opened.set(false) // <-- 关键修复：重置状态
             when (e) {
                 is IOException -> throw e
                 else -> throw IOException("打开 SMB 文件时出错: ${e.message}", e)
@@ -381,6 +382,7 @@ class SmbDataSource(
                 // 清理其他资源
                 closeConnectionQuietly()
 
+
                 // 状态重置
                 if (transferStarted) {
                     transferStarted = false
@@ -427,6 +429,10 @@ class SmbDataSource(
         return connection?.isConnected == true && isSessionActive()
     }
     fun isSessionActive(): Boolean {
+        // 必须先检查 share 是否为 null
+        if (share == null) {
+            return false
+        }
         return try {
             share?.list("")  // 尝试列出根目录（不抛出异常说明连接正常）
             true

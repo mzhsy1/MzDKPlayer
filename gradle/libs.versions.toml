@@ -16,7 +16,7 @@ coreKtx = "1.17.0"
 appcompat = "1.7.1"
 composeBom = "2025.10.01"
 logbackAndroid = "3.0.0"
-
+desugarJdkLibs = "2.0.4" # 检查是否有更新版本
 nfsClient = "1.1.0"
 coilComposeVersion = "3.3.0"
 coilNetworkOkhttp = "3.3.0"
@@ -73,7 +73,7 @@ nfs-client = { module = "com.emc.ecs:nfs-client", version.ref = "nfsClient" }
 
 smbj = { module = "com.hierynomus:smbj", version.ref = "smbj" }
 thegrizzlylabs-sardine-android = { module = "com.github.thegrizzlylabs:sardine-android", version.ref = "sardineAndroidVersion" }
-
+desugarJdkLibs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugarJdkLibs" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

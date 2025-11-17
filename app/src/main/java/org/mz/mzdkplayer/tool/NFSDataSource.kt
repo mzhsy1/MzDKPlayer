@@ -84,8 +84,9 @@ class NFSDataSource : BaseDataSource(/* isNetwork= */ true) {
             val startPosition = dataSpec.position
 
             // 范围验证 - 类似 HttpDataSource 的 416 处理
-            if (startPosition < 0 || startPosition > fileLength) {
+            if (startPosition !in 0..fileLength) {
                 closeConnectionQuietly()
+                opened.set(false) // <-- 修复 1: 范围越界时重置状态
                 throw DataSourceException(PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE)
             }
 
@@ -99,6 +100,7 @@ class NFSDataSource : BaseDataSource(/* isNetwork= */ true) {
             // 验证计算后的长度
             if (bytesToRead < 0 || startPosition + bytesToRead > fileLength) {
                 closeConnectionQuietly()
+                opened.set(false) // <-- 修复 2: 无效长度时重置状态
                 throw IOException("无效的数据范围: position=$startPosition, length=$bytesToRead, fileSize=$fileLength")
             }
 
@@ -119,6 +121,7 @@ class NFSDataSource : BaseDataSource(/* isNetwork= */ true) {
 
         } catch (e: Exception) {
             closeConnectionQuietly()
+            opened.set(false) // <-- 修复 3: 捕获到一般异常时重置状态
             when (e) {
                 is IOException -> throw e
                 else -> throw IOException("打开 NFS 文件时出错: ${e.message}", e)
