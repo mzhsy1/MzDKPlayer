@@ -187,13 +187,15 @@ fun MovieCard(
                     .padding(8.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = movie.title,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    color = Color.White
-                )
+                movie.title?.let {
+                    Text(
+                        text = it,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        color = Color.White
+                    )
+                }
 
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,

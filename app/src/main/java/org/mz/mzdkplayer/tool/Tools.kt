@@ -472,6 +472,29 @@ object Tools {
             "未知文件名" // 异常时的兜底名称
         }
     }
+    fun String?.toSafeFloat(default: Float = 0f): Float {
+        return if (this.isNullOrBlank()) default else try {
+            this.toFloat()
+        } catch (e: NumberFormatException) {
+            default
+        }
+    }
+
+    fun String?.toSafeInt(default: Int = 0): Int {
+        return if (this.isNullOrBlank()) default else try {
+            this.toInt()
+        } catch (e: NumberFormatException) {
+            default
+        }
+    }
+
+    fun String?.toSafeLong(default: Long = 0L): Long {
+        return if (this.isNullOrBlank()) default else try {
+            this.toLong()
+        } catch (e: NumberFormatException) {
+            default
+        }
+    }
 
 
 
@@ -488,3 +511,4 @@ fun isValidHostname(hostname: String): Boolean {
         else -> false
     }
 }
+

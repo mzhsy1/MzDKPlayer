@@ -4,6 +4,7 @@ package org.mz.mzdkplayer.data.api
 
 
 import org.mz.mzdkplayer.data.model.MovieListResponse
+import org.mz.mzdkplayer.data.model.TVListResponse
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Query
@@ -29,4 +30,12 @@ interface TmdbApiService {
         @Query(value = "year") year: String = "",
         @Query("page") page: Int = 1
     ): Response<MovieListResponse>
+
+    @GET("search/tv")
+    suspend fun searchTV(
+        @Query("query") query: String,
+        @Query("language") language: String = "zh-CN",
+        @Query(value = "year") year: String = "",
+        @Query("page") page: Int = 1
+    ): Response<TVListResponse>
 }

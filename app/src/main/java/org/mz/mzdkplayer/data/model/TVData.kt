@@ -1,23 +1,20 @@
 package org.mz.mzdkplayer.data.model
 
-import androidx.annotation.Keep
 import com.google.gson.annotations.SerializedName
 
-@Keep
-data class Movie(
+data class TVData(
     @SerializedName("id") val id: Int,
-    @SerializedName("title") val title: String? = "",
-    @SerializedName("name")val name: String? = "",
+    @SerializedName("name") val name: String? = "",
     @SerializedName("overview") val overview: String,
     @SerializedName("poster_path") val posterPath: String?,
+    @SerializedName("original_name") val originalName: String?,
     @SerializedName("backdrop_path") val backdropPath: String?,
     @SerializedName("vote_average") val voteAverage: Double,
-    @SerializedName("release_date") val releaseDate: String?
+    @SerializedName("first_air_date") val firstAirDate: String?
 )
 
-@Keep
-data class MovieListResponse(
-    @SerializedName("results") val results: List<Movie>,
+data class TVListResponse(
+    @SerializedName("results") val results: List<TVData>,
     @SerializedName("page") val page: Int,
     @SerializedName("total_pages") val totalPages: Int,
     @SerializedName("total_results") val totalResults: Int

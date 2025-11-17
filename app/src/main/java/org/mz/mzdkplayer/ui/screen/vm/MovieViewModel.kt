@@ -8,9 +8,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.data.model.Movie
+import org.mz.mzdkplayer.data.model.TVData
 import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.data.repository.TmdbRepository
-import java.time.Year
 
 class MovieViewModel(private val repository: TmdbRepository) : ViewModel() {
 
@@ -24,8 +24,9 @@ class MovieViewModel(private val repository: TmdbRepository) : ViewModel() {
     val searchResults: StateFlow<Resource<List<Movie>>> = _searchResults
 
     // 新增：当前焦点电影的搜索结果
-    private val _focusedMovie = MutableStateFlow<Resource<Movie?>>(Resource.Success(null))
-    val focusedMovie: StateFlow<Resource<Movie?>> = _focusedMovie
+    // 替换原来的 _focusedMovie
+    private val _focusedMovie = MutableStateFlow<Resource<MediaItem?>>(Resource.Success(null))
+    val focusedMovie: StateFlow<Resource<MediaItem?>> = _focusedMovie
 
     init {
        // loadPopularMovies()
@@ -91,69 +92,61 @@ class MovieViewModel(private val repository: TmdbRepository) : ViewModel() {
             delay(800) // 防抖延迟
 
             // 清理文件名，移除扩展名和常见干扰字符
-            val (title, year) = extractTitleAndYear(movieName) // 重点：这里直接拆出标题和年份
-            if (title.isBlank()) {
+            //val (title, year) = extractTitleAndYear(movieName) // 重点：这里直接拆出标题和年份
+            val mediaInfo = MediaInfoExtractorFormFileName.extract(movieName)
+
+            if (mediaInfo.title.isBlank()) {
                 _focusedMovie.value = Resource.Success(null)
                 return@launch
             }
-            Log.d("MovieViewModel", "Cleaned title: $title, Year: $year")
+            Log.d("MovieViewModel", "Cleaned title: ${mediaInfo.title}, Year: ${mediaInfo.year},S:${mediaInfo.season},E:${mediaInfo.episode}")
 
             Log.d("MovieViewModel", "org movie: $movieName")
-            when (val result = repository.searchMovies(title, year = year)) {
-                is Resource.Success -> {
-                    Log.d("MovieViewModel", "Search results: ${result.data.results}")
-                    // 取第一个结果作为焦点电影
-                    val movie = result.data.results.firstOrNull()
-                    _focusedMovie.value = Resource.Success(movie)
+            // 根据 mediaType 选择搜索方法
+            when (mediaInfo.mediaType) {
+                "movie" -> {
+                    when (val result = repository.searchMovies(mediaInfo.title, year = mediaInfo.year)) {
+                        is Resource.Success -> {
+                            val movie = result.data.results.firstOrNull()
+                            _focusedMovie.value = Resource.Success(movie?.toMediaItem())
+                        }
+                        is Resource.Error -> _focusedMovie.value = Resource.Error(result.message, result.exception)
+                        else -> {}
+                    }
                 }
-                is Resource.Error -> {
-                    _focusedMovie.value = Resource.Error(result.message, result.exception)
+                "tv" -> {
+                    when (val result = repository.searchTV(mediaInfo.title, year = mediaInfo.year)) {
+                        is Resource.Success -> {
+                            val tv = result.data.results.firstOrNull()
+                            _focusedMovie.value = Resource.Success(tv?.toMediaItem())
+                        }
+                        is Resource.Error -> _focusedMovie.value = Resource.Error(result.message, result.exception)
+                        else -> {}
+                    }
                 }
-                Resource.Loading -> {}
+                else -> _focusedMovie.value = Resource.Error("Unsupported media type: ${mediaInfo.mediaType}")
             }
         }
     }
+    // 扩展函数：把 Movie/TvData 转成通用的 MediaItem
+    private fun Movie.toMediaItem() = MediaItem(
+        id = id,
+        title = title ?: "",
+        overview = overview,
+        posterPath = posterPath,
+        releaseDate = releaseDate
+    )
 
-    private fun extractTitleAndYear(movieName: String): Pair<String, String> {
-        // 1. 移除扩展名（仅处理 .mkv，其他扩展名同理）
-        val cleanName = movieName.replace(Regex("\\.mkv$"), "")
-
-        // 2. 处理括号年份（如 "（2018）"）
-        val yearFromParentheses = Regex("（(\\d{4})）").find(cleanName)?.groupValues?.get(1)
-        if (yearFromParentheses != null) {
-            val title = cleanName.replace(Regex("（\\d{4}）"), "").trim()
-            return Pair(title.replace(".", " "), yearFromParentheses)
-        }
-
-        // 3. 分割文件名并扫描年份（从后往前找第一个四位数字）
-        val parts = cleanName.split('.')
-        var year: String? = null
-        for (i in parts.indices.reversed()) {
-            if (parts[i].matches(Regex("\\d{4}"))) {
-                year = parts[i]
-                break
-            }
-        }
-
-        // 4. 提取标题（年份前的所有部分）
-        if (year != null) {
-            val titleParts = parts.slice(0 until parts.indexOf(year))
-            val title = titleParts.joinToString(" ").replace(".", " ")
-
-            // 5. 中文标题特殊处理：取第一个中文单词
-            return if (title.containsChinese()) {
-                Pair(title.split(' ')[0].trim(), year)
-            } else {
-                Pair(title, year)
-            }
-        }
-
-        // 6. 无年份情况：返回原始文件名（无扩展名），年份为空
-        return Pair(cleanName.replace(".", " ").trim(), "")
-    }
+    private fun TVData.toMediaItem() = MediaItem(
+        id = id,
+        title = name ?: "",
+        overview = overview,
+        posterPath = posterPath,
+        releaseDate = firstAirDate // TV 的 releaseDate 实际是 first_air_date
+    )
 
     // 辅助函数：检测字符串是否包含中文字符
-    private fun String.containsChinese(): Boolean {
+     fun String.containsChinese(): Boolean {
         return this.any { it in '\u4e00'..'\u9fff' }
     }
     fun refreshAll() {
@@ -167,3 +160,13 @@ class MovieViewModel(private val repository: TmdbRepository) : ViewModel() {
         _focusedMovie.value = Resource.Success(null)
     }
 }
+
+
+
+data class MediaItem(
+    val id: Int,
+    val title: String?,
+    val overview: String,
+    val posterPath: String?,
+    val releaseDate: String? // 通用字段：电影用 release_date，电视用 first_air_date
+)

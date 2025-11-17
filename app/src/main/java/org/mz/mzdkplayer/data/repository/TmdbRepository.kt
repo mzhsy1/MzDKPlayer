@@ -19,6 +19,10 @@ class TmdbRepository(private val apiService: TmdbApiService) {
         apiService.searchMovies(query = query, page = page, year = year)
     }
 
+    suspend fun searchTV(query: String, page: Int = 1,year: String) = safeApiCall {
+        apiService.searchTV(query = query, page = page, year = year)
+    }
+
     // 👇 提取通用安全调用逻辑
     private suspend fun <T> safeApiCall(apiCall: suspend () -> Response<T>): Resource<T> {
         return try {

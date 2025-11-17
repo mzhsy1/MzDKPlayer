@@ -5,7 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import java.io.InputStream
 import javax.xml.parsers.DocumentBuilderFactory
 
-// 👇 这是你要实现的核心函数 —— 从文件（本地或SMB）读取并解析弹幕XML
+// —— 从文件（本地或SMB）读取并解析弹幕XML
 suspend fun getDanmakuXmlFromFile(
     danmakuFileInputStream: InputStream? // 从SMB或本地打开的XML文件输入流
 ): DanmakuResponse {

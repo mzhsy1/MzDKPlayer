@@ -88,7 +88,11 @@ import java.net.URLEncoder
 
 @OptIn(UnstableApi::class)
 @Composable
-fun SMBFileListScreen(path: String?, navController: NavHostController,connectionName: String="") {
+fun SMBFileListScreen(
+    path: String?,
+    navController: NavHostController,
+    connectionName: String = ""
+) {
     val context = LocalContext.current
     val viewModel: SMBConViewModel = viewModel()
     val files by viewModel.fileList.collectAsState()
@@ -98,7 +102,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController,connection
     var focusedIsVideo by remember { mutableStateOf(false) }
     var focusedMediaUri by remember { mutableStateOf("") }
     var exoPlayer: ExoPlayer? by remember { mutableStateOf(null) }
-    val movieViewModel: MovieViewModel =viewModelWithFactory {
+    val movieViewModel: MovieViewModel = viewModelWithFactory {
         RepositoryProvider.createMovieViewModel()
     }// 新增：获取MovieViewModel
     // 新增：电影信息状态
@@ -118,7 +122,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController,connection
         }
     }
     LaunchedEffect(connectionName) {
-        Log.d("SMBFileListScreenF","connectionNameF:$connectionName")
+        Log.d("SMBFileListScreenF", "connectionNameF:$connectionName")
     }
     // 处理路径变化和连接状态
     LaunchedEffect(path, connectionStatus) {
@@ -182,8 +186,8 @@ fun SMBFileListScreen(path: String?, navController: NavHostController,connection
     }
 
     // 处理焦点变化和媒体播放
-    LaunchedEffect(focusedFileName, focusedIsDir,focusedIsVideo) {
-        if (focusedFileName != null && !focusedIsDir&&focusedIsVideo) {
+    LaunchedEffect(focusedFileName, focusedIsDir, focusedIsVideo) {
+        if (focusedFileName != null && !focusedIsDir && focusedIsVideo) {
             // 非目录文件，触发电影搜索
             movieViewModel.searchFocusedMovie(focusedFileName!!, false)
         } else {
@@ -304,7 +308,10 @@ fun SMBFileListScreen(path: String?, navController: NavHostController,connection
                                                                 return@ListItem
 
                                                             }
-                                                            Log.d("SMBFileListScreen","connectionName:$connectionName")
+                                                            Log.d(
+                                                                "SMBFileListScreen",
+                                                                "connectionName:$connectionName"
+                                                            )
                                                             navController.navigate("VideoPlayer/$encodedUri/SMB/$encodedFileName/${connectionName}")
                                                         }
 
@@ -413,7 +420,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController,connection
                                                     if (focusState.isFocused) {
                                                         focusedFileName = file.name
                                                         focusedIsDir = file.isDirectory
-                                                        focusedIsVideo =  Tools.containsVideoFormat(
+                                                        focusedIsVideo = Tools.containsVideoFormat(
                                                             Tools.extractFileExtension(
                                                                 file.name
                                                             )
@@ -475,7 +482,8 @@ fun SMBFileListScreen(path: String?, navController: NavHostController,connection
                                 .weight(0.3f),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
+                        )
+                        {
                             // 搜索框放在最上面
                             TvTextField(
                                 value = seaText,
@@ -487,73 +495,76 @@ fun SMBFileListScreen(path: String?, navController: NavHostController,connection
                                 placeholder = "请输入文件名",
                                 textStyle = TextStyle(color = Color.White),
                             )
-
+                            // 添加弹性空间，让海报区域在垂直方向上居中
+                            Spacer(modifier = Modifier.weight(1f))
                             // 电影海报区域 - 进一步缩小尺寸
-                            Box(
-                                modifier = Modifier
-                                    .widthIn(180.dp,220.dp) // 固定宽度为160dp，在960dp总宽度下看起来合适
-                                    .aspectRatio(800f / 1267f).then(
-                                        when (val movieResult = focusedMovie) {
-                                            is Resource.Success -> {
-                                                if (movieResult.data?.posterPath != null) {
-                                                    Modifier.border(
-                                                        width = 1.dp,
-                                                        color = Color.Gray.copy(alpha = 0.5f),
-                                                        shape = RoundedCornerShape(20.dp)
-                                                    )
-                                                } else {
-                                                    Modifier
-                                                }
-                                            }
-                                            else -> Modifier
-                                        })// 保持9:16的电影海报比例
-                            ) {
-                                when (val movieResult = focusedMovie) {
-                                    is Resource.Success -> {
-                                        val movie = movieResult.data
-                                        if (movie != null && movie.posterPath != null) {
-                                            // 显示电影海报 - 边框现在加在Box上
+
+                            when (val movieResult = focusedMovie) {
+                                is Resource.Success -> {
+                                    val movie = movieResult.data
+                                    if (movie != null && movie.posterPath != null) {
+                                        // 显示电影海报 - 边框现在加在Box上
+                                        Box(
+                                            Modifier
+                                                .widthIn(180.dp, 200.dp)
+                                                .border(
+                                                    width = 2.dp,
+                                                    color = Color.Gray.copy(alpha = 0.5f),
+                                                    shape = RoundedCornerShape(20.dp)
+                                                )
+                                        ) {
                                             AsyncImage(
                                                 model = "https://image.tmdb.org/t/p/w500${movie.posterPath}",
                                                 contentDescription = movie.title,
-                                                contentScale = ContentScale.FillBounds,
+                                                contentScale = ContentScale.Fit,
                                                 modifier = Modifier
-                                                    .fillMaxSize().clip(RoundedCornerShape(20.dp)) // 增大圆角
-                                            )
-                                        } else {
-                                            // 没有电影海报，显示默认视频图标
-                                            VideoBigIcon(
-                                                focusedIsDir,
-                                                focusedFileName,
-                                                modifier = Modifier
-                                                    .fillMaxSize()
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(20.dp)) // 增大圆角
                                             )
                                         }
-                                    }
-                                    is Resource.Loading -> {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(Color.DarkGray.copy(alpha = 0.3f)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                "正在加载...",
-                                                color = Color.White,
-                                                fontSize = 12.sp
-                                            )
-                                        }
-                                    }
-                                    is Resource.Error -> {
+
+                                    } else {
+                                        // 没有电影海报，显示默认视频图标
                                         VideoBigIcon(
                                             focusedIsDir,
                                             focusedFileName,
                                             modifier = Modifier
-                                                .fillMaxSize()
+                                                .fillMaxWidth()
+                                                .height(200.dp)
+
                                         )
                                     }
                                 }
+
+                                is Resource.Loading -> {
+                                    Box(
+                                        modifier = Modifier
+                                            .widthIn( 200.dp)
+                                            .fillMaxHeight(0.6f)
+                                            .background(Color.DarkGray.copy(alpha = 0.3f))
+                                            .clip(RoundedCornerShape(20.dp)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            "正在加载...",
+                                            color = Color.White,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+
+                                is Resource.Error -> {
+                                    VideoBigIcon(
+                                        focusedIsDir,
+                                        focusedFileName,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(200.dp)
+
+                                    )
+                                }
                             }
+
 
                             // 电影信息区域 - 居中显示
                             when (val movieResult = focusedMovie) {
@@ -566,19 +577,22 @@ fun SMBFileListScreen(path: String?, navController: NavHostController,connection
                                                 .padding(horizontal = 16.dp),
                                             horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
-                                            Text(
-                                                movie.title,
-                                                color = Color.White,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 16.sp, // 稍微减小字体
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis,
-                                                textAlign = TextAlign.Center
-                                            )
+                                            movie.title?.let {
+                                                Text(
+                                                    it,
+                                                    color = Color.White,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 18.sp, // 稍微减小字体
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    textAlign = TextAlign.Center
+                                                )
+                                            }
+
                                             Text(
                                                 text = movie.releaseDate?.substring(0, 4) ?: "N/A",
                                                 color = Color.Gray,
-                                                fontSize = 12.sp, // 稍微减小字体
+                                                fontSize = 14.sp, // 稍微减小字体
                                                 textAlign = TextAlign.Center
                                             )
                                         }
@@ -588,7 +602,7 @@ fun SMBFileListScreen(path: String?, navController: NavHostController,connection
                                                 fileName,
                                                 color = Color.White,
                                                 fontWeight = FontWeight.Bold,
-                                                fontSize = 16.sp,
+                                                fontSize = 18.sp,
                                                 maxLines = 2,
                                                 overflow = TextOverflow.Ellipsis,
                                                 textAlign = TextAlign.Center,
@@ -597,13 +611,14 @@ fun SMBFileListScreen(path: String?, navController: NavHostController,connection
                                         }
                                     }
                                 }
+
                                 else -> {
                                     focusedFileName?.let { fileName ->
                                         Text(
                                             fileName,
                                             color = Color.White,
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 16.sp,
+                                            fontSize = 18.sp,
                                             maxLines = 2,
                                             overflow = TextOverflow.Ellipsis,
                                             textAlign = TextAlign.Center,
