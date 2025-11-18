@@ -202,7 +202,7 @@ fun FTPFileListScreen(
                                                             "Navigating to subdirectory: $newPath (encoded: $encodedNewPath)"
                                                         )
                                                         // 导航到子目录，传递连接信息
-                                                        navController.navigate("FTPFileListScreen/${ftpConnection.ip}/${ftpConnection.username}/${ftpConnection.password}/${ftpConnection.port}/$encodedNewPath")
+                                                        navController.navigate("FTPFileListScreen/${ftpConnection.ip}/${ftpConnection.username}/${ftpConnection.password}/${ftpConnection.port}/$encodedNewPath/${ftpConnection.name}")
                                                     } else {
                                                         // 处理文件点击 - 导航到 VideoPlayer
 
