@@ -3,7 +3,9 @@ package org.mz.mzdkplayer.data.api
 
 
 
+import org.mz.mzdkplayer.data.model.MovieDetails
 import org.mz.mzdkplayer.data.model.MovieListResponse
+import org.mz.mzdkplayer.data.model.TVSeriesDetails
 import org.mz.mzdkplayer.data.model.TVListResponse
 import retrofit2.Response
 import retrofit2.http.GET
@@ -38,4 +40,19 @@ interface TmdbApiService {
         @Query(value = "year") year: String = "",
         @Query("page") page: Int = 1
     ): Response<TVListResponse>
+
+    @GET("movie")
+    suspend fun getMovieDetails(
+        @Query("movie_id") movieId: Int,
+        @Query("language") language: String = "zh-CN",
+    ): Response<MovieDetails>
+
+    /**
+     * 获取当前剧集总系列信息
+     */
+    @GET("tv")
+    suspend fun getTVSeriesDetails(
+        @Query("series_id") seriesId: Int,
+        @Query("language") language: String = "zh-CN",
+    ): Response<TVSeriesDetails>
 }

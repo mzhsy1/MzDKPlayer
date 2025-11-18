@@ -1,0 +1,189 @@
+{
+  "adult": false,
+  "backdrop_path": "/g9ZXjxESzLTmuXdi1Es8NXLSZzm.jpg",
+  "created_by": [],
+  "episode_run_time": [
+    24
+  ],
+  "first_air_date": "2018-01-08",
+  "genres": [
+    {
+      "id": 16,
+      "name": "Animation"
+    },
+    {
+      "id": 35,
+      "name": "Comedy"
+    }
+  ],
+  "homepage": "https://takagi3.me",
+  "id": 75865,
+  "in_production": false,
+  "languages": [
+    "ja"
+  ],
+  "last_air_date": "2022-03-26",
+  "last_episode_to_air": {
+    "id": 3416156,
+    "name": "March 14th",
+    "overview": "Nishikata struggles with the most important question of his life. Now, he must give Takagi his answer.",
+    "vote_average": 9,
+    "vote_count": 1,
+    "air_date": "2022-03-26",
+    "episode_number": 12,
+    "episode_type": "finale",
+    "production_code": "",
+    "runtime": 24,
+    "season_number": 3,
+    "show_id": 75865,
+    "still_path": "/59KcjhNC0tPf92l5BgbxRf8AYRc.jpg"
+  },
+  "name": "Teasing Master Takagi-san",
+  "next_episode_to_air": null,
+  "networks": [
+    {
+      "id": 614,
+      "logo_path": "/hSdroyVthq3CynxTIIY7lnS8w1.png",
+      "name": "Tokyo MX",
+      "origin_country": "JP"
+    },
+    {
+      "id": 94,
+      "logo_path": "/7RNXnyiMbjgqtPAjja13wchcrGI.png",
+      "name": "MBS",
+      "origin_country": "JP"
+    },
+    {
+      "id": 160,
+      "logo_path": "/lUACMATs6jcscXIrzNCQzbvNVN5.png",
+      "name": "TBS",
+      "origin_country": "JP"
+    }
+  ],
+  "number_of_episodes": 36,
+  "number_of_seasons": 3,
+  "origin_country": [
+    "JP"
+  ],
+  "original_language": "ja",
+  "original_name": "からかい上手の高木さん",
+  "overview": "\"If you blush, you lose.\" Living by this principle, the middle schooler Nishikata gets constantly made fun of by his seat neighbor Takagi-san. With his pride shattered to pieces, he vows to turn the tables and get back at her some day. And so, he attempts to tease her day after day, only to find himself victim to Takagi-san's ridicule again sooner than later. Will he be able to make Takagi-san blush from embarrassment even once in the end?",
+  "popularity": 10.637,
+  "poster_path": "/hKwpd9K5AXsDhcBhJ7hyP7iBJhN.jpg",
+  "production_companies": [
+    {
+      "id": 5141,
+      "logo_path": "/fK2QKfHdSdw42Xx4MiD7KhDufBV.png",
+      "name": "Shin-Ei Animation",
+      "origin_country": "JP"
+    },
+    {
+      "id": 882,
+      "logo_path": "/fRSWWjquvzcHjACbtF53utZFIll.png",
+      "name": "TOHO",
+      "origin_country": "JP"
+    },
+    {
+      "id": 7164,
+      "logo_path": "/vHsaqTkQ2ZTbdqrCA272YahoVlg.png",
+      "name": "TMS Entertainment",
+      "origin_country": "JP"
+    },
+    {
+      "id": 3033,
+      "logo_path": "/AwgX2FHGJd54aSWfWJqptFvT1h.png",
+      "name": "Asmik Ace",
+      "origin_country": "JP"
+    },
+    {
+      "id": 8157,
+      "logo_path": "/pEqcMX1aG3JvtDgfh2wNZJLCcb4.png",
+      "name": "jeki",
+      "origin_country": "JP"
+    },
+    {
+      "id": 10921,
+      "logo_path": "/mILVV3xSs3BOkXy85l1pXakLoKk.png",
+      "name": "Sumitomo Corporation",
+      "origin_country": "JP"
+    },
+    {
+      "id": 12655,
+      "logo_path": "/dfGqf2NoMVPrDywDL90D5HAhBlW.png",
+      "name": "Shogakukan-Shueisha Productions",
+      "origin_country": "JP"
+    },
+    {
+      "id": 1778,
+      "logo_path": "/b5rT6VbYza3LyfltCmz1OcqzWJM.png",
+      "name": "dentsu",
+      "origin_country": "JP"
+    },
+    {
+      "id": 9149,
+      "logo_path": "/isLUpud9N56ifftJZ4XvzwBBpoG.png",
+      "name": "Shogakukan",
+      "origin_country": "JP"
+    }
+  ],
+  "production_countries": [
+    {
+      "iso_3166_1": "JP",
+      "name": "Japan"
+    }
+  ],
+  "seasons": [
+    {
+      "air_date": "2018-07-11",
+      "episode_count": 1,
+      "id": 106406,
+      "name": "Specials",
+      "overview": "",
+      "poster_path": "/aIT9UF8C6sRXCN4bD11I2aGMq1f.jpg",
+      "season_number": 0,
+      "vote_average": 0
+    },
+    {
+      "air_date": "2018-01-08",
+      "episode_count": 12,
+      "id": 96901,
+      "name": "Season 1",
+      "overview": "Teased constantly by classmate Takagi-san, middle-schooler Nishikata swears payback by trying (and failing) to give her a dose of her own medicine.",
+      "poster_path": "/frk8UNQto3oXbjAcagzFYvrJuOo.jpg",
+      "season_number": 1,
+      "vote_average": 8.5
+    },
+    {
+      "air_date": "2019-07-07",
+      "episode_count": 12,
+      "id": 123006,
+      "name": "Season 2",
+      "overview": "Now in his second year of middle school, Nishikata still tries to outplay Takagi, but continues to fail miserably at his quest to get even.",
+      "poster_path": "/rISrzOLMIuQZRqb3fWK0t0XZQ1C.jpg",
+      "season_number": 2,
+      "vote_average": 8.1
+    },
+    {
+      "air_date": "2022-01-08",
+      "episode_count": 12,
+      "id": 208781,
+      "name": "Season 3",
+      "overview": "",
+      "poster_path": "/vP1qLkIYwCqqOL7IXNy1bnDe94S.jpg",
+      "season_number": 3,
+      "vote_average": 8.1
+    }
+  ],
+  "spoken_languages": [
+    {
+      "english_name": "Japanese",
+      "iso_639_1": "ja",
+      "name": "日本語"
+    }
+  ],
+  "status": "Ended",
+  "tagline": "",
+  "type": "Scripted",
+  "vote_average": 8.167,
+  "vote_count": 383
+}

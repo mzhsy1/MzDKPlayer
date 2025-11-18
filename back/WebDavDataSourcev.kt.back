@@ -1,46 +1,38 @@
 package org.mz.mzdkplayer.tool
 
+import android.annotation.SuppressLint
 import android.net.Uri
+import android.util.Log
 import androidx.media3.common.C
 import androidx.media3.common.PlaybackException
-import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.BaseDataSource
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSourceException
 import androidx.media3.datasource.DataSpec
-import com.hierynomus.msdtyp.AccessMask
-import com.hierynomus.mssmb2.SMB2CreateDisposition
-import com.hierynomus.mssmb2.SMB2Dialect
-import com.hierynomus.mssmb2.SMB2ShareAccess
-import com.hierynomus.smbj.SMBClient
-import com.hierynomus.smbj.SmbConfig
-import com.hierynomus.smbj.auth.AuthenticationContext
-import com.hierynomus.smbj.connection.Connection
-import com.hierynomus.smbj.session.Session
-import com.hierynomus.smbj.share.DiskShare
-import com.hierynomus.smbj.share.File
+import com.thegrizzlylabs.sardineandroid.impl.OkHttpSardine
+import okhttp3.OkHttpClient
 import java.io.IOException
-import java.util.EnumSet
+import java.io.InputStream
+import java.security.SecureRandom
+import java.security.cert.CertificateException
+import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 import kotlin.math.min
 
 /**
- * 优化后的 SMB 数据源，借鉴了 Media3 HttpDataSource 的设计模式
+ * 优化后的 WebDAV 数据源，借鉴了 Media3 HttpDataSource 的设计模式
  */
 @UnstableApi
-class SmbDataSource(
-    private val config: SmbDataSourceConfig = SmbDataSourceConfig()
-) : BaseDataSource(/* isNetwork= */ true) {
-    // --- 成员变量 ---
+class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
 
+    // --- 成员变量 ---
     private var dataSpec: DataSpec? = null
-    private var connection: Connection? = null
-    private var session: Session? = null
-    private var share: DiskShare? = null
-    private var file: File? = null
-    private var smbClient: SMBClient? = null
+    private var sardine: OkHttpSardine? = null
+    private var inputStream: InputStream? = null
 
     // 借鉴 HttpDataSource 的状态管理
     private var bytesRead: Long = 0
@@ -51,39 +43,42 @@ class SmbDataSource(
     private var readBuffer: ByteArray? = null
     private var bufferPosition: Int = 0
     private var bufferLimit: Int = 0
-    private var bufferSize: Int = config.bufferSizeBytes
+    private var bufferSize: Int = DEFAULT_BUFFER_SIZE_BYTES
 
     // 文件位置跟踪
     private var currentFileOffset: Long = 0
 
-    // 连接和协议配置
-    private val PREFERRED_SMB_DIALECTS = EnumSet.of(
-        SMB2Dialect.SMB_3_1_1,
-        SMB2Dialect.SMB_3_0,
-        SMB2Dialect.SMB_3_0_2,
-        SMB2Dialect.SMB_2XX,
-        SMB2Dialect.SMB_2_1,
-    )
-
     // 状态管理
-    private val opened = AtomicBoolean(false)
+    private val opened = java.util.concurrent.atomic.AtomicBoolean(false)
 
     // 性能监控
     private var lastLogTime = 0L
-    private var totalBytesRead = 0L
+    private var totalBytesReadFromNetwork = 0L
     private var totalReadTime = 0L
     private var numReads = 0
+
+    // --- 配置参数 ---
+    companion object {
+        private const val TAG = "WebDavDataSource"
+        private const val DEFAULT_BUFFER_SIZE_BYTES = 8 * 1024 * 1024 // 8MB 默认缓冲区大小
+        private const val MAX_REDIRECTS = 5 // 最大重定向次数
+
+        // 用于信任所有证书的 OkHttpClient
+        private val webDavClient by  lazy{
+            WebDavHttpClient.restrictedTrustOkHttpClient
+        }
+    }
 
     /**
      * 打开数据源，借鉴 HttpDataSource 的错误处理和状态管理
      */
     @Throws(IOException::class)
     override fun open(dataSpec: DataSpec): Long {
-        Log.d("SmbDataSource", "Opening: ${dataSpec.uri}")
+        Log.d(TAG, "Opening: ${dataSpec.uri}")
 
         // 状态检查和初始化 - 类似 HttpDataSource
         if (!opened.compareAndSet(false, true)) {
-            throw IOException("SmbDataSource 已经被打开。")
+            throw IOException("WebDavDataSource 已经被打开。")
         }
 
         this.dataSpec = dataSpec
@@ -92,7 +87,7 @@ class SmbDataSource(
         transferInitializing(dataSpec)
 
         try {
-            // 建立连接
+            // 建立连接和验证
             establishConnection(dataSpec)
 
             // 获取文件信息并验证范围
@@ -102,6 +97,7 @@ class SmbDataSource(
             // 范围验证 - 类似 HttpDataSource 的 416 处理
             if (startPosition !in 0..fileLength) {
                 closeConnectionQuietly()
+                opened.set(false) // <-- 修复 1: 范围越界时重置状态
                 throw DataSourceException(PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE)
             }
 
@@ -115,6 +111,7 @@ class SmbDataSource(
             // 验证计算后的长度
             if (bytesToRead < 0 || startPosition + bytesToRead > fileLength) {
                 closeConnectionQuietly()
+                opened.set(false) // <-- 修复 2: 无效长度时重置状态
                 throw IOException("无效的数据范围: position=$startPosition, length=$bytesToRead, fileSize=$fileLength")
             }
 
@@ -124,7 +121,7 @@ class SmbDataSource(
             this.bufferPosition = 0
             this.bufferLimit = 0
 
-            Log.i("SmbDataSource", "成功打开文件, 大小: ${fileLength / 1024 / 1024}MB, " +
+            Log.i(TAG, "成功打开 WebDAV 文件, 大小: ${fileLength / 1024 / 1024}MB, " +
                     "起始位置: $startPosition, 读取长度: ${bytesToRead / 1024 / 1024}MB")
 
             // 标记传输开始 - 类似 HttpDataSource
@@ -135,75 +132,74 @@ class SmbDataSource(
 
         } catch (e: Exception) {
             closeConnectionQuietly()
-            opened.set(false) // <-- 关键修复：重置状态
+            opened.set(false) // <-- 修复 3: 捕获到一般异常时重置状态
             when (e) {
                 is IOException -> throw e
-                else -> throw IOException("打开 SMB 文件时出错: ${e.message}", e)
+                else -> throw IOException("打开 WebDAV 文件时出错: ${e.message}", e)
             }
         }
     }
 
     /**
-     * 建立 SMB 连接，包含更好的错误处理
+     * 建立 WebDAV 连接，包含更好的错误处理
      */
     @Throws(IOException::class)
     private fun establishConnection(dataSpec: DataSpec) {
         val uri = dataSpec.uri
-        val host = uri.host ?: throw IOException("无效的 SMB URI: 缺少主机名")
-        val path = uri.path ?: throw IOException("无效的 SMB URI: 缺少路径")
+        val urlString = uri.toString()
 
-        val pathSegments = path.split("/").filter { it.isNotEmpty() }
-        if (pathSegments.size < 2) {
-            throw IOException("无效的 SMB URI: 无法提取共享名和文件路径")
+        if (urlString.isBlank()) {
+            throw IOException("无效的 WebDAV URI: 空 URI")
         }
 
-        val shareName = pathSegments[0]
-        val filePath = pathSegments.drop(1).joinToString("/")
-
-        // 凭证提取
+        // 从 URI 的 userInfo 部分提取凭证
         val (username, password) = uri.userInfo?.split(":")?.let {
-            if (it.size == 2) Pair(it[0], it[1]) else Pair("guest", "")
-        } ?: Pair("guest", "")
+            if (it.size == 2) Pair(it[0], it[1]) else Pair("", "")
+        } ?: Pair("", "")
 
-        val domain = ""
+        try {
+            // 初始化 Sardine 客户端
+            sardine = OkHttpSardine(webDavClient)
+            if (username.isNotBlank() || password.isNotBlank()) {
+                sardine?.setCredentials(username, password)
+            }
+            Log.d(TAG, "Credentials: $username ***")
 
-        // 配置和连接 - 借鉴 HttpDataSource 的连接管理思想
-        val clientConfig = SmbConfig.builder()
-            .withDialects(PREFERRED_SMB_DIALECTS)
-            .withMultiProtocolNegotiate(true)
-            .withBufferSize(config.smbBufferSizeBytes)
-            .withSoTimeout(config.soTimeoutMs)
-            .withTimeout(60000, TimeUnit.MILLISECONDS)
-            .withReadBufferSize(config.readBufferSizeBytes)
-            .withTransactBufferSize(1*1024*1024)
-            .build()
+            // 构建干净的 URI（移除用户信息）
+            val cleanUriString = buildCleanUri(uri)
+            Log.d(TAG, "Clean URI: $cleanUriString")
 
-        val connectionStartTime = System.currentTimeMillis()
-        Log.d("SmbDataSource","isConnected : ${isConnected()}")
-        if (!isConnected()) {  // 避免重复连接
-            smbClient = SMBClient(clientConfig)
-            connection = smbClient?.connect(host) ?: throw IOException("无法创建 SMB 连接")
+            // 验证连接和文件存在性
+            validateConnection(cleanUriString)
 
-            // 认证
-            val authContext = AuthenticationContext(username, password.toCharArray(), domain)
-            session = connection?.authenticate(authContext) ?: throw IOException("会话认证失败")
-
-            // 连接共享
-            share = session?.connectShare(shareName) as? DiskShare
-                ?: throw IOException("连接共享失败或共享不是磁盘共享")
+        } catch (e: Exception) {
+            throw IOException("建立 WebDAV 连接时出错: ${e.message}", e)
         }
-            // 打开文件 - 类似 HttpDataSource 的资源获取
-            file = share?.openFile(
-                filePath,
-                setOf(AccessMask.GENERIC_READ),
-                null,
-                SMB2ShareAccess.ALL,
-                SMB2CreateDisposition.FILE_OPEN,
-                null
-            ) ?: throw IOException("打开文件失败")
+    }
 
-        val totalTime = System.currentTimeMillis() - connectionStartTime
-        Log.d("SmbDataSource", "连接建立总耗时: ${totalTime}ms")
+    /**
+     * 构建干净的 URI（移除用户信息）
+     */
+    private fun buildCleanUri(uri: Uri): String {
+        return Uri.Builder()
+            .scheme(uri.scheme)
+            .encodedAuthority(uri.authority?.substringAfter('@') ?: uri.authority)
+            .encodedPath(uri.encodedPath)
+            .encodedQuery(uri.encodedQuery)
+            .encodedFragment(uri.encodedFragment)
+            .build()
+            .toString()
+    }
+
+    /**
+     * 验证连接和文件存在性
+     */
+    @Throws(IOException::class)
+    private fun validateConnection(uri: String) {
+        val davResources = sardine?.list(uri)
+        if (davResources.isNullOrEmpty()) {
+            throw IOException("无法获取文件信息或文件不存在: $uri")
+        }
     }
 
     /**
@@ -212,9 +208,15 @@ class SmbDataSource(
     @Throws(IOException::class)
     private fun getFileLength(): Long {
         return try {
-            val fileInfo = file?.fileInformation?.standardInformation
-                ?: throw IOException("获取文件信息失败")
-            fileInfo.endOfFile
+            val cleanUri = buildCleanUri(dataSpec?.uri!!)
+            val davResources = sardine?.list(cleanUri)
+                ?: throw IOException("无法获取文件信息")
+
+            if (davResources.isEmpty()) {
+                throw IOException("文件不存在")
+            }
+
+            davResources[0].contentLength
         } catch (e: Exception) {
             throw IOException("获取文件大小时出错: ${e.message}", e)
         }
@@ -225,7 +227,6 @@ class SmbDataSource(
      */
     @Throws(IOException::class)
     override fun read(buffer: ByteArray, offset: Int, readLength: Int): Int {
-
         if (!opened.get()) {
             throw IOException("数据源未打开")
         }
@@ -308,21 +309,21 @@ class SmbDataSource(
 
         val startTime = System.currentTimeMillis()
 
-        // 从 SMB 文件读取
-        val bytesReadFromFile = try {
-            file?.read(internalBuffer, currentFileOffset, 0, maxBytesToRead) ?: -1
+        // 从 WebDAV 服务器读取
+        val bytesReadFromNetwork = try {
+            readFromWebDav(maxBytesToRead)
         } catch (e: Exception) {
-            throw IOException("从 SMB 读取数据时发生错误", e)
+            throw IOException("从 WebDAV 读取数据时发生错误", e)
         }
 
         val readTime = System.currentTimeMillis() - startTime
 
         // 性能监控和日志
-        if (bytesReadFromFile > 0) {
-            monitorPerformance(bytesReadFromFile, readTime)
+        if (bytesReadFromNetwork > 0) {
+            monitorPerformance(bytesReadFromNetwork, readTime)
         }
 
-        if (bytesReadFromFile <= 0) {
+        if (bytesReadFromNetwork <= 0) {
             bufferPosition = 0
             bufferLimit = 0
             return -1
@@ -330,10 +331,56 @@ class SmbDataSource(
 
         // 更新缓冲区状态
         bufferPosition = 0
-        bufferLimit = bytesReadFromFile
-        currentFileOffset += bytesReadFromFile.toLong()
+        bufferLimit = bytesReadFromNetwork
+        currentFileOffset += bytesReadFromNetwork.toLong()
 
-        return bytesReadFromFile
+        return bytesReadFromNetwork
+    }
+
+    /**
+     * 从 WebDAV 服务器读取数据
+     */
+    @Throws(IOException::class)
+    private fun readFromWebDav(chunkSize: Int): Int {
+        // 关闭旧的 InputStream
+        inputStream?.close()
+        inputStream = null
+
+        // 构造 Range 请求头
+        val endOffset = currentFileOffset + chunkSize - 1
+        val rangeHeader = "bytes=$currentFileOffset-$endOffset"
+
+        Log.d(TAG, "请求 Range: $rangeHeader")
+
+        // 使用 Sardine 获取带有 Range 头的 InputStream
+        inputStream = sardine?.get(dataSpec?.uri.toString(), mapOf("Range" to rangeHeader))
+
+        if (inputStream == null) {
+            throw IOException("无法从 WebDAV 服务器获取输入流")
+        }
+
+        // 从 InputStream 读取到内部缓冲区
+        var totalBytesReadFromStream = 0
+        while (totalBytesReadFromStream < chunkSize) {
+            val bytesRead = inputStream?.read(
+                readBuffer!!,
+                totalBytesReadFromStream,
+                chunkSize - totalBytesReadFromStream
+            ) ?: -1
+
+            if (bytesRead == -1) {
+                // 提前到达流末尾
+                break
+            }
+            totalBytesReadFromStream += bytesRead
+        }
+
+        // 检查读取完整性
+        if (totalBytesReadFromStream < chunkSize && bytesToRead - bytesRead > totalBytesReadFromStream) {
+            Log.w(TAG, "网络读取不完整: 请求 $chunkSize 字节, 实际读取 $totalBytesReadFromStream 字节")
+        }
+
+        return totalBytesReadFromStream
     }
 
     /**
@@ -342,7 +389,7 @@ class SmbDataSource(
     private fun monitorPerformance(bytesRead: Int, readTime: Long) {
         totalReadTime += readTime
         numReads++
-        totalBytesRead += bytesRead
+        totalBytesReadFromNetwork += bytesRead
 
         val speed = if (readTime > 0) {
             (bytesRead.toDouble() / readTime / 1024 / 1024) * 1000
@@ -351,8 +398,9 @@ class SmbDataSource(
         }
 
         val currentTime = System.currentTimeMillis()
-        if (readTime > 100 || speed < config.minLogSpeedMBs || currentTime - lastLogTime > config.logIntervalMs) {
-            Log.i("SmbDataSource", "读取 ${bytesRead / 1024}KB 耗时 ${readTime}ms, " +
+        // 只在性能较差或定期记录日志
+        if (readTime > 200 || speed < 3.0 || currentTime - lastLogTime > 5000) {
+            Log.i(TAG, "读取 ${bytesRead / 1024}KB 耗时 ${readTime}ms, " +
                     "速度: ${"%.2f".format(speed)} MB/s, 文件位置: ${currentFileOffset / 1024 / 1024}MB")
             lastLogTime = currentTime
         }
@@ -370,18 +418,12 @@ class SmbDataSource(
      */
     @Throws(IOException::class)
     override fun close() {
-        Log.d("SmbDataSource", "Closing data source.")
+        Log.d(TAG, "Closing data source.")
 
         if (opened.compareAndSet(true, false)) {
             try {
-                // 先关闭文件流
-                file?.close()
-            } catch (e: IOException) {
-                throw IOException("关闭 SMB 文件时出错", e)
-            } finally {
-                // 清理其他资源
-               // closeConnectionQuietly()
-
+                // 统一调用静默关闭连接，负责关闭流并置空
+                closeConnectionQuietly()
 
                 // 状态重置
                 if (transferStarted) {
@@ -391,66 +433,31 @@ class SmbDataSource(
 
                 // 清空引用
                 dataSpec = null
-                file = null
-                share = null
-                session = null
-                connection = null
-                smbClient = null
+                // inputStream 已在 closeConnectionQuietly 中处理
+                sardine = null
                 readBuffer = null
 
                 // 打印统计信息
                 logStatistics()
+            } catch (e: Exception) {
+                // 捕获所有异常，确保 close() 能够完成
+                throw IOException("关闭 WebDAV 数据源时出错", e)
             }
         }
     }
-// SmbDataSource.kt (添加一个 public 方法用于彻底释放资源)
-    /**
-     * 彻底关闭并清理所有 SMB 连接资源。
-     * 应在 SmbDataSource 实例不再使用时调用。
-     */
-//    fun release() {
-//        Log.d("SmbDataSource", "Releasing all SMB resources.")
-//        closeConnectionQuietly()
-//
-//        // 强制清空所有引用
-//        dataSpec = null
-//        file = null
-//        share = null
-//        session = null
-//        connection = null
-//        smbClient = null
-//        readBuffer = null
-//        opened.set(false)
-//        transferStarted = false
-//
-//        // 清理统计数据
-//        totalBytesRead = 0L
-//        totalReadTime = 0L
-//        numReads = 0
-//    }
+
     /**
      * 静默关闭连接，类似 HttpDataSource 的 closeConnectionQuietly
      */
     private fun closeConnectionQuietly() {
         try {
-            file?.close()
-        } catch (ignored: Exception) { }
-        try {
-            share?.close()
-        } catch (ignored: Exception) { }
-        try {
-            session?.close()
-        } catch (ignored: Exception) { }
-        try {
-            connection?.close()
-        } catch (ignored: Exception) { }
-        try {
-            smbClient?.close()
-        } catch (ignored: Exception) { }
-    }
-
-    fun isConnected(): Boolean {
-        return connection?.isConnected == true && session != null && share != null
+            inputStream?.close()
+        } catch (ignored: Exception) {
+            Log.w(TAG, "关闭 InputStream 时出错", ignored)
+        } finally {
+            inputStream = null // 确保置空
+        }
+        // Sardine 使用连接池，不需要显式关闭
     }
 
     /**
@@ -458,35 +465,20 @@ class SmbDataSource(
      */
     private fun logStatistics() {
         if (numReads > 0 && totalReadTime > 0) {
-            val avgSpeed = (totalBytesRead.toDouble() / totalReadTime / 1024 / 1024) * 1000
+            val avgSpeed = (totalBytesReadFromNetwork.toDouble() / totalReadTime / 1024 / 1024) * 1000
             val avgTimePerRead = totalReadTime.toDouble() / numReads
-            Log.i("SmbDataSource", "性能统计 - 总读取: ${totalBytesRead / 1024 / 1024}MB, " +
+            Log.i(TAG, "性能统计 - 总网络读取: ${totalBytesReadFromNetwork / 1024 / 1024}MB, " +
                     "平均速度: ${"%.2f".format(avgSpeed)} MB/s, 平均读取耗时: ${"%.2f".format(avgTimePerRead)}ms")
         }
     }
 }
 
 /**
- * SmbDataSource 的工厂类
+ * WebDavDataSource 的工厂类
  */
 @UnstableApi
-class SmbDataSourceFactory(private val config: SmbDataSourceConfig = SmbDataSourceConfig()) : DataSource.Factory {
+class WebDavDataSourceFactory : DataSource.Factory {
     override fun createDataSource(): DataSource {
-        return SmbDataSource(config)
+        return WebDavDataSource()
     }
 }
-
-/**
- * SmbDataSource 的配置类
- */
-data class SmbDataSourceConfig(
-    val bufferSizeBytes: Int = 8 * 1024 * 1024, // 8MB 内部缓冲区大小
-    val smbBufferSizeBytes: Int = 8 * 1024 * 1024, // SMB 协议缓冲区大小
-    val readBufferSizeBytes: Int = 8 * 1024 * 1024, // SMB 读取缓冲区大小
-    val soTimeoutMs: Int = 10000, // Socket 超时时间
-    val logIntervalMs: Long = 5000, // 日志打印间隔
-    val minLogSpeedMBs: Double = 5.0 // 触发日志的最低速度阈值 (MB/s)
-)
-
-// 为了编译需要添加的常量
-const val PlaybackException_ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE = 2004

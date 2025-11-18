@@ -2,6 +2,7 @@ package org.mz.mzdkplayer.data.repository
 
 import org.mz.mzdkplayer.data.api.TmdbApiService
 import org.mz.mzdkplayer.data.api.TmdbServiceCreator
+import org.mz.mzdkplayer.data.model.Movie
 import retrofit2.Response
 
 
@@ -23,7 +24,14 @@ class TmdbRepository(private val apiService: TmdbApiService) {
         apiService.searchTV(query = query, page = page, year = year)
     }
 
-    // 👇 提取通用安全调用逻辑
+    suspend fun getMovieDetails(movieId: Int) = safeApiCall {
+        apiService.getMovieDetails(movieId = movieId)
+    }
+    suspend fun getTVSeriesDetails(seriesId: Int,) = safeApiCall {
+        apiService.getTVSeriesDetails(seriesId =seriesId )
+    }
+
+    //  提取通用安全调用逻辑
     private suspend fun <T> safeApiCall(apiCall: suspend () -> Response<T>): Resource<T> {
         return try {
             val response = apiCall()

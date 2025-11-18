@@ -56,7 +56,7 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
         private const val SPEED_LOG_INTERVAL_MS = 1000L
 
         // 创建 Duration 对象
-        private val DATA_TIMEOUT_DURATION: Duration = Duration.ofMillis(DATA_TIMEOUT_MS.toLong())
+        //private val DATA_TIMEOUT_DURATION: Duration = Duration.ofMillis(DATA_TIMEOUT_MS.toLong())
         // private val CONNECTION_TIMEOUT_DURATION: Duration = Duration.ofMillis(CONNECTION_TIMEOUT_MS.toLong())
     }
 
@@ -171,7 +171,7 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
                 bufferSize = BUFFER_SIZE
                 connectTimeout = CONNECTION_TIMEOUT_MS
                 defaultTimeout = SOCKET_TIMEOUT_MS
-                dataTimeout = DATA_TIMEOUT_DURATION
+                //dataTimeout = DATA_TIMEOUT_DURATION
             }
 
             // 连接到服务器
@@ -249,7 +249,15 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
             }
         }
     }
+    private fun handleOpenError(e: Exception) {
+        closeConnectionQuietly()
+        opened.set(false) // 确保在任何异常抛出前重置状态
 
+        when (e) {
+            is IOException -> throw e
+            else -> throw IOException("打开 FTP 文件时出错: ${e.message}", e)
+        }
+    }
     /**
      * 打开文件流
      */

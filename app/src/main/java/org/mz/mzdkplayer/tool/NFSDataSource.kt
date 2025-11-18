@@ -241,7 +241,8 @@ class NFSDataSource : BaseDataSource(/* isNetwork= */ true) {
         ).toInt().coerceAtLeast(0)
 
         if (bytesToReadNow == 0) {
-            return 0
+            // 如果已经没有更多数据需要读取（已达到 bytesToRead 限制）
+            return C.RESULT_END_OF_INPUT
         }
 
         return readInternal(buffer, offset, bytesToReadNow)
