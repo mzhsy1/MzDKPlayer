@@ -49,11 +49,11 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
     // --- 配置参数 ---
     companion object {
         private const val TAG = "FtpDataSource"
-        private const val BUFFER_SIZE = 64 * 1024
-        private const val SOCKET_TIMEOUT_MS = 30000
-        private const val CONNECTION_TIMEOUT_MS = 10000
-        private const val DATA_TIMEOUT_MS = 60000
-        private const val SPEED_LOG_INTERVAL_MS = 1000L
+        private const val BUFFER_SIZE = 1024 * 1024
+        private const val CONNECTION_TIMEOUT_MS = 30000  // 连接超时30秒
+        private const val SOCKET_TIMEOUT_MS = 120000     // Socket超时120秒
+        private const val DATA_TIMEOUT_MS = 120000       // 数据超时120秒
+        private const val SPEED_LOG_INTERVAL_MS = 2000L
 
         // 创建 Duration 对象
         //private val DATA_TIMEOUT_DURATION: Duration = Duration.ofMillis(DATA_TIMEOUT_MS.toLong())
@@ -171,6 +171,7 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
                 bufferSize = BUFFER_SIZE
                 connectTimeout = CONNECTION_TIMEOUT_MS
                 defaultTimeout = SOCKET_TIMEOUT_MS
+
                 //dataTimeout = DATA_TIMEOUT_DURATION
             }
 

@@ -1,7 +1,11 @@
 package org.mz.mzdkplayer.tool
 
 import android.annotation.SuppressLint
+import androidx.compose.ui.platform.LocalContext
+import okhttp3.Cache
+import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
+import java.io.File
 import java.security.SecureRandom
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
@@ -27,15 +31,26 @@ class WebDavHttpClient {
                 OkHttpClient.Builder()
                     .sslSocketFactory(sslContext.socketFactory, trustManager)
                     .hostnameVerifier { hostname, session ->
-                        // 严格的主机名验证 - 只允许局域网IP
                         isValidHostname(hostname)
                     }
-                    .connectTimeout(10, TimeUnit.SECONDS)
-                    .readTimeout(30, TimeUnit.SECONDS)
-                    .writeTimeout(10, TimeUnit.SECONDS)
+                    .connectTimeout(30, TimeUnit.SECONDS)      // 连接超时：30秒 → 原10秒
+                    .readTimeout(300, TimeUnit.SECONDS)        // 读取超时：300秒 → 原30秒
+                    .writeTimeout(30, TimeUnit.SECONDS)        // 写入超时：30秒 → 原10秒
                     .followRedirects(true)
                     .followSslRedirects(true)
+                    // 新增：连接池配置
+                    .connectionPool(
+                        ConnectionPool(
+                            5,      // 最大空闲连接数
+                            5,      // 保持时间
+                            TimeUnit.MINUTES
+                        )
+                    )
+                    // 新增：重试配置
+                    .retryOnConnectionFailure(true)
+                    // 新增：缓存配置（可选）
                     .build()
+                // .cache(Cache(File(context.cacheDir, "http_cache"), 50 * 1024 * 1024L)) // 50MB缓存
             } catch (e: Exception) {
                 throw RuntimeException("Failed to create restricted trust HTTP client", e)
             }

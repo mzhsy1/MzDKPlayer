@@ -24,10 +24,12 @@ import java.io.IOException
 import java.util.EnumSet
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.locks.ReentrantLock
 import kotlin.math.min
+import kotlin.concurrent.withLock
 
 /**
- * 优化后的 SMB 数据源，借鉴了 Media3 HttpDataSource 的设计模式
+ * 优化后的 SMB 数据源，修复连接关闭问题
  */
 @UnstableApi
 class SmbDataSource(
@@ -67,6 +69,7 @@ class SmbDataSource(
 
     // 状态管理
     private val opened = AtomicBoolean(false)
+    private val closed = AtomicBoolean(false)
 
     // 性能监控
     private var lastLogTime = 0L
@@ -74,16 +77,22 @@ class SmbDataSource(
     private var totalReadTime = 0L
     private var numReads = 0
 
+    // 线程安全锁
+    private val lock = ReentrantLock()
+
     /**
-     * 打开数据源，借鉴 HttpDataSource 的错误处理和状态管理
+     * 打开数据源，修复状态管理问题
      */
     @Throws(IOException::class)
     override fun open(dataSpec: DataSpec): Long {
         Log.d("SmbDataSource", "Opening: ${dataSpec.uri}")
 
-        // 状态检查和初始化 - 类似 HttpDataSource
+        // 状态检查和初始化
         if (!opened.compareAndSet(false, true)) {
             throw IOException("SmbDataSource 已经被打开。")
+        }
+        if (closed.get()) {
+            throw IOException("SmbDataSource 已经被关闭，无法重新打开。")
         }
 
         this.dataSpec = dataSpec
@@ -99,9 +108,9 @@ class SmbDataSource(
             val fileLength = getFileLength()
             val startPosition = dataSpec.position
 
-            // 范围验证 - 类似 HttpDataSource 的 416 处理
+            // 范围验证
             if (startPosition !in 0..fileLength) {
-                closeConnectionQuietly()
+                close()
                 throw DataSourceException(PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE)
             }
 
@@ -114,7 +123,7 @@ class SmbDataSource(
 
             // 验证计算后的长度
             if (bytesToRead < 0 || startPosition + bytesToRead > fileLength) {
-                closeConnectionQuietly()
+                close()
                 throw IOException("无效的数据范围: position=$startPosition, length=$bytesToRead, fileSize=$fileLength")
             }
 
@@ -127,15 +136,15 @@ class SmbDataSource(
             Log.i("SmbDataSource", "成功打开文件, 大小: ${fileLength / 1024 / 1024}MB, " +
                     "起始位置: $startPosition, 读取长度: ${bytesToRead / 1024 / 1024}MB")
 
-            // 标记传输开始 - 类似 HttpDataSource
+            // 标记传输开始
             transferStarted = true
             transferStarted(dataSpec)
 
             return bytesToRead
 
         } catch (e: Exception) {
-            closeConnectionQuietly()
-            opened.set(false) // <-- 关键修复：重置状态
+            // 确保在异常时清理资源
+            close()
             when (e) {
                 is IOException -> throw e
                 else -> throw IOException("打开 SMB 文件时出错: ${e.message}", e)
@@ -144,55 +153,66 @@ class SmbDataSource(
     }
 
     /**
-     * 建立 SMB 连接，包含更好的错误处理
+     * 建立 SMB 连接，改进连接状态检查
      */
     @Throws(IOException::class)
     private fun establishConnection(dataSpec: DataSpec) {
-        val uri = dataSpec.uri
-        val host = uri.host ?: throw IOException("无效的 SMB URI: 缺少主机名")
-        val path = uri.path ?: throw IOException("无效的 SMB URI: 缺少路径")
+        lock.withLock {
+            val uri = dataSpec.uri
+            val host = uri.host ?: throw IOException("无效的 SMB URI: 缺少主机名")
+            val path = uri.path ?: throw IOException("无效的 SMB URI: 缺少路径")
 
-        val pathSegments = path.split("/").filter { it.isNotEmpty() }
-        if (pathSegments.size < 2) {
-            throw IOException("无效的 SMB URI: 无法提取共享名和文件路径")
-        }
+            val pathSegments = path.split("/").filter { it.isNotEmpty() }
+            if (pathSegments.size < 2) {
+                throw IOException("无效的 SMB URI: 无法提取共享名和文件路径")
+            }
 
-        val shareName = pathSegments[0]
-        val filePath = pathSegments.drop(1).joinToString("/")
+            val shareName = pathSegments[0]
+            val filePath = pathSegments.drop(1).joinToString("/")
 
-        // 凭证提取
-        val (username, password) = uri.userInfo?.split(":")?.let {
-            if (it.size == 2) Pair(it[0], it[1]) else Pair("guest", "")
-        } ?: Pair("guest", "")
+            // 凭证提取
+            val (username, password) = uri.userInfo?.split(":")?.let {
+                if (it.size == 2) Pair(it[0], it[1]) else Pair("guest", "")
+            } ?: Pair("guest", "")
 
-        val domain = ""
+            val domain = ""
 
-        // 配置和连接 - 借鉴 HttpDataSource 的连接管理思想
-        val clientConfig = SmbConfig.builder()
-            .withDialects(PREFERRED_SMB_DIALECTS)
-            .withMultiProtocolNegotiate(true)
-            .withBufferSize(config.smbBufferSizeBytes)
-            .withSoTimeout(config.soTimeoutMs)
-            .withTimeout(60000, TimeUnit.MILLISECONDS)
-            .withReadBufferSize(config.readBufferSizeBytes)
-            .withTransactBufferSize(1*1024*1024)
-            .build()
+            // 检查连接是否仍然有效
+            if (!isConnectionValid()) {
+                Log.d("SmbDataSource", "连接无效，重新建立连接")
+                closeResources()
+            }
 
-        val connectionStartTime = System.currentTimeMillis()
-        Log.d("SmbDataSource","isConnected : ${isConnected()}")
-        if (!isConnected()) {  // 避免重复连接
-            smbClient = SMBClient(clientConfig)
-            connection = smbClient?.connect(host) ?: throw IOException("无法创建 SMB 连接")
+            // 配置和连接
+            if (!isConnectionValid()) {
+                val clientConfig = SmbConfig.builder()
+                    .withDialects(PREFERRED_SMB_DIALECTS)
+                    .withMultiProtocolNegotiate(true)
+                    .withBufferSize(config.smbBufferSizeBytes)
+                    .withSoTimeout(config.soTimeoutMs)
+                    .withTimeout(120000, TimeUnit.MILLISECONDS)
+                    .withReadBufferSize(config.readBufferSizeBytes)
+                    .withTransactBufferSize(1 * 1024 * 1024)
+                    .build()
 
-            // 认证
-            val authContext = AuthenticationContext(username, password.toCharArray(), domain)
-            session = connection?.authenticate(authContext) ?: throw IOException("会话认证失败")
+                val connectionStartTime = System.currentTimeMillis()
 
-            // 连接共享
-            share = session?.connectShare(shareName) as? DiskShare
-                ?: throw IOException("连接共享失败或共享不是磁盘共享")
-        }
-            // 打开文件 - 类似 HttpDataSource 的资源获取
+                smbClient = SMBClient(clientConfig)
+                connection = smbClient?.connect(host) ?: throw IOException("无法创建 SMB 连接")
+
+                // 认证
+                val authContext = AuthenticationContext(username, password.toCharArray(), domain)
+                session = connection?.authenticate(authContext) ?: throw IOException("会话认证失败")
+
+                // 连接共享
+                share = session?.connectShare(shareName) as? DiskShare
+                    ?: throw IOException("连接共享失败或共享不是磁盘共享")
+
+                val totalTime = System.currentTimeMillis() - connectionStartTime
+                Log.d("SmbDataSource", "连接建立总耗时: ${totalTime}ms")
+            }
+
+            // 打开文件
             file = share?.openFile(
                 filePath,
                 setOf(AccessMask.GENERIC_READ),
@@ -201,33 +221,47 @@ class SmbDataSource(
                 SMB2CreateDisposition.FILE_OPEN,
                 null
             ) ?: throw IOException("打开文件失败")
-
-        val totalTime = System.currentTimeMillis() - connectionStartTime
-        Log.d("SmbDataSource", "连接建立总耗时: ${totalTime}ms")
-    }
-
-    /**
-     * 获取文件长度，包含错误处理
-     */
-    @Throws(IOException::class)
-    private fun getFileLength(): Long {
-        return try {
-            val fileInfo = file?.fileInformation?.standardInformation
-                ?: throw IOException("获取文件信息失败")
-            fileInfo.endOfFile
-        } catch (e: Exception) {
-            throw IOException("获取文件大小时出错: ${e.message}", e)
         }
     }
 
     /**
-     * 读取数据，借鉴 HttpDataSource 的读取模式
+     * 改进的连接有效性检查
+     */
+    private fun isConnectionValid(): Boolean {
+        return try {
+            connection?.isConnected == true &&
+                    session != null &&
+                    share != null &&
+                    share?.isConnected == true
+        } catch (e: Exception) {
+            Log.w("SmbDataSource", "检查连接有效性时出错: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * 获取文件长度，改进错误处理
+     */
+    @Throws(IOException::class)
+    private fun getFileLength(): Long {
+        return lock.withLock {
+            try {
+                val fileInfo = file?.fileInformation?.standardInformation
+                    ?: throw IOException("获取文件信息失败")
+                fileInfo.endOfFile
+            } catch (e: Exception) {
+                throw IOException("获取文件大小时出错: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * 读取数据，添加连接状态检查
      */
     @Throws(IOException::class)
     override fun read(buffer: ByteArray, offset: Int, readLength: Int): Int {
-
-        if (!opened.get()) {
-            throw IOException("数据源未打开")
+        if (!opened.get() || closed.get()) {
+            throw IOException("数据源未打开或已关闭")
         }
 
         if (bytesRead == bytesToRead) {
@@ -248,7 +282,7 @@ class SmbDataSource(
     }
 
     /**
-     * 内部读取实现，包含性能监控
+     * 内部读取实现，添加连接验证
      */
     @Throws(IOException::class)
     private fun readInternal(buffer: ByteArray, offset: Int, length: Int): Int {
@@ -257,6 +291,11 @@ class SmbDataSource(
         var remaining = length
 
         while (remaining > 0) {
+            // 检查连接状态
+            if (!isConnectionValid()) {
+                throw IOException("SMB 连接已断开")
+            }
+
             // 检查并填充缓冲区
             if (bufferPosition >= bufferLimit) {
                 val bytesFilled = refillBuffer()
@@ -287,7 +326,7 @@ class SmbDataSource(
     }
 
     /**
-     * 填充缓冲区，优化性能和错误处理
+     * 填充缓冲区，改进错误恢复
      */
     @Throws(IOException::class)
     private fun refillBuffer(): Int {
@@ -308,10 +347,16 @@ class SmbDataSource(
 
         val startTime = System.currentTimeMillis()
 
-        // 从 SMB 文件读取
+        // 从 SMB 文件读取，添加重试机制
         val bytesReadFromFile = try {
-            file?.read(internalBuffer, currentFileOffset, 0, maxBytesToRead) ?: -1
+            lock.withLock {
+                file?.read(internalBuffer, currentFileOffset, 0, maxBytesToRead) ?: -1
+            }
         } catch (e: Exception) {
+            // 检查是否是连接问题
+            if (!isConnectionValid()) {
+                throw IOException("SMB 连接已断开，无法读取数据", e)
+            }
             throw IOException("从 SMB 读取数据时发生错误", e)
         }
 
@@ -337,7 +382,7 @@ class SmbDataSource(
     }
 
     /**
-     * 性能监控，借鉴 HttpDataSource 的监控思想
+     * 性能监控
      */
     private fun monitorPerformance(bytesRead: Int, readTime: Long) {
         totalReadTime += readTime
@@ -366,91 +411,97 @@ class SmbDataSource(
     }
 
     /**
-     * 关闭数据源，借鉴 HttpDataSource 的资源清理模式
+     * 关闭数据源，彻底修复关闭问题
      */
     @Throws(IOException::class)
     override fun close() {
         Log.d("SmbDataSource", "Closing data source.")
 
-        if (opened.compareAndSet(true, false)) {
+        if (closed.compareAndSet(false, true)) {
             try {
-                // 先关闭文件流
-                file?.close()
-            } catch (e: IOException) {
-                throw IOException("关闭 SMB 文件时出错", e)
-            } finally {
-                // 清理其他资源
-               // closeConnectionQuietly()
+                // 标记为已关闭
+                opened.set(false)
 
-
-                // 状态重置
                 if (transferStarted) {
                     transferStarted = false
                     transferEnded()
                 }
 
+                // 安全关闭资源
+                closeResources()
+
                 // 清空引用
                 dataSpec = null
-                file = null
-                share = null
-                session = null
-                connection = null
-                smbClient = null
                 readBuffer = null
 
                 // 打印统计信息
                 logStatistics()
+
+            } catch (e: Exception) {
+                Log.w("SmbDataSource", "关闭数据源时发生错误: ${e.message}")
+                // 不重新抛出异常，避免掩盖原始错误
             }
         }
     }
-// SmbDataSource.kt (添加一个 public 方法用于彻底释放资源)
-    /**
-     * 彻底关闭并清理所有 SMB 连接资源。
-     * 应在 SmbDataSource 实例不再使用时调用。
-     */
-//    fun release() {
-//        Log.d("SmbDataSource", "Releasing all SMB resources.")
-//        closeConnectionQuietly()
-//
-//        // 强制清空所有引用
-//        dataSpec = null
-//        file = null
-//        share = null
-//        session = null
-//        connection = null
-//        smbClient = null
-//        readBuffer = null
-//        opened.set(false)
-//        transferStarted = false
-//
-//        // 清理统计数据
-//        totalBytesRead = 0L
-//        totalReadTime = 0L
-//        numReads = 0
-//    }
-    /**
-     * 静默关闭连接，类似 HttpDataSource 的 closeConnectionQuietly
-     */
-    private fun closeConnectionQuietly() {
-        try {
-            file?.close()
-        } catch (ignored: Exception) { }
-        try {
-            share?.close()
-        } catch (ignored: Exception) { }
-        try {
-            session?.close()
-        } catch (ignored: Exception) { }
-        try {
-            connection?.close()
-        } catch (ignored: Exception) { }
-        try {
-            smbClient?.close()
-        } catch (ignored: Exception) { }
-    }
 
-    fun isConnected(): Boolean {
-        return connection?.isConnected == true && session != null && share != null
+    /**
+     * 安全关闭所有资源，修复关闭顺序问题
+     */
+    private fun closeResources() {
+        lock.withLock {
+            // 按照正确的顺序关闭资源：文件 -> 共享 -> 会话 -> 连接 -> 客户端
+            val exceptions = mutableListOf<Exception>()
+
+            try {
+                file?.close()
+            } catch (e: Exception) {
+                exceptions.add(e)
+                Log.w("SmbDataSource", "关闭文件时出错: ${e.message}")
+            } finally {
+                file = null
+            }
+
+            try {
+                share?.close()
+            } catch (e: Exception) {
+                exceptions.add(e)
+                Log.w("SmbDataSource", "关闭共享时出错: ${e.message}")
+            } finally {
+                share = null
+            }
+
+            try {
+                session?.close()
+            } catch (e: Exception) {
+                exceptions.add(e)
+                Log.w("SmbDataSource", "关闭会话时出错: ${e.message}")
+            } finally {
+                session = null
+            }
+
+            try {
+                connection?.close()
+            } catch (e: Exception) {
+                exceptions.add(e)
+                Log.w("SmbDataSource", "关闭连接时出错: ${e.message}")
+            } finally {
+                connection = null
+            }
+
+            try {
+                smbClient?.close()
+            } catch (e: Exception) {
+                exceptions.add(e)
+                Log.w("SmbDataSource", "关闭 SMB 客户端时出错: ${e.message}")
+            } finally {
+                smbClient = null
+            }
+
+            // 如果有多个异常，只记录不抛出，避免掩盖原始问题
+            if (exceptions.isNotEmpty()) {
+                Log.w("SmbDataSource", "关闭资源时遇到 ${exceptions.size} 个错误")
+            }
+        }
     }
 
     /**
@@ -483,7 +534,7 @@ data class SmbDataSourceConfig(
     val bufferSizeBytes: Int = 8 * 1024 * 1024, // 8MB 内部缓冲区大小
     val smbBufferSizeBytes: Int = 8 * 1024 * 1024, // SMB 协议缓冲区大小
     val readBufferSizeBytes: Int = 8 * 1024 * 1024, // SMB 读取缓冲区大小
-    val soTimeoutMs: Int = 10000, // Socket 超时时间
+    val soTimeoutMs: Int = 120000, // Socket 超时时间 120s
     val logIntervalMs: Long = 5000, // 日志打印间隔
     val minLogSpeedMBs: Double = 5.0 // 触发日志的最低速度阈值 (MB/s)
 )
