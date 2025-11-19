@@ -1,14 +1,11 @@
 package org.mz.mzdkplayer.data.api
-
-
-
-
 import org.mz.mzdkplayer.data.model.MovieDetails
 import org.mz.mzdkplayer.data.model.MovieListResponse
 import org.mz.mzdkplayer.data.model.TVSeriesDetails
 import org.mz.mzdkplayer.data.model.TVListResponse
 import retrofit2.Response
 import retrofit2.http.GET
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface TmdbApiService {
@@ -41,18 +38,18 @@ interface TmdbApiService {
         @Query("page") page: Int = 1
     ): Response<TVListResponse>
 
-    @GET("movie")
+    @GET("movie/{movieId}")
     suspend fun getMovieDetails(
-        @Query("movie_id") movieId: Int,
+        @Path("movieId") movieId: Int,
         @Query("language") language: String = "zh-CN",
     ): Response<MovieDetails>
 
     /**
      * 获取当前剧集总系列信息
      */
-    @GET("tv")
+    @GET("tv/{seriesId}")
     suspend fun getTVSeriesDetails(
-        @Query("series_id") seriesId: Int,
+        @Path("seriesId") seriesId: Int,
         @Query("language") language: String = "zh-CN",
     ): Response<TVSeriesDetails>
 }

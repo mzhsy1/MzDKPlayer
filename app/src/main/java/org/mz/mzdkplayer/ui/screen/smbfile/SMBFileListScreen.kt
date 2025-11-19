@@ -31,6 +31,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -195,7 +196,11 @@ fun SMBFileListScreen(
             movieViewModel.clearFocusedMovie()
         }
     }
+    LaunchedEffect(focusedMovie) {
+        val asss= focusedMovie
 
+    }
+    var movieId by remember { mutableIntStateOf(76600) }
     // 清理资源
     DisposableEffect(Unit) {
         onDispose {
@@ -312,7 +317,16 @@ fun SMBFileListScreen(
                                                                 "SMBFileListScreen",
                                                                 "connectionName:$connectionName"
                                                             )
-                                                            navController.navigate("VideoPlayer/$encodedUri/SMB/$encodedFileName/${connectionName}")
+
+                                                            Log.d("SMBFileListScreen","movieId:$movieId")
+                                                            // 先注释掉 观察movieId的值是否预期
+                                                            if (movieId > 0 && focusedFileName == file.name) {
+                                                                // 有电影信息，跳转详情页
+                                                                navController.navigate("MovieDetails/$encodedUri/SMB/$encodedFileName/${connectionName}/76600")
+                                                            } else {
+                                                                // 没有电影信息，直接播放
+                                                                navController.navigate("VideoPlayer/$encodedUri/SMB/$encodedFileName/${connectionName}")
+                                                            }
                                                         }
 
                                                         Tools.containsAudioFormat(fileExtension) -> {
@@ -420,6 +434,7 @@ fun SMBFileListScreen(
                                                     if (focusState.isFocused) {
                                                         focusedFileName = file.name
                                                         focusedIsDir = file.isDirectory
+                                                        movieId = 76600
                                                         focusedIsVideo = Tools.containsVideoFormat(
                                                             Tools.extractFileExtension(
                                                                 file.name
@@ -502,7 +517,9 @@ fun SMBFileListScreen(
                             when (val movieResult = focusedMovie) {
                                 is Resource.Success -> {
                                     val movie = movieResult.data
+
                                     if (movie != null && movie.posterPath != null) {
+                                        movieId=movie.id
                                         // 显示电影海报 - 边框现在加在Box上
                                         Box(
                                             Modifier

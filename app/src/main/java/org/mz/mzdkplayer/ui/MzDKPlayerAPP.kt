@@ -47,6 +47,7 @@ import org.mz.mzdkplayer.data.model.FTPConnection
 import org.mz.mzdkplayer.data.model.NFSConnection
 import org.mz.mzdkplayer.data.model.WebDavConnection
 import org.mz.mzdkplayer.ui.audioplayer.AudioPlayerScreen
+import org.mz.mzdkplayer.ui.movie.MovieDetailsScreen
 import org.mz.mzdkplayer.ui.screen.history.MediaHistoryScreen
 
 
@@ -400,6 +401,22 @@ fun MzDKPlayerAPP(externalVideoUri: Uri?) {
                     connectionName
                 )
             }
+        }
+        composable("MovieDetails/{videoUri}/{dataSourceType}/{fileName}/{connectionName}/{movieId}") { backStackEntry ->
+            val videoUri = backStackEntry.arguments?.getString("videoUri") ?: ""
+            val dataSourceType = backStackEntry.arguments?.getString("dataSourceType") ?: ""
+            val fileName = backStackEntry.arguments?.getString("fileName") ?: ""
+            val connectionName = backStackEntry.arguments?.getString("connectionName") ?: ""
+            val movieId = backStackEntry.arguments?.getString("movieId")?.toIntOrNull() ?: 0
+
+            MovieDetailsScreen(
+                videoUri = videoUri,
+                dataSourceType = dataSourceType,
+                fileName = fileName,
+                connectionName = connectionName,
+                movieId = movieId,
+                navController = mainNavController
+            )
         }
 
         composable("SMBListScreen") {

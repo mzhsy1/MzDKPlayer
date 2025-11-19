@@ -8,7 +8,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.data.model.Movie
+import org.mz.mzdkplayer.data.model.MovieDetails
 import org.mz.mzdkplayer.data.model.TVData
+import org.mz.mzdkplayer.data.model.TVSeriesDetails
 import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.data.repository.TmdbRepository
 
@@ -23,13 +25,20 @@ class MovieViewModel(private val repository: TmdbRepository) : ViewModel() {
     private val _searchResults = MutableStateFlow<Resource<List<Movie>>>(Resource.Loading)
     val searchResults: StateFlow<Resource<List<Movie>>> = _searchResults
 
+    private val _movieDeResults = MutableStateFlow<Resource<MovieDetails>>(Resource.Loading)
+
+    val movieDeResults: StateFlow<Resource<MovieDetails>> = _movieDeResults
+
+    private val _tvSeriesResults = MutableStateFlow<Resource<TVSeriesDetails>>(Resource.Loading)
+    val tvSeriesResults: StateFlow<Resource<TVSeriesDetails>> = _tvSeriesResults
+
     // 新增：当前焦点电影的搜索结果
     // 替换原来的 _focusedMovie
     private val _focusedMovie = MutableStateFlow<Resource<MediaItem?>>(Resource.Success(null))
     val focusedMovie: StateFlow<Resource<MediaItem?>> = _focusedMovie
 
     init {
-       // loadPopularMovies()
+        // loadPopularMovies()
         // 移除初始加载，按需加载
     }
 
@@ -38,7 +47,9 @@ class MovieViewModel(private val repository: TmdbRepository) : ViewModel() {
             _popularMovies.value = Resource.Loading
             when (val result = repository.getPopularMovies()) {
                 is Resource.Success -> _popularMovies.value = Resource.Success(result.data.results)
-                is Resource.Error -> _popularMovies.value = Resource.Error(result.message, result.exception)
+                is Resource.Error -> _popularMovies.value =
+                    Resource.Error(result.message, result.exception)
+
                 Resource.Loading -> {} // 不会执行到这里
             }
         }
@@ -49,13 +60,15 @@ class MovieViewModel(private val repository: TmdbRepository) : ViewModel() {
             _topRatedMovies.value = Resource.Loading
             when (val result = repository.getTopRatedMovies()) {
                 is Resource.Success -> _topRatedMovies.value = Resource.Success(result.data.results)
-                is Resource.Error -> _topRatedMovies.value = Resource.Error(result.message, result.exception)
+                is Resource.Error -> _topRatedMovies.value =
+                    Resource.Error(result.message, result.exception)
+
                 Resource.Loading -> {}
             }
         }
     }
 
-    fun searchMovies(query: String,year: String) {
+    fun searchMovies(query: String, year: String) {
         if (query.isBlank()) {
             _searchResults.value = Resource.Success(emptyList())
             return
@@ -63,9 +76,11 @@ class MovieViewModel(private val repository: TmdbRepository) : ViewModel() {
 
         viewModelScope.launch {
             _searchResults.value = Resource.Loading
-            when (val result = repository.searchMovies(query = query, year =year )) {
+            when (val result = repository.searchMovies(query = query, year = year)) {
                 is Resource.Success -> _searchResults.value = Resource.Success(result.data.results)
-                is Resource.Error -> _searchResults.value = Resource.Error(result.message, result.exception)
+                is Resource.Error -> _searchResults.value =
+                    Resource.Error(result.message, result.exception)
+
                 Resource.Loading -> {}
             }
         }
@@ -99,35 +114,86 @@ class MovieViewModel(private val repository: TmdbRepository) : ViewModel() {
                 _focusedMovie.value = Resource.Success(null)
                 return@launch
             }
-            Log.d("MovieViewModel", "Cleaned title: ${mediaInfo.title}, Year: ${mediaInfo.year},S:${mediaInfo.season},E:${mediaInfo.episode}")
+            Log.d(
+                "MovieViewModel",
+                "Cleaned title: ${mediaInfo.title}, Year: ${mediaInfo.year},S:${mediaInfo.season},E:${mediaInfo.episode}"
+            )
 
             Log.d("MovieViewModel", "org movie: $movieName")
             // 根据 mediaType 选择搜索方法
             when (mediaInfo.mediaType) {
                 "movie" -> {
-                    when (val result = repository.searchMovies(mediaInfo.title, year = mediaInfo.year)) {
+                    when (val result =
+                        repository.searchMovies(mediaInfo.title, year = mediaInfo.year)) {
                         is Resource.Success -> {
                             val movie = result.data.results.firstOrNull()
                             _focusedMovie.value = Resource.Success(movie?.toMediaItem())
                         }
-                        is Resource.Error -> _focusedMovie.value = Resource.Error(result.message, result.exception)
+
+                        is Resource.Error -> _focusedMovie.value =
+                            Resource.Error(result.message, result.exception)
+
                         else -> {}
                     }
                 }
+
                 "tv" -> {
-                    when (val result = repository.searchTV(mediaInfo.title, year = mediaInfo.year)) {
+                    when (val result =
+                        repository.searchTV(mediaInfo.title, year = mediaInfo.year)) {
                         is Resource.Success -> {
                             val tv = result.data.results.firstOrNull()
                             _focusedMovie.value = Resource.Success(tv?.toMediaItem())
                         }
-                        is Resource.Error -> _focusedMovie.value = Resource.Error(result.message, result.exception)
+
+                        is Resource.Error -> _focusedMovie.value =
+                            Resource.Error(result.message, result.exception)
+
                         else -> {}
                     }
                 }
-                else -> _focusedMovie.value = Resource.Error("Unsupported media type: ${mediaInfo.mediaType}")
+
+                else -> _focusedMovie.value =
+                    Resource.Error("Unsupported media type: ${mediaInfo.mediaType}")
             }
         }
     }
+
+    fun getMovieDetails(movieId: Int) {
+        _movieDeResults.value = Resource.Loading
+        viewModelScope.launch {
+            when (val result = repository.getMovieDetails(movieId = movieId)) {
+                is Resource.Success -> {
+                    val movie = result.data
+                    _movieDeResults.value = Resource.Success(movie)
+                }
+
+                is Resource.Error -> _movieDeResults.value =
+                    Resource.Error(result.message, result.exception)
+
+                else -> {}
+            }
+        }
+
+    }
+
+    fun getTVSeriesDetails(seriesId: Int) {
+        _tvSeriesResults.value = Resource.Loading
+        viewModelScope.launch {
+            when (val result = repository.getTVSeriesDetails(seriesId = seriesId)) {
+                is Resource.Success -> {
+                    val tvSeriesDetails = result.data
+                    _tvSeriesResults.value = Resource.Success(tvSeriesDetails)
+                }
+
+                is Resource.Error -> _movieDeResults.value =
+                    Resource.Error(result.message, result.exception)
+
+                else -> {}
+            }
+        }
+
+    }
+
     // 扩展函数：把 Movie/TvData 转成通用的 MediaItem
     private fun Movie.toMediaItem() = MediaItem(
         id = id,
@@ -146,9 +212,10 @@ class MovieViewModel(private val repository: TmdbRepository) : ViewModel() {
     )
 
     // 辅助函数：检测字符串是否包含中文字符
-     fun String.containsChinese(): Boolean {
+    fun String.containsChinese(): Boolean {
         return this.any { it in '\u4e00'..'\u9fff' }
     }
+
     fun refreshAll() {
         loadPopularMovies()
         loadTopRatedMovies()
@@ -162,9 +229,8 @@ class MovieViewModel(private val repository: TmdbRepository) : ViewModel() {
 }
 
 
-
 data class MediaItem(
-    val id: Int,
+    val id: Int = 0,
     val title: String?,
     val overview: String,
     val posterPath: String?,

@@ -173,6 +173,7 @@ class SmbDataSource(
             .withMultiProtocolNegotiate(true)
             .withBufferSize(config.smbBufferSizeBytes)
             .withSoTimeout(config.soTimeoutMs)
+            // TODO 120000 说暂时的
             .withTimeout(120000, TimeUnit.MILLISECONDS)
             .withReadBufferSize(config.readBufferSizeBytes)
             .withTransactBufferSize(1*1024*1024)
@@ -482,7 +483,7 @@ data class SmbDataSourceConfig(
     val bufferSizeBytes: Int = 8 * 1024 * 1024, // 8MB 内部缓冲区大小
     val smbBufferSizeBytes: Int = 8 * 1024 * 1024, // SMB 协议缓冲区大小
     val readBufferSizeBytes: Int = 8 * 1024 * 1024, // SMB 读取缓冲区大小
-    val soTimeoutMs: Int = 120000, // Socket 超时时间 120s
+    val soTimeoutMs: Int = 0, // Socket 超时时间 120s
     val logIntervalMs: Long = 5000, // 日志打印间隔
     val minLogSpeedMBs: Double = 5.0 // 触发日志的最低速度阈值 (MB/s)
 )
