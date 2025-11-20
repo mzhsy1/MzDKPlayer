@@ -98,16 +98,16 @@
 ## 应用演示
 
 ### 主界面与文件列表
-[主界面截图](screenshots/Screenshot_20251116_164521.png)
-[主界面截图](screenshots/Screenshot_20251116_163213.png)
-[主界面截图](screenshots/Screenshot_20251116_163123.png)
+![主界面截图](screenshots/Screenshot_20251116_164521.png)
+![主界面截图](screenshots/Screenshot_20251116_163213.png)
+![主界面截图](screenshots/Screenshot_20251116_163123.png)
 ### 播放界面与弹幕效果
-[视频播放界面截图](screenshots/Screenshot_20251104_190350.png)  
-[视频播放界面截图](screenshots/Screenshot_20251104_190409.png)
-[音频播放界面截图](screenshots/Screenshot_20251104_190433.png)
+![视频播放界面截图](screenshots/Screenshot_20251104_190350.png)  
+![视频播放界面截图](screenshots/Screenshot_20251104_190409.png)
+![音频播放界面截图](screenshots/Screenshot_20251104_190433.png)
 ### 电影/电视剧详情页面
-[电影详情页面截图](screenshots/Screenshot_20251120_164851.png)
-[电视剧详情页面截图](screenshots/Screenshot_20251120_164935.png)
+![电影详情页面截图](screenshots/Screenshot_20251120_164851.png)
+![电视剧详情页面截图](screenshots/Screenshot_20251120_164935.png)
 
 
 ---
