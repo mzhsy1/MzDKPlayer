@@ -4,6 +4,7 @@ import org.mz.mzdkplayer.data.api.TmdbApiService
 import org.mz.mzdkplayer.data.api.TmdbServiceCreator
 import org.mz.mzdkplayer.data.model.Movie
 import retrofit2.Response
+import retrofit2.http.Path
 
 
 class TmdbRepository(private val apiService: TmdbApiService) {
@@ -16,19 +17,32 @@ class TmdbRepository(private val apiService: TmdbApiService) {
         apiService.getTopRatedMovies(page = page)
     }
 
-    suspend fun searchMovies(query: String, page: Int = 1,year: String) = safeApiCall {
+    suspend fun searchMovies(query: String, page: Int = 1, year: String) = safeApiCall {
         apiService.searchMovies(query = query, page = page, year = year)
     }
 
-    suspend fun searchTV(query: String, page: Int = 1,year: String) = safeApiCall {
+    suspend fun searchTV(query: String, page: Int = 1, year: String) = safeApiCall {
         apiService.searchTV(query = query, page = page, year = year)
     }
 
     suspend fun getMovieDetails(movieId: Int) = safeApiCall {
         apiService.getMovieDetails(movieId = movieId)
     }
-    suspend fun getTVSeriesDetails(seriesId: Int,) = safeApiCall {
-        apiService.getTVSeriesDetails(seriesId =seriesId )
+
+    suspend fun getTVSeriesDetails(seriesId: Int) = safeApiCall {
+        apiService.getTVSeriesDetails(seriesId = seriesId)
+    }
+
+    suspend fun getTVEpisodeDetails(
+        seriesId: Int,
+        seasonNumber: Int,
+        episodeNumber: Int
+    ) = safeApiCall {
+        apiService.getTVEpisodeDetails(
+            seriesId = seriesId,
+            seasonNumber = seasonNumber,
+            episodeNumber = episodeNumber
+        )
     }
 
     //  提取通用安全调用逻辑

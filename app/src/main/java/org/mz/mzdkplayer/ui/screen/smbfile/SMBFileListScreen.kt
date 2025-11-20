@@ -1,5 +1,6 @@
 package org.mz.mzdkplayer.ui.screen.smbfile
 
+import MediaInfoExtractorFormFileName
 import NoSearchResult
 import android.util.Log
 import android.widget.Toast
@@ -197,10 +198,10 @@ fun SMBFileListScreen(
         }
     }
     LaunchedEffect(focusedMovie) {
-        val asss= focusedMovie
+        val asss = focusedMovie
 
     }
-    var movieId by remember { mutableIntStateOf(76600) }
+    var mediaId by remember { mutableIntStateOf(-1) }
     // 清理资源
     DisposableEffect(Unit) {
         onDispose {
@@ -318,11 +319,23 @@ fun SMBFileListScreen(
                                                                 "connectionName:$connectionName"
                                                             )
 
-                                                            Log.d("SMBFileListScreen","movieId:$movieId")
+                                                            Log.d(
+                                                                "SMBFileListScreen",
+                                                                "movieId:$mediaId"
+                                                            )
                                                             // 先注释掉 观察movieId的值是否预期
-                                                            if (movieId > 0 && focusedFileName == file.name) {
+                                                            if (mediaId > 0 && focusedFileName == file.name) {
+                                                                val mediaInfoFN =
+                                                                    MediaInfoExtractorFormFileName.extract(
+                                                                        file.name
+                                                                    )
+                                                                if (mediaInfoFN.mediaType == "movie") {
+                                                                    navController.navigate("MovieDetails/$encodedUri/SMB/$encodedFileName/${connectionName}/$mediaId")
+                                                                } else {
+                                                                    navController.navigate("TVSeriesDetails/$encodedUri/SMB/$encodedFileName/${connectionName}/$mediaId/${mediaInfoFN.season.toInt()}/${mediaInfoFN.episode.toInt()}")
+                                                                }
                                                                 // 有电影信息，跳转详情页
-                                                                navController.navigate("MovieDetails/$encodedUri/SMB/$encodedFileName/${connectionName}/76600")
+
                                                             } else {
                                                                 // 没有电影信息，直接播放
                                                                 navController.navigate("VideoPlayer/$encodedUri/SMB/$encodedFileName/${connectionName}")
@@ -434,7 +447,7 @@ fun SMBFileListScreen(
                                                     if (focusState.isFocused) {
                                                         focusedFileName = file.name
                                                         focusedIsDir = file.isDirectory
-                                                        movieId = 76600
+                                                        mediaId = -1
                                                         focusedIsVideo = Tools.containsVideoFormat(
                                                             Tools.extractFileExtension(
                                                                 file.name
@@ -519,8 +532,8 @@ fun SMBFileListScreen(
                                     val movie = movieResult.data
 
                                     if (movie != null && movie.posterPath != null) {
-                                        movieId=movie.id
-                                        // 显示电影海报 - 边框现在加在Box上
+                                        mediaId = movie.id
+                                        // 显示电影海报
                                         Box(
                                             Modifier
                                                 .widthIn(180.dp, 200.dp)
@@ -556,7 +569,7 @@ fun SMBFileListScreen(
                                 is Resource.Loading -> {
                                     Box(
                                         modifier = Modifier
-                                            .widthIn( 200.dp)
+                                            .widthIn(200.dp)
                                             .fillMaxHeight(0.6f)
                                             .background(Color.DarkGray.copy(alpha = 0.3f))
                                             .clip(RoundedCornerShape(20.dp)),

@@ -10,7 +10,8 @@ data class TVData(
     @SerializedName("original_name") val originalName: String?,
     @SerializedName("backdrop_path") val backdropPath: String?,
     @SerializedName("vote_average") val voteAverage: Double,
-    @SerializedName("first_air_date") val firstAirDate: String?
+    @SerializedName("first_air_date") val firstAirDate: String?,
+
 )
 
 data class TVListResponse(

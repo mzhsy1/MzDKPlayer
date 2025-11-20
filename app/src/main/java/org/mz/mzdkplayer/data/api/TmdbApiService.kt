@@ -1,6 +1,7 @@
 package org.mz.mzdkplayer.data.api
 import org.mz.mzdkplayer.data.model.MovieDetails
 import org.mz.mzdkplayer.data.model.MovieListResponse
+import org.mz.mzdkplayer.data.model.TVEpisode
 import org.mz.mzdkplayer.data.model.TVSeriesDetails
 import org.mz.mzdkplayer.data.model.TVListResponse
 import retrofit2.Response
@@ -52,4 +53,16 @@ interface TmdbApiService {
         @Path("seriesId") seriesId: Int,
         @Query("language") language: String = "zh-CN",
     ): Response<TVSeriesDetails>
+
+    /**
+     * 获取当前TV具体集的信息
+     */
+    @GET("tv/{seriesId}/season/{seasonNumber}/episode/{episodeNumber}")
+    suspend fun getTVEpisodeDetails(
+        @Path("seriesId") seriesId: Int,
+        @Path("seasonNumber") seasonNumber:Int,
+        @Path("episodeNumber") episodeNumber:Int,
+        @Query("language") language: String = "zh-CN",
+    ): Response<TVEpisode>
+
 }

@@ -30,10 +30,15 @@ import java.io.File
 @Composable
 
 fun LoadingScreen(
-    text: String="正在加载", modifier: Modifier,fontSize:Int=26,arcSize:Int = 80
+    text: String = "正在加载",
+    modifier: Modifier,
+    fontSize: Int = 26,
+    arcSize: Int = 80,
+    subtitle: String = "",
+    subtitleFontSize: Int = 20
 ) {
     Box(
-        modifier =modifier,
+        modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -47,6 +52,13 @@ fun LoadingScreen(
                 fontSize = fontSize.sp,
                 color = Color.White
             )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = subtitle,
+                fontSize = subtitleFontSize.sp,
+                color = Color.Gray
+            )
+
         }
     }
 }

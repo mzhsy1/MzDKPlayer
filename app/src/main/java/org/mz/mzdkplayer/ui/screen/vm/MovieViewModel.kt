@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.data.model.Movie
 import org.mz.mzdkplayer.data.model.MovieDetails
 import org.mz.mzdkplayer.data.model.TVData
+import org.mz.mzdkplayer.data.model.TVEpisode
 import org.mz.mzdkplayer.data.model.TVSeriesDetails
 import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.data.repository.TmdbRepository
@@ -31,6 +32,9 @@ class MovieViewModel(private val repository: TmdbRepository) : ViewModel() {
 
     private val _tvSeriesResults = MutableStateFlow<Resource<TVSeriesDetails>>(Resource.Loading)
     val tvSeriesResults: StateFlow<Resource<TVSeriesDetails>> = _tvSeriesResults
+
+    private val _tvEpisodeResults = MutableStateFlow<Resource<TVEpisode>>(Resource.Loading)
+    val tvEpisodeResults: StateFlow<Resource<TVEpisode>> = _tvEpisodeResults
 
     // 新增：当前焦点电影的搜索结果
     // 替换原来的 _focusedMovie
@@ -142,6 +146,7 @@ class MovieViewModel(private val repository: TmdbRepository) : ViewModel() {
                         repository.searchTV(mediaInfo.title, year = mediaInfo.year)) {
                         is Resource.Success -> {
                             val tv = result.data.results.firstOrNull()
+
                             _focusedMovie.value = Resource.Success(tv?.toMediaItem())
                         }
 
@@ -185,7 +190,34 @@ class MovieViewModel(private val repository: TmdbRepository) : ViewModel() {
                     _tvSeriesResults.value = Resource.Success(tvSeriesDetails)
                 }
 
-                is Resource.Error -> _movieDeResults.value =
+                is Resource.Error -> _tvSeriesResults.value =
+                    Resource.Error(result.message, result.exception)
+
+                else -> {}
+            }
+        }
+
+    }
+
+
+    fun getTVEpisodeDetails(
+        seriesId: Int,
+        seasonNumber: Int=0,
+        episodeNumber: Int=0
+    ) {
+        _tvEpisodeResults.value = Resource.Loading
+        viewModelScope.launch {
+            when (val result = repository.getTVEpisodeDetails(
+                seriesId = seriesId,
+                seasonNumber = seasonNumber,
+                episodeNumber = episodeNumber
+            )) {
+                is Resource.Success -> {
+                    val tvSeriesDetails = result.data
+                    _tvEpisodeResults.value = Resource.Success(tvSeriesDetails)
+                }
+
+                is Resource.Error -> _tvEpisodeResults.value =
                     Resource.Error(result.message, result.exception)
 
                 else -> {}
@@ -200,7 +232,8 @@ class MovieViewModel(private val repository: TmdbRepository) : ViewModel() {
         title = title ?: "",
         overview = overview,
         posterPath = posterPath,
-        releaseDate = releaseDate
+        releaseDate = releaseDate,
+        isMovie = true
     )
 
     private fun TVData.toMediaItem() = MediaItem(
@@ -208,7 +241,8 @@ class MovieViewModel(private val repository: TmdbRepository) : ViewModel() {
         title = name ?: "",
         overview = overview,
         posterPath = posterPath,
-        releaseDate = firstAirDate // TV 的 releaseDate 实际是 first_air_date
+        releaseDate = firstAirDate, // TV 的 releaseDate 实际是 first_air_date
+        isMovie = false,
     )
 
     // 辅助函数：检测字符串是否包含中文字符
@@ -234,5 +268,9 @@ data class MediaItem(
     val title: String?,
     val overview: String,
     val posterPath: String?,
-    val releaseDate: String? // 通用字段：电影用 release_date，电视用 first_air_date
+    val releaseDate: String? ,// 通用字段：电影用 release_date，电视用 first_air_date
+    val isMovie: Boolean =true,
+    val seasonNumber: Int = 0, // 只有TV有
+    val episodeNumber: Int =0 // 只有TV有
+
 )

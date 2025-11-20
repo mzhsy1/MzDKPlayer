@@ -14,6 +14,7 @@ data class TVSeriesDetails(
     @SerializedName("last_air_date") val lastAirDate: String?,
     @SerializedName("origin_country") val originCountry: List<String>,
     @SerializedName("genres") val genreList: List<Genre>,
+    @SerializedName("status") val status: String,
     @SerializedName("number_of_seasons") val numberOfSeasons: Int?=1, // all seasons number
     @SerializedName("number_of_episodes") val numberOfEpisodes:Int?=1,// all episodes number
 

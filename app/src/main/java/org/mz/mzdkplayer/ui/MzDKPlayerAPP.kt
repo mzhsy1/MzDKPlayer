@@ -47,7 +47,7 @@ import org.mz.mzdkplayer.data.model.FTPConnection
 import org.mz.mzdkplayer.data.model.NFSConnection
 import org.mz.mzdkplayer.data.model.WebDavConnection
 import org.mz.mzdkplayer.ui.audioplayer.AudioPlayerScreen
-import org.mz.mzdkplayer.ui.movie.MovieDetailsScreen
+import org.mz.mzdkplayer.ui.screen.movie.MovieDetailsScreen
 import org.mz.mzdkplayer.ui.screen.history.MediaHistoryScreen
 
 
@@ -72,6 +72,7 @@ import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavConListScreen
 import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavConScreen
 import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavFileListScreen
 import org.mz.mzdkplayer.ui.screen.setting.SettingsScreen
+import org.mz.mzdkplayer.ui.screen.tv.TVSeriesDetailsScreen
 import org.mz.mzdkplayer.ui.screen.vm.SMBListViewModel
 import org.mz.mzdkplayer.ui.theme.MySideListItemColor
 
@@ -418,7 +419,27 @@ fun MzDKPlayerAPP(externalVideoUri: Uri?) {
                 navController = mainNavController
             )
         }
+        composable("TVSeriesDetails/{videoUri}/{dataSourceType}/{fileName}/{connectionName}/{seriesId}/{seasonNumber}/{episodeNumber}") { backStackEntry ->
+            val videoUri = backStackEntry.arguments?.getString("videoUri") ?: ""
+            val dataSourceType = backStackEntry.arguments?.getString("dataSourceType") ?: ""
+            val fileName = backStackEntry.arguments?.getString("fileName") ?: ""
+            val connectionName = backStackEntry.arguments?.getString("connectionName") ?: ""
+            // TV 剧集特有参数
+            val seriesId = backStackEntry.arguments?.getString("seriesId")?.toIntOrNull() ?: 0
+            val seasonNumber = backStackEntry.arguments?.getString("seasonNumber")?.toIntOrNull() ?: 0
+            val episodeNumber = backStackEntry.arguments?.getString("episodeNumber")?.toIntOrNull() ?: 0
 
+            TVSeriesDetailsScreen(
+                videoUri = videoUri,
+                dataSourceType = dataSourceType,
+                fileName = fileName,
+                connectionName = connectionName,
+                seriesId = seriesId,
+                currentSeason = seasonNumber,   // 传递季号
+                currentEpisode = episodeNumber, // 传递集号
+                navController = mainNavController
+            )
+        }
         composable("SMBListScreen") {
             SMBConListScreen(mainNavController, smbListViewModel)
         }

@@ -1,4 +1,4 @@
-package org.mz.mzdkplayer.ui.movie
+package org.mz.mzdkplayer.ui.screen.movie
 
 import android.view.KeyEvent
 import androidx.compose.foundation.BorderStroke
@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,6 +35,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -41,10 +44,8 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,10 +62,13 @@ import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.model.MovieDetails
 import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.di.RepositoryProvider
+import org.mz.mzdkplayer.tool.Tools.getCountryName
 import org.mz.mzdkplayer.tool.viewModelWithFactory
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
+import org.mz.mzdkplayer.ui.screen.common.LocalizedStatusText
 import org.mz.mzdkplayer.ui.screen.common.MyIconButton
 import org.mz.mzdkplayer.ui.screen.vm.MovieViewModel
+import java.net.URLEncoder
 
 @Composable
 fun MovieDetailsScreen(
@@ -86,7 +90,9 @@ fun MovieDetailsScreen(
             movieViewModel.getMovieDetails(movieId)
         }
     }
-
+    val videoUriEncoder = URLEncoder.encode(videoUri, "UTF-8")
+    val fileNameEncoder = URLEncoder.encode(fileName, "UTF-8")
+    val connectionNameEncoder = URLEncoder.encode(connectionName, "UTF-8")
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -97,15 +103,40 @@ fun MovieDetailsScreen(
                 MovieContent(
                     movie = result.data,
                     onPlayClick = {
-                        navController.navigate("VideoPlayer/$videoUri/$dataSourceType/$fileName/$connectionName")
+
+                        navController.navigate("VideoPlayer/$videoUriEncoder/$dataSourceType/$fileNameEncoder/$connectionNameEncoder")
                     }
                 )
             }
-            is Resource.Loading -> LoadingScreen(text = "加载中...", modifier = Modifier.fillMaxSize())
+
+            is Resource.Loading -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    LoadingScreen(
+                        text = "正在加载电影详情...",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight(0.7f),
+                        subtitle = "如果你不想看到详情页，可以在设置中设置不显示详情页"
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    MyIconButton(
+                        text = "立即播放",
+                        icon = R.drawable.baseline_play_arrow_24,
+                        modifier = Modifier,
+                        onClick = { navController.navigate("VideoPlayer/$videoUriEncoder/$dataSourceType/$fileNameEncoder/$connectionNameEncoder") }
+                    )
+                }
+            }
+
             is Resource.Error -> ErrorView(
                 message = "加载失败",
-                onPlayAnyway = { navController.navigate("VideoPlayer/$videoUri/$dataSourceType/$fileName/$connectionName") }
+                onPlayAnyway = { navController.navigate("VideoPlayer/$videoUriEncoder/$fileNameEncoder/$fileName/$connectionNameEncoder") }
             )
+
             else -> {}
         }
     }
@@ -118,7 +149,10 @@ private fun MovieContent(
 ) {
     // 控制详细简介弹窗的显示
     var showFullDescDialog by remember { mutableStateOf(false) }
-
+    val watchButtonsFR = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        watchButtonsFR.requestFocus()
+    }
     // 1. 背景层
     Box(modifier = Modifier.fillMaxSize()) {
         if (!movie.backdropPath.isNullOrEmpty()) {
@@ -132,20 +166,28 @@ private fun MovieContent(
         }
         // 渐变遮罩
         Box(
-            modifier = Modifier.fillMaxSize().background(
-                Brush.horizontalGradient(
-                    colors = listOf(Color.Black.copy(alpha = 0.95f), Color.Black.copy(alpha = 0.7f), Color.Transparent),
-                    startX = 0f, endX = 1600f
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.95f),
+                            Color.Black.copy(alpha = 0.7f),
+                            Color.Transparent
+                        ),
+                        startX = 0f, endX = 1600f
+                    )
                 )
-            )
         )
         Box(
-            modifier = Modifier.fillMaxSize().background(
-                Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
-                    startY = 0f
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
+                        startY = 0f
+                    )
                 )
-            )
         )
     }
 
@@ -158,19 +200,26 @@ private fun MovieContent(
         Box(
             modifier = Modifier
                 .padding(start = 48.dp, top = 32.dp, bottom = 32.dp)
-                .width(320.dp)
-                .aspectRatio(2f / 3f),
+                .widthIn(300.dp, 320.dp),
+
             contentAlignment = Alignment.Center
         ) {
             if (!movie.posterPath.isNullOrEmpty()) {
                 AsyncImage(
                     model = "https://image.tmdb.org/t/p/w500${movie.posterPath}",
                     contentDescription = movie.title,
-                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(16.dp)),
                     contentScale = ContentScale.Crop
                 )
             } else {
-                Box(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)).background(Color.Gray))
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.Gray)
+                )
             }
         }
 
@@ -178,7 +227,9 @@ private fun MovieContent(
 
         // 右侧信息列表
         LazyColumn(
-            modifier = Modifier.weight(1f).fillMaxSize(),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxSize(),
             contentPadding = PaddingValues(top = 32.dp, bottom = 32.dp, end = 48.dp),
             verticalArrangement = Arrangement.Center
         ) {
@@ -218,19 +269,28 @@ private fun MovieContent(
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text(text = movie.releaseDate?.take(4) ?: "", color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = movie.releaseDate?.take(4) ?: "",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(text = "|", color = Color.Gray)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text(text = movie.status, color = Color.LightGray, style = MaterialTheme.typography.bodyMedium)
+                    LocalizedStatusText(movie.status)
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 val extraInfo = listOfNotNull(
-                    movie.originCountry.joinToString(", ").takeIf { it.isNotEmpty() },
+                    movie.originCountry.joinToString(", ") { getCountryName(it) }
+                        .takeIf { it.isNotEmpty() },
                     movie.genreList.joinToString(" / ") { it.name }.takeIf { it.isNotEmpty() }
                 ).joinToString("  •  ")
                 if (extraInfo.isNotEmpty()) {
-                    Text(text = extraInfo, style = MaterialTheme.typography.bodySmall, color = Color.LightGray)
+                    Text(
+                        text = extraInfo,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.LightGray
+                    )
                 }
                 Spacer(modifier = Modifier.height(24.dp))
             }
@@ -277,7 +337,9 @@ private fun MovieContent(
                 MyIconButton(
                     text = "立即播放",
                     icon = R.drawable.baseline_play_arrow_24,
-                    modifier = Modifier.width(160.dp),
+                    modifier = Modifier
+                        .width(160.dp)
+                        .focusRequester(watchButtonsFR),
                     onClick = onPlayClick
                 )
                 Spacer(modifier = Modifier.height(48.dp))
@@ -294,6 +356,7 @@ private fun MovieContent(
         )
     }
 }
+
 @Composable
 fun FullDescriptionDialog(
     title: String,
@@ -361,6 +424,7 @@ fun FullDescriptionDialog(
                                         }
                                         true // 返回 true 表示事件已消费，不再传递给系统（防止焦点跳走）
                                     }
+
                                     KeyEvent.KEYCODE_DPAD_UP -> {
                                         // 向上滚动
                                         coroutineScope.launch {
@@ -368,6 +432,7 @@ fun FullDescriptionDialog(
                                         }
                                         true
                                     }
+
                                     else -> false
                                 }
                             } else {

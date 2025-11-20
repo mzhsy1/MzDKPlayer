@@ -496,19 +496,46 @@ object Tools {
         }
     }
 
-
-
-}
-
-fun isValidHostname(hostname: String): Boolean {
-    // 只允许局域网IP地址
-    return when {
-        hostname.matches(Regex("^192\\.168\\.\\d+\\.\\d+$")) -> true
-        hostname.matches(Regex("^10\\.\\d+\\.\\d+\\.\\d+$")) -> true
-        hostname.matches(Regex("^172\\.(1[6-9]|2[0-9]|3[0-1])\\.\\d+\\.\\d+$")) -> true
-        hostname == "localhost" -> true
-        hostname == "127.0.0.1" -> true
-        else -> false
+     fun getCountryName(countryCode: String): String {
+        return when (countryCode.uppercase()) {
+            "US" -> "美国"
+            "CN" -> "中国"
+            "JP" -> "日本"
+            "KR" -> "韩国"
+            "GB" -> "英国"
+            "FR" -> "法国"
+            "DE" -> "德国"
+            "IT" -> "意大利"
+            "ES" -> "西班牙"
+            "RU" -> "俄罗斯"
+            "CA" -> "加拿大"
+            "AU" -> "澳大利亚"
+            "BR" -> "巴西"
+            "IN" -> "印度"
+            "MX" -> "墨西哥"
+            "NL" -> "荷兰"
+            "SE" -> "瑞典"
+            "CH" -> "瑞士"
+            "BE" -> "比利时"
+            "AT" -> "奥地利"
+            "PL" -> "波兰"
+            "TR" -> "土耳其"
+            "ZA" -> "南非"
+            "SG" -> "新加坡"
+            "NZ" -> "新西兰"
+            "TH" -> "泰国"
+            "MY" -> "马来西亚"
+            "PH" -> "菲律宾"
+            "ID" -> "印度尼西亚"
+            "VN" -> "越南"
+            "HK" -> "中国香港"
+            "TW" -> "中国台湾"
+            "MO" -> "中国澳门"
+            else -> countryCode // 或者返回 "未知"、"" 等，根据需求
+        }
     }
+
 }
+
+
 
