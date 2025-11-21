@@ -84,10 +84,14 @@ fun MovieDetailsScreen(
 ) {
     val movieDetails by movieViewModel.movieDeResults.collectAsState()
     val tvSeriesDetails by movieViewModel.tvSeriesResults.collectAsState()
-
+    // [新增] 解码 URI 用于数据库查询
+    val decodedUri = remember(videoUri) {
+        java.net.URLDecoder.decode(videoUri, "UTF-8")
+    }
     LaunchedEffect(movieId) {
         if (movieId > 0) {
-            movieViewModel.getMovieDetails(movieId)
+            // [修改] 调用带缓存的方法
+            movieViewModel.getMovieDetailsWithCache(movieId, decodedUri)
         }
     }
     val videoUriEncoder = URLEncoder.encode(videoUri, "UTF-8")

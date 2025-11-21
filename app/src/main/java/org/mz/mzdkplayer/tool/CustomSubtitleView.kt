@@ -51,7 +51,7 @@ fun SubtitleView(
     videoSizeDp: IntSize, // 视频容器尺寸（dp）
     subtitleStyle: TextStyle = TextStyle(
         color = Color.White,
-        fontSize = 18.sp
+        fontSize = 22.sp
     ),
     backgroundColor: Color = Color.Black.copy(alpha = 0.0f),
     exoPlayer: ExoPlayer,

@@ -188,10 +188,12 @@ fun SMBFileListScreen(
     }
 
     // 处理焦点变化和媒体播放
+    // 处理焦点变化和媒体播放
     LaunchedEffect(focusedFileName, focusedIsDir, focusedIsVideo) {
         if (focusedFileName != null && !focusedIsDir && focusedIsVideo) {
             // 非目录文件，触发电影搜索
-            movieViewModel.searchFocusedMovie(focusedFileName!!, false)
+            // [修改] 传入 focusedMediaUri 以便查询数据库
+            movieViewModel.searchFocusedMovie(focusedFileName!!, false, focusedMediaUri)
         } else {
             // 目录或无焦点，清空电影信息
             movieViewModel.clearFocusedMovie()
@@ -671,7 +673,6 @@ fun SMBFileListScreen(
                     "加载失败: $errorMessage",
                 )
             }
-
             else -> {
                 LoadingScreen(
                     "正在连接SMB服务器",

@@ -21,6 +21,9 @@ nfsClient = "1.1.0"
 coilComposeVersion = "3.3.0"
 coilNetworkOkhttp = "3.3.0"
 paletteKtx = "1.0.0"
+roomCompiler = "2.7.2"
+roomKtx = "2.7.2"
+roomRuntime = "2.7.2"
 sardineAndroidVersion = "0.9"
 smbj = "0.14.0"
 tvFoundation = "1.0.0-alpha12"
@@ -29,9 +32,9 @@ media3Ui = "1.9.0-alpha01"
 lifecycleRuntimeKtx = "2.9.4"
 activityCompose = "1.11.0"
 datastorePreferences = "1.1.7"
-navigationCompose = "2.9.5"
+navigationCompose = "2.9.6"
 ui = "1.9.4"
-
+ksp = "2.2.21-2.0.4"
 retrofit = "3.0.0"
 
 [libraries]
@@ -43,6 +46,9 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 
 androidx-palette-ktx = { module = "androidx.palette:palette-ktx", version.ref = "paletteKtx" }
+androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
+androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomKtx" }
+androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomCompiler" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" ,version.ref = "ui"  }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
@@ -79,3 +85,4 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

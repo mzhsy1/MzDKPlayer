@@ -367,7 +367,7 @@ fun VideoPlayerScreen(
     // 定义自定义字幕样式
     val customSubtitleStyle = TextStyle(
         color = Color.White, // 字幕颜色为白色
-        fontSize = 20.sp,     // 字体大小
+        fontSize = 22.sp,     // 字体大小
         shadow = Shadow(
             color = Color.Black, // 黑色阴影
             offset = Offset(3f, 3f),
@@ -525,7 +525,7 @@ fun VideoPlayerScreen(
             SubtitleView(
                 cueGroup = currentCueGroup, // 传递当前字幕组
                 subtitleStyle = customSubtitleStyle, // 使用自定义字幕样式(只影响srt字幕)
-                modifier = Modifier.align(Alignment.BottomCenter), // 底部居中对齐(只影响srt字幕)
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 30.dp), // 底部居中对齐(只影响srt字幕)
                 videoSizeDp = videoSizeDp,
                 backgroundColor = Color.Black.copy(alpha = 0.5f),// 背景色(只影响srt字幕)
                 exoPlayer = exoPlayer

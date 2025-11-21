@@ -88,20 +88,35 @@ fun TVSeriesDetailsScreen(
     val connectionNameEncoder = URLEncoder.encode(connectionName, "UTF-8")
 
     // 3. 获取 TV 详情 (整体)
-    LaunchedEffect(seriesId) {
-        if (seriesId > 0) {
-            movieViewModel.getTVSeriesDetails(seriesId)
-        }
+//    LaunchedEffect(seriesId) {
+//        if (seriesId > 0) {
+//            movieViewModel.getTVSeriesDetails(seriesId)
+//        }
+//    }
+//
+//
+//    // 4. 获取 TV 单集详情 (如果季数和集数有效)
+//    LaunchedEffect(seriesId, currentSeason, currentEpisode) {
+//        if (seriesId > 0 && currentSeason > 0 && currentEpisode > 0) {
+//            movieViewModel.getTVEpisodeDetails(
+//                seriesId = seriesId,
+//                seasonNumber = currentSeason,
+//                episodeNumber = currentEpisode
+//            )
+//        }
+//    }
+    val decodedUri = remember(videoUri) {
+        java.net.URLDecoder.decode(videoUri, "UTF-8")
     }
 
-
-    // 4. 获取 TV 单集详情 (如果季数和集数有效)
+    // [修改] 统一在一个 LaunchedEffect 中调用新的组合方法
     LaunchedEffect(seriesId, currentSeason, currentEpisode) {
         if (seriesId > 0 && currentSeason > 0 && currentEpisode > 0) {
-            movieViewModel.getTVEpisodeDetails(
+            movieViewModel.getTVDetailsWithCache(
                 seriesId = seriesId,
-                seasonNumber = currentSeason,
-                episodeNumber = currentEpisode
+                season = currentSeason,
+                episode = currentEpisode,
+                videoUri = decodedUri
             )
         }
     }
