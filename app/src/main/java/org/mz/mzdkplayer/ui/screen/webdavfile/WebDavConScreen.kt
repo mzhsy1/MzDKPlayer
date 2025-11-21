@@ -59,10 +59,10 @@ fun WebDavConScreen() {
     var currentPath by remember { mutableStateOf("") }
 
     // 用户输入状态 - baseUrl 现在表示完整的路径
-    var baseUrl by remember { mutableStateOf("https://192.168.1.4:5006") }
-    var username by remember { mutableStateOf("wang") }
-    var password by remember { mutableStateOf("Wa541888") }
-    var aliasName by remember { mutableStateOf("My WebDAV Server") }
+    var baseUrl by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var aliasName by remember { mutableStateOf("") }
 
     // 用于控制键盘
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -105,7 +105,7 @@ fun WebDavConScreen() {
                 value = baseUrl,
                 onValueChange = { baseUrl = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = "完整 WebDAV 路径 (e.g., https://192.168.1.4:5006)",
+                placeholder = "完整 WebDAV 路径 (e.g., https://192.168.1.4:5006/movies)",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )
@@ -114,7 +114,7 @@ fun WebDavConScreen() {
                 value = username,
                 onValueChange = { username = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = "Username",
+                placeholder = "用户名",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )
@@ -124,7 +124,7 @@ fun WebDavConScreen() {
                 onValueChange = { password = it },
                 modifier = Modifier.fillMaxWidth(),
                 colors = myTTFColor(),
-                placeholder = "Password",
+                placeholder = "密码",
                 textStyle = TextStyle(color = Color.White),
             )
 
@@ -132,7 +132,7 @@ fun WebDavConScreen() {
                 value = aliasName,
                 onValueChange = { aliasName = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = "Connection Name (Alias)",
+                placeholder = "连接别名",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )

@@ -65,9 +65,9 @@ fun NFSConScreen(
     val currentPath by nfsConViewModel.currentPath.collectAsState()
 
     // 用户输入状态 - NFS 需要服务器地址和导出路径
-    var serverAddress by remember { mutableStateOf("192.168.1.4") } // NFS 服务器地址
-    var shareName by remember { mutableStateOf("/fs/1000/nfs") } // NFS 导出路径
-    var aliasName by remember { mutableStateOf("My NFS Server") } // 连接别名
+    var serverAddress by remember { mutableStateOf("192.168") } // NFS 服务器地址
+    var shareName by remember { mutableStateOf("") } // NFS 导出路径
+    var aliasName by remember { mutableStateOf("") } // 连接别名
 
     // 用于控制键盘
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -111,7 +111,7 @@ fun NFSConScreen(
                 value = serverAddress,
                 onValueChange = { serverAddress = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = "NFS Server Address (e.g., 192.168.1.4)",
+                placeholder = "NFS 服务器地址 (e.g., 192.168.1.4)",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )
@@ -121,7 +121,7 @@ fun NFSConScreen(
                 value = shareName,
                 onValueChange = { shareName = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = "Export Path (e.g., /fs/1000/nfs)",
+                placeholder = "NFS 导出路径 (e.g., /fs/1000/nfs)",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )
@@ -131,7 +131,7 @@ fun NFSConScreen(
                 value = aliasName,
                 modifier = Modifier.fillMaxWidth(),
                 onValueChange = { aliasName = it },
-                placeholder = "Connection Name (Alias)",
+                placeholder = "连接别名",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )
@@ -150,7 +150,7 @@ fun NFSConScreen(
                     enabled = connectionStatus != FileConnectionStatus.Connecting, // 连接中时禁用
                     onClick = {
                         keyboardController?.hide() // 隐藏键盘
-                        if (!Tools.validateConnectionParams(context, serverAddress, shareName)) {
+                        if (!Tools.validateConnectionParams(context, serverAddress, shareName, aliasName = aliasName)) {
                             return@MyIconButton
                         }
                         // 创建临时连接对象用于测试
@@ -175,7 +175,7 @@ fun NFSConScreen(
                         .padding(start = 8.dp), // 平分宽度并加左边距
                     onClick = {
                         keyboardController?.hide()
-                        if (!Tools.validateConnectionParams(context, serverAddress, shareName)) {
+                        if (!Tools.validateConnectionParams(context, serverAddress, shareName,aliasName=aliasName)) {
                             return@MyIconButton
                         }
                         if (!nfsConViewModel.isConnected()) {

@@ -65,12 +65,12 @@ fun FTPConScreen(
     val currentPath by ftpConViewModel.currentPath.collectAsState()
 
     // 用户输入状态 - 注意 FTP 需要服务器地址和端口
-    var server by remember { mutableStateOf("192.168.1.4") } // 服务器地址
+    var server by remember { mutableStateOf("192.168") } // 服务器地址
     var port by remember { mutableStateOf("21") } // FTP 端口，默认 21
-    var username by remember { mutableStateOf("wang") }
-    var password by remember { mutableStateOf("Wa541888") }
-    var aliasName by remember { mutableStateOf("My FTP Server") } // 连接别名
-    var shareName by remember { mutableStateOf("/movies") } // FTP 共享文件夹名称
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var aliasName by remember { mutableStateOf("电影") } // 连接别名
+    var shareName by remember { mutableStateOf("") } // FTP 共享文件夹名称
 
     // 用于控制键盘
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -113,7 +113,7 @@ fun FTPConScreen(
                     value = server,
                     onValueChange = { server = it },
                     modifier = Modifier.weight(0.6f),
-                    placeholder = "FTP Server (e.g., 192.168.1.4)",
+                    placeholder = "IP地址 (e.g., 192.168.1.8)",
                     colors = myTTFColor(),
                     textStyle = TextStyle(color = Color.White),
                 )
@@ -128,7 +128,7 @@ fun FTPConScreen(
                             port = newValue
                         }
                     },
-                    placeholder = "Port (e.g., 21)",
+                    placeholder = "端口 (e.g., 21)",
                     colors = myTTFColor(),
                     textStyle = TextStyle(color = Color.White),
                 )
@@ -138,7 +138,7 @@ fun FTPConScreen(
                 value = username,
                 onValueChange = { username = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = "Username",
+                placeholder = "用户名",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )
@@ -148,7 +148,7 @@ fun FTPConScreen(
                 onValueChange = { password = it },
                 modifier = Modifier.fillMaxWidth(),
                 colors = myTTFColor(),
-                placeholder = "Password",
+                placeholder = "密码",
                 textStyle = TextStyle(color = Color.White),
                 // 可以考虑设置为密码输入类型 (如果 TvTextField 支持)
                 // visualTransformation = PasswordVisualTransformation()
@@ -159,7 +159,7 @@ fun FTPConScreen(
                 value = aliasName,
                 modifier = Modifier.fillMaxWidth(),
                 onValueChange = { aliasName = it },
-                placeholder = "Connection Name (Alias)",
+                placeholder = "连接别名",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )
@@ -169,7 +169,7 @@ fun FTPConScreen(
                 value = shareName,
                 onValueChange = { shareName = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = "Initial Share Folder e.g. /movies",
+                placeholder = "初始共享文件夹名称 e.g. /movies",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )
@@ -181,11 +181,11 @@ fun FTPConScreen(
                 MyIconButton(
                     text = "测试连接",
                     icon = R.drawable.check24dp,
-                    modifier = Modifier.weight(1f) .padding(end = 8.dp), // 可选：加点右边距，避免贴太紧,// ⬅️ 平分宽度,
+                    modifier = Modifier.weight(1f) .padding(end = 8.dp), // 可选：加点右边距，避免贴太紧,//  平分宽度,
                     enabled = connectionStatus != FileConnectionStatus.Connecting, // 连接中时禁用
                     onClick = {
                         keyboardController?.hide() // 隐藏键盘
-                        if (!Tools.validateConnectionParams(context, server, shareName = shareName)) {
+                        if (!Tools.validateConnectionParams(context, server, shareName = shareName, aliasName = aliasName)) {
                             return@MyIconButton
                         }
                         val portInt = port.toIntOrNull() ?: 21 // 转换端口，失败则默认 21
@@ -203,7 +203,7 @@ fun FTPConScreen(
 
                         keyboardController?.hide()
                         // 验证必填项
-                        if (!Tools.validateConnectionParams(context, server, shareName = shareName)) {
+                        if (!Tools.validateConnectionParams(context, server, shareName = shareName, aliasName = aliasName)) {
                             return@MyIconButton
                         }
                         if (!ftpConViewModel.isConnected()){

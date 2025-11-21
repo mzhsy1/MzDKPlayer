@@ -55,11 +55,11 @@ import java.util.UUID
 
 fun SMBConScreen(smbListViewModel: SMBListViewModel = viewModel()) {
     val viewModel: SMBConViewModel = viewModel()
-    var ip by remember { mutableStateOf("192.168.1.4") }
-    var username by remember { mutableStateOf("wang") }
-    var password by remember { mutableStateOf("Wa541888") }
-    var shareName by remember { mutableStateOf("movies") }
-    var aliasName by remember { mutableStateOf("my nas") }
+    var ip by remember { mutableStateOf("192.168.") }
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var shareName by remember { mutableStateOf("") }
+    var aliasName by remember { mutableStateOf("") }
 
     // 全局跟踪当前活跃的输入框ID（初始为null）
     //val activeFieldId = remember { mutableStateOf<String?>(null) }

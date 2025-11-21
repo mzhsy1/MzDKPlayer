@@ -390,7 +390,7 @@ object Tools {
     * @param shareName 分享文件名称
     * @return 如果验证通过返回true，否则返回false
     */
-     fun validateConnectionParams(context: Context, serverAddress: String, shareName: String): Boolean {
+     fun validateConnectionParams(context: Context, serverAddress: String, shareName: String,aliasName: String): Boolean {
         if (serverAddress.isBlank()) {
             Toast.makeText(context, "请输入服务器地址", Toast.LENGTH_SHORT).show()
             return false
@@ -401,6 +401,11 @@ object Tools {
         }
         if (!shareName.startsWith("/")) {
             Toast.makeText(context, "分享连接必须以/开头", Toast.LENGTH_SHORT).show()
+            return false
+        }
+        val pattern = Regex("^[a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+\$")
+        if (!pattern.matches(aliasName)) {
+            Toast.makeText(context, "别名只能包含字母、数字、下划线、中划线和中文，不能包含特殊符号", Toast.LENGTH_SHORT).show()
             return false
         }
         return true

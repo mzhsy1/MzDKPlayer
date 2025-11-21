@@ -63,8 +63,8 @@ fun HTTPLinkConScreen(
 
     // 用户输入状态 - HTTPLink 需要服务器地址和共享名称
     var serverAddress by remember { mutableStateOf("http://192.168.1.4:81") } // HTTP 服务器地址 (例如 http://192.168.1.4:81)
-    var shareName by remember { mutableStateOf("/nas/movies") } // HTTPLink 共享路径 (例如 /movies)
-    var aliasName by remember { mutableStateOf("My HTTP Link Server") } // 连接别名
+    var shareName by remember { mutableStateOf("") } // HTTPLink 共享路径 (例如 /movies)
+    var aliasName by remember { mutableStateOf("") } // 连接别名
 
     // 用于控制键盘
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -108,7 +108,7 @@ fun HTTPLinkConScreen(
                 value = serverAddress,
                 onValueChange = { serverAddress = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = "Server Address (e.g., http://192.168.1.4:81)",
+                placeholder = "HTTPLink 服务器地址 (e.g., http://192.168.1.4:81)",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )
@@ -118,7 +118,7 @@ fun HTTPLinkConScreen(
                 value = shareName,
                 onValueChange = { shareName = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = "Share Path (e.g., /movies)",
+                placeholder = "HTTPLink 共享路径 (e.g., /movies)",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )
@@ -128,7 +128,7 @@ fun HTTPLinkConScreen(
                 value = aliasName,
                 modifier = Modifier.fillMaxWidth(),
                 onValueChange = { aliasName = it },
-                placeholder = "Connection Name (Alias)",
+                placeholder = "连接别名",
                 colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )
@@ -147,7 +147,7 @@ fun HTTPLinkConScreen(
                     onClick = {
                         keyboardController?.hide() // 隐藏键盘
                         currentPath =""
-                        if (!Tools.validateConnectionParams(context, serverAddress, shareName = shareName)) {
+                        if (!Tools.validateConnectionParams(context, serverAddress, shareName = shareName,aliasName=aliasName)){
                             return@MyIconButton
                         }
                         // 构建完整的 URL，确保以 / 结尾
@@ -180,7 +180,7 @@ fun HTTPLinkConScreen(
                     onClick = {
                         keyboardController?.hide()
                         currentPath =""
-                        if (!Tools.validateConnectionParams(context, serverAddress, shareName = shareName)) {
+                        if (!Tools.validateConnectionParams(context, serverAddress, shareName = shareName,aliasName=aliasName)) {
                             return@MyIconButton
                         }
                         if (!httpLinkConViewModel.isConnected()){
