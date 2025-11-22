@@ -46,6 +46,8 @@ import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.model.FTPConnection
 import org.mz.mzdkplayer.data.model.NFSConnection
 import org.mz.mzdkplayer.data.model.WebDavConnection
+import org.mz.mzdkplayer.di.RepositoryProvider
+import org.mz.mzdkplayer.tool.viewModelWithFactory
 import org.mz.mzdkplayer.ui.audioplayer.AudioPlayerScreen
 import org.mz.mzdkplayer.ui.screen.movie.MovieDetailsScreen
 import org.mz.mzdkplayer.ui.screen.history.MediaHistoryScreen
@@ -61,6 +63,7 @@ import org.mz.mzdkplayer.ui.screen.httplink.HTTPLinkConListScreen
 import org.mz.mzdkplayer.ui.screen.localfile.LocalFileScreen
 import org.mz.mzdkplayer.ui.screen.localfile.LocalFileTypeScreen
 import org.mz.mzdkplayer.ui.screen.httplink.HTTPLinkConScreen
+import org.mz.mzdkplayer.ui.screen.library.MovieLibraryScreen
 import org.mz.mzdkplayer.ui.screen.nfs.NFSConListScreen
 import org.mz.mzdkplayer.ui.screen.nfs.NFSConScreen
 import org.mz.mzdkplayer.ui.screen.nfs.NFSFileListScreen
@@ -73,6 +76,7 @@ import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavConScreen
 import org.mz.mzdkplayer.ui.screen.webdavfile.WebDavFileListScreen
 import org.mz.mzdkplayer.ui.screen.setting.SettingsScreen
 import org.mz.mzdkplayer.ui.screen.tv.TVSeriesDetailsScreen
+import org.mz.mzdkplayer.ui.screen.vm.MediaLibraryViewModel
 import org.mz.mzdkplayer.ui.screen.vm.SMBListViewModel
 import org.mz.mzdkplayer.ui.theme.MySideListItemColor
 
@@ -89,6 +93,7 @@ fun MzDKPlayerAPP(externalVideoUri: Uri?) {
     val items =
         listOf(
             "主页" to painterResource(id = R.drawable.baseline_home_24),
+            "电影" to painterResource(id = R.drawable.moviefileicon),
             "我的" to painterResource(id = R.drawable.history24dp),
             "设置" to painterResource(id = R.drawable.baseline_settings_24),
         )
@@ -135,6 +140,11 @@ fun MzDKPlayerAPP(externalVideoUri: Uri?) {
 //        }
 //    }
     val smbListViewModel: SMBListViewModel = viewModel()
+
+    // 使用工厂初始化 ViewModel
+    val libraryViewModel: MediaLibraryViewModel = viewModelWithFactory {
+        RepositoryProvider.createMediaLibraryViewModel()
+    }
     NavHost(
         navController = mainNavController,
         startDestination = "MainPage",
@@ -189,8 +199,15 @@ fun MzDKPlayerAPP(externalVideoUri: Uri?) {
                                                 }
                                             }
                                         )
-
                                         1 -> homeNavController.navigate(
+                                            "MoviesPage",
+                                            navOptions = navOptions {
+                                                launchSingleTop = true
+                                                popUpTo("MoviesPage") {
+                                                    inclusive = true
+                                                }
+                                            })
+                                        2 -> homeNavController.navigate(
                                             "HistoryPage",
                                             navOptions = navOptions {
                                                 launchSingleTop = true
@@ -199,7 +216,7 @@ fun MzDKPlayerAPP(externalVideoUri: Uri?) {
                                                 }
                                             })
 
-                                        2 -> homeNavController.navigate(
+                                        3 -> homeNavController.navigate(
                                             "SettingsPage",
                                             navOptions = navOptions {
                                                 launchSingleTop = true
@@ -245,6 +262,10 @@ fun MzDKPlayerAPP(externalVideoUri: Uri?) {
                         composable("HistoryPage") {
                             //页面路由对应的页面组件
                             MediaHistoryScreen(mainNavController)
+                        }
+                        composable("MoviesPage") {
+                            //页面路由对应的页面组件
+                            MovieLibraryScreen(libraryViewModel,mainNavController)
                         }
 
                     }

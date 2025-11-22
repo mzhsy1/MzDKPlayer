@@ -3,6 +3,7 @@ package org.mz.mzdkplayer.di
 import android.content.Context
 import org.mz.mzdkplayer.data.local.AppDatabase
 import org.mz.mzdkplayer.data.repository.TmdbRepository
+import org.mz.mzdkplayer.ui.screen.vm.MediaLibraryViewModel
 import org.mz.mzdkplayer.ui.screen.vm.MovieViewModel
 
 
@@ -30,4 +31,14 @@ object RepositoryProvider {
         // 将 DAO 注入到 ViewModel 中
         return MovieViewModel(tmdbRepository, db.mediaDao())
     }
+
+    // 👇 【新增】 MediaLibraryViewModel 的工厂方法
+    fun createMediaLibraryViewModel(): MediaLibraryViewModel {
+        val db = database ?: throw IllegalStateException("RepositoryProvider.init(context) must be called before creating ViewModels")
+
+        // 将 DAO 注入到 MediaLibraryViewModel 中
+        return MediaLibraryViewModel(db.mediaDao())
+    }
+
+
 }

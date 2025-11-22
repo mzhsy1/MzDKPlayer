@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -91,7 +90,7 @@ fun MovieDetailsScreen(
     LaunchedEffect(movieId) {
         if (movieId > 0) {
             // [修改] 调用带缓存的方法
-            movieViewModel.getMovieDetailsWithCache(movieId, decodedUri)
+            movieViewModel.getMovieDetailsWithCache(movieId, decodedUri,dataSourceType,fileName,connectionName)
         }
     }
     val videoUriEncoder = URLEncoder.encode(videoUri, "UTF-8")

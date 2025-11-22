@@ -116,7 +116,10 @@ fun TVSeriesDetailsScreen(
                 seriesId = seriesId,
                 season = currentSeason,
                 episode = currentEpisode,
-                videoUri = decodedUri
+                videoUri = decodedUri,
+                dataSourceType,
+                fileName,
+                connectionName
             )
         }
     }

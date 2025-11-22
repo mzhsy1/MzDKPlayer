@@ -15,7 +15,6 @@ import org.mz.mzdkplayer.data.local.MediaDao
 import org.mz.mzdkplayer.data.model.MediaItem
 import org.mz.mzdkplayer.data.model.Movie
 import org.mz.mzdkplayer.data.model.MovieDetails
-import org.mz.mzdkplayer.data.model.TVData
 import org.mz.mzdkplayer.data.model.TVEpisode
 import org.mz.mzdkplayer.data.model.TVSeriesDetails
 import org.mz.mzdkplayer.data.repository.Resource
@@ -53,19 +52,22 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
     private var currentSearchJob: Job? = null
 
     /**
-     * 搜索焦点电影/剧集 (带缓存)
-     * @param movieName 文件名
-     * @param isDirectory 是否是目录
-     * @param videoUri 文件的完整 URI (作为缓存主键)
+     * [修改] 搜索焦点电影/剧集 (带缓存)
+     * 增加了 dataSourceType, connectionName 参数以便存入数据库
      */
-    fun searchFocusedMovie(movieName: String, isDirectory: Boolean, videoUri: String) {
-        // 如果是目录，清空
+    fun searchFocusedMovie(
+        movieName: String?,
+        isDirectory: Boolean,
+        videoUri: String,
+        dataSourceType: String, // 新增
+        connectionName: String  // 新增
+    )
+    {
         if (isDirectory) {
             _focusedMovie.value = Resource.Success(null)
             return
         }
 
-        // 取消之前的搜索
         currentSearchJob?.cancel()
 
         currentSearchJob = viewModelScope.launch(Dispatchers.IO) {
@@ -77,27 +79,30 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
                 return@launch
             }
 
-            // 2. 缓存未命中，准备网络请求
             _focusedMovie.value = Resource.Loading
-            delay(800) // 防抖
-
-            // 文件名解析
+            delay(800)
+            if (movieName==null) {
+                _focusedMovie.value = Resource.Success(null)
+                return@launch
+            }
             val mediaInfo = MediaInfoExtractorFormFileName.extract(movieName)
             if (mediaInfo.title.isBlank()) {
                 _focusedMovie.value = Resource.Success(null)
                 return@launch
             }
 
-            // 3. 执行网络搜索
             try {
                 if (mediaInfo.mediaType == "movie") {
                     val result = repository.searchMovies(mediaInfo.title, year = mediaInfo.year)
                     if (result is Resource.Success) {
                         val movie = result.data.results.firstOrNull()
                         if (movie != null) {
-                            // 4. 保存到数据库 (基础信息)
+                            // [修改] 保存到数据库时填入新字段
                             val entity = MediaCacheEntity(
                                 videoUri = videoUri,
+                                dataSourceType = dataSourceType, // 保存
+                                fileName = movieName,            // 保存原始文件名
+                                connectionName = connectionName, // 保存
                                 tmdbId = movie.id,
                                 mediaType = "movie",
                                 title = movie.title ?: "",
@@ -117,14 +122,16 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
                         _focusedMovie.value = Resource.Error(result.message, result.exception)
                     }
                 } else {
-                    // TV 搜索
                     val result = repository.searchTV(mediaInfo.title, year = mediaInfo.year)
                     if (result is Resource.Success) {
                         val tv = result.data.results.firstOrNull()
                         if (tv != null) {
-                            // 4. 保存到数据库 (基础信息 + S/E)
+                            // [修改] 保存到数据库时填入新字段
                             val entity = MediaCacheEntity(
                                 videoUri = videoUri,
+                                dataSourceType = dataSourceType, // 保存
+                                fileName = movieName,            // 保存
+                                connectionName = connectionName, // 保存
                                 tmdbId = tv.id,
                                 mediaType = "tv",
                                 title = tv.name ?: "",
@@ -151,11 +158,16 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
             }
         }
     }
-
     /**
      * 获取电影详情 (带缓存更新)
      */
-    fun getMovieDetailsWithCache(movieId: Int, videoUri: String) {
+    fun getMovieDetailsWithCache(
+        movieId: Int,
+        videoUri: String,
+        dataSourceType: String,
+        fileName: String,
+        connectionName: String
+    ) {
         _movieDeResults.value = Resource.Loading
         viewModelScope.launch(Dispatchers.IO) {
             // 1. 检查缓存是否包含详情
@@ -213,7 +225,10 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
                         status = details.status,
                         genres = details.genreList,
                         originCountry = details.originCountry,
-                        isDetailsLoaded = true
+                        isDetailsLoaded = true,
+                        dataSourceType = dataSourceType,
+                        fileName = fileName,
+                        connectionName = connectionName
                     )
                     mediaDao.insertMedia(newEntity)
                 }
@@ -227,7 +242,15 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
      * 获取 TV 详情 (带缓存更新)
      * 这里比较复杂，因为 TV 有 SeriesDetails 和 EpisodeDetails 两部分
      */
-    fun getTVDetailsWithCache(seriesId: Int, season: Int, episode: Int, videoUri: String) {
+    fun getTVDetailsWithCache(
+        seriesId: Int,
+        season: Int,
+        episode: Int,
+        videoUri: String,
+        dataSourceType: String,
+        fileName: String,
+        connectionName: String
+    ) {
         _tvSeriesResults.value = Resource.Loading
         _tvEpisodeResults.value = Resource.Loading
 
@@ -346,7 +369,10 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
                             episodeOverview = eData.overview,
                             episodeStillPath = eData.stillPath,
                             episodeAirDate = eData.airDate,
-                            episodeRuntime = eData.runtime
+                            episodeRuntime = eData.runtime,
+                            dataSourceType = dataSourceType,
+                            fileName = fileName,
+                            connectionName = connectionName
                         )
                     mediaDao.insertMedia(newOrUpdatedEntity) // 使用 insert(onConflict = REPLACE) 或者 update
                 }
@@ -354,6 +380,27 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
             } catch (e: Exception) {
                 // 处理未捕获的异常
                 _tvSeriesResults.value = Resource.Error("Unknown error", e)
+            }
+        }
+    }
+
+    /**
+     * 【新增】清理媒体缓存数据库 (相当于 Kodi 的清理资料库)
+     * 在设置页面调用此方法
+     */
+    fun clearMediaLibrary() {
+        // 必须在 IO 线程执行数据库操作
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                mediaDao.clearAllMediaCache()
+                Log.d("MovieViewModel", "Media cache successfully cleared.")
+
+                // 🚀 【下一步建议】如果你想在 UI 上显示“清理完成”的提示，
+                // 可以在这里更新一个 MutableStateFlow 或 LiveData，并在设置 Composable 中监听它。
+
+            } catch (e: Exception) {
+                Log.e("MovieViewModel", "Failed to clear media cache: ${e.message}", e)
+                // 可以在这里处理清理失败的逻辑
             }
         }
     }

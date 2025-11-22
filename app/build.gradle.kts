@@ -15,11 +15,11 @@ android {
         applicationId = "org.mz.mzdkplayer"
         minSdk = 23
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.01"
         ndk {
             //noinspection ChromeOsAbiSupport
-            abiFilters += listOf( "armeabi-v7a","x86")
+            abiFilters += listOf("armeabi-v7a", "x86")
         }
         val localProperties = rootProject.file("local.properties")
         val properties = Properties().apply {
@@ -44,7 +44,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-       // isCoreLibraryDesugaringEnabled = true
+        // isCoreLibraryDesugaringEnabled = true
 
     }
 
@@ -82,16 +82,21 @@ dependencies {
     implementation(libs.accompanist.permissions)
     implementation(libs.smbj)
     implementation(libs.logback.android)
-   // implementation(libs.androidx.media3.ui.compose)
+    // implementation(libs.androidx.media3.ui.compose)
     implementation(libs.gson)
     implementation(libs.coil3.coil.compose)
     implementation(libs.coil.network.okhttp)
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
-// Room
+    // 分页
+    implementation(libs.androidx.paging.runtime.ktx)
+    implementation(libs.androidx.paging.compose)
+    // Room
     implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.paging)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+
     // 暂时不需要原生ass显示
     //implementation(libs.ass.media)
     // 👇 修改这一行：排除 xpp3 和 stax
