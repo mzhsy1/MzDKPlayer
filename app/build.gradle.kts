@@ -20,7 +20,7 @@ android {
         }
     }
     defaultConfig {
-        applicationId = "org.mz.mzdkplayer"
+        applicationId = "org.mz.mzdkplayervlc"
         minSdk = 23
         targetSdk = 36
         versionCode = 18
@@ -144,7 +144,9 @@ dependencies {
     //implementation("androidx.media3:media3-exoplayer-ffmpeg:1.9.0-alpha01")
     //implementation(libs.jcifs)
 //    // https://mvnrepository.com/artifact/org.videolan.android/libvlc-all
-//    implementation(libs.libvlc.all)
+   // implementation(libs.libvlc.all)
+    // https://mvnrepository.com/artifact/org.videolan.android/libvlc-all
+   // implementation(libs.libvlc.all.v400eap23)
 // 请检查最新版本
     //implementation(libs.ass.kt)
     //implementation(libs.ass.media.v030beta02)

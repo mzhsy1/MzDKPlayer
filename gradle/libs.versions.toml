@@ -16,6 +16,7 @@ coreKtx = "1.17.0"
 appcompat = "1.7.1"
 composeBom = "2025.12.01"
 libvlcAll = "3.6.5"
+libvlcAllVersion = "4.0.0-eap23"
 logbackAndroid = "3.0.0"
 desugarJdkLibs = "2.1.5" # 检查是否有更新版本
 media3UiCompose = "1.9.0"
@@ -76,7 +77,8 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coilNetworkOkhttp" }
 coil3-coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coilComposeVersion" }
 ass-media = { module = "io.github.peerless2012:ass-media", version.ref = "assMedia" }
-libvlc-all = { module = "org.videolan.android:libvlc-all", version.ref = "libvlcAll" }
+#libvlc-all = { module = "org.videolan.android:libvlc-all", version.ref = "libvlcAll" }
+libvlc-all-v400eap23 = { module = "org.videolan.android:libvlc-all", version.ref = "libvlcAllVersion" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 commons-net = { module = "commons-net:commons-net", version.ref = "commonsNet" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }

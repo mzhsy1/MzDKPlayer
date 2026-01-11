@@ -100,6 +100,8 @@
 -dontwarn org.openjsse.javax.net.ssl.SSLSocket
 -dontwarn org.openjsse.net.ssl.OpenJSSE
 
+-keep class org.videolan.libvlc.** { *; }
+-keep class org.videolan.medialibrary.** { *; }
 # 保留所有注解（避免混淆导致的注解失效）
 #-keep class androidx.annotation.** { *; }
 #-keep class java.lang.annotation.** { *; }
