@@ -1,9 +1,7 @@
 package org.mz.mzdkplayer.player.vlc
 
 import android.content.Context
-import android.net.Uri
 import android.util.Log
-import org.mz.mzdkplayer.ui.screen.common.MzToastManager
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -25,15 +23,14 @@ import org.mz.mzdkplayer.tool.FtpDataSource
 import org.mz.mzdkplayer.tool.SmbDataSource
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.WebDavDataSource
+import org.mz.mzdkplayer.ui.screen.common.MzToastManager
 import org.mz.mzdkplayer.ui.screen.vm.SettingsViewModel
-
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerStatus
 import org.videolan.libvlc.LibVLC
 import org.videolan.libvlc.Media
 import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.interfaces.IMedia
 import org.videolan.libvlc.util.VLCVideoLayout
-import kotlin.collections.mapIndexed
 import kotlin.time.Duration.Companion.milliseconds
 
 @UnstableApi
@@ -41,77 +38,51 @@ class MzVlcPlayer(
     private val context: Context,
     private val mediaUri: String,
     dataSourceType: String,
-    // 如果需要，可以把语言偏好也传进来
     settingsViewModel: SettingsViewModel
 ) : IMzPlayer {
-    val isPassthroughEnabled = settingsViewModel.uiState.value.enablePassthrough // 获取当前的设置状态
+
+    val isPassthroughEnabled = settingsViewModel.uiState.value.enablePassthrough
     val preferredAudioLang: String = settingsViewModel.uiState.value.audioLang
-    val preferredTextLang: String =settingsViewModel.uiState.value.subLang
+    val preferredTextLang: String = settingsViewModel.uiState.value.subLang
+
     private val isNetworkProtocol: Boolean by lazy {
         val lower = mediaUri.lowercase()
         lower.startsWith("http://") || lower.startsWith("https://") ||
                 lower.startsWith("ftp://") || lower.startsWith("smb://") ||
                 lower.startsWith("nfs://") || lower.startsWith("rtsp://") ||
                 lower.startsWith("rtmp://") ||
-                !lower.startsWith("file:///")   // 其他全部当网络处理
+                !lower.startsWith("file:///")
     }
-    // 1. 初始化 VLC 命令行参数
+
+    // 1. 初始化 VLC 4.0 命令行参数（已精简并修复黑屏问题）
     private val options = arrayListOf(
         "-vvv",
-        "--mediacodec-dr",
-        "--vout=android_display", // 强制使用安卓原生显示输出，HDR 关键
-        "--no-video-deco",        // 禁用装饰，防止 GLES 混合导致 HDR 失效
         "--aout=audiotrack",
-        // 动态 caching（本地快，网络稳）
+        // 🟢 修复黑屏：移除了 --vout=android_display 和 --no-video-deco
         "--file-caching=${if (!isNetworkProtocol) 500 else 1200}",
         "--network-caching=5000",
         "--clock-jitter=0",
-
         "--clock-synchro=0",
         "--sub-autodetect-file",
-        "--sub-autodetect-fuzzy=2" // 模糊匹配：1=始终匹配，2=匹配文件名（含后缀）
+        "--sub-autodetect-fuzzy=2",
+        "--freetype-font=Noto Serif CJK SC",
+        "--freetype-rel-fontsize=20",
+        "--freetype-opacity=255",
+        "--freetype-color=0xFFFFFFFF",
+        "--freetype-background-opacity=180",
+        "--freetype-background-color=0x000000",
+        "--text-renderer=freetype",
+        "--audio-language=$preferredAudioLang",
+        "--sub-language=$preferredTextLang"
     ).apply {
-        // 如果开启了直通，在全局参数里也加上支持
         if (isPassthroughEnabled) {
             add("--spdif")
-
         }
-        //add(":no-bluray-menu")
-        // 1. 获取解压后的字体绝对路径
-        //val internalFontPath = Tools.prepareFont(context, "SmileySans-Oblique.ttf")
-         //强制 FreeType 渲染器使用该字体文件
-        add("--freetype-font=Noto Serif CJK SC")
-        //add("--freetype-font=Roboto")
-        //add("--freetype-font=sans-serif")
-        //add("--freetype-font=思源黑体 CN")
-        //add("--freetype-font=得意黑")
-        //add("--freetype-bold-font=$internalFontPath")
-       // add("--freetype-italic-font=$internalFontPath")
-        //add("--freetype-monospaced-font=$internalFontPath")
-        // 允许使用相对字体样式（增强兼容性）
-
-        // 强制字幕解码器使用 UTF-8，防止某些非特效字幕乱码
-        //add("--subsdec-encoding=UTF-8")
-        // 核心字体设置
-        //add("--freetype-font=Roboto")   // 改成思源黑体
-        add("--freetype-rel-fontsize=20")
-        add("--freetype-opacity=255")
-        add("--freetype-color=0xFFFFFFFF")
-        add("--freetype-background-opacity=180")
-        add("--freetype-background-color=0x000000")
-        add("--text-renderer=freetype")
-        // VLC 的语言设置通常在初始化时通过参数传入
-        add("--audio-language=$preferredAudioLang")
-        add("--sub-language=$preferredTextLang")
-
     }
 
     private val libVLC = LibVLC(context, options)
     private val mediaPlayer = MediaPlayer(libVLC)
 
-    private var lastSubtitleCount = 0
-
-    // 2. 实现接口要求的状态流
     private val _playerStatus = MutableStateFlow<VideoPlayerStatus>(VideoPlayerStatus.IDLE)
     override val playerStatus: StateFlow<VideoPlayerStatus> = _playerStatus.asStateFlow()
 
@@ -126,85 +97,50 @@ class MzVlcPlayer(
 
     private val _subtitleTracks = MutableStateFlow<List<MzBasicTrack>>(emptyList())
     override val subtitleTracks: StateFlow<List<MzBasicTrack>> = _subtitleTracks.asStateFlow()
-    // 1. 增加变量
+
     private val _isoTitles = MutableStateFlow<List<MzIsoTitle>>(emptyList())
     override val isoTitles: StateFlow<List<MzIsoTitle>> = _isoTitles.asStateFlow()
 
     private val _playbackSpeed = MutableStateFlow(1.0f)
     override val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
 
-    // 3. 接口回调
     override var onError: ((String) -> Unit)? = null
-    override var onCuesChanged: ((Any) -> Unit)? = null // VLC 不需要，留空
+    override var onCuesChanged: ((Any) -> Unit)? = null
 
     init {
-
         mediaPlayer.setAudioDigitalOutputEnabled(isPassthroughEnabled)
-        Log.e("VLCPlayer", "isPassthroughEnabled → $isPassthroughEnabled")
-//        if (isPassthroughEnabled) {
         mediaPlayer.setAudioOutput("audiotrack")
-        //    }
-        // 设置事件监听器同步状态
-        Log.d("VLCPlayer", "mediaStr → $mediaUri")
 
-        // 🟢 关键修复：不再使用可能导致二次编码错误的 Tools.encodeUrlForPlayer
-        // 既然是从 Base64 解码回来的原始字符串，直接解析为 Uri 即可
         val media = Media(libVLC, mediaUri.toUri()).apply {
             setHWDecoderEnabled(true, true)
-            //addOption(":codec=mediacodec_ndk")
-
-//            // 3. 只有开启直通时，才注入这些 Media Option
-//            if (isPassthroughEnabled) {
-//                addOption(":audio-passthrough=1")
-//                addOption(":spdif=hdmi")
-//                addOption(":audio-passthrough=hdmi")
-////                addOption(":http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-//                // 注意：如果电视不支持 TrueHD，VLC 只要看到这几个参数就会尝试透传
-//                // 如果透传失败就会没声音。目前最稳妥是让用户在设置里切开关。
-//            } else {
-//                addOption(":audio-passthrough=0")
-//            }
-            //addOption(":demux=ts")
             addOption(":http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             addOption(":no-osd")
-            addOption(":file-caching=${if (!isNetworkProtocol) 500 else 1200}")          // 实验代码里有的，建议加上
+            addOption(":file-caching=${if (!isNetworkProtocol) 500 else 1200}")
         }
-        // 针对网络流优化
-
 
         mediaPlayer.media = media
-        // 3. ⭐️ 关键：在这里立即释放局部引用
         media.release()
+
         setupMediaParseListener()
         setupEventListener()
-
     }
-    // 在 MzVlcPlayer 类中添加成员
+
     private var _videoWidth = 1920
     private var _videoHeight = 1080
 
-    // 在 VLC 视频尺寸变化回调里更新（通常是 onNewVideoLayout 或 IVLCVout.Callback）
     override val videoWidth: Int get() = _videoWidth
     override val videoHeight: Int get() = _videoHeight
+
     private fun setupEventListener() {
         mediaPlayer.setEventListener { event ->
             when (event.type) {
                 MediaPlayer.Event.Playing -> {
                     _isPlayingFlow.value = true
                     _playerStatus.value = VideoPlayerStatus.READY
-//                    CoroutineScope(Dispatchers.Main).launch {
-//                        delay(1000)
-//                        updateTracks()
-//                    }
-                    //updateTracks() // 播放开始后刷新轨道信息
                 }
                 MediaPlayer.Event.LengthChanged -> {
-                    // 当 VLC 解析出总时长时会触发这里
-                    Log.d("VLCPlayer", "检测到总时长变化: ${event.lengthChanged} ms")
-                    // 这里可以触发 UI 刷新，确保进度条的总长不再是 0
+                    Log.d("VLCPlayer", "总时长变更: ${event.lengthChanged} ms")
                 }
-                // ⭐️ 新增：监听 Title 改变（蓝光切换章节/正片最有效的信号）
-                // 当从菜单进入正片，Title 通常会从 0 变更为正片的索引
                 MediaPlayer.Event.Paused -> {
                     _isPlayingFlow.value = false
                 }
@@ -213,12 +149,11 @@ class MzVlcPlayer(
                     _playerStatus.value = VideoPlayerStatus.ENDED
                 }
                 MediaPlayer.Event.Buffering -> {
-                    // VLC 的 buffering 状态包含百分比，缓冲到 100% 时切回 READY
                     if (event.buffering == 100f) {
-                        _isPlayingFlow.value = true // 缓冲开始，视为停止播放
+                        _isPlayingFlow.value = true
                         _playerStatus.value = VideoPlayerStatus.READY
                     } else {
-                        _isPlayingFlow.value = false // 缓冲结束
+                        _isPlayingFlow.value = false
                         _playerStatus.value = VideoPlayerStatus.BUFFERING
                     }
                 }
@@ -228,119 +163,129 @@ class MzVlcPlayer(
                 MediaPlayer.Event.EncounteredError -> {
                     onError?.invoke("VLC 播放出错")
                 }
-                // 当轨道发生变化时（例如添加了外部字幕），刷新列表
-                MediaPlayer.Event.ESAdded, MediaPlayer.Event.ESDeleted -> {
-                    //Log.i("ESAdded", "字幕轨道变化 → 更新列表, 当前数量: ${mediaPlayer.media?.trackCount}")
-                    // updateTracks()
-                    //Toast.makeText(context,"添加成功，找到外部字幕", Toast.LENGTH_SHORT).show()
+                MediaPlayer.Event.ESAdded, MediaPlayer.Event.ESDeleted, MediaPlayer.Event.ESSelected -> {
                     CoroutineScope(Dispatchers.Main).launch {
-                        delay(1000.milliseconds)
-//                        val media = mediaPlayer.media ?: return@launch
-//                        val trackCount = media.trackCount
-//
-//                        val allTracks = (0 until trackCount).mapNotNull { media.getTrack(it) }
-//                        val subtitleCount = allTracks.count { it.type == IMedia.Track.Type.Text }
-//
-//                        Log.i("SubtitleDebug", "字幕数量 = $subtitleCount")
-//
-//                        if (subtitleCount > 0) {
-//                            Toast.makeText(context, "已加载外部字幕", Toast.LENGTH_SHORT).show()
-//                        } else {
-//                            Toast.makeText(context, "未找到可用字幕", Toast.LENGTH_SHORT).show()
-//                        }
-
+                        delay(500.milliseconds)
                         updateTracks()
                     }
                 }
             }
         }
     }
+
     private fun setupMediaParseListener() {
         val media = mediaPlayer.media ?: return
 
         media.setEventListener { event ->
             if (event.type == IMedia.Event.ParsedChanged &&
                 event.parsedStatus == IMedia.ParsedStatus.Done) {
-                Log.d("MzVlcPlayer", " Media 解析完成！协议: ${if(isNetworkProtocol) "网络(SMB/NFS/FTP)" else "本地 file:///"}")
+                Log.d("MzVlcPlayer", "Media 解析完成！")
                 updateTracks()
             }
         }
 
-        // 立即启动解析（关键修复）
         if (!media.isParsed) {
             val parseFlag = if (isNetworkProtocol)
-                IMedia.Parse.ParseNetwork      // SMB/NFS/FTP/HTTP 必须用这个
+                IMedia.Parse.ParseNetwork
             else
-                IMedia.Parse.ParseLocal        // file:/// 用这个更快
+                IMedia.Parse.ParseLocal
 
             media.parseAsync(parseFlag)
-            Log.d("MzVlcPlayer", " 启动解析模式: ${if(isNetworkProtocol) "ParseNetwork" else "ParseLocal"}")
         }
     }
+
+    // 🟢 2. 重构 LibVLC 4.0 轨道信息获取逻辑
     private fun updateTracks() {
-        val media = mediaPlayer.media ?: return
+        // --- 🎧 音频轨道 ---
+        val audioTracks4 = mediaPlayer.getTracks(IMedia.Track.Type.Audio) ?: emptyArray()
+        val selectedAudioTrack = mediaPlayer.getSelectedTrack(IMedia.Track.Type.Audio)
 
-        // 1. 获取 Media 的元数据映射表（解析 ES 编码、语言等）
-        val trackMetadataMap = (0 until media.trackCount)
-            .mapNotNull { media.getTrack(it) }
-            .associateBy { it.id }
-
-        // 2. 🎧 音频轨道
-        val audioDescriptions = mediaPlayer.audioTracks ?: emptyArray()
-        _audioTracks.value = audioDescriptions.mapIndexed { index, desc ->
-            val meta = trackMetadataMap[desc.id] as? IMedia.AudioTrack
-            val isDisableTrack = desc.id == -1
-            val displayName = if (isDisableTrack) "关闭音频" else (desc.name ?: "音轨 $index")
-
+        val audioList = mutableListOf<MzBasicTrack>()
+        // 手动添加禁用轨选项
+        audioList.add(
             MzBasicTrack(
-                id = desc.id.toString(),
-                index = index,
-                language = meta?.language ?: "",
-                channelCount = meta?.channels ?: 0,
-                mimeType = meta?.codec ?: "",
-                sampleRate = meta?.rate ?: 0,
-                bitrate = meta?.bitrate ?: 0,
-                name = displayName,
-                isSelected = desc.id == mediaPlayer.audioTrack,
-                rawData = desc.id
+                id = "-1",
+                index = 0,
+                name = "关闭音频",
+                isSelected = selectedAudioTrack == null,
+                rawData = "-1"
+            )
+        )
+        audioTracks4.forEachIndexed { index, track ->
+            val audioMeta = track as? IMedia.AudioTrack
+            audioList.add(
+                MzBasicTrack(
+                    id = track.id,
+                    index = index + 1,
+                    language = track.language ?: "",
+                    channelCount = audioMeta?.channels ?: 0,
+                    mimeType = audioMeta?.codec ?: "",
+                    sampleRate = audioMeta?.rate ?: 0,
+                    bitrate = audioMeta?.bitrate ?: 0,
+                    name = track.name.ifBlank { "音轨 ${index + 1}" },
+                    isSelected = selectedAudioTrack?.id == track.id,
+                    rawData = track.id
+                )
             )
         }
+        _audioTracks.value = audioList
 
-        // 3. 📝 字幕轨道
-        val spuDescriptions = mediaPlayer.spuTracks ?: emptyArray()
-        _subtitleTracks.value = spuDescriptions.mapIndexed { index, desc ->
-            val meta = trackMetadataMap[desc.id] as? IMedia.SubtitleTrack
-            val isDisableTrack = desc.id == -1
-            val displayName = if (isDisableTrack) "关闭字幕" else (desc.name ?: "字幕 $index")
+        // --- 📝 字幕轨道 ---
+        val spuTracks4 = mediaPlayer.getTracks(IMedia.Track.Type.Text) ?: emptyArray()
+        val selectedSpuTrack = mediaPlayer.getSelectedTrack(IMedia.Track.Type.Text)
 
+        val subtitleList = mutableListOf<MzBasicTrack>()
+        subtitleList.add(
             MzBasicTrack(
-                id = desc.id.toString(),
-                index = index,
-                language = meta?.language ?: "",
-                mimeType = meta?.codec ?: "",
-                name = displayName,
-                isSelected = desc.id == mediaPlayer.spuTrack,
-                rawData = desc.id
+                id = "-1",
+                index = 0,
+                name = "关闭字幕",
+                isSelected = selectedSpuTrack == null,
+                rawData = "-1"
+            )
+        )
+        spuTracks4.forEachIndexed { index, track ->
+            val subMeta = track as? IMedia.SubtitleTrack
+            subtitleList.add(
+                MzBasicTrack(
+                    id = track.id,
+                    index = index + 1,
+                    language = track.language ?: "",
+                    mimeType = subMeta?.codec ?: "",
+                    name = track.name.ifBlank { "字幕 ${index + 1}" },
+                    isSelected = selectedSpuTrack?.id == track.id,
+                    rawData = track.id
+                )
             )
         }
+        _subtitleTracks.value = subtitleList
 
-        // 4. 📺 视频轨道
-        val videoDescriptions = mediaPlayer.videoTracks ?: emptyArray()
-        _videoTracks.value = videoDescriptions.mapIndexed { index, desc ->
+        // --- 📺 视频轨道 ---
+        val videoTracks4 = mediaPlayer.getTracks(IMedia.Track.Type.Video) ?: emptyArray()
+        val selectedVideoTrack = mediaPlayer.getSelectedTrack(IMedia.Track.Type.Video)
+
+        _videoTracks.value = videoTracks4.mapIndexed { index, track ->
+            val videoMeta = track as? IMedia.VideoTrack
+            if (selectedVideoTrack?.id == track.id && videoMeta != null) {
+                if (videoMeta.width > 0 && videoMeta.height > 0) {
+                    _videoWidth = videoMeta.width
+                    _videoHeight = videoMeta.height
+                }
+            }
             MzVideoTrack(
-                id = desc.id.toString(),
+                id = track.id,
                 index = index,
-                height = 0,
-                bitrate = 0,
-                codecs = "",
-                isSelected = desc.id == mediaPlayer.videoTrack,
-                rawData = desc.id
+                height = videoMeta?.height ?: 0,
+                bitrate = videoMeta?.bitrate ?: 0,
+                codecs = videoMeta?.codec ?: "",
+                isSelected = selectedVideoTrack?.id == track.id,
+                rawData = track.id
             )
         }
 
-        // 5. 💿 蓝光/DVD Titles (新增回位)
+        // --- 💿 蓝光/DVD Titles ---
         val titles = mediaPlayer.titles
-        if (titles != null && titles.isNotEmpty()) {
+        if (!titles.isNullOrEmpty()) {
             val currentTitleIdx = mediaPlayer.title
             _isoTitles.value = titles.mapIndexed { index, title ->
                 MzIsoTitle(
@@ -351,14 +296,13 @@ class MzVlcPlayer(
                 )
             }
         } else {
-            _isoTitles.value = emptyList() // 非光盘介质清空列表
+            _isoTitles.value = emptyList()
         }
     }
 
-    // 3. 实现接口方法
     override fun selectIsoTitle(index: Int) {
         mediaPlayer.title = index
-        updateTracks() // 切换后刷新一下选中状态
+        updateTracks()
     }
 
     override val isPlaying: Boolean get() = mediaPlayer.isPlaying
@@ -371,28 +315,38 @@ class MzVlcPlayer(
     override fun seekForward(ms: Long) { mediaPlayer.time = currentPosition + ms }
     override fun seekBack(ms: Long) { mediaPlayer.time = currentPosition - ms }
 
+    // 🟢 3. 重构 LibVLC 4.0 轨道选择 API
     override fun selectVideoTrack(track: MzVideoTrack) {
-        mediaPlayer.videoTrack = track.rawData as? Int ?: -1
+        val trackId = track.rawData as? String ?: return
+        mediaPlayer.selectTrack(trackId)
+        updateTracks()
     }
 
     override fun selectAudioTrack(track: MzBasicTrack) {
-        mediaPlayer.audioTrack = track.rawData as? Int ?: -1
+        val trackId = track.rawData as? String ?: return
+        if (trackId == "-1") {
+            mediaPlayer.unselectTrackType(IMedia.Track.Type.Audio)
+        } else {
+            mediaPlayer.selectTrack(trackId)
+        }
         updateTracks()
     }
 
     override fun selectSubtitleTrack(track: MzBasicTrack) {
-        mediaPlayer.spuTrack = track.rawData as? Int ?: -1
+        val trackId = track.rawData as? String ?: return
+        if (trackId == "-1") {
+            mediaPlayer.unselectTrackType(IMedia.Track.Type.Text)
+        } else {
+            mediaPlayer.selectTrack(trackId)
+        }
         updateTracks()
     }
-
 
     override fun release() {
         mediaPlayer.stop()
         mediaPlayer.release()
-
         libVLC.release()
 
-        // 虽然 VLC 可能有自己的连接管理，但如果共用了 DataSources 或为了保险，统一清理
         SmbDataSource.releaseGlobalResources()
         FtpDataSource.releaseGlobalResources()
         WebDavDataSource.releaseGlobalResources()
@@ -411,8 +365,8 @@ class MzVlcPlayer(
         AndroidView(
             factory = { ctx ->
                 VLCVideoLayout(ctx).apply {
+                    // 4.0 中 attachViews 会自动处理 SurfaceView/TextureView 的图层挂载
                     mediaPlayer.attachViews(this, null, true, false)
-                    // 关键修改：在这里才真正开始播放，或者触发一个状态通知
                     if (!mediaPlayer.isPlaying) {
                         mediaPlayer.play()
                     }
@@ -426,15 +380,9 @@ class MzVlcPlayer(
     }
 
     override fun addExternalSubtitles(subtitles: List<Pair<String, String>>) {
-        val media = mediaPlayer.media ?: return
-
-        lastSubtitleCount = media.trackCount // ⭐️记录之前数量（或只数 Text 轨）
         subtitles.forEach { (uri, _) ->
-            // true 表示优先选中最后添加的那个
             mediaPlayer.addSlave(IMedia.Slave.Type.Subtitle, uri.toUri(), true)
-
         }
         MzToastManager.show("加载外部字幕中...")
-
     }
 }
