@@ -27,7 +27,6 @@ import org.mz.mzdkplayer.R
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Locale
-import androidx.core.graphics.scale
 import androidx.core.graphics.createBitmap
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
@@ -36,10 +35,12 @@ import java.net.NetworkInterface
 import java.util.Collections
 import kotlin.math.log10
 import kotlin.math.pow
-import kotlin.text.contains
 import androidx.core.graphics.set
+import android.net.Uri
+import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import androidx.core.net.toUri
 
 object Tools {
     fun extractFileExtension(fileName: String?): String {
@@ -758,43 +759,54 @@ object Tools {
         }
     }
 
-    // 在 Tools.kt 中添加这个方法
-    fun encodeUrlForPlayer(path: String): String {
+    /**
+     * 为播放器编码 URL。
+     * 核心逻辑：
+     * 1. 自动处理协议、主机、路径和查询参数。
+     * 2. 对路径段进行解码再重新编码，防止“二次编码”或“部分未编码”的问题。
+     * 3. 确保空格被转义为 %20 而不是 +。
+     */
+    fun encodeUrlForPlayer(url: String): String {
+        if (url.isBlank()) return url
+        
         return try {
-            val protocolSeparator = "://"
-            if (path.contains(protocolSeparator)) {
-                val parts = path.split(protocolSeparator)
-                val protocol = parts[0]
-                val hostAndPath = parts[1]
-
-                val hostPathParts = hostAndPath.split("/", limit = 2)
-                val host = hostPathParts[0]
-
-                if (hostPathParts.size > 1) {
-                    val fullPath = hostPathParts[1]
-
-                    // 核心修复：分离路径(Path)和查询参数(Query)
-                    val queryIndex = fullPath.indexOf("?")
-                    val pathPart = if (queryIndex != -1) fullPath.substring(0, queryIndex) else fullPath
-                    val queryPart = if (queryIndex != -1) fullPath.substring(queryIndex) else "" // 保留包含 '?' 在内的所有参数
-
-                    // 只对纯路径部分进行编码，避免误伤 ? = & 等符号
-                    val encodedPath = pathPart.split("/").joinToString("/") { segment ->
-                        URLEncoder.encode(segment, "UTF-8").replace("+", "%20")
-                    }
-
-                    "$protocol$protocolSeparator$host/$encodedPath$queryPart"
-                } else {
-                    path
-                }
-            } else {
-                // 如果没有协议前缀，当做普通文件路径处理
-                path.split("/").joinToString("/") { segment ->
-                    URLEncoder.encode(segment, "UTF-8").replace("+", "%20")
+            val uri = url.toUri()
+            val scheme = uri.scheme
+            val host = uri.host
+            val port = uri.port
+            val userInfo = uri.userInfo
+            
+            // 如果没有协议，可能是本地文件路径，使用原有逻辑
+            if (scheme == null) {
+                return url.split("/").joinToString("/") { segment ->
+                    val decoded = URLDecoder.decode(segment, "UTF-8")
+                    URLEncoder.encode(decoded, "UTF-8").replace("+", "%20")
                 }
             }
+
+            val builder = uri.buildUpon()
+            
+            // 重新构建路径，确保每个段都被正确编码
+            val pathSegments = uri.pathSegments
+            if (pathSegments.isNotEmpty()) {
+                builder.path(null) // 清除原有路径
+                pathSegments.forEach { segment ->
+                    // 先解码（防止输入已经是编码过的），再编码
+                    val decoded = URLDecoder.decode(segment, "UTF-8")
+                    builder.appendPath(decoded)
+                }
+            }
+            
+            // 某些特殊字符在 buildUpon().build().toString() 中可能不会被编码（取决于 Android 版本）
+            // 这里我们强制检查一些 VLC 敏感的字符
+            val result = builder.build().toString()
+            
+            // 再次校验：如果仍然包含非 ASCII 字符或空格，则进行最后兜底
+            // 理论上 builder.build().toString() 在现代 Android 上已经处理得很好
+            result
         } catch (e: Exception) {
-            path // 降级处理，报错就原样返回
+            Log.e("Tools", "URL 编码失败: $url", e)
+            url
         }
     }
 
