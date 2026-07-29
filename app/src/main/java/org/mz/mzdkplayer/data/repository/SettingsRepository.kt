@@ -39,6 +39,9 @@ object SettingsRepository {
     // 🔥 新增：默认播放器内核
     private const val KEY_DEFAULT_PLAYER = "default_player"
 
+    // 🔥 新增：ISO 播放模式 (0: 默认/菜单, 1: 直接播放正片)
+    private const val KEY_ISO_PLAYBACK_MODE = "iso_playback_mode"
+
     // --- 刮削设置 Keys ---
     private const val KEY_SOURCE_SMB = "source_smb"
     private const val KEY_SOURCE_WEBDAV = "source_webdav"
@@ -120,6 +123,10 @@ object SettingsRepository {
     var defaultPlayer: String
         get() = prefs.getString(KEY_DEFAULT_PLAYER, "exo") ?: "exo"
         set(value) = prefs.edit { putString(KEY_DEFAULT_PLAYER, value) }
+
+    var isoPlaybackMode: Int
+        get() = prefs.getInt(KEY_ISO_PLAYBACK_MODE, 1) // 默认 1: 直接播放正片
+        set(value) = prefs.edit { putInt(KEY_ISO_PLAYBACK_MODE, value) }
 
     // 刮削源
     var enableSmb: Boolean get() = prefs.getBoolean(KEY_SOURCE_SMB, true); set(v) = prefs.edit {

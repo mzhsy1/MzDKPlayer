@@ -27,6 +27,7 @@ data class SettingsUiState(
     val subBottomPadding: Float = 30f,
     val forcePgsCenter: Boolean = false,
     val defaultPlayer: String = "exo",
+    val isoPlaybackMode: Int = 0, // 新增：ISO 播放模式
     // 刮削
     val smb: Boolean = true,
     val webdav: Boolean = true,
@@ -67,6 +68,7 @@ class SettingsViewModel : ViewModel() {
                 subBottomPadding = repo.subtitleBottomPadding,
                 forcePgsCenter = repo.forcePgsCenter,
                 defaultPlayer = repo.defaultPlayer,
+                isoPlaybackMode = repo.isoPlaybackMode,
                 smb = repo.enableSmb,
                 webdav = repo.enableWebDav,
                 ftp = repo.enableFtp,
@@ -98,6 +100,10 @@ class SettingsViewModel : ViewModel() {
     fun togglePgsCenter(v: Boolean) { repo.forcePgsCenter = v; refreshState() }
     fun setDefaultPlayer(kernel: String) {
         repo.defaultPlayer = kernel
+        refreshState()
+    }
+    fun setIsoPlaybackMode(mode: Int) {
+        repo.isoPlaybackMode = mode
         refreshState()
     }
     fun setAppLanguage(context: Context, lang: String) {

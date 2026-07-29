@@ -296,18 +296,27 @@ class MzVlcPlayer(
 
 
 
-// 🟢 修复：使用改进后的 encodeUrlForPlayer，确保包含中文和空格的链接能被 VLC 正确识别
+// 🟢 针对 ISO 文件，如果是网络流且协议不支持，则使用本地 HTTP 代理
+        val finalUrl = if (org.mz.mzdkplayer.tool.ProxyManager.shouldProxy(mediaUri, dataSourceType)) {
+            val proxyUrl = org.mz.mzdkplayer.tool.ProxyManager.getProxyUrl(mediaUri)
+            Log.d("MzVlcPlayer", "Using Proxy URL for ISO: $proxyUrl")
+            proxyUrl
+        } else {
+            val encodedMrl = Tools.encodeUrlForPlayer(mediaUri)
+            Log.d("MzVlcPlayer", "Final VLC MRL: $encodedMrl")
+            encodedMrl
+        }
 
-// VLC 要求 MRL 必须是完全编码的 URL
-
-        val encodedMrl = Tools.encodeUrlForPlayer(mediaUri)
-
-        Log.d("MzVlcPlayer", "Final VLC MRL: $encodedMrl")
-
-
-        val media = Media(libVLC, encodedMrl.toUri()).apply {
-
+        val media = Media(libVLC, finalUrl.toUri()).apply {
             setHWDecoderEnabled(true, true)
+            // 🟢 处理 ISO 蓝光播放逻辑
+            if (mediaUri.lowercase().endsWith(".iso") || mediaUri.lowercase().endsWith(".iso/")) {
+                if (settingsViewModel.uiState.value.isoPlaybackMode == 1) {
+                    addOption(":no-bluray-menu") // 直接播放正片
+                } else {
+                    addOption(":bluray-menu") // 显示菜单
+                }
+            }
 
 //addOption(":codec=mediacodec_ndk")
 

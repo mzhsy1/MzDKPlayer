@@ -281,6 +281,14 @@ fun PlaybackSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
             }
         )
         ActionSettingItem(
+            title = stringResource(R.string.setting_iso_playback_mode),
+            value = formatIsoPlaybackMode(state.isoPlaybackMode),
+            onClick = {
+                val next = (state.isoPlaybackMode + 1) % 2
+                settingsVM.setIsoPlaybackMode(next)
+            }
+        )
+        ActionSettingItem(
             title = stringResource(R.string.setting_sub_lang),
             value = formatLang(state.subLang),
             onClick = {
@@ -901,4 +909,11 @@ fun formatTmdbLang(code: String): String = when (code) {
     "ja-JP" -> "日本語"
     "ko-KR" -> "한국어"
     else -> code
+}
+
+@Composable
+fun formatIsoPlaybackMode(mode: Int): String = when (mode) {
+    0 -> stringResource(R.string.iso_playback_mode_default)
+    1 -> stringResource(R.string.iso_playback_mode_main_movie)
+    else -> stringResource(R.string.ui_label_unknown)
 }
