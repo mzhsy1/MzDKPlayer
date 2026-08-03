@@ -5,7 +5,7 @@ agp = "9.3.1"
 akdanmaku = "1.0.3"
 
 ashley = "1.7.4"
-assMedia = "0.4.0"
+assMedia = "0.5.0"
 
 commonsNet = "3.13.0"
 core = "3.5.4"
