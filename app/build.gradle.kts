@@ -96,7 +96,6 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
-    implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.navigation.compose)
     debugImplementation(libs.androidx.ui.tooling.preview)
