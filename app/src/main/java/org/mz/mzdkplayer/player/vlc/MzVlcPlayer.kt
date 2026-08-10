@@ -13,9 +13,9 @@ import org.mz.mzdkplayer.ui.screen.common.MzToastManager
 import androidx.compose.foundation.layout.fillMaxSize
 
 import androidx.compose.runtime.Composable
-
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-
 import androidx.compose.ui.viewinterop.AndroidView
 
 import kotlinx.coroutines.CoroutineScope
@@ -266,6 +266,8 @@ class MzVlcPlayer(
 
     override val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
 
+    private val _aspectRatio = MutableStateFlow(org.mz.mzdkplayer.player.core.MzAspectRatio.FIT)
+    override val aspectRatio: StateFlow<org.mz.mzdkplayer.player.core.MzAspectRatio> = _aspectRatio.asStateFlow()
 
 
 // 3. 接口回调
@@ -825,55 +827,60 @@ class MzVlcPlayer(
 
 
     override fun setPlaybackSpeed(speed: Float) {
-
         if (isPassthroughEnabled && speed != 1.0f) {
-
             return
-
         }
-
         _playbackSpeed.value = speed
-
         mediaPlayer.rate = speed
-
     }
 
-
+    override fun setAspectRatio(ratio: org.mz.mzdkplayer.player.core.MzAspectRatio) {
+        _aspectRatio.value = ratio
+    }
 
     @Composable
-
     override fun PlayerView(modifier: Modifier) {
+        val currentRatio by aspectRatio.collectAsState()
 
         AndroidView(
-
             factory = { ctx ->
-
                 VLCVideoLayout(ctx).apply {
-
                     mediaPlayer.attachViews(this, null, true, false)
-
-// 关键修改：在这里才真正开始播放，或者触发一个状态通知
-
                     if (!mediaPlayer.isPlaying) {
-
                         mediaPlayer.play()
-
                     }
-
                 }
-
             },
-
             modifier = modifier.fillMaxSize(),
-
+            update = { view ->
+                when (currentRatio) {
+                    org.mz.mzdkplayer.player.core.MzAspectRatio.FIT -> {
+                        mediaPlayer.aspectRatio = null
+                        mediaPlayer.setScale(0f)
+                    }
+                    org.mz.mzdkplayer.player.core.MzAspectRatio.STRETCH -> {
+                        mediaPlayer.aspectRatio = null
+                        mediaPlayer.setScale(1f) // Stretch to fill
+                    }
+                    org.mz.mzdkplayer.player.core.MzAspectRatio.RATIO_16_9 -> {
+                        mediaPlayer.aspectRatio = "16:9"
+                        mediaPlayer.setScale(0f)
+                    }
+                    org.mz.mzdkplayer.player.core.MzAspectRatio.RATIO_4_3 -> {
+                        mediaPlayer.aspectRatio = "4:3"
+                        mediaPlayer.setScale(0f)
+                    }
+                    org.mz.mzdkplayer.player.core.MzAspectRatio.ZOOM -> {
+                        // VLC doesn't have a direct "ZOOM" that crops, but we can set aspect ratio and scale
+                        mediaPlayer.aspectRatio = null
+                        mediaPlayer.setScale(0f) // This might need more specific logic
+                    }
+                }
+            },
             onRelease = {
-
                 mediaPlayer.detachViews()
-
             }
-
         )
-
     }
 
 

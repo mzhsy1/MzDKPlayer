@@ -2,8 +2,10 @@ package org.mz.mzdkplayer.ui.videoplayer
 
 // 导入必要的库和组件
 
+import android.app.Activity
 import android.net.TrafficStats
 import android.view.KeyEvent
+import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
@@ -158,6 +160,16 @@ fun VideoPlayerScreen(
 ) {
     // 获取当前 Compose 上下文
     val context = LocalContext.current
+
+    // 防止屏保弹出：进入播放器时设置 FLAG_KEEP_SCREEN_ON，退出时清除
+    val activity = context as? Activity
+    DisposableEffect(Unit) {
+        activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose {
+            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
     // 记住并创建 Player 实例
     // 1. 根据配置实例化解耦的 Player 内核
     val player: IMzPlayer = remember(useVlc, mediaUri) {
@@ -232,6 +244,7 @@ fun VideoPlayerScreen(
     val isPlayerPlaying by player.isPlayingFlow.collectAsState()
     val playerStatus by player.playerStatus.collectAsState()
     val playbackSpeed by player.playbackSpeed.collectAsState()
+    val currentAspectRatio by player.aspectRatio.collectAsState()
     // 构建播放器 (设置媒体源等)
     //BuilderMzPlayer(context, mediaUri, exoPlayer, dataSourceType, settingsViewModel)
     // 当 Composable 离开组合时，释放资源
@@ -595,6 +608,7 @@ fun VideoPlayerScreen(
             statusText = statusText,
             isoTitles = isoTitles,
             mediaUri = mediaUri,
+            useVlc = useVlc,
             mDanmakuPlayer = mDanmakuPlayer,
             settingsManager = settingsManager,
             getDanmakuConfig = ::getDanmakuConfig
@@ -675,6 +689,7 @@ fun VideoPlayerScreen(
             subtitleTracksFlow = player.subtitleTracks,
             isoTitles = isoTitles,
             playbackSpeed = playbackSpeed,
+            currentAspectRatio = currentAspectRatio,
             enablePassthrough = settingsState.enablePassthrough,
             mDanmakuPlayer = mDanmakuPlayer,
             mediaUri = mediaUri,

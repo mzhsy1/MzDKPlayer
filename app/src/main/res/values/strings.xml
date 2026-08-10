@@ -430,6 +430,7 @@
     <string name="ui_label_video_track">视频轨道</string>
     <string name="ui_label_audio_track">音频轨道</string>
     <string name="ui_label_subtitle_select">字幕选择</string>
+    <string name="ui_label_aspect_ratio">视频比例</string>
     <string name="ui_label_danmaku_off">关闭弹幕</string>
     <string name="ui_label_danmaku_on">开启弹幕</string>
     <string name="ui_label_danmaku_settings">弹幕设置</string>

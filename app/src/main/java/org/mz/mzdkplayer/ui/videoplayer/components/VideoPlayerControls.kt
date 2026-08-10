@@ -51,6 +51,7 @@ fun VideoPlayerControls(
     videoPlayerViewModel: VideoPlayerViewModel,
     isoTitles: List<MzIsoTitle>,
     mediaUri: String,
+    useVlc: Boolean,
     danmakuPlayer: DanmakuPlayer,
     settingsManager: DanmakuSettingsManager, // 添加设置管理器参数
     getDanmakuConfig: () -> DanmakuConfig // 添加获取配置的方法参数
@@ -78,26 +79,27 @@ fun VideoPlayerControls(
         },
         mediaActions = {
             // 媒体操作按钮区域 (音轨、字幕、弹幕开关)
+            val isIso = Tools.extractFileExtension(mediaUri)
+                .uppercase(LocalLocale.current.platformLocale) == "ISO"
+            val showBluRayIcon = useVlc && isIso
+
             Row(
                 modifier = Modifier.padding(bottom = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 VideoPlayerControlsIcon(
-                    icon = if (isoTitles.isEmpty()&& Tools.extractFileExtension(mediaUri)
-                            .uppercase(LocalLocale.current.platformLocale) != "ISO"
-                    ) painterResource(id = R.drawable.baseline_hd_24) else painterResource(R.drawable.blu_ray_disc) , // 高清图标
+                    icon = if (showBluRayIcon) painterResource(R.drawable.blu_ray_disc) else painterResource(id = R.drawable.baseline_hd_24),
                     state = state,
                     isPlaying = isPlaying,
-                    tooltipText = stringResource(R.string.ui_label_video_track), // 增加此处
+                    tooltipText = stringResource(R.string.ui_label_video_track),
                     onClick = {
-                        // 点击高清图标，显示视频轨道选择面板
-                        // 如果底层解析出了 titles，说明是包含了多视频的 ISO/DVD 文件
-                        if (isoTitles.isNotEmpty()) {
-                            videoPlayerViewModel.selectedAorVorS = "ISO" // 走新的 ISO 视频列表
+                        // 如果是 VLC 且是 ISO 且有 Title，才进入 ISO 标题选择
+                        if (useVlc && isIso && isoTitles.isNotEmpty()) {
+                            videoPlayerViewModel.selectedAorVorS = "ISO"
                         } else {
-                            videoPlayerViewModel.selectedAorVorS = "V"   // 走普通的视频轨道
+                            videoPlayerViewModel.selectedAorVorS = "V"
                         }
-                        videoPlayerViewModel.atpVisibility = !videoPlayerViewModel.atpVisibility;
+                        videoPlayerViewModel.atpVisibility = !videoPlayerViewModel.atpVisibility
                         focusRequester.requestFocus()
                     }
                 )
@@ -136,6 +138,19 @@ fun VideoPlayerControls(
                     isPlaying = isPlaying,
                     onClick = {
                         videoPlayerViewModel.selectedAorVorS = "SPEED"
+                        videoPlayerViewModel.atpVisibility = !videoPlayerViewModel.atpVisibility;
+                        focusRequester.requestFocus()
+                    }
+                )
+
+                VideoPlayerControlsIcon(
+                    modifier = Modifier.padding(start = 12.dp),
+                    icon = painterResource(id = R.drawable.aspect_ratio_24dp),
+                    state = state,
+                    tooltipText = stringResource(R.string.ui_label_aspect_ratio),
+                    isPlaying = isPlaying,
+                    onClick = {
+                        videoPlayerViewModel.selectedAorVorS = "R"
                         videoPlayerViewModel.atpVisibility = !videoPlayerViewModel.atpVisibility;
                         focusRequester.requestFocus()
                     }

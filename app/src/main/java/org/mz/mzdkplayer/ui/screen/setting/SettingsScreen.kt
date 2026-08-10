@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Border
@@ -336,16 +337,15 @@ fun AudioSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
 
 @Composable
 fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
+    var showFontSizeDialog by remember { mutableStateOf(false) }
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // 字体大小
-        val sizeOpts = listOf(18f, 22f, 26f, 30f, 40f)
         ActionSettingItem(
             title = stringResource(R.string.setting_font_size),
             value = "${state.subFontSize.toInt()} sp",
             onClick = {
-                val idx = sizeOpts.indexOf(state.subFontSize)
-                val next = sizeOpts[(idx + 1) % sizeOpts.size]
-                settingsVM.setSubFontSize(next)
+                showFontSizeDialog = true
             }
         )
         // 字体颜色
@@ -385,6 +385,17 @@ fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
             subtitle = stringResource(R.string.setting_force_pgs_center_sub),
             checked = state.forcePgsCenter,
             onCheckedChange = { settingsVM.togglePgsCenter(it) }
+        )
+    }
+
+    if (showFontSizeDialog) {
+        FontSizeSelectionDialog(
+            currentSize = state.subFontSize,
+            onSizeSelected = {
+                settingsVM.setSubFontSize(it)
+                showFontSizeDialog = false
+            },
+            onDismiss = { showFontSizeDialog = false }
         )
     }
 }
@@ -857,6 +868,62 @@ fun AboutItem(
         ),
         modifier = Modifier.fillMaxWidth()
     )
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+fun FontSizeSelectionDialog(
+    currentSize: Float,
+    onSizeSelected: (Float) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sizes = remember {
+        val list = mutableListOf<Float>()
+        for (i in 16..60) list.add(i.toFloat())
+        for (i in 65..100 step 5) list.add(i.toFloat())
+        list
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Box(
+            modifier = Modifier
+                .width(300.dp)
+                .height(400.dp)
+                .background(Color.DarkGray, RoundedCornerShape(8.dp))
+                .padding(16.dp)
+        ) {
+            Column {
+                Text(
+                    text = stringResource(R.string.setting_font_size),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    items(sizes) { size ->
+                        val isSelected = size == currentSize
+                        ListItem(
+                            selected = isSelected,
+                            onClick = { onSizeSelected(size) },
+                            headlineContent = { Text("${size.toInt()} sp") },
+                            colors = myListItemCoverColor(),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                MyIconButton(
+                    text = stringResource(R.string.ui_label_close),
+                    icon = R.drawable.close24dp,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onDismiss
+                )
+            }
+        }
+    }
 }
 
 // --- Helper Functions ---

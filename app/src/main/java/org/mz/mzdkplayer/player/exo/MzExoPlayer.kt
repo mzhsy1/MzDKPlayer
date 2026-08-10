@@ -6,6 +6,8 @@ import android.util.Log
 import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -22,6 +24,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.compose.ContentFrame
+import androidx.media3.ui.PlayerView
+import androidx.media3.ui.AspectRatioFrameLayout
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +33,7 @@ import org.mz.mzdkplayer.ui.screen.vm.SettingsViewModel
 import org.mz.mzdkplayer.ui.videoplayer.components.selectedDataSourceFactory
 
 import org.mz.mzdkplayer.player.core.IMzPlayer
+import org.mz.mzdkplayer.player.core.MzAspectRatio
 import org.mz.mzdkplayer.player.core.MzBasicTrack
 import org.mz.mzdkplayer.player.core.MzIsoTitle
 import org.mz.mzdkplayer.player.core.MzVideoTrack
@@ -62,6 +67,9 @@ class MzExoPlayer(
 
     private val _playbackSpeed = MutableStateFlow(1.0f)
     override val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
+
+    private val _aspectRatio = MutableStateFlow(MzAspectRatio.FIT)
+    override val aspectRatio: StateFlow<MzAspectRatio> = _aspectRatio.asStateFlow()
 
     override var onError: ((String) -> Unit)? = null
     override var onCuesChanged: ((Any) -> Unit)? = null
@@ -321,6 +329,10 @@ class MzExoPlayer(
         exoPlayer.playbackParameters = PlaybackParameters(speed)
     }
 
+    override fun setAspectRatio(ratio: MzAspectRatio) {
+        _aspectRatio.value = ratio
+    }
+
     override fun addExternalSubtitles(subtitles: List<Pair<String, String>>) {
         val currentMediaItem = exoPlayer.currentMediaItem ?: return
         val currentPos = exoPlayer.currentPosition
@@ -356,9 +368,29 @@ class MzExoPlayer(
     }
     @Composable
     override fun PlayerView(modifier: Modifier) {
-        ContentFrame(
-            player = exoPlayer,
-            modifier = modifier.fillMaxSize()
+        val currentRatio by aspectRatio.collectAsState()
+
+        androidx.compose.ui.viewinterop.AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = false
+                    layoutParams = android.view.ViewGroup.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                }
+            },
+            modifier = modifier.fillMaxSize(),
+            update = { view ->
+                view.resizeMode = when (currentRatio) {
+                    MzAspectRatio.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    MzAspectRatio.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                    MzAspectRatio.RATIO_16_9 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    MzAspectRatio.RATIO_4_3 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    MzAspectRatio.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                }
+            }
         )
     }
 }

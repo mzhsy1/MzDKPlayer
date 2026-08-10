@@ -28,6 +28,7 @@ fun BoxScope.VideoPlayerOverlayLayer(
     statusText: String,
     isoTitles: List<MzIsoTitle>,
     mediaUri: String,
+    useVlc: Boolean,
     mDanmakuPlayer: DanmakuPlayer,
     settingsManager: DanmakuSettingsManager,
     getDanmakuConfig: () -> DanmakuConfig
@@ -56,6 +57,7 @@ fun BoxScope.VideoPlayerOverlayLayer(
                 videoPlayerViewModel = videoPlayerViewModel,
                 isoTitles = isoTitles,
                 mediaUri = mediaUri,
+                useVlc = useVlc,
                 danmakuPlayer = mDanmakuPlayer,
                 settingsManager = settingsManager,
                 getDanmakuConfig = getDanmakuConfig

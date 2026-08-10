@@ -57,6 +57,13 @@ android {
             //pickFirsts.add("lib/**/libc++_shared.so")
         }
     }
+    signingConfigs {
+        create("release") {
+            // 你的密钥配置...
+            enableV1Signing = true
+            enableV2Signing = true
+        }
+    }
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -70,7 +77,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-        // isCoreLibraryDesugaringEnabled = true
+        isCoreLibraryDesugaringEnabled = true
 
     }
 //    repositories {
@@ -105,7 +112,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.media3.exoplayer)
 //    implementation(libs.androidx.media3.exoplayer.dash)
-    //implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.ui.compose)
     //implementation(libs.vlc.android.mini)
     implementation(files("libs/lib-decoder-ffmpeg-release.aar"))
@@ -170,6 +177,6 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     implementation(libs.androidx.ui.tooling)
-    //coreLibraryDesugaring(libs.desugarJdkLibs)
+    coreLibraryDesugaring(libs.desugarJdkLibs)
     debugImplementation(libs.androidx.ui.test.manifest)
 }

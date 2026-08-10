@@ -422,6 +422,7 @@
     <string name="ui_label_video_track">ビデオトラック</string>
     <string name="ui_label_audio_track">オーディオトラック</string>
     <string name="ui_label_subtitle_select">字幕選択</string>
+    <string name="ui_label_aspect_ratio">アスペクト比</string>
     <string name="ui_label_danmaku_off">弾幕をオフにする</string>
     <string name="ui_label_danmaku_on">弾幕をオンにする</string>
     <string name="ui_label_danmaku_settings">弾幕設定</string>

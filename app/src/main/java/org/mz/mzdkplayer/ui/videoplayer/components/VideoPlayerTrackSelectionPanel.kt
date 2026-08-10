@@ -21,6 +21,7 @@ import org.mz.mzdkplayer.player.core.IMzPlayer
 import org.mz.mzdkplayer.player.core.MzBasicTrack
 import org.mz.mzdkplayer.player.core.MzIsoTitle
 import org.mz.mzdkplayer.player.core.MzVideoTrack
+import org.mz.mzdkplayer.player.core.MzAspectRatio
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
@@ -34,6 +35,7 @@ fun BoxScope.VideoPlayerTrackSelectionPanel(
     subtitleTracksFlow: StateFlow<List<MzBasicTrack>>,
     isoTitles: List<MzIsoTitle>,
     playbackSpeed: Float,
+    currentAspectRatio: MzAspectRatio,
     enablePassthrough: Boolean,
     mDanmakuPlayer: DanmakuPlayer,
     mediaUri: String,
@@ -93,6 +95,13 @@ fun BoxScope.VideoPlayerTrackSelectionPanel(
                     player.setPlaybackSpeed(speed)
                 },
                 isPassthroughEnabled = enablePassthrough
+            )
+
+            "R" -> AspectRatioPanel(
+                currentRatio = currentAspectRatio,
+                onRatioSelected = { ratio ->
+                    player.setAspectRatio(ratio)
+                }
             )
 
             else -> {

@@ -419,6 +419,7 @@
     <string name="ui_label_video_track">Video Track</string>
     <string name="ui_label_audio_track">Audio Track</string>
     <string name="ui_label_subtitle_select">Subtitle Selection</string>
+    <string name="ui_label_aspect_ratio">Aspect Ratio</string>
     <string name="ui_label_danmaku_off">Turn off Danmaku</string>
     <string name="ui_label_danmaku_on">Turn on Danmaku</string>
     <string name="ui_label_danmaku_settings">Danmaku Settings</string>

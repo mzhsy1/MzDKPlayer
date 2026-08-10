@@ -61,6 +61,16 @@ interface IMzPlayer {
      * 当前播放倍速
      */
     val playbackSpeed: StateFlow<Float>
+
+    /**
+     * 设置视频比例
+     */
+    fun setAspectRatio(ratio: MzAspectRatio)
+
+    /**
+     * 当前视频比例
+     */
+    val aspectRatio: StateFlow<MzAspectRatio>
 }
 
 fun autoLoadSameNameSubtitles(videoUri: String, player: IMzPlayer) {
@@ -100,3 +110,11 @@ data class MzIsoTitle(
     val durationText: String, // 🌟 新增：格式化后的时长，如 "02:15:30"
     val isSelected: Boolean
 )
+
+enum class MzAspectRatio(val description: String) {
+    FIT("自动适应"),
+    STRETCH("拉伸铺满"),
+    RATIO_16_9("16:9"),
+    RATIO_4_3("4:3"),
+    ZOOM("裁剪填充")
+}
