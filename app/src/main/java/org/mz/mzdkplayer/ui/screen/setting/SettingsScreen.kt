@@ -305,6 +305,11 @@ fun PlaybackSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
             checked = state.enableTunneling,
             onCheckedChange = { settingsVM.toggleTunneling(it) }
         )
+        SwitchSettingItem(
+            title = stringResource(R.string.setting_lock_video_ratio),
+            checked = state.lockVideoRatio,
+            onCheckedChange = { settingsVM.toggleLockVideoRatio(it) }
+        )
     }
 }
 

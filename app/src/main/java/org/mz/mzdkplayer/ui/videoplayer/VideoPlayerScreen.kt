@@ -594,7 +594,7 @@ fun VideoPlayerScreen(
             )
         }
         val statusText = playerStatus.asDisplayString()
-        
+
         // 视频播放器覆盖层
         VideoPlayerOverlayLayer(
             videoPlayerViewModel = videoPlayerViewModel,
@@ -683,6 +683,7 @@ fun VideoPlayerScreen(
         // 音轨/字幕选择面板
         VideoPlayerTrackSelectionPanel(
             videoPlayerViewModel = videoPlayerViewModel,
+            settingsViewModel = settingsViewModel,
             player = player,
             audioTracks = audioTracks,
             videoTracks = videoTracks,

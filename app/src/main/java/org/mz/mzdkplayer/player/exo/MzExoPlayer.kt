@@ -4,11 +4,15 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.annotation.OptIn
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
@@ -24,8 +28,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.compose.ContentFrame
-import androidx.media3.ui.PlayerView
-import androidx.media3.ui.AspectRatioFrameLayout
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -68,7 +70,13 @@ class MzExoPlayer(
     private val _playbackSpeed = MutableStateFlow(1.0f)
     override val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
 
-    private val _aspectRatio = MutableStateFlow(MzAspectRatio.FIT)
+    private val _aspectRatio = MutableStateFlow(
+        if (settingsViewModel.uiState.value.lockVideoRatio) {
+            runCatching { MzAspectRatio.valueOf(settingsViewModel.uiState.value.globalVideoRatio) }.getOrDefault(MzAspectRatio.FIT)
+        } else {
+            MzAspectRatio.FIT
+        }
+    )
     override val aspectRatio: StateFlow<MzAspectRatio> = _aspectRatio.asStateFlow()
 
     override var onError: ((String) -> Unit)? = null
@@ -370,27 +378,47 @@ class MzExoPlayer(
     override fun PlayerView(modifier: Modifier) {
         val currentRatio by aspectRatio.collectAsState()
 
-        androidx.compose.ui.viewinterop.AndroidView(
-            factory = { ctx ->
-                PlayerView(ctx).apply {
-                    player = exoPlayer
-                    useController = false
-                    layoutParams = android.view.ViewGroup.LayoutParams(
-                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                        android.view.ViewGroup.LayoutParams.MATCH_PARENT
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            when (currentRatio) {
+                MzAspectRatio.FIT -> {
+                    ContentFrame(
+                        player = exoPlayer,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
                     )
                 }
-            },
-            modifier = modifier.fillMaxSize(),
-            update = { view ->
-                view.resizeMode = when (currentRatio) {
-                    MzAspectRatio.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    MzAspectRatio.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                    MzAspectRatio.RATIO_16_9 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    MzAspectRatio.RATIO_4_3 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    MzAspectRatio.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                MzAspectRatio.STRETCH -> {
+                    ContentFrame(
+                        player = exoPlayer,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.FillBounds
+                    )
+                }
+                MzAspectRatio.RATIO_16_9 -> {
+                    ContentFrame(
+                        player = exoPlayer,
+                        modifier = Modifier.aspectRatio(16f / 9f),
+                        contentScale = ContentScale.FillBounds
+                    )
+                }
+                MzAspectRatio.RATIO_4_3 -> {
+                    ContentFrame(
+                        player = exoPlayer,
+                        modifier = Modifier.aspectRatio(4f / 3f),
+                        contentScale = ContentScale.FillBounds
+                    )
+                }
+                MzAspectRatio.ZOOM -> {
+                    ContentFrame(
+                        player = exoPlayer,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
                 }
             }
-        )
+        }
     }
 }

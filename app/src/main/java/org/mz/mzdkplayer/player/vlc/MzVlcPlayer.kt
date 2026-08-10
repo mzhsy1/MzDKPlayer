@@ -266,7 +266,14 @@ class MzVlcPlayer(
 
     override val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
 
-    private val _aspectRatio = MutableStateFlow(org.mz.mzdkplayer.player.core.MzAspectRatio.FIT)
+    private val _aspectRatio = MutableStateFlow(
+        if (settingsViewModel.uiState.value.lockVideoRatio) {
+            runCatching { org.mz.mzdkplayer.player.core.MzAspectRatio.valueOf(settingsViewModel.uiState.value.globalVideoRatio) }
+                .getOrDefault(org.mz.mzdkplayer.player.core.MzAspectRatio.FIT)
+        } else {
+            org.mz.mzdkplayer.player.core.MzAspectRatio.FIT
+        }
+    )
     override val aspectRatio: StateFlow<org.mz.mzdkplayer.player.core.MzAspectRatio> = _aspectRatio.asStateFlow()
 
 
@@ -856,24 +863,24 @@ class MzVlcPlayer(
                 when (currentRatio) {
                     org.mz.mzdkplayer.player.core.MzAspectRatio.FIT -> {
                         mediaPlayer.aspectRatio = null
-                        mediaPlayer.setScale(0f)
+                        mediaPlayer.scale = 0f
                     }
                     org.mz.mzdkplayer.player.core.MzAspectRatio.STRETCH -> {
                         mediaPlayer.aspectRatio = null
-                        mediaPlayer.setScale(1f) // Stretch to fill
+                        mediaPlayer.scale = 1f // Stretch to fill
                     }
                     org.mz.mzdkplayer.player.core.MzAspectRatio.RATIO_16_9 -> {
                         mediaPlayer.aspectRatio = "16:9"
-                        mediaPlayer.setScale(0f)
+                        mediaPlayer.scale = 0f
                     }
                     org.mz.mzdkplayer.player.core.MzAspectRatio.RATIO_4_3 -> {
                         mediaPlayer.aspectRatio = "4:3"
-                        mediaPlayer.setScale(0f)
+                        mediaPlayer.scale = 0f
                     }
                     org.mz.mzdkplayer.player.core.MzAspectRatio.ZOOM -> {
                         // VLC doesn't have a direct "ZOOM" that crops, but we can set aspect ratio and scale
                         mediaPlayer.aspectRatio = null
-                        mediaPlayer.setScale(0f) // This might need more specific logic
+                        mediaPlayer.scale = 0f // This might need more specific logic
                     }
                 }
             },

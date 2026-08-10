@@ -61,6 +61,10 @@ object SettingsRepository {
     // 🔥 新增：Exo音频解码模式 (0=纯硬解, 1=硬解优先, 2=软解优先)
     private const val KEY_EXO_AUDIO_DECODE_MODE = "exo_audio_decode_mode"
 
+    // 🔥 新增：锁定视频比例
+    private const val KEY_LOCK_VIDEO_RATIO = "lock_video_ratio"
+    private const val KEY_GLOBAL_VIDEO_RATIO = "global_video_ratio"
+
     // 🔥 新增：递归扫描层级 (0=当前文件夹, 1=当前+1层子文件夹, ...)
     private const val KEY_RECURSIVE_SCAN_LEVEL = "recursive_scan_level"
 
@@ -98,6 +102,15 @@ object SettingsRepository {
     var exoAudioDecodeMode: Int
         get() = prefs.getInt(KEY_EXO_AUDIO_DECODE_MODE, 1) // 默认 1 (硬解优先)
         set(value) = prefs.edit { putInt(KEY_EXO_AUDIO_DECODE_MODE, value) }
+
+    var lockVideoRatio: Boolean
+        get() = prefs.getBoolean(KEY_LOCK_VIDEO_RATIO, false)
+        set(value) = prefs.edit { putBoolean(KEY_LOCK_VIDEO_RATIO, value) }
+
+    var globalVideoRatio: String
+        get() = prefs.getString(KEY_GLOBAL_VIDEO_RATIO, "FIT") ?: "FIT"
+        set(value) = prefs.edit { putString(KEY_GLOBAL_VIDEO_RATIO, value) }
+
     // 字幕外观
     var subtitleFontSize: Float
         get() = prefs.getFloat(KEY_SUB_SIZE, 22f)

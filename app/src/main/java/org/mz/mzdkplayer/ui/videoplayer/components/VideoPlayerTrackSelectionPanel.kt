@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -24,11 +26,13 @@ import org.mz.mzdkplayer.player.core.MzVideoTrack
 import org.mz.mzdkplayer.player.core.MzAspectRatio
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
+import org.mz.mzdkplayer.ui.screen.vm.SettingsViewModel
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 
 @Composable
 fun BoxScope.VideoPlayerTrackSelectionPanel(
     videoPlayerViewModel: VideoPlayerViewModel,
+    settingsViewModel: SettingsViewModel,
     player: IMzPlayer,
     audioTracks: List<MzBasicTrack>,
     videoTracks: List<MzVideoTrack>,
@@ -97,12 +101,25 @@ fun BoxScope.VideoPlayerTrackSelectionPanel(
                 isPassthroughEnabled = enablePassthrough
             )
 
-            "R" -> AspectRatioPanel(
-                currentRatio = currentAspectRatio,
-                onRatioSelected = { ratio ->
-                    player.setAspectRatio(ratio)
-                }
-            )
+            "R" -> {
+                val settingsState by settingsViewModel.uiState.collectAsState()
+                AspectRatioPanel(
+                    currentRatio = currentAspectRatio,
+                    isLocked = settingsState.lockVideoRatio,
+                    onRatioSelected = { ratio ->
+                        player.setAspectRatio(ratio)
+                        if (settingsState.lockVideoRatio) {
+                            settingsViewModel.setGlobalVideoRatio(ratio.name)
+                        }
+                    },
+                    onLockedChange = { locked ->
+                        settingsViewModel.toggleLockVideoRatio(locked)
+                        if (locked) {
+                            settingsViewModel.setGlobalVideoRatio(currentAspectRatio.name)
+                        }
+                    }
+                )
+            }
 
             else -> {
                 SubtitleTrackPanel(

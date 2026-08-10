@@ -7,34 +7,42 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
+import androidx.tv.material3.Switch
 import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
+import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.player.core.MzAspectRatio
 import org.mz.mzdkplayer.tool.focusOnInitialVisibility
 
 @Composable
 fun AspectRatioPanel(
     currentRatio: MzAspectRatio,
-    onRatioSelected: (MzAspectRatio) -> Unit
+    isLocked: Boolean,
+    onRatioSelected: (MzAspectRatio) -> Unit,
+    onLockedChange: (Boolean) -> Unit
 ) {
     val focusRequester = remember { FocusRequester() }
     val isVis = remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
     val ratios = MzAspectRatio.entries
     val selectedIndex = ratios.indexOf(currentRatio).takeIf { it >= 0 } ?: 0
+
+    LaunchedEffect(currentRatio) {
+        listState.animateScrollToItem(index = selectedIndex + 1)
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -42,10 +50,27 @@ fun AspectRatioPanel(
             .focusRequester(focusRequester),
         state = listState
     ) {
-        coroutineScope.launch {
-            if (selectedIndex >= 0) {
-                listState.animateScrollToItem(index = selectedIndex)
-            }
+        item {
+            ListItem(
+                modifier = Modifier
+                    .padding(start = 15.dp, end = 15.dp, top = 10.dp, bottom = 10.dp),
+                selected = false,
+                colors = ListItemDefaults.colors(
+                    containerColor = Color(0, 0, 0),
+                    contentColor = Color(255, 255, 255),
+                    focusedContainerColor = Color(255, 255, 255),
+                    focusedContentColor = Color(0, 0, 0)
+                ),
+                headlineContent = {
+                    Text(stringResource(R.string.setting_lock_video_ratio))
+                },
+                trailingContent = {
+                    Switch(checked = isLocked, onCheckedChange = null)
+                },
+                onClick = {
+                    onLockedChange(!isLocked)
+                }
+            )
         }
         items(ratios.size) { index ->
             val ratio = ratios[index]

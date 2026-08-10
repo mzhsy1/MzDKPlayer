@@ -26,6 +26,8 @@ data class SettingsUiState(
     val subBgColor: Long = 0x80000000,
     val subBottomPadding: Float = 30f,
     val forcePgsCenter: Boolean = false,
+    val lockVideoRatio: Boolean = false,
+    val globalVideoRatio: String = "FIT",
     val defaultPlayer: String = "exo",
     val isoPlaybackMode: Int = 0, // 新增：ISO 播放模式
     // 刮削
@@ -67,6 +69,8 @@ class SettingsViewModel : ViewModel() {
                 subBgColor = repo.subtitleBgColorHex,
                 subBottomPadding = repo.subtitleBottomPadding,
                 forcePgsCenter = repo.forcePgsCenter,
+                lockVideoRatio = repo.lockVideoRatio,
+                globalVideoRatio = repo.globalVideoRatio,
                 defaultPlayer = repo.defaultPlayer,
                 isoPlaybackMode = repo.isoPlaybackMode,
                 smb = repo.enableSmb,
@@ -98,6 +102,8 @@ class SettingsViewModel : ViewModel() {
     fun setSubBgColor(v: Long) { repo.subtitleBgColorHex = v; refreshState() }
     fun setSubBottomPadding(v: Float) { repo.subtitleBottomPadding = v; refreshState() }
     fun togglePgsCenter(v: Boolean) { repo.forcePgsCenter = v; refreshState() }
+    fun toggleLockVideoRatio(v: Boolean) { repo.lockVideoRatio = v; refreshState() }
+    fun setGlobalVideoRatio(v: String) { repo.globalVideoRatio = v; refreshState() }
     fun setDefaultPlayer(kernel: String) {
         repo.defaultPlayer = kernel
         refreshState()
