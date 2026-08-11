@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 
@@ -343,6 +344,7 @@ fun AudioSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
 @Composable
 fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
     var showFontSizeDialog by remember { mutableStateOf(false) }
+    var showBottomPaddingDialog by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // 字体大小
@@ -381,8 +383,7 @@ fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
             title = stringResource(R.string.setting_bottom_padding),
             value = "${state.subBottomPadding.toInt()} dp",
             onClick = {
-                val next = if (state.subBottomPadding >= 100f) 10f else state.subBottomPadding + 10f
-                settingsVM.setSubBottomPadding(next)
+                showBottomPaddingDialog = true
             }
         )
         SwitchSettingItem(
@@ -401,6 +402,17 @@ fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
                 showFontSizeDialog = false
             },
             onDismiss = { showFontSizeDialog = false }
+        )
+    }
+
+    if (showBottomPaddingDialog) {
+        BottomPaddingSelectionDialog(
+            currentPadding = state.subBottomPadding,
+            onPaddingSelected = {
+                settingsVM.setSubBottomPadding(it)
+                showBottomPaddingDialog = false
+            },
+            onDismiss = { showBottomPaddingDialog = false }
         )
     }
 }
@@ -904,8 +916,12 @@ fun FontSizeSelectionDialog(
                     color = Color.White,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
+                val listState = rememberLazyListState(
+                    initialFirstVisibleItemIndex = sizes.indexOf(currentSize).coerceAtLeast(0)
+                )
                 LazyColumn(
                     modifier = Modifier.weight(1f),
+                    state = listState,
                     contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
                     items(sizes) { size ->
@@ -914,6 +930,65 @@ fun FontSizeSelectionDialog(
                             selected = isSelected,
                             onClick = { onSizeSelected(size) },
                             headlineContent = { Text("${size.toInt()} sp") },
+                            colors = myListItemCoverColor(),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                MyIconButton(
+                    text = stringResource(R.string.ui_label_close),
+                    icon = R.drawable.close24dp,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onDismiss
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+fun BottomPaddingSelectionDialog(
+    currentPadding: Float,
+    onPaddingSelected: (Float) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val paddings = remember {
+        val list = mutableListOf<Float>()
+        for (i in 0..200 step 1) list.add(i.toFloat())
+        list
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Box(
+            modifier = Modifier
+                .width(300.dp)
+                .height(400.dp)
+                .background(Color.DarkGray, RoundedCornerShape(8.dp))
+                .padding(16.dp)
+        ) {
+            Column {
+                Text(
+                    text = stringResource(R.string.setting_bottom_padding),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                val listState = rememberLazyListState(
+                    initialFirstVisibleItemIndex = (currentPadding.toInt()).coerceIn(0, paddings.size - 1)
+                )
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    state = listState,
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    items(paddings) { padding ->
+                        val isSelected = padding == currentPadding
+                        ListItem(
+                            selected = isSelected,
+                            onClick = { onPaddingSelected(padding) },
+                            headlineContent = { Text("${padding.toInt()} dp") },
                             colors = myListItemCoverColor(),
                             modifier = Modifier.fillMaxWidth()
                         )
