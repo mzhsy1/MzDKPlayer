@@ -30,6 +30,9 @@ data class SettingsUiState(
     val globalVideoRatio: String = "FIT",
     val defaultPlayer: String = "exo",
     val isoPlaybackMode: Int = 0, // 新增：ISO 播放模式
+    // 新增：遥控器上下键功能 (默认: 上=弹幕设置 D, 下=音轨选择 A)
+    val dpadUpAction: String = "D",
+    val dpadDownAction: String = "A",
     // 刮削
     val smb: Boolean = true,
     val webdav: Boolean = true,
@@ -73,6 +76,8 @@ class SettingsViewModel : ViewModel() {
                 globalVideoRatio = repo.globalVideoRatio,
                 defaultPlayer = repo.defaultPlayer,
                 isoPlaybackMode = repo.isoPlaybackMode,
+                dpadUpAction = repo.dpadUpAction,
+                dpadDownAction = repo.dpadDownAction,
                 smb = repo.enableSmb,
                 webdav = repo.enableWebDav,
                 ftp = repo.enableFtp,
@@ -112,6 +117,8 @@ class SettingsViewModel : ViewModel() {
         repo.isoPlaybackMode = mode
         refreshState()
     }
+    fun setDpadUpAction(v: String) { repo.dpadUpAction = v; refreshState() }
+    fun setDpadDownAction(v: String) { repo.dpadDownAction = v; refreshState() }
     fun setAppLanguage(context: Context, lang: String) {
         repo.appLanguage = lang
         LanguageManager.setLanguage(context, lang)

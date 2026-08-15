@@ -42,6 +42,8 @@
     <string name="setting_sub_lang">優先字幕言語</string>
     <string name="setting_tunneling">動画トンネリング</string>
     <string name="setting_tunneling_sub">4K/HDRの性能が向上する可能性がありますが、互換性の問題があります</string>
+    <string name="setting_dpad_up_action">リモコン上キー機能</string>
+    <string name="setting_dpad_down_action">リモコン下キー機能</string>
 
     <string name="setting_passthrough">オーディオパススルー</string>
     <string name="setting_passthrough_sub">アンプに生データを送信します。VLCのみ有効です。</string>

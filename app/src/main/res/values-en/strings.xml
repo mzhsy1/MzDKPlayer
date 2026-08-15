@@ -41,6 +41,8 @@
     <string name="setting_default_player">Default Player Engine</string>
     <string name="setting_iso_playback_mode">ISO Blu-ray Playback Mode</string>
     <string name="setting_lock_video_ratio">Lock Video Ratio</string>
+    <string name="setting_dpad_up_action">Up Key Action</string>
+    <string name="setting_dpad_down_action">Down Key Action</string>
     <string name="setting_iso_playback_mode_sub">Set default playback behavior for ISO files</string>
     <string name="setting_sub_lang">Preferred Subtitle</string>
     <string name="setting_tunneling">Video Tunneling</string>

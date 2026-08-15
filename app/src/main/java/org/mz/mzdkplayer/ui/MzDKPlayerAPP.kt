@@ -4,6 +4,7 @@ import org.mz.mzdkplayer.data.repository.AudioPlaylistRepository
 import org.mz.mzdkplayer.ui.screen.setting.SolarSystem
 import android.net.Uri
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -195,7 +197,7 @@ fun MzDKPlayerAPP(
 
         composable("MainPage") {
             val homeNavController = rememberNavController()
-            val sideFocusRequest = remember { FocusRequester() }
+            val contentFocusRequest = remember { FocusRequester() }
             val drawerState = remember { DrawerState(initialValue = DrawerValue.Closed) }
             ModalNavigationDrawer(
                 drawerState = drawerState, // 直接传入保存的状态,
@@ -321,13 +323,7 @@ fun MzDKPlayerAPP(
                                     selectedContainerColor = warmWhite,                     // 选中时的底色 (暖白)
                                     focusedSelectedContainerColor = warmWhite               // 选中且焦点悬停时的底色 (暖白)
                                 ),
-                                // ✅ 关键修改：把焦点请求器绑定到第 1 个 Item 上
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .then(
-                                        if (index == 0) Modifier.focusRequester(sideFocusRequest)
-                                        else Modifier
-                                    )
+                                modifier = Modifier.fillMaxWidth()
 
                             ){
                                 if (isOpen) {
@@ -355,6 +351,7 @@ fun MzDKPlayerAPP(
                             .fillMaxWidth()
                             // 👇 关键修改：统一在这里加上 64.dp 的左侧边距
                             .padding(start = 84.dp)
+                            .focusRequester(contentFocusRequest)
                     ) {
                         composable("HomePage") {
                             HomeScreen(libraryViewModel, mainNavController, homeNavController, settingsVM)
@@ -392,6 +389,18 @@ fun MzDKPlayerAPP(
 
                     }
                 })
+
+            // 导航栏展开时，按返回键先收起导航栏并把焦点交回内容区，而不是退出应用
+            BackHandler(enabled = drawerState.currentValue == DrawerValue.Open) {
+                drawerState.setValue(DrawerValue.Closed)
+                contentFocusRequest.requestFocus()
+            }
+
+            // 首次启动：等待窗口焦点建立后，把焦点落到内容区（防止焦点落到侧边导航栏导致抽屉展开）
+            LaunchedEffect(Unit) {
+                delay(150)
+                contentFocusRequest.requestFocus()
+            }
         }
         composable("LocalFileTypeScreen") { backStackEntry ->
             LocalFileTypeScreen(mainNavController)

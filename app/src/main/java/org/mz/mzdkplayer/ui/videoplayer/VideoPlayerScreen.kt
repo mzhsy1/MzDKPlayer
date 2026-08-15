@@ -532,7 +532,9 @@ fun VideoPlayerScreen(
                 player,
                 videoPlayerState,
                 pulseState,
-                videoPlayerViewModel
+                videoPlayerViewModel,
+                settingsState.dpadUpAction,
+                settingsState.dpadDownAction
             )
             .background(Color(0, 0, 0)) // 黑色背景
             .focusable() // 可获得焦点
@@ -767,7 +769,9 @@ private fun Modifier.dPadEvents(
     player: IMzPlayer, // 这里把 ExoPlayer 换成 IMzPlayer
     videoPlayerState: VideoPlayerState,
     pulseState: VideoPlayerPulseState,
-    videoPlayerViewModel: VideoPlayerViewModel
+    videoPlayerViewModel: VideoPlayerViewModel,
+    dpadUpAction: String,
+    dpadDownAction: String
 ): Modifier = this
     .handleDPadKeyEvents(
         onLeft = {
@@ -791,13 +795,13 @@ private fun Modifier.dPadEvents(
         onUp = {
             if (!videoPlayerState.controlsVisible) {
                 videoPlayerViewModel.atpVisibility = true
-                videoPlayerViewModel.selectedAorVorS = "A"
+                videoPlayerViewModel.selectedAorVorS = dpadUpAction
             }
         },
         onDown = {
             if (!videoPlayerState.controlsVisible) {
                 videoPlayerViewModel.atpVisibility = true
-                videoPlayerViewModel.selectedAorVorS = "D"
+                videoPlayerViewModel.selectedAorVorS = dpadDownAction
             }
         },
         onEnter = {

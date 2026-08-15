@@ -42,6 +42,10 @@ object SettingsRepository {
     // 🔥 新增：ISO 播放模式 (0: 默认/菜单, 1: 直接播放正片)
     private const val KEY_ISO_PLAYBACK_MODE = "iso_playback_mode"
 
+    // 🔥 新增：遥控器上下键功能
+    private const val KEY_DPAD_UP_ACTION = "dpad_up_action"
+    private const val KEY_DPAD_DOWN_ACTION = "dpad_down_action"
+
     // --- 刮削设置 Keys ---
     private const val KEY_SOURCE_SMB = "source_smb"
     private const val KEY_SOURCE_WEBDAV = "source_webdav"
@@ -140,6 +144,15 @@ object SettingsRepository {
     var isoPlaybackMode: Int
         get() = prefs.getInt(KEY_ISO_PLAYBACK_MODE, 1) // 默认 1: 直接播放正片
         set(value) = prefs.edit { putInt(KEY_ISO_PLAYBACK_MODE, value) }
+
+    // 🔥 新增：遥控器上下键功能 (默认: 上=弹幕设置, 下=音轨选择)
+    var dpadUpAction: String
+        get() = prefs.getString(KEY_DPAD_UP_ACTION, "D") ?: "D"
+        set(value) = prefs.edit { putString(KEY_DPAD_UP_ACTION, value) }
+
+    var dpadDownAction: String
+        get() = prefs.getString(KEY_DPAD_DOWN_ACTION, "A") ?: "A"
+        set(value) = prefs.edit { putString(KEY_DPAD_DOWN_ACTION, value) }
 
     // 刮削源
     var enableSmb: Boolean get() = prefs.getBoolean(KEY_SOURCE_SMB, true); set(v) = prefs.edit {

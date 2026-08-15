@@ -56,6 +56,7 @@ import org.mz.mzdkplayer.ui.screen.vm.SettingsUiState
 import org.mz.mzdkplayer.ui.screen.vm.SettingsViewModel
 import org.mz.mzdkplayer.ui.theme.myListItemCoverColor
 import org.mz.mzdkplayer.ui.theme.mySideFilterChipColor
+import org.mz.mzdkplayer.ui.videoplayer.components.NumberControl
 import androidx.core.net.toUri
 
 // 定义左侧菜单分类
@@ -311,6 +312,20 @@ fun PlaybackSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
             checked = state.lockVideoRatio,
             onCheckedChange = { settingsVM.toggleLockVideoRatio(it) }
         )
+        ActionSettingItem(
+            title = stringResource(R.string.setting_dpad_up_action),
+            value = formatDpadAction(state.dpadUpAction),
+            onClick = {
+                settingsVM.setDpadUpAction(nextDpadAction(state.dpadUpAction))
+            }
+        )
+        ActionSettingItem(
+            title = stringResource(R.string.setting_dpad_down_action),
+            value = formatDpadAction(state.dpadDownAction),
+            onClick = {
+                settingsVM.setDpadDownAction(nextDpadAction(state.dpadDownAction))
+            }
+        )
     }
 }
 
@@ -343,17 +358,14 @@ fun AudioSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
 
 @Composable
 fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
-    var showFontSizeDialog by remember { mutableStateOf(false) }
-    var showBottomPaddingDialog by remember { mutableStateOf(false) }
-
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        // 字体大小
-        ActionSettingItem(
-            title = stringResource(R.string.setting_font_size),
-            value = "${state.subFontSize.toInt()} sp",
-            onClick = {
-                showFontSizeDialog = true
-            }
+        // 字体大小 - 数字调节
+        NumberControl(
+            value = state.subFontSize.toInt(),
+            onValueChange = { settingsVM.setSubFontSize(it.toFloat()) },
+            maxValue = 100,
+            minValue = 16,
+            label = stringResource(R.string.setting_font_size)
         )
         // 字体颜色
         ActionSettingItem(
@@ -378,41 +390,19 @@ fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
                 settingsVM.setSubBgColor(next)
             }
         )
-        // 距离底部
-        ActionSettingItem(
-            title = stringResource(R.string.setting_bottom_padding),
-            value = "${state.subBottomPadding.toInt()} dp",
-            onClick = {
-                showBottomPaddingDialog = true
-            }
+        // 距离底部 - 数字调节
+        NumberControl(
+            value = state.subBottomPadding.toInt(),
+            onValueChange = { settingsVM.setSubBottomPadding(it.toFloat()) },
+            maxValue = 200,
+            minValue = -100,
+            label = stringResource(R.string.setting_bottom_padding)
         )
         SwitchSettingItem(
             title = stringResource(R.string.setting_force_pgs_center),
             subtitle = stringResource(R.string.setting_force_pgs_center_sub),
             checked = state.forcePgsCenter,
             onCheckedChange = { settingsVM.togglePgsCenter(it) }
-        )
-    }
-
-    if (showFontSizeDialog) {
-        FontSizeSelectionDialog(
-            currentSize = state.subFontSize,
-            onSizeSelected = {
-                settingsVM.setSubFontSize(it)
-                showFontSizeDialog = false
-            },
-            onDismiss = { showFontSizeDialog = false }
-        )
-    }
-
-    if (showBottomPaddingDialog) {
-        BottomPaddingSelectionDialog(
-            currentPadding = state.subBottomPadding,
-            onPaddingSelected = {
-                settingsVM.setSubBottomPadding(it)
-                showBottomPaddingDialog = false
-            },
-            onDismiss = { showBottomPaddingDialog = false }
         )
     }
 }
@@ -887,125 +877,6 @@ fun AboutItem(
     )
 }
 
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-fun FontSizeSelectionDialog(
-    currentSize: Float,
-    onSizeSelected: (Float) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val sizes = remember {
-        val list = mutableListOf<Float>()
-        for (i in 16..60) list.add(i.toFloat())
-        for (i in 65..100 step 5) list.add(i.toFloat())
-        list
-    }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Box(
-            modifier = Modifier
-                .width(300.dp)
-                .height(400.dp)
-                .background(Color.DarkGray, RoundedCornerShape(8.dp))
-                .padding(16.dp)
-        ) {
-            Column {
-                Text(
-                    text = stringResource(R.string.setting_font_size),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                val listState = rememberLazyListState(
-                    initialFirstVisibleItemIndex = sizes.indexOf(currentSize).coerceAtLeast(0)
-                )
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    state = listState,
-                    contentPadding = PaddingValues(vertical = 8.dp)
-                ) {
-                    items(sizes) { size ->
-                        val isSelected = size == currentSize
-                        ListItem(
-                            selected = isSelected,
-                            onClick = { onSizeSelected(size) },
-                            headlineContent = { Text("${size.toInt()} sp") },
-                            colors = myListItemCoverColor(),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                MyIconButton(
-                    text = stringResource(R.string.ui_label_close),
-                    icon = R.drawable.close24dp,
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onDismiss
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-fun BottomPaddingSelectionDialog(
-    currentPadding: Float,
-    onPaddingSelected: (Float) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val paddings = remember {
-        val list = mutableListOf<Float>()
-        for (i in 0..200 step 1) list.add(i.toFloat())
-        list
-    }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Box(
-            modifier = Modifier
-                .width(300.dp)
-                .height(400.dp)
-                .background(Color.DarkGray, RoundedCornerShape(8.dp))
-                .padding(16.dp)
-        ) {
-            Column {
-                Text(
-                    text = stringResource(R.string.setting_bottom_padding),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                val listState = rememberLazyListState(
-                    initialFirstVisibleItemIndex = (currentPadding.toInt()).coerceIn(0, paddings.size - 1)
-                )
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    state = listState,
-                    contentPadding = PaddingValues(vertical = 8.dp)
-                ) {
-                    items(paddings) { padding ->
-                        val isSelected = padding == currentPadding
-                        ListItem(
-                            selected = isSelected,
-                            onClick = { onPaddingSelected(padding) },
-                            headlineContent = { Text("${padding.toInt()} dp") },
-                            colors = myListItemCoverColor(),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                MyIconButton(
-                    text = stringResource(R.string.ui_label_close),
-                    icon = R.drawable.close24dp,
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onDismiss
-                )
-            }
-        }
-    }
-}
-
 // --- Helper Functions ---
 @Composable
 fun formatLang(code: String): String = when (code) {
@@ -1062,5 +933,25 @@ fun formatTmdbLang(code: String): String = when (code) {
 fun formatIsoPlaybackMode(mode: Int): String = when (mode) {
     0 -> stringResource(R.string.iso_playback_mode_default)
     1 -> stringResource(R.string.iso_playback_mode_main_movie)
+    else -> stringResource(R.string.ui_label_unknown)
+}
+
+// 遥控器上下键可选功能列表
+private val DPAD_ACTION_ORDER = listOf("A", "S", "D", "V", "SPEED", "R")
+
+private fun nextDpadAction(current: String): String {
+    val idx = DPAD_ACTION_ORDER.indexOf(current)
+    val next = if (idx < 0) 0 else (idx + 1) % DPAD_ACTION_ORDER.size
+    return DPAD_ACTION_ORDER[next]
+}
+
+@Composable
+fun formatDpadAction(code: String): String = when (code) {
+    "A" -> stringResource(R.string.ui_label_audio_track)
+    "S" -> stringResource(R.string.ui_label_subtitle_select)
+    "D" -> stringResource(R.string.ui_label_danmaku_settings)
+    "V" -> stringResource(R.string.ui_label_video_track)
+    "SPEED" -> stringResource(R.string.ui_label_speed)
+    "R" -> stringResource(R.string.ui_label_aspect_ratio)
     else -> stringResource(R.string.ui_label_unknown)
 }

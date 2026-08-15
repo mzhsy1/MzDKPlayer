@@ -6,6 +6,7 @@ package org.mz.mzdkplayer.ui.videoplayer.components
 import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -50,7 +51,10 @@ fun BoxScope.VideoPlayerViewLayer(
             subtitleStyle = customSubtitleStyle,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = subBottomPadding.dp),
+                .then(
+                    if (subBottomPadding >= 0f) Modifier.padding(bottom = subBottomPadding.dp)
+                    else Modifier.offset(y = (-subBottomPadding).dp)
+                ),
             videoSizeDp = videoSizeDp,
             backgroundColor = Color(subBgColor),
             sourceVideoHeight = player.videoHeight,
