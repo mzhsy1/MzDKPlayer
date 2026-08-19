@@ -59,6 +59,8 @@
     <string name="setting_bottom_padding">距离底部位置</string>
     <string name="setting_force_pgs_center">强制 PGS 字幕居中</string>
     <string name="setting_force_pgs_center_sub">仅对图形字幕生效</string>
+    <string name="setting_auto_load_subtitle">自动加载同名字幕</string>
+    <string name="setting_auto_load_subtitle_sub">播放时自动扫描视频所在目录并加载同名字幕</string>
 
     <string name="btn_clear_movie_db">清理电影与TV媒体资料库</string>
     <string name="btn_clear_audio_db">清理音乐资料库</string>
@@ -444,6 +446,7 @@
     <string name="ui_label_no_poster">无海报</string>
     <string name="ui_label_subtitle_off">关闭字幕</string>
     <string name="ui_label_subtitle_file_not_found_hint">(未找到文件，可能正在缓冲)</string>
+    <string name="ui_label_auto_subtitle_found">已自动加载 %1$d 条同名字幕</string>
 
     <string name="ui_label_author">作者</string>
     <string name="ui_label_github">GitHub 项目地址</string>

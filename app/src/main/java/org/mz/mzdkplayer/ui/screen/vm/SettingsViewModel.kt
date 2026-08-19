@@ -26,6 +26,7 @@ data class SettingsUiState(
     val subBgColor: Long = 0x80000000,
     val subBottomPadding: Float = 30f,
     val forcePgsCenter: Boolean = false,
+    val autoLoadSubtitle: Boolean = true,
     val lockVideoRatio: Boolean = false,
     val globalVideoRatio: String = "FIT",
     val defaultPlayer: String = "exo",
@@ -72,6 +73,7 @@ class SettingsViewModel : ViewModel() {
                 subBgColor = repo.subtitleBgColorHex,
                 subBottomPadding = repo.subtitleBottomPadding,
                 forcePgsCenter = repo.forcePgsCenter,
+                autoLoadSubtitle = repo.autoLoadSubtitle,
                 lockVideoRatio = repo.lockVideoRatio,
                 globalVideoRatio = repo.globalVideoRatio,
                 defaultPlayer = repo.defaultPlayer,
@@ -107,6 +109,7 @@ class SettingsViewModel : ViewModel() {
     fun setSubBgColor(v: Long) { repo.subtitleBgColorHex = v; refreshState() }
     fun setSubBottomPadding(v: Float) { repo.subtitleBottomPadding = v; refreshState() }
     fun togglePgsCenter(v: Boolean) { repo.forcePgsCenter = v; refreshState() }
+    fun toggleAutoLoadSubtitle(v: Boolean) { repo.autoLoadSubtitle = v; refreshState() }
     fun toggleLockVideoRatio(v: Boolean) { repo.lockVideoRatio = v; refreshState() }
     fun setGlobalVideoRatio(v: String) { repo.globalVideoRatio = v; refreshState() }
     fun setDefaultPlayer(kernel: String) {

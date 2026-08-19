@@ -57,6 +57,8 @@
     <string name="setting_bottom_padding">Bottom Margin</string>
     <string name="setting_force_pgs_center">Force PGS Center</string>
     <string name="setting_force_pgs_center_sub">Graphic subtitles only</string>
+    <string name="setting_auto_load_subtitle">Auto-load same-name subtitles</string>
+    <string name="setting_auto_load_subtitle_sub">Scan the video directory and load same-name subtitles automatically</string>
 
     <string name="btn_clear_movie_db">Clear Movie/TV Library</string>
     <string name="btn_clear_audio_db">Clear Music Library</string>
@@ -435,6 +437,7 @@
     <string name="ui_label_no_poster">No Poster</string>
     <string name="ui_label_subtitle_off">Turn off Subtitles</string>
     <string name="ui_label_subtitle_file_not_found_hint">(File not found, may be buffering)</string>
+    <string name="ui_label_auto_subtitle_found">Auto-loaded %1$d subtitle(s) with the same name</string>
 
     <string name="ui_label_author">Author</string>
     <string name="ui_label_github">GitHub Project</string>

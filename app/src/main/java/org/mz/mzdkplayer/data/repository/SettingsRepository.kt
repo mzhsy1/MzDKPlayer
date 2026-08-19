@@ -36,6 +36,9 @@ object SettingsRepository {
     private const val KEY_SUB_BOTTOM_PADDING = "sub_bottom_padding_dp"
     private const val KEY_SUB_PGS_CENTER = "sub_pgs_center"
 
+    // 🔥 新增：自动加载同名字幕
+    private const val KEY_AUTO_LOAD_SUBTITLE = "auto_load_subtitle"
+
     // 🔥 新增：默认播放器内核
     private const val KEY_DEFAULT_PLAYER = "default_player"
 
@@ -136,6 +139,10 @@ object SettingsRepository {
     var forcePgsCenter: Boolean
         get() = prefs.getBoolean(KEY_SUB_PGS_CENTER, false)
         set(value) = prefs.edit { putBoolean(KEY_SUB_PGS_CENTER, value) }
+
+    var autoLoadSubtitle: Boolean
+        get() = prefs.getBoolean(KEY_AUTO_LOAD_SUBTITLE, true)
+        set(value) = prefs.edit { putBoolean(KEY_AUTO_LOAD_SUBTITLE, value) }
 
     var defaultPlayer: String
         get() = prefs.getString(KEY_DEFAULT_PLAYER, "exo") ?: "exo"

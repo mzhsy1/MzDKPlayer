@@ -404,6 +404,12 @@ fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
             checked = state.forcePgsCenter,
             onCheckedChange = { settingsVM.togglePgsCenter(it) }
         )
+        SwitchSettingItem(
+            title = stringResource(R.string.setting_auto_load_subtitle),
+            subtitle = stringResource(R.string.setting_auto_load_subtitle_sub),
+            checked = state.autoLoadSubtitle,
+            onCheckedChange = { settingsVM.toggleAutoLoadSubtitle(it) }
+        )
     }
 }
 

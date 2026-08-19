@@ -88,6 +88,7 @@ import org.mz.mzdkplayer.data.model.MediaHistoryRecord
 import org.mz.mzdkplayer.data.repository.DanmakuSettingsManager
 import org.mz.mzdkplayer.player.core.IMzPlayer
 import org.mz.mzdkplayer.player.core.MzIsoTitle
+import org.mz.mzdkplayer.player.core.autoLoadSameNameSubtitles
 import org.mz.mzdkplayer.player.exo.MzExoPlayer
 import org.mz.mzdkplayer.player.vlc.MzVlcPlayer
 import org.mz.mzdkplayer.tool.FtpDataSource
@@ -234,6 +235,8 @@ fun VideoPlayerScreen(
     // 👇 新增：标记是否是首次加载
     var isFirstLoad by remember { mutableStateOf(true) }
     var isExoSubtitleVis by remember { mutableStateOf(true) }
+    // 自动加载同名字幕：只尝试一次，避免播放器重载导致重复触发
+    var autoSubtitleAttempted by remember { mutableStateOf(false) }
     val videoTracks by player.videoTracks.collectAsState()
     val audioTracks by player.audioTracks.collectAsState()
     val subtitleTracks by player.subtitleTracks.collectAsState()
@@ -506,6 +509,16 @@ fun VideoPlayerScreen(
             videoPlayerViewModel.updatePlayerStatus(playerStatus)
         } else {
             videoPlayerViewModel.updatePlayerStatus(playerStatus)
+        }
+    }
+    // 自动加载同名字幕：准备就绪后扫描一次，找到几条就提示几条，没找到不提示
+    LaunchedEffect(playerStatus) {
+        if (playerStatus == VideoPlayerStatus.READY && !autoSubtitleAttempted && settingsState.autoLoadSubtitle) {
+            autoSubtitleAttempted = true
+            val count = autoLoadSameNameSubtitles(mediaUri, dataSourceType, player)
+            if (count > 0) {
+                showToast(context, context.getString(R.string.ui_label_auto_subtitle_found, count))
+            }
         }
     }
     // 3. 设置错误回调

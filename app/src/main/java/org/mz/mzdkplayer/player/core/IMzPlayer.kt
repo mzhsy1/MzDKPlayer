@@ -3,6 +3,7 @@ package org.mz.mzdkplayer.player.core
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import kotlinx.coroutines.flow.StateFlow
+import org.mz.mzdkplayer.tool.SubtitleScanner
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerStatus
 
 interface IMzPlayer {
@@ -73,34 +74,19 @@ interface IMzPlayer {
     val aspectRatio: StateFlow<MzAspectRatio>
 }
 
-fun autoLoadSameNameSubtitles(videoUri: String, player: IMzPlayer) {
-    val lastDotIndex = videoUri.lastIndexOf('.')
-    if (lastDotIndex <= 0) return
+/**
+ * 协程版自动加载同名字幕：
+ * 1. 在 IO 线程扫描视频所在目录（本地 + SMB/NFS/FTP/WebDAV/HTTP），找出与视频同名的字幕文件；
+ * 2. 找到后切回主线程交给播放器加载；
+ * 3. 返回实际找到的字幕条数（未找到返回 0，调用方据此决定是否提示）。
+ */
+suspend fun autoLoadSameNameSubtitles(videoUri: String, dataSourceType: String, player: IMzPlayer): Int {
+    val found = SubtitleScanner.scan(videoUri, dataSourceType)
 
-    val basePath = videoUri.substring(0, lastDotIndex)
-    val exts = listOf("ass", "srt", "ssa", "vtt")
-
-    val validSubs = mutableListOf<Pair<String, String>>()
-
-    exts.forEach { ext ->
-        val subUri = "$basePath.$ext"
-
-        if (videoUri.startsWith("file:///")) {
-            // 本地文件：顺手查一下文件存不存在，这步不涉及扫目录，基本不耗时
-            val path = subUri.removePrefix("file:///")
-            if (java.io.File(path).exists()) {
-                validSubs.add(subUri to "[外部加载] $ext")
-            }
-        } else {
-            // 网络协议 (smb/http等)：不扫描，直接莽，交给播放器底层去碰壁
-            validSubs.add(subUri to "[外部加载] $ext")
-        }
+    if (found.isNotEmpty()) {
+        player.addExternalSubtitles(found)
     }
-
-    // 塞给播放器
-    if (validSubs.isNotEmpty()) {
-        player.addExternalSubtitles(validSubs)
-    }
+    return found.size
 }
 
 // 1. 在 IMzPlayer.kt 文件中增加一个新的数据类
