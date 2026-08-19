@@ -185,7 +185,7 @@ fun SettingsScreen(
                     }
 
                     SettingCategory.Subtitle -> item {
-                        SubtitleSection(state, settingsVM)
+                        SubtitleSection(state, settingsVM, mainNavController)
                     }
 
                     SettingCategory.Source -> item {
@@ -357,7 +357,7 @@ fun AudioSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
 }
 
 @Composable
-fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
+fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel, navController: NavHostController) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // 字体大小 - 数字调节
         NumberControl(
@@ -375,6 +375,12 @@ fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
                 val next = if (state.subColor == 0xFFFFFFFF) 0xFFFFFF00 else 0xFFFFFFFF
                 settingsVM.setSubColor(next)
             }
+        )
+        // 第三方字体
+        ActionSettingItem(
+            title = stringResource(R.string.setting_sub_font),
+            value = formatSubFontName(state.subFontPath),
+            onClick = { navController.navigate("FontPickerScreen") }
         )
         // 背景颜色
         ActionSettingItem(
@@ -897,6 +903,13 @@ fun parseBgColorName(color: Long): String = when (color) {
     0x80FFFF00 -> stringResource(R.string.color_yellow_50)
     0x00000000L -> stringResource(R.string.color_transparent)
     else -> stringResource(R.string.ui_label_custom)
+}
+@Composable
+fun formatSubFontName(path: String): String {
+    if (path.isBlank()) {
+        return stringResource(R.string.font_default)
+    }
+    return path.substringAfterLast('/').ifBlank { path }
 }
 @Composable
 fun formatAppLang(code: String): String = when(code){

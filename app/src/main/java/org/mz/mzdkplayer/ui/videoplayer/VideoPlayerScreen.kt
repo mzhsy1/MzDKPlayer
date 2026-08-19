@@ -52,6 +52,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -457,10 +459,31 @@ fun VideoPlayerScreen(
         }
     }
 
+    // 自定义第三方字幕字体（仅对 CustomSubtitleView 纯文本字幕生效）
+    val customSubtitleFontFamily = remember(settingsState.subFontPath) {
+        val path = settingsState.subFontPath
+        if (path.isNotBlank()) {
+            try {
+                val fontFile = java.io.File(path)
+                if (fontFile.exists() && fontFile.isFile) {
+                    FontFamily(Font(fontFile))
+                } else {
+                    null
+                }
+            } catch (e: Exception) {
+                Log.e("VideoPlayer", "Failed to load subtitle font: $path", e)
+                null
+            }
+        } else {
+            null
+        }
+    }
+
     // 定义自定义字幕样式
     val customSubtitleStyle = TextStyle(
         color = Color(settingsState.subColor), // 字幕颜色为白色
         fontSize = settingsState.subFontSize.sp,     // 字体大小
+        fontFamily = customSubtitleFontFamily,
         shadow = Shadow(
             color = Color.Black, // 黑色阴影
             offset = Offset(3f, 3f),

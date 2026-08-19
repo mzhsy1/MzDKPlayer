@@ -59,6 +59,14 @@
     <string name="setting_force_pgs_center_sub">Graphic subtitles only</string>
     <string name="setting_auto_load_subtitle">Auto-load same-name subtitles</string>
     <string name="setting_auto_load_subtitle_sub">Scan the video directory and load same-name subtitles automatically</string>
+    <string name="setting_sub_font">Custom Font</string>
+    <string name="setting_sub_font_sub">Pick a font file from local folders. Applies to plain-text subtitles (ExoPlayer) only</string>
+    <string name="font_default">Default font</string>
+    <string name="font_picker_title">Select a font file</string>
+    <string name="font_picker_up">Up one level</string>
+    <string name="font_picker_no_font_found">No font files in this directory</string>
+    <string name="font_selected_toast">Font applied: %s</string>
+    <string name="storage_internal">Internal storage</string>
 
     <string name="btn_clear_movie_db">Clear Movie/TV Library</string>
     <string name="btn_clear_audio_db">Clear Music Library</string>

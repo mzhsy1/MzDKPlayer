@@ -87,6 +87,7 @@ import org.mz.mzdkplayer.ui.screen.filehome.FileHomeScreen
 import org.mz.mzdkplayer.ui.screen.httplink.HTTPLinkFileListScreen
 import org.mz.mzdkplayer.ui.screen.httplink.HTTPLinkConListScreen
 
+import org.mz.mzdkplayer.ui.screen.localfile.FontPickerScreen
 import org.mz.mzdkplayer.ui.screen.localfile.LocalFileListScreen
 import org.mz.mzdkplayer.ui.screen.localfile.LocalFileTypeScreen
 import org.mz.mzdkplayer.ui.screen.httplink.HTTPLinkConScreen
@@ -413,6 +414,14 @@ fun MzDKPlayerAPP(
                 LocalFileListScreen(path, mainNavController,settingsVM)
 
             }
+        }
+        composable("FontPickerScreen") {
+            FontPickerScreen(null, mainNavController, settingsVM)
+        }
+        composable("FontPickerScreen/{path}") { backStackEntry ->
+            val encodedPath = backStackEntry.arguments?.getString("path")
+            val path = encodedPath?.fromBase64()
+            FontPickerScreen(path, mainNavController, settingsVM)
         }
         composable("VideoPlayer/{sourceUri}/{dataSourceType}/{fileName}/{connectionName}") { backStackEntry ->
 

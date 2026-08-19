@@ -61,6 +61,14 @@
     <string name="setting_force_pgs_center_sub">仅对图形字幕生效</string>
     <string name="setting_auto_load_subtitle">自动加载同名字幕</string>
     <string name="setting_auto_load_subtitle_sub">播放时自动扫描视频所在目录并加载同名字幕</string>
+    <string name="setting_sub_font">第三方字体</string>
+    <string name="setting_sub_font_sub">从本地文件夹选择字体文件，仅对纯文本字幕（ExoPlayer）生效</string>
+    <string name="font_default">默认字体</string>
+    <string name="font_picker_title">选择字体文件</string>
+    <string name="font_picker_up">上一级</string>
+    <string name="font_picker_no_font_found">此目录下没有字体文件</string>
+    <string name="font_selected_toast">已应用字体：%s</string>
+    <string name="storage_internal">内部存储</string>
 
     <string name="btn_clear_movie_db">清理电影与TV媒体资料库</string>
     <string name="btn_clear_audio_db">清理音乐资料库</string>

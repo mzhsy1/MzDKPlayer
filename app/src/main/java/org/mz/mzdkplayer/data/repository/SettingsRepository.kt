@@ -36,6 +36,9 @@ object SettingsRepository {
     private const val KEY_SUB_BOTTOM_PADDING = "sub_bottom_padding_dp"
     private const val KEY_SUB_PGS_CENTER = "sub_pgs_center"
 
+    // 第三方自定义字幕字体文件绝对路径（仅对 CustomSubtitleView 纯文本字幕生效）
+    private const val KEY_SUB_FONT_PATH = "sub_font_path"
+
     // 🔥 新增：自动加载同名字幕
     private const val KEY_AUTO_LOAD_SUBTITLE = "auto_load_subtitle"
 
@@ -139,6 +142,10 @@ object SettingsRepository {
     var forcePgsCenter: Boolean
         get() = prefs.getBoolean(KEY_SUB_PGS_CENTER, false)
         set(value) = prefs.edit { putBoolean(KEY_SUB_PGS_CENTER, value) }
+
+    var subFontPath: String
+        get() = prefs.getString(KEY_SUB_FONT_PATH, "") ?: ""
+        set(value) = prefs.edit { putString(KEY_SUB_FONT_PATH, value) }
 
     var autoLoadSubtitle: Boolean
         get() = prefs.getBoolean(KEY_AUTO_LOAD_SUBTITLE, true)

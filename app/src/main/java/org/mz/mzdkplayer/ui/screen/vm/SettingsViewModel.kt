@@ -25,6 +25,7 @@ data class SettingsUiState(
     val subColor: Long = 0xFFFFFFFF,
     val subBgColor: Long = 0x80000000,
     val subBottomPadding: Float = 30f,
+    val subFontPath: String = "",
     val forcePgsCenter: Boolean = false,
     val autoLoadSubtitle: Boolean = true,
     val lockVideoRatio: Boolean = false,
@@ -72,6 +73,7 @@ class SettingsViewModel : ViewModel() {
                 subColor = repo.subtitleColorHex,
                 subBgColor = repo.subtitleBgColorHex,
                 subBottomPadding = repo.subtitleBottomPadding,
+                subFontPath = repo.subFontPath,
                 forcePgsCenter = repo.forcePgsCenter,
                 autoLoadSubtitle = repo.autoLoadSubtitle,
                 lockVideoRatio = repo.lockVideoRatio,
@@ -108,6 +110,7 @@ class SettingsViewModel : ViewModel() {
     fun setSubColor(v: Long) { repo.subtitleColorHex = v; refreshState() }
     fun setSubBgColor(v: Long) { repo.subtitleBgColorHex = v; refreshState() }
     fun setSubBottomPadding(v: Float) { repo.subtitleBottomPadding = v; refreshState() }
+    fun setSubFontPath(v: String) { repo.subFontPath = v; refreshState() }
     fun togglePgsCenter(v: Boolean) { repo.forcePgsCenter = v; refreshState() }
     fun toggleAutoLoadSubtitle(v: Boolean) { repo.autoLoadSubtitle = v; refreshState() }
     fun toggleLockVideoRatio(v: Boolean) { repo.lockVideoRatio = v; refreshState() }

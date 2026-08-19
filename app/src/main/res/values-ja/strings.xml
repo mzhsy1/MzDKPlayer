@@ -54,6 +54,14 @@
     <string name="setting_bottom_padding">下部からの距離</string>
     <string name="setting_force_pgs_center">PGS字幕を中央寄せ</string>
     <string name="setting_force_pgs_center_sub">グラフィック字幕のみに適用</string>
+    <string name="setting_sub_font">カスタムフォント</string>
+    <string name="setting_sub_font_sub">ローカルフォルダからフォントを選択。テキスト字幕（ExoPlayer）のみに適用</string>
+    <string name="font_default">デフォルトフォント</string>
+    <string name="font_picker_title">フォントファイルを選択</string>
+    <string name="font_picker_up">一つ上の階層へ</string>
+    <string name="font_picker_no_font_found">このフォルダにフォントファイルはありません</string>
+    <string name="font_selected_toast">フォントを適用しました：%s</string>
+    <string name="storage_internal">内部ストレージ</string>
 
     <string name="btn_clear_movie_db">ビデオライブラリを消去</string>
     <string name="btn_clear_audio_db">ミュージックライブラリを消去</string>
