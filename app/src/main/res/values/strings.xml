@@ -43,6 +43,9 @@
     <string name="setting_lock_video_ratio">锁定视频比例</string>
     <string name="setting_dpad_up_action">遥控器上键功能</string>
     <string name="setting_dpad_down_action">遥控器下键功能</string>
+    <string name="setting_ff_duration">快进时长 (秒)</string>
+    <string name="setting_rw_duration">快退时长 (秒)</string>
+    <string name="ui_label_seek_duration">快进快退时长</string>
     <string name="setting_iso_playback_mode_sub">设置 ISO 文件的初始播放行为</string>
     <string name="iso_playback_mode_default">默认播放设置 (尝试显示菜单)</string>
     <string name="iso_playback_mode_main_movie">直接播放正片</string>

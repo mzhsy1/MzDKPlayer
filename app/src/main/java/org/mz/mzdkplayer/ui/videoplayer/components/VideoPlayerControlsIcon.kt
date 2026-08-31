@@ -40,6 +40,7 @@ fun VideoPlayerControlsIcon(
     icon: Painter,
     contentDescription: String? = null,
     tooltipText: String? = null,
+    focusable: Boolean = true,
     onClick: () -> Unit = {}
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -51,25 +52,43 @@ fun VideoPlayerControlsIcon(
         contentAlignment = Alignment.Center
     ) {
         // 原有的按钮 Surface
-        Surface(
-            modifier = Modifier.size(40.dp), // 固定按钮尺寸
-            onClick = onClick,
-            shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
-            colors = ClickableSurfaceDefaults.colors(
-                containerColor = Color.Black.copy(0.9f), contentColor = Color.White,
-                focusedContainerColor = Color.White, focusedContentColor = Color.Black
-            ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
-            interactionSource = interactionSource
-        ) {
-            Icon(
-                icon,
+        if (focusable) {
+            Surface(
+                modifier = Modifier.size(40.dp), // 固定按钮尺寸
+                onClick = onClick,
+                shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
+                colors = ClickableSurfaceDefaults.colors(
+                    containerColor = Color.Black.copy(0.9f), contentColor = Color.White,
+                    focusedContainerColor = Color.White, focusedContentColor = Color.Black
+                ),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
+                interactionSource = interactionSource
+            ) {
+                Icon(
+                    icon,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(8.dp),
+                    contentDescription = contentDescription,
+                    tint = LocalContentColor.current
+                )
+            }
+        } else {
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp),
-                contentDescription = contentDescription,
-                tint = LocalContentColor.current
-            )
+                    .size(40.dp)
+                    .background(Color.Black.copy(0.9f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    icon,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(8.dp),
+                    contentDescription = contentDescription,
+                    tint = Color.White
+                )
+            }
         }
 
         // 提示框容器

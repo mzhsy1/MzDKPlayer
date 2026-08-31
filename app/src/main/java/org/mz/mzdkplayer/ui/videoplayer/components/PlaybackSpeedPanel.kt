@@ -1,6 +1,7 @@
 package org.mz.mzdkplayer.ui.videoplayer.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
@@ -33,11 +35,19 @@ fun PlaybackSpeedPanel(
     val focusRequester = remember { FocusRequester() }
     val isVis = remember { mutableStateOf(false) }
 
-    LazyColumn(
-        modifier = Modifier
-            .width(360.dp)
-            .focusRequester(focusRequester)
-    ) {
+    Column {
+        Text(
+            text = stringResource(R.string.ui_label_speed),
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            fontSize = 24.sp,
+            modifier = Modifier.padding(15.dp, 10.dp)
+        )
+        LazyColumn(
+            modifier = Modifier
+                .width(360.dp)
+                .focusRequester(focusRequester)
+        ) {
         if (isPassthroughEnabled) {
             item {
                 Box(
@@ -57,7 +67,7 @@ fun PlaybackSpeedPanel(
 
             ListItem(
                 modifier = Modifier
-                    .padding(start = 15.dp, end = 15.dp, top = 10.dp, bottom = 10.dp)
+                    .padding(start = 15.dp, end = 2.dp, top = 10.dp, bottom = 10.dp)
                     .let {
                         if (isSelected) it.focusOnInitialVisibility(isVis) else it
                     },
@@ -80,4 +90,5 @@ fun PlaybackSpeedPanel(
             )
         }
     }
+}
 }

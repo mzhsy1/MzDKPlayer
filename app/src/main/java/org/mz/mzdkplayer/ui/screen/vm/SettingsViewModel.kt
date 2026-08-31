@@ -35,6 +35,8 @@ data class SettingsUiState(
     // 新增：遥控器上下键功能 (默认: 上=弹幕设置 D, 下=音轨选择 A)
     val dpadUpAction: String = "D",
     val dpadDownAction: String = "A",
+    val ffDuration: Int = 15,
+    val rwDuration: Int = 15,
     // 刮削
     val smb: Boolean = true,
     val webdav: Boolean = true,
@@ -82,6 +84,8 @@ class SettingsViewModel : ViewModel() {
                 isoPlaybackMode = repo.isoPlaybackMode,
                 dpadUpAction = repo.dpadUpAction,
                 dpadDownAction = repo.dpadDownAction,
+                ffDuration = repo.ffDuration,
+                rwDuration = repo.rwDuration,
                 smb = repo.enableSmb,
                 webdav = repo.enableWebDav,
                 ftp = repo.enableFtp,
@@ -125,6 +129,8 @@ class SettingsViewModel : ViewModel() {
     }
     fun setDpadUpAction(v: String) { repo.dpadUpAction = v; refreshState() }
     fun setDpadDownAction(v: String) { repo.dpadDownAction = v; refreshState() }
+    fun setFFDuration(v: Int) { repo.ffDuration = v; refreshState() }
+    fun setRWDuration(v: Int) { repo.rwDuration = v; refreshState() }
     fun setAppLanguage(context: Context, lang: String) {
         repo.appLanguage = lang
         LanguageManager.setLanguage(context, lang)

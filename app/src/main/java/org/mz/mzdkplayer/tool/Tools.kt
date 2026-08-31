@@ -891,6 +891,26 @@ object Tools {
             "https://image.tmdb.org/t/p/$size$path"
         }
     }
+
+    fun prepareSubtitleFont(context: Context, fontFileName: String): File {
+        // 目标文件路径：/data/user/0/你的包名/files/TvFont.ttf
+        val destFile = File(context.filesDir, fontFileName)
+
+        // 关键：加个判断。如果文件已经存在，说明之前启动时拷过了，直接返回，省时间
+        if (!destFile.exists()) {
+            try {
+                context.assets.open("fonts/$fontFileName").use { inputStream ->
+                    destFile.outputStream().use { outputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // 如果拷贝失败，容错处理
+            }
+        }
+        return destFile
+    }
 }
 
 

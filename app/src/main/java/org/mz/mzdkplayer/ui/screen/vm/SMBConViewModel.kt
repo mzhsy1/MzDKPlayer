@@ -186,7 +186,7 @@ class SMBConViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 share?.close()
-            } catch (e: TransportException) {
+            } catch (e: Exception) {
                 Log.w("SMB", "Share 已断开，无需关闭")
             } finally {
                 share = null
@@ -194,7 +194,7 @@ class SMBConViewModel : ViewModel() {
 
             try {
                 session?.close()
-            } catch (e: TransportException) {
+            } catch (e: Exception) {
                 Log.w("SMB", "Session 已断开，无需关闭")
             } finally {
                 session = null
@@ -202,7 +202,7 @@ class SMBConViewModel : ViewModel() {
 
             try {
                 connection?.close()
-            } catch (e: TransportException) {
+            } catch (e: Exception) {
                 Log.w("SMB", "Connection 已断开，无需关闭")
             } finally {
                 connection = null

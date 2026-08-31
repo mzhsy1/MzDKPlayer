@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -38,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
+import kotlinx.coroutines.delay
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
 import org.mz.mzdkplayer.tool.ifElse
 
@@ -45,7 +47,12 @@ import org.mz.mzdkplayer.tool.ifElse
 fun RowScope.VideoPlayerControllerIndicator(
     progress: Float,
     onSeek: (seekProgress: Float) -> Unit,
-    state: VideoPlayerState
+    state: VideoPlayerState,
+    modifier: Modifier = Modifier,
+    durationMs: Long = 0,
+    ffDurationS: Int = 15,
+    rwDurationS: Int = 15,
+    onTogglePlayPause: () -> Unit = {}
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isSelected by remember { mutableStateOf(false) }
@@ -58,59 +65,100 @@ fun RowScope.VideoPlayerControllerIndicator(
         targetValue = 5.dp.times((if (isFocused) 2.5f else 1f)), label = ""
     )
     var seekProgress by remember { mutableFloatStateOf(0f) }
+    var lastSeekTime by remember { mutableLongStateOf(0L) }
+    val throttleMs = 500L
 
-    LaunchedEffect(isFocused) {
-        if (isFocused) {
-            state.showControls(seconds = Int.MAX_VALUE)
-        } else {
-            state.showControls()
+    LaunchedEffect(progress) {
+        if (!isFocused) {
+            seekProgress = progress
         }
-
     }
 
+    LaunchedEffect(isFocused) {
+        state.showControls()
+    }
+
+    // 落地跳转：确保停止操作后，最后停留的位置能被精确执行
+    LaunchedEffect(seekProgress) {
+        if (isFocused) {
+            delay(600L) // 略长于节流时间，确保是最终停顿
+            onSeek(seekProgress)
+            lastSeekTime = System.currentTimeMillis()
+            state.showControls()
+        }
+    }
 
     val handleSeekEventModifier = Modifier.handleDPadKeyEvents(
         onEnter = {
             onSeek(seekProgress)
             state.showControls()
-
         },
         onLeft = {
-            seekProgress = (seekProgress - 0.016f).coerceAtLeast(0f)
-            onSeek(seekProgress)
+            val now = System.currentTimeMillis()
+            if (now - lastSeekTime > throttleMs) {
+                if (durationMs > 0) {
+                    val delta = rwDurationS.toFloat() * 1000 / durationMs
+                    seekProgress = (seekProgress - delta).coerceAtLeast(0f)
+                } else {
+                    seekProgress = (seekProgress - 0.016f).coerceAtLeast(0f)
+                }
+                onSeek(seekProgress)
+                lastSeekTime = now
+            }
             state.showControls()
         },
         onRight = {
-            seekProgress = (seekProgress + 0.016f).coerceAtMost(1f)
-            onSeek(seekProgress)
+            val now = System.currentTimeMillis()
+            if (now - lastSeekTime > throttleMs) {
+                if (durationMs > 0) {
+                    val delta = ffDurationS.toFloat() * 1000 / durationMs
+                    seekProgress = (seekProgress + delta).coerceAtMost(1f)
+                } else {
+                    seekProgress = (seekProgress + 0.016f).coerceAtMost(1f)
+                }
+                onSeek(seekProgress)
+                lastSeekTime = now
+            }
             state.showControls()
         }
-
-        )
+    )
 
     val handleDpadCenterClickModifier = Modifier.handleDPadKeyEvents(
         onEnter = {
-            seekProgress = progress
-            state.showControls() // 🔑 重置隐藏计时器[cite: 3]
+            onTogglePlayPause()
+            state.hideControls()
         },
         onLeft = {
-            seekProgress = progress
-            seekProgress = (seekProgress - 0.016f).coerceAtLeast(0f)
-            onSeek(seekProgress)
-            state.showControls() // 🔑 每次按下确认，重置隐藏计时器[cite: 3]
-
-
+            val now = System.currentTimeMillis()
+            if (now - lastSeekTime > throttleMs) {
+                if (durationMs > 0) {
+                    val delta = rwDurationS.toFloat() * 1000 / durationMs
+                    seekProgress = (seekProgress - delta).coerceAtLeast(0f)
+                } else {
+                    seekProgress = (seekProgress - 0.016f).coerceAtLeast(0f)
+                }
+                onSeek(seekProgress)
+                lastSeekTime = now
+            }
+            state.showControls()
         },
         onRight = {
-            seekProgress = progress
-            seekProgress = (seekProgress + 0.016f).coerceAtMost(1f)
-            onSeek(seekProgress)
-            state.showControls() // 🔑 每次按下确认，重置隐藏计时器[cite: 3]
-
+            val now = System.currentTimeMillis()
+            if (now - lastSeekTime > throttleMs) {
+                if (durationMs > 0) {
+                    val delta = ffDurationS.toFloat() * 1000 / durationMs
+                    seekProgress = (seekProgress + delta).coerceAtMost(1f)
+                } else {
+                    seekProgress = (seekProgress + 0.016f).coerceAtMost(1f)
+                }
+                onSeek(seekProgress)
+                lastSeekTime = now
+            }
+            state.showControls()
         },
     )
     Canvas(
-        modifier = Modifier
+        modifier = modifier
             .weight(1f)
             .height(animatedIndicatorHeight)
             .padding(horizontal = 4.dp) .ifElse(

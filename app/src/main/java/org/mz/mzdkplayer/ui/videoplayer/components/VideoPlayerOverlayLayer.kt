@@ -26,12 +26,12 @@ fun BoxScope.VideoPlayerOverlayLayer(
     player: IMzPlayer,
     fileName: String,
     statusText: String,
-    isoTitles: List<MzIsoTitle>,
-    mediaUri: String,
-    useVlc: Boolean,
     mDanmakuPlayer: DanmakuPlayer,
     settingsManager: DanmakuSettingsManager,
-    getDanmakuConfig: () -> DanmakuConfig
+    getDanmakuConfig: () -> DanmakuConfig,
+    ffDuration: Int = 15,
+    rwDuration: Int = 15,
+    onTogglePlayPause: () -> Unit = {}
 ) {
     VideoPlayerOverlay(
         modifier = Modifier
@@ -50,17 +50,17 @@ fun BoxScope.VideoPlayerOverlayLayer(
                 currentPositionProvider = currentPositionProvider,
                 player = player,
                 state = videoPlayerState,
-                focusRequester = focusRequester,
                 title = fileName,
                 secondaryText = statusText,
                 tertiaryText = "2022/1/20", // TODO: 获取真实日期或移除
                 videoPlayerViewModel = videoPlayerViewModel,
-                isoTitles = isoTitles,
-                mediaUri = mediaUri,
-                useVlc = useVlc,
                 danmakuPlayer = mDanmakuPlayer,
                 settingsManager = settingsManager,
-                getDanmakuConfig = getDanmakuConfig
+                getDanmakuConfig = getDanmakuConfig,
+                focusRequester = focusRequester,
+                ffDuration = ffDuration,
+                rwDuration = rwDuration,
+                onTogglePlayPause = onTogglePlayPause
             )
         },
         atpFocus = videoPlayerViewModel.atpFocus

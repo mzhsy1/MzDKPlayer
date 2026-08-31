@@ -236,6 +236,8 @@ fun SMBFileListScreen(
         onDispose {
             Log.d("SMBFileListScreen", "界面销毁，释放资源")
             exoPlayer?.release()
+            // 新增：切断可能正在进行后台读取的电影搜索协程
+            movieViewModel.clearFocusedMovie()
             viewModel.disconnectSMB()
         }
     }

@@ -18,13 +18,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.tool.Tools
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -37,9 +41,17 @@ fun LaunchScreen(
         targetValue = 1f,
         label = "splash_alpha"
     )
+    // 获取 Context
+    val context = LocalContext.current
 
     // 模拟启动过程（如初始化数据库、检查登录状态等）
     LaunchedEffect(Unit) {
+        // 👇 关键修改：切到 IO 线程去执行文件读写操作
+        withContext(Dispatchers.IO) {
+            // 假设你已经把方法放进了 Tools 工具类中，并且字体叫 TvFont.ttf
+            //Tools.prepareSubtitleFont(context, "SmileySans-Oblique.ttf")
+        }
+
         delay(durationMillis.milliseconds)
         onFinish()
     }

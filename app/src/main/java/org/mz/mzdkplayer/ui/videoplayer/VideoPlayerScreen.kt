@@ -515,33 +515,32 @@ fun VideoPlayerScreen(
             }
         }
     }
-    // 2. 监听准备就绪状态处理历史记录
+    // 监听准备就绪状态：按顺序处理自动加载字幕和历史进度跳转，避免两者冲突
     LaunchedEffect(playerStatus) {
         if (playerStatus == VideoPlayerStatus.READY) {
-            isFirstLoad = false // 👇 新增：第一次准备好后，取消首次加载遮罩
+            isFirstLoad = false
             videoPlayerViewModel.updatePlayerStatus(VideoPlayerStatus.READY)
 
+            // 1. 优先尝试自动加载同名字幕
+            if (!autoSubtitleAttempted && settingsState.autoLoadSubtitle) {
+                autoSubtitleAttempted = true
+                val count = autoLoadSameNameSubtitles(mediaUri, dataSourceType, player)
+                if (count > 0) {
+                    showToast(context, context.getString(R.string.ui_label_auto_subtitle_found, count))
+                }
+                // 注意：对于 ExoPlayer，加载字幕会触发 setMediaItem，导致播放器重新准备并再次触发 READY。
+                // 我们在加载动作发出后直接返回，确保跳转逻辑在字幕加载完成后的下一次 READY 中执行，从而避免位置重置。
+                if (count > 0 && !useVlc) return@LaunchedEffect
+            }
+
+            // 2. 处理历史进度跳转
             if (historySeekPos > 0 && !hasTriggeredTimer) {
                 player.seekTo(historySeekPos)
                 showHistoryTip = true
                 hasTriggeredTimer = true
             }
-        } else if (playerStatus == VideoPlayerStatus.READY) {
-// 🔥 在这里关闭加载框
-            isFirstLoad = false
-            videoPlayerViewModel.updatePlayerStatus(playerStatus)
         } else {
             videoPlayerViewModel.updatePlayerStatus(playerStatus)
-        }
-    }
-    // 自动加载同名字幕：准备就绪后扫描一次，找到几条就提示几条，没找到不提示
-    LaunchedEffect(playerStatus) {
-        if (playerStatus == VideoPlayerStatus.READY && !autoSubtitleAttempted && settingsState.autoLoadSubtitle) {
-            autoSubtitleAttempted = true
-            val count = autoLoadSameNameSubtitles(mediaUri, dataSourceType, player)
-            if (count > 0) {
-                showToast(context, context.getString(R.string.ui_label_auto_subtitle_found, count))
-            }
         }
     }
     // 3. 设置错误回调
@@ -570,7 +569,9 @@ fun VideoPlayerScreen(
                 pulseState,
                 videoPlayerViewModel,
                 settingsState.dpadUpAction,
-                settingsState.dpadDownAction
+                settingsState.dpadDownAction,
+                settingsState.ffDuration,
+                settingsState.rwDuration
             )
             .background(Color(0, 0, 0)) // 黑色背景
             .focusable() // 可获得焦点
@@ -634,26 +635,32 @@ fun VideoPlayerScreen(
         val statusText = playerStatus.asDisplayString()
 
         // 视频播放器覆盖层
-        VideoPlayerOverlayLayer(
-            videoPlayerViewModel = videoPlayerViewModel,
-            focusRequester = focusRequester,
-            videoPlayerState = videoPlayerState,
-            isPlaying = isPlaying,
-            pulseState = pulseState,
-            currentPositionProvider = { contentCurrentPosition },
-            player = player,
-            fileName = fileName,
-            statusText = statusText,
-            isoTitles = isoTitles,
-            mediaUri = mediaUri,
-            useVlc = useVlc,
-            mDanmakuPlayer = mDanmakuPlayer,
-            settingsManager = settingsManager,
-            getDanmakuConfig = ::getDanmakuConfig
-        )
+        if (!videoPlayerViewModel.atpVisibility) {
+            VideoPlayerOverlayLayer(
+                videoPlayerViewModel = videoPlayerViewModel,
+                focusRequester = focusRequester,
+                videoPlayerState = videoPlayerState,
+                isPlaying = isPlaying,
+                pulseState = pulseState,
+                currentPositionProvider = { contentCurrentPosition },
+                player = player,
+                fileName = fileName,
+                statusText = statusText,
+                mDanmakuPlayer = mDanmakuPlayer,
+                settingsManager = settingsManager,
+                getDanmakuConfig = ::getDanmakuConfig,
+                ffDuration = settingsState.ffDuration,
+                rwDuration = settingsState.rwDuration,
+                onTogglePlayPause = {
+                    if (player.isPlaying) player.pause() else player.play()
+                }
+            )
+        }
 
-        LaunchedEffect(Unit) {
-            reRequester.requestFocus()
+        LaunchedEffect(videoPlayerState.controlsVisible) {
+            if (videoPlayerState.controlsVisible && !videoPlayerViewModel.atpVisibility) {
+                focusRequester.requestFocus()
+            }
         }
         // 历史记录跳转提示浮窗
         AnimatedVisibility(
@@ -732,6 +739,7 @@ fun VideoPlayerScreen(
             enablePassthrough = settingsState.enablePassthrough,
             mDanmakuPlayer = mDanmakuPlayer,
             mediaUri = mediaUri,
+            useVlc = useVlc,
             onHideControls = { videoPlayerState.hideControls() }
         )
 
@@ -802,70 +810,125 @@ fun NetworkSpeedIndicator(networkSpeed: Long, modifier: Modifier = Modifier) {
  * @return 添加了事件处理的 Modifier
  */
 private fun Modifier.dPadEvents(
-    player: IMzPlayer, // 这里把 ExoPlayer 换成 IMzPlayer
+    player: IMzPlayer,
     videoPlayerState: VideoPlayerState,
     pulseState: VideoPlayerPulseState,
     videoPlayerViewModel: VideoPlayerViewModel,
     dpadUpAction: String,
-    dpadDownAction: String
-): Modifier = this
-    .handleDPadKeyEvents(
-        onLeft = {
-            // 如果控制栏未显示，则快退
-            if (!videoPlayerState.controlsVisible) {
-                player.seekBack() // 调用接口方法
-                pulseState.setType(VideoPlayerPulse.Type.BACK)
-                // 👇 新增这行：触发快退时显示底部进度条
-                videoPlayerState.showControls()
-            }
-        },
-        onRight = {
-            // 如果控制栏未显示，则快进
-            if (!videoPlayerState.controlsVisible) {
-                player.seekForward() // 调用接口方法
-                pulseState.setType(VideoPlayerPulse.Type.FORWARD)
-                // 👇 新增这行：触发快退时显示底部进度条
-                videoPlayerState.showControls()
-            }
-        },
-        onUp = {
-            if (!videoPlayerState.controlsVisible) {
-                videoPlayerViewModel.atpVisibility = true
-                videoPlayerViewModel.selectedAorVorS = dpadUpAction
-            }
-        },
-        onDown = {
-            if (!videoPlayerState.controlsVisible) {
-                videoPlayerViewModel.atpVisibility = true
-                videoPlayerViewModel.selectedAorVorS = dpadDownAction
-            }
-        },
-        onEnter = {
-            // 暂停播放并显示控制栏
-            player.pause() // 调用接口方法
-            videoPlayerState.showControls()
-        },
-    )
-    .onKeyEvent { keyEvent ->
-        // 这里的逻辑主要是控制 UI 显示隐藏，不涉及播放器具体实现，保持原样即可
-        when (keyEvent.key) {
-            Key.Menu, Key.ButtonY -> {
-                if (!videoPlayerState.controlsVisible && !videoPlayerViewModel.atpVisibility) {
-                    videoPlayerState.showControls()
-                    true
-                } else false
-            }
+    dpadDownAction: String,
+    ffDuration: Int,
+    rwDuration: Int
+): Modifier = this.onKeyEvent { keyEvent ->
+    val isActionDown = keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN
+    val isActionUp = keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_UP
+    val isLongPress = keyEvent.nativeKeyEvent.repeatCount > 0
 
-            else -> {
-                if (keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_MENU) {
-                    if (!videoPlayerState.controlsVisible && !videoPlayerViewModel.atpVisibility) {
+    when (keyEvent.key) {
+        Key.DirectionLeft -> {
+            if (isActionDown) {
+                if (isLongPress) {
+                    if (!videoPlayerState.controlsVisible) {
                         videoPlayerState.showControls()
-                        true
-                    } else false
-                } else false
+                    }
+                    return@onKeyEvent true
+                }
+            } else if (isActionUp) {
+                if (!videoPlayerState.controlsVisible) {
+                    player.seekBack(rwDuration * 1000L)
+                    pulseState.setType(VideoPlayerPulse.Type.BACK)
+                    videoPlayerState.showControls()
+                    return@onKeyEvent true
+                }
             }
+            false
+        }
+
+        Key.DirectionRight -> {
+            if (isActionDown) {
+                if (isLongPress) {
+                    if (!videoPlayerState.controlsVisible) {
+                        videoPlayerState.showControls()
+                    }
+                    return@onKeyEvent true
+                }
+            } else if (isActionUp) {
+                if (!videoPlayerState.controlsVisible) {
+                    player.seekForward(ffDuration * 1000L)
+                    pulseState.setType(VideoPlayerPulse.Type.FORWARD)
+                    videoPlayerState.showControls()
+                    return@onKeyEvent true
+                }
+            }
+            false
+        }
+
+        Key.DirectionCenter, Key.Enter -> {
+            if (isActionUp) {
+                if (videoPlayerState.controlsVisible) {
+                    if (player.isPlaying) {
+                        player.pause()
+                    } else {
+                        player.play()
+                        videoPlayerState.hideControls()
+                    }
+                } else {
+                    if (player.isPlaying) {
+                        player.pause()
+                        videoPlayerState.showControls()
+                    } else {
+                        player.play()
+                    }
+                }
+                return@onKeyEvent true
+            }
+            false
+        }
+
+        Key.DirectionUp -> {
+            if (isActionUp) {
+                if (!videoPlayerState.controlsVisible) {
+                    videoPlayerState.showControls()
+                    return@onKeyEvent true
+                }
+            } else if (isActionDown && isLongPress) {
+                videoPlayerViewModel.selectedAorVorS = "ROOT"
+                videoPlayerViewModel.atpVisibility = true
+                return@onKeyEvent true
+            }
+            false
+        }
+
+        Key.DirectionDown -> {
+            if (isActionUp) {
+                if (!videoPlayerState.controlsVisible) {
+                    videoPlayerState.showControls()
+                    return@onKeyEvent true
+                }
+            }
+            false
+        }
+
+        Key.Menu, Key.ButtonY -> {
+            if (isActionUp) {
+                videoPlayerViewModel.selectedAorVorS = "ROOT"
+                videoPlayerViewModel.atpVisibility = true
+                return@onKeyEvent true
+            }
+            false
+        }
+
+        else -> {
+            if (keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_MENU) {
+                if (isActionUp) {
+                    videoPlayerViewModel.selectedAorVorS = "ROOT"
+                    videoPlayerViewModel.atpVisibility = true
+                    return@onKeyEvent true
+                }
+                false
+            } else false
         }
     }
+}
 
 
 

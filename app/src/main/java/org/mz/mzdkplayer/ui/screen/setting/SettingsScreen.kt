@@ -326,6 +326,20 @@ fun PlaybackSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
                 settingsVM.setDpadDownAction(nextDpadAction(state.dpadDownAction))
             }
         )
+        NumberControl(
+            value = state.ffDuration,
+            onValueChange = { settingsVM.setFFDuration(it) },
+            maxValue = 600,
+            minValue = 5,
+            label = stringResource(R.string.setting_ff_duration)
+        )
+        NumberControl(
+            value = state.rwDuration,
+            onValueChange = { settingsVM.setRWDuration(it) },
+            maxValue = 600,
+            minValue = 5,
+            label = stringResource(R.string.setting_rw_duration)
+        )
     }
 }
 

@@ -1,5 +1,6 @@
 package org.mz.mzdkplayer.ui.videoplayer.components
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,6 +17,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
@@ -44,65 +46,74 @@ fun AspectRatioPanel(
         listState.animateScrollToItem(index = selectedIndex + 1)
     }
 
-    LazyColumn(
-        modifier = Modifier
-            .width(360.dp)
-            .focusRequester(focusRequester),
-        state = listState
-    ) {
-        item {
-            ListItem(
-                modifier = Modifier
-                    .padding(start = 15.dp, end = 15.dp, top = 10.dp, bottom = 10.dp),
-                selected = false,
-                colors = ListItemDefaults.colors(
-                    containerColor = Color(0, 0, 0),
-                    contentColor = Color(255, 255, 255),
-                    focusedContainerColor = Color(255, 255, 255),
-                    focusedContentColor = Color(0, 0, 0)
-                ),
-                headlineContent = {
-                    Text(stringResource(R.string.setting_lock_video_ratio))
-                },
-                trailingContent = {
-                    Switch(checked = isLocked, onCheckedChange = null)
-                },
-                onClick = {
-                    onLockedChange(!isLocked)
-                }
-            )
-        }
-        items(ratios.size) { index ->
-            val ratio = ratios[index]
-            val isSelected = ratio == currentRatio
-
-            ListItem(
-                modifier = Modifier
-                    .padding(start = 15.dp, end = 15.dp, top = 10.dp, bottom = 10.dp)
-                    .let {
-                        if (index == selectedIndex) it.focusOnInitialVisibility(isVis) else it
+    Column {
+        Text(
+            text = stringResource(R.string.ui_label_aspect_ratio),
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            color = Color.White,
+            fontSize = 24.sp,
+            modifier = Modifier.padding(15.dp, 10.dp)
+        )
+        LazyColumn(
+            modifier = Modifier
+                .width(360.dp)
+                .focusRequester(focusRequester),
+            state = listState
+        ) {
+            item {
+                ListItem(
+                    modifier = Modifier
+                        .padding(start = 15.dp, end = 2.dp, top = 10.dp, bottom = 10.dp),
+                    selected = false,
+                    colors = ListItemDefaults.colors(
+                        containerColor = Color(0, 0, 0),
+                        contentColor = Color(255, 255, 255),
+                        focusedContainerColor = Color(255, 255, 255),
+                        focusedContentColor = Color(0, 0, 0)
+                    ),
+                    headlineContent = {
+                        Text(stringResource(R.string.setting_lock_video_ratio))
                     },
-                selected = false,
-                colors = ListItemDefaults.colors(
-                    containerColor = Color(0, 0, 0),
-                    contentColor = Color(255, 255, 255),
-                    selectedContainerColor = Color(255, 255, 255),
-                    selectedContentColor = Color(255, 255, 255),
-                    focusedSelectedContentColor = Color(255, 255, 255),
-                    focusedSelectedContainerColor = Color(255, 255, 255),
-                    focusedContainerColor = Color(255, 255, 255),
-                    focusedContentColor = Color(0, 0, 0)
-                ),
-                headlineContent = {
-                    Text(ratio.description)
-                },
-                leadingContent = if (isSelected) {
-                    { Icon(Icons.Filled.Check, contentDescription = "已选择") }
-                } else null,
-                onClick = {
-                    onRatioSelected(ratio)
-                }
-            )
+                    trailingContent = {
+                        Switch(checked = isLocked, onCheckedChange = null)
+                    },
+                    onClick = {
+                        onLockedChange(!isLocked)
+                    }
+                )
+            }
+            items(ratios.size) { index ->
+                val ratio = ratios[index]
+                val isSelected = ratio == currentRatio
+
+                ListItem(
+                    modifier = Modifier
+                        .padding(start = 15.dp, end = 2.dp, top = 10.dp, bottom = 10.dp)
+                        .let {
+                            if (index == selectedIndex) it.focusOnInitialVisibility(isVis) else it
+                        },
+                    selected = false,
+                    colors = ListItemDefaults.colors(
+                        containerColor = Color(0, 0, 0),
+                        contentColor = Color(255, 255, 255),
+                        selectedContainerColor = Color(255, 255, 255),
+                        selectedContentColor = Color(255, 255, 255),
+                        focusedSelectedContentColor = Color(255, 255, 255),
+                        focusedSelectedContainerColor = Color(255, 255, 255),
+                        focusedContainerColor = Color(255, 255, 255),
+                        focusedContentColor = Color(0, 0, 0)
+                    ),
+                    headlineContent = {
+                        Text(ratio.description)
+                    },
+                    leadingContent = if (isSelected) {
+                        { Icon(Icons.Filled.Check, contentDescription = "已选择") }
+                    } else null,
+                    onClick = {
+                        onRatioSelected(ratio)
+                    }
+                )
+            }
         }
     }
 }

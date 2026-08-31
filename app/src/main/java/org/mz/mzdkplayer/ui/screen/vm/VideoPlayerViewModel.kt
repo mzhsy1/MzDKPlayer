@@ -44,7 +44,7 @@ class VideoPlayerViewModel:ViewModel() {
 
     var isSubtitlePanelVis by mutableStateOf("S")
 
-    var selectedAorVorS by mutableStateOf("A")
+    var selectedAorVorS by mutableStateOf("ROOT")
 
     var atpVisibility by mutableStateOf(false)
     var atpFocus by mutableStateOf(false)

@@ -52,6 +52,10 @@ object SettingsRepository {
     private const val KEY_DPAD_UP_ACTION = "dpad_up_action"
     private const val KEY_DPAD_DOWN_ACTION = "dpad_down_action"
 
+    // 🔥 新增：快进快退时长 (秒)
+    private const val KEY_FF_DURATION = "ff_duration"
+    private const val KEY_RW_DURATION = "rw_duration"
+
     // --- 刮削设置 Keys ---
     private const val KEY_SOURCE_SMB = "source_smb"
     private const val KEY_SOURCE_WEBDAV = "source_webdav"
@@ -167,6 +171,14 @@ object SettingsRepository {
     var dpadDownAction: String
         get() = prefs.getString(KEY_DPAD_DOWN_ACTION, "A") ?: "A"
         set(value) = prefs.edit { putString(KEY_DPAD_DOWN_ACTION, value) }
+
+    var ffDuration: Int
+        get() = prefs.getInt(KEY_FF_DURATION, 15)
+        set(value) = prefs.edit { putInt(KEY_FF_DURATION, value) }
+
+    var rwDuration: Int
+        get() = prefs.getInt(KEY_RW_DURATION, 15)
+        set(value) = prefs.edit { putInt(KEY_RW_DURATION, value) }
 
     // 刮削源
     var enableSmb: Boolean get() = prefs.getBoolean(KEY_SOURCE_SMB, true); set(v) = prefs.edit {

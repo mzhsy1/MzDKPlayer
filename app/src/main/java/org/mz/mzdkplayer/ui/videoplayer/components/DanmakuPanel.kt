@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -349,6 +350,13 @@ fun DanmakuPanel(
 
     )
     {
+        Text(
+            text = stringResource(R.string.ui_label_danmaku_settings),
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            color = Color.White,
+            fontSize = 24.sp,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
         // 弹幕开关区域
         Row(
             verticalAlignment = Alignment.CenterVertically,

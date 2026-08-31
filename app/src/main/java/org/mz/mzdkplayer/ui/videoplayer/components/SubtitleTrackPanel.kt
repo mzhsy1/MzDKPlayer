@@ -111,7 +111,7 @@ fun SubtitleTrackPanel(
 
                     ListItem(
                         modifier = Modifier
-                            .padding(start = 15.dp, end = 15.dp, top = 10.dp, bottom = 10.dp)
+                            .padding(start = 15.dp, end = 2.dp, top = 10.dp, bottom = 10.dp)
                             .let {
                                 if (index == selectedIndex) it.focusOnInitialVisibility(isVis) else it
                             },

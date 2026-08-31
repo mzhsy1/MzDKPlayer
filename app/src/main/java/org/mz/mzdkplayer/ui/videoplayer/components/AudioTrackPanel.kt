@@ -1,6 +1,7 @@
 package org.mz.mzdkplayer.ui.videoplayer.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -49,12 +50,20 @@ fun AudioTrackPanel(
     // 找出当前选中的 index
     val selectedIndex = lists.indexOfFirst { it.isSelected }.takeIf { it >= 0 } ?: 0
 
-    LazyColumn(
-        modifier = Modifier
-            .width(360.dp)
-            .focusRequester(focusRequester),
-        state = listState
-    ) {
+    Column {
+        Text(
+            text = stringResource(R.string.ui_label_audio_track),
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            fontSize = 24.sp,
+            modifier = Modifier.padding(15.dp, 10.dp)
+        )
+        LazyColumn(
+            modifier = Modifier
+                .width(360.dp)
+                .focusRequester(focusRequester),
+            state = listState
+        ) {
         if (lists.isEmpty()) {
             item {
                 Box(
@@ -80,7 +89,7 @@ fun AudioTrackPanel(
 
                 ListItem(
                     modifier = Modifier
-                        .padding(start = 15.dp, end = 15.dp, top = 10.dp, bottom = 10.dp)
+                        .padding(start = 15.dp, end = 2.dp, top = 10.dp, bottom = 10.dp)
                         .let {
                             if (index == selectedIndex) it.focusOnInitialVisibility(isVis) else it
                         },
@@ -127,4 +136,5 @@ fun AudioTrackPanel(
             }
         }
     }
+}
 }

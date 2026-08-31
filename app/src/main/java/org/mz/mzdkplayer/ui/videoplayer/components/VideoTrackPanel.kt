@@ -3,6 +3,7 @@ package org.mz.mzdkplayer.ui.videoplayer.components
 import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -49,19 +50,26 @@ fun VideoTrackPanel(
     lists: List<MzVideoTrack>, // 使用统一的模型
     onTrackSelected: (MzVideoTrack) -> Unit
 ) {
-    // ... (状态和修饰符保持不变)
     val focusRequester = remember { FocusRequester() }
     val isVis = remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-    //Log.d("MzVideoTrackList",lists.toString())
     val selectedIndex = lists.indexOfFirst { it.isSelected }.takeIf { it >= 0 } ?: 0
-    LazyColumn(
-        modifier = Modifier
-            .widthIn(200.dp, 500.dp)
-            .heightIn(200.dp, 500.dp),
-        state = listState
-    ) {
+    
+    Column {
+        Text(
+            text = stringResource(R.string.ui_label_video_track),
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            fontSize = 24.sp,
+            modifier = Modifier.padding(15.dp, 10.dp)
+        )
+        LazyColumn(
+            modifier = Modifier
+                .widthIn(200.dp, 500.dp)
+                .heightIn(200.dp, 500.dp),
+            state = listState
+        ) {
         if (lists.isEmpty()) {
             item {
                 Box(
@@ -99,7 +107,7 @@ fun VideoTrackPanel(
                 }
 
                 ListItem(
-                    modifier = Modifier.padding(15.dp, 10.dp) .let {
+                    modifier = Modifier.padding(start = 15.dp, end = 2.dp, top = 10.dp, bottom = 10.dp) .let {
                         if (index == selectedIndex) it.focusOnInitialVisibility(isVis) else it
                     },
                     selected = false,
@@ -149,4 +157,5 @@ fun VideoTrackPanel(
 
         }
     }
+}
 }

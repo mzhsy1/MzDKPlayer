@@ -31,12 +31,20 @@ fun IsoTitlePanel(
     val listState = rememberLazyListState()
     val selectedIndex = lists.indexOfFirst { it.isSelected }.takeIf { it >= 0 } ?: 0
 
-    LazyColumn(
-        modifier = Modifier
-            .widthIn(200.dp, 400.dp)
-            .heightIn(200.dp, 500.dp),
-        state = listState
-    ) {
+    Column {
+        Text(
+            text = "ISO " + stringResource(R.string.ui_label_video_track),
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            color = Color.White,
+            fontSize = 24.sp,
+            modifier = Modifier.padding(15.dp, 10.dp)
+        )
+        LazyColumn(
+            modifier = Modifier
+                .widthIn(200.dp, 400.dp)
+                .heightIn(200.dp, 500.dp),
+            state = listState
+        ) {
         coroutineScope.launch {
             listState.animateScrollToItem(index = selectedIndex)
         }
@@ -77,4 +85,5 @@ fun IsoTitlePanel(
             )
         }
     }
+}
 }

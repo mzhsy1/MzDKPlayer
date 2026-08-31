@@ -43,6 +43,7 @@ import org.mz.mzdkplayer.tool.FtpDataSource
 import org.mz.mzdkplayer.tool.SmbDataSource
 import org.mz.mzdkplayer.tool.WebDavDataSource
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerStatus
+import androidx.core.net.toUri
 
 @OptIn(UnstableApi::class)
 class MzExoPlayer(
@@ -354,7 +355,7 @@ class MzExoPlayer(
                 else -> MimeTypes.APPLICATION_SUBRIP
             }
 
-            MediaItem.SubtitleConfiguration.Builder(Uri.parse(uri))
+            MediaItem.SubtitleConfiguration.Builder(uri.toUri())
                 .setMimeType(mimeType)
                 .setLanguage("zh")
                 .setLabel(name)
@@ -373,6 +374,9 @@ class MzExoPlayer(
         exoPlayer.setMediaItem(newMediaItem, currentPos)
         exoPlayer.prepare()
         exoPlayer.play()
+
+        // 重置自动选择标记，让 onTracksChanged 能够为新 MediaItem 选中字幕
+        isFirstTrackAutoSelected = false
     }
     @Composable
     override fun PlayerView(modifier: Modifier) {

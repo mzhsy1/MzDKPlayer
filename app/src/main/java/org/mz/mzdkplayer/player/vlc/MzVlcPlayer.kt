@@ -71,7 +71,7 @@ import kotlin.collections.mapIndexed
 import kotlin.time.Duration.Companion.milliseconds
 
 import androidx.core.net.toUri
-
+import org.mz.mzdkplayer.tool.Tools.prepareSubtitleFont
 
 
 @UnstableApi
@@ -158,50 +158,18 @@ class MzVlcPlayer(
 
 // 1. 获取解压后的字体绝对路径
 
-//val internalFontPath = Tools.prepareFont(context, "SmileySans-Oblique.ttf")
-
-//强制 FreeType 渲染器使用该字体文件
-
-        add("--freetype-font=Noto Serif CJK SC")
-
-//add("--freetype-font=Roboto")
-
-//add("--freetype-font=sans-serif")
-
-//add("--freetype-font=思源黑体 CN")
-
-//add("--freetype-font=得意黑")
-
-//add("--freetype-bold-font=$internalFontPath")
-
-// add("--freetype-italic-font=$internalFontPath")
-
-//add("--freetype-monospaced-font=$internalFontPath")
-
-// 允许使用相对字体样式（增强兼容性）
-
-
-
-// 强制字幕解码器使用 UTF-8，防止某些非特效字幕乱码
-
-//add("--subsdec-encoding=UTF-8")
-
-// 核心字体设置
-
-//add("--freetype-font=Roboto") // 改成思源黑体
-
-        add("--freetype-rel-fontsize=20")
-
-        add("--freetype-opacity=255")
-
-        add("--freetype-color=0xFFFFFFFF")
-
-        add("--freetype-background-opacity=180")
-
-        add("--freetype-background-color=0x000000")
-
-        add("--text-renderer=freetype")
-
+        // 1. 先把字体准备好，拿到文件对象
+    //    val fontFile = prepareSubtitleFont(context, "SmileySans-Oblique.ttf")
+//        Log.d("sds",fontFile.absolutePath)
+//        if (fontFile.exists()) {
+//
+//            add("--freetype-font=monospace")
+//        }
+//// （可选）顺手把字幕设为黄色、加粗、带黑色描边，在电视上看着更清晰
+//        add("--freetype-color=16776960") // 黄色
+//        add("--freetype-bold")
+//        add("--freetype-outline-color=0") // 黑色描边
+//        add("--freetype-outline-thickness=4") // 描边粗细
 // VLC 的语言设置通常在初始化时通过参数传入
 
         add("--audio-language=$preferredAudioLang")

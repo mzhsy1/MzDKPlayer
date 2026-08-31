@@ -19,6 +19,7 @@ package org.mz.mzdkplayer.ui.videoplayer.components
 import org.mz.mzdkplayer.R
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -30,13 +31,15 @@ import kotlin.time.Duration
 
 @Composable
 fun VideoPlayerSeeker(
-    focusRequester: FocusRequester,
     state: VideoPlayerState,
     isPlaying: Boolean,
-    onPlayPauseToggle: (Boolean) -> Unit,
     onSeek: (Float) -> Unit,
     contentProgress: Duration,
-    contentDuration: Duration
+    contentDuration: Duration,
+    focusRequester: FocusRequester = remember { FocusRequester() },
+    ffDuration: Int = 15,
+    rwDuration: Int = 15,
+    onTogglePlayPause: () -> Unit = {}
 ) {
     val contentProgressString =
         contentProgress.toComponents { h, m, s, _ ->
@@ -59,19 +62,25 @@ fun VideoPlayerSeeker(
         verticalAlignment = Alignment.CenterVertically
     ) {
         VideoPlayerControlsIcon(
-            modifier = Modifier.focusRequester(focusRequester),
+            modifier = Modifier,
             icon = if (!isPlaying) painterResource(id = R.drawable.baseline_play_arrow_24) else painterResource(
                 id = R.drawable.baseline_pause_24
             ),
-            onClick = { onPlayPauseToggle(!isPlaying) },
+            onClick = { },
             state = state,
             isPlaying = isPlaying,
+            focusable = false
         )
         VideoPlayerControllerText(text = contentProgressString)
         VideoPlayerControllerIndicator(
             progress = (contentProgress / contentDuration).toFloat(),
             onSeek = onSeek,
-            state = state
+            state = state,
+            modifier = Modifier.focusRequester(focusRequester),
+            durationMs = contentDuration.inWholeMilliseconds,
+            ffDurationS = ffDuration,
+            rwDurationS = rwDuration,
+            onTogglePlayPause = onTogglePlayPause
         )
         VideoPlayerControllerText(text = contentDurationString)
     }
