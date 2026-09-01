@@ -513,7 +513,7 @@ fun AudioPlayerScreen(
     // 处理双击返回退出逻辑
     LaunchedEffect(key1 = backPressState) {
         if (backPressState == BackPress.InitialTouch) {
-            delay(2000) // 2秒延迟
+            delay(2000.milliseconds) // 2秒延迟
             backPressState = BackPress.Idle // 重置状态
         }
     }

@@ -344,8 +344,8 @@ fun DanmakuPanel(
 
     Column (
         modifier = Modifier
-            .background(Color(0xFF121212)) // 深灰色背景
-            .padding(16.dp)
+            .fillMaxSize()
+            .padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 10.dp)
             .focusRequester(focusRequester) // 使整个Column可获得焦点
 
     )

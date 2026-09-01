@@ -2,9 +2,12 @@ package org.mz.mzdkplayer.ui.videoplayer.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
@@ -35,17 +38,17 @@ fun PlaybackSpeedPanel(
     val focusRequester = remember { FocusRequester() }
     val isVis = remember { mutableStateOf(false) }
 
-    Column {
+    Column(modifier = Modifier.fillMaxSize()) {
         Text(
             text = stringResource(R.string.ui_label_speed),
             fontWeight = FontWeight.Bold,
             color = Color.White,
             fontSize = 24.sp,
-            modifier = Modifier.padding(15.dp, 10.dp)
+            modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 10.dp)
         )
         LazyColumn(
             modifier = Modifier
-                .width(360.dp)
+                .fillMaxSize()
                 .focusRequester(focusRequester)
         ) {
         if (isPassthroughEnabled) {
@@ -67,16 +70,17 @@ fun PlaybackSpeedPanel(
 
             ListItem(
                 modifier = Modifier
-                    .padding(start = 15.dp, end = 2.dp, top = 10.dp, bottom = 10.dp)
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
                     .let {
                         if (isSelected) it.focusOnInitialVisibility(isVis) else it
                     },
                 selected = false,
+                shape = ListItemDefaults.shape(RoundedCornerShape(12.dp)),
                 colors = ListItemDefaults.colors(
-                    containerColor = Color(0, 0, 0),
-                    contentColor = Color(255, 255, 255),
-                    focusedContainerColor = Color(255, 255, 255),
-                    focusedContentColor = Color(0, 0, 0)
+                    containerColor = Color.Transparent,
+                    contentColor = Color.White.copy(alpha = 0.8f),
+                    focusedContainerColor = Color.White,
+                    focusedContentColor = Color.Black
                 ),
                 headlineContent = {
                     Text("${speed}x")

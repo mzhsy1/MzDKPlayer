@@ -1,10 +1,12 @@
 package org.mz.mzdkplayer.ui.videoplayer.components
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
@@ -46,30 +48,31 @@ fun AspectRatioPanel(
         listState.animateScrollToItem(index = selectedIndex + 1)
     }
 
-    Column {
+    Column(modifier = Modifier.fillMaxSize()) {
         Text(
             text = stringResource(R.string.ui_label_aspect_ratio),
             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
             color = Color.White,
             fontSize = 24.sp,
-            modifier = Modifier.padding(15.dp, 10.dp)
+            modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 10.dp)
         )
         LazyColumn(
             modifier = Modifier
-                .width(360.dp)
+                .fillMaxSize()
                 .focusRequester(focusRequester),
             state = listState
         ) {
             item {
                 ListItem(
                     modifier = Modifier
-                        .padding(start = 15.dp, end = 2.dp, top = 10.dp, bottom = 10.dp),
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
                     selected = false,
+                    shape = ListItemDefaults.shape(RoundedCornerShape(12.dp)),
                     colors = ListItemDefaults.colors(
-                        containerColor = Color(0, 0, 0),
-                        contentColor = Color(255, 255, 255),
-                        focusedContainerColor = Color(255, 255, 255),
-                        focusedContentColor = Color(0, 0, 0)
+                        containerColor = Color.Transparent,
+                        contentColor = Color.White.copy(alpha = 0.8f),
+                        focusedContainerColor = Color.White,
+                        focusedContentColor = Color.Black
                     ),
                     headlineContent = {
                         Text(stringResource(R.string.setting_lock_video_ratio))
@@ -88,20 +91,17 @@ fun AspectRatioPanel(
 
                 ListItem(
                     modifier = Modifier
-                        .padding(start = 15.dp, end = 2.dp, top = 10.dp, bottom = 10.dp)
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
                         .let {
                             if (index == selectedIndex) it.focusOnInitialVisibility(isVis) else it
                         },
                     selected = false,
+                    shape = ListItemDefaults.shape(RoundedCornerShape(12.dp)),
                     colors = ListItemDefaults.colors(
-                        containerColor = Color(0, 0, 0),
-                        contentColor = Color(255, 255, 255),
-                        selectedContainerColor = Color(255, 255, 255),
-                        selectedContentColor = Color(255, 255, 255),
-                        focusedSelectedContentColor = Color(255, 255, 255),
-                        focusedSelectedContainerColor = Color(255, 255, 255),
-                        focusedContainerColor = Color(255, 255, 255),
-                        focusedContentColor = Color(0, 0, 0)
+                        containerColor = Color.Transparent,
+                        contentColor = Color.White.copy(alpha = 0.8f),
+                        focusedContainerColor = Color.White,
+                        focusedContentColor = Color.Black
                     ),
                     headlineContent = {
                         Text(ratio.description)

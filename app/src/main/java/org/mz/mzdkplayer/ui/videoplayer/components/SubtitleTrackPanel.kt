@@ -4,10 +4,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
@@ -52,9 +55,9 @@ fun SubtitleTrackPanel(
     // 找出当前选中的 index
     val selectedIndex = lists.indexOfFirst { it.isSelected }.takeIf { it >= 0 } ?: 0
 
-    Column(modifier = Modifier.width(360.dp).fillMaxHeight()) {
+    Column(modifier = Modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.width(360.dp).padding(horizontal = 15.dp, vertical = 10.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 20.dp, top = 20.dp, end = 12.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -74,12 +77,12 @@ fun SubtitleTrackPanel(
             )
         }
         LazyColumn(
-            modifier = Modifier.width(360.dp).fillMaxHeight().focusRequester(focusRequester),
+            modifier = Modifier.fillMaxSize().focusRequester(focusRequester),
             state = listState
         ) {
             if (lists.isEmpty()) {
                 item {
-                    Box(modifier = Modifier.width(360.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Text(stringResource(R.string.ui_label_no_subtitle_tracks_in_file), fontWeight = FontWeight.Bold, color = Color.White, fontSize = 20.sp)
                     }
                 }
@@ -111,20 +114,17 @@ fun SubtitleTrackPanel(
 
                     ListItem(
                         modifier = Modifier
-                            .padding(start = 15.dp, end = 2.dp, top = 10.dp, bottom = 10.dp)
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
                             .let {
                                 if (index == selectedIndex) it.focusOnInitialVisibility(isVis) else it
                             },
                         selected = false,
+                        shape = ListItemDefaults.shape(RoundedCornerShape(12.dp)),
                         colors = ListItemDefaults.colors(
-                            containerColor = Color(0, 0, 0),
-                            contentColor = Color(255, 255, 255),
-                            selectedContainerColor = Color(255, 255, 255),
-                            selectedContentColor = Color(255, 255, 255),
-                            focusedSelectedContentColor = Color(255, 255, 255),
-                            focusedSelectedContainerColor = Color(255, 255, 255),
-                            focusedContainerColor = Color(255, 255, 255),
-                            focusedContentColor = Color(0, 0, 0)
+                            containerColor = Color.Transparent,
+                            contentColor = Color.White.copy(alpha = 0.8f),
+                            focusedContainerColor = Color.White,
+                            focusedContentColor = Color.Black
                         ),
                         headlineContent = {
                             if (track.id!="-1") {

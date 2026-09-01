@@ -4,6 +4,7 @@ package org.mz.mzdkplayer.ui.videoplayer.components
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.*
@@ -31,18 +32,16 @@ fun IsoTitlePanel(
     val listState = rememberLazyListState()
     val selectedIndex = lists.indexOfFirst { it.isSelected }.takeIf { it >= 0 } ?: 0
 
-    Column {
+    Column(modifier = Modifier.fillMaxSize()) {
         Text(
             text = "ISO " + stringResource(R.string.ui_label_video_track),
             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
             color = Color.White,
             fontSize = 24.sp,
-            modifier = Modifier.padding(15.dp, 10.dp)
+            modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 10.dp)
         )
         LazyColumn(
-            modifier = Modifier
-                .widthIn(200.dp, 400.dp)
-                .heightIn(200.dp, 500.dp),
+            modifier = Modifier.fillMaxSize(),
             state = listState
         ) {
         coroutineScope.launch {
@@ -54,14 +53,15 @@ fun IsoTitlePanel(
 
             ListItem(
                 modifier = Modifier
-                    .padding(15.dp, 10.dp)
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
                     .let {
                         if (index == selectedIndex) it.focusOnInitialVisibility(isVis) else it
                     },
                 selected = false,
+                shape = ListItemDefaults.shape(RoundedCornerShape(12.dp)),
                 colors = ListItemDefaults.colors(
                     containerColor = Color.Transparent,
-                    contentColor = Color.White,
+                    contentColor = Color.White.copy(alpha = 0.8f),
                     focusedContainerColor = Color.White,
                     focusedContentColor = Color.Black
                 ),

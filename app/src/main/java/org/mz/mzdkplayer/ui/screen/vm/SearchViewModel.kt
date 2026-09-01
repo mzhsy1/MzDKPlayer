@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.data.local.MediaCacheEntity
 import org.mz.mzdkplayer.data.local.MediaDao
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(FlowPreview::class)
 
@@ -35,7 +36,7 @@ class SearchViewModel (
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val searchResults: Flow<PagingData<MediaCacheEntity>> = _searchQuery
-        .debounce(600)
+        .debounce(600.milliseconds)
         .flatMapLatest { query ->
             if (query.isBlank()) {
                 flowOf(PagingData.empty())

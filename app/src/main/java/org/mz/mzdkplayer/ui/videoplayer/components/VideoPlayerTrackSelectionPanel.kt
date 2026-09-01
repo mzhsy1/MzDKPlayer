@@ -66,13 +66,13 @@ fun RootSettingsPanel(
         focusRequester.requestFocus()
     }
 
-    Column(modifier = Modifier.width(360.dp).fillMaxHeight()) {
+    Column(modifier = Modifier.fillMaxSize()) {
         Text(
             text = stringResource(R.string.ui_label_settings),
             fontWeight = FontWeight.Bold,
             color = Color.White,
             fontSize = 24.sp,
-            modifier = Modifier.padding(15.dp, 10.dp)
+            modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 10.dp)
         )
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             item {
@@ -156,16 +156,17 @@ fun SettingItem(
     ListItem(
         selected = false,
         onClick = onClick,
-        modifier = modifier.padding(start = 15.dp, end = 2.dp, top = 5.dp, bottom = 5.dp),
+        modifier = modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+        shape = ListItemDefaults.shape(RoundedCornerShape(12.dp)),
         colors = ListItemDefaults.colors(
             containerColor = Color.Transparent,
-            contentColor = Color.White,
+            contentColor = Color.White.copy(alpha = 0.8f),
             focusedContainerColor = Color.White,
             focusedContentColor = Color.Black
         ),
-        headlineContent = { Text(title) },
-        leadingContent = { Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(24.dp)) },
-        trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) }
+        headlineContent = { Text(title, fontWeight = FontWeight.Medium) },
+        leadingContent = { Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(20.dp)) },
+        trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, modifier = Modifier.size(20.dp)) }
     )
 }
 
@@ -191,11 +192,11 @@ fun BoxScope.VideoPlayerTrackSelectionPanel(
         enter = fadeIn(),
         exit = fadeOut(),
         modifier = Modifier
-            .widthIn(200.dp, 420.dp)
+            .width(360.dp)
             .fillMaxHeight()
             .align(AbsoluteAlignment.CenterRight)
             .background(
-                Color.Black.copy(0.8f), shape = RoundedCornerShape(2.dp)
+                Color.Black.copy(0.85f), shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
             )
             .onFocusChanged {
                 videoPlayerViewModel.atpFocus = it.isFocused
@@ -311,13 +312,13 @@ fun BoxScope.VideoPlayerTrackSelectionPanel(
 @Composable
 fun SeekDurationPanel(settingsViewModel: SettingsViewModel) {
     val settingsState by settingsViewModel.uiState.collectAsState()
-    Column(modifier = Modifier.width(360.dp).fillMaxHeight()) {
+    Column(modifier = Modifier.fillMaxSize()) {
         Text(
             text = stringResource(R.string.ui_label_seek_duration),
             fontWeight = FontWeight.Bold,
             color = Color.White,
             fontSize = 24.sp,
-            modifier = Modifier.padding(15.dp, 10.dp)
+            modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 10.dp)
         )
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             item {
