@@ -42,7 +42,9 @@ import kotlinx.coroutines.delay
 import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.repository.AudioPlaylistRepository
+import org.mz.mzdkplayer.data.repository.VideoPlaylistRepository
 import org.mz.mzdkplayer.data.model.AudioItem
+import org.mz.mzdkplayer.data.model.VideoItem
 import org.mz.mzdkplayer.data.model.FileConnectionStatus
 import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.di.RepositoryProvider
@@ -273,6 +275,21 @@ fun WebDavFileListScreen(
                                                     } else {
                                                         when {
                                                             Tools.containsVideoFormat(fileExtension) -> {
+                                                                // 构建视频播放列表
+                                                                val videoFiles = filteredFiles.filter { webdavFile ->
+                                                                    !webdavFile.isDirectory && Tools.containsVideoFormat(Tools.extractFileExtension(webdavFile.name))
+                                                                }
+                                                                val videoItems = videoFiles.map { webdavFile ->
+                                                                    val videoUrl = "${authenticatedUrl}/${webdavFile.name.trimEnd('/').trimStart('/')}"
+                                                                    VideoItem(
+                                                                        uri = videoUrl,
+                                                                        fileName = webdavFile.name,
+                                                                        dataSourceType = "WEBDAV",
+                                                                        connectionName = webDavConnection.name ?: ""
+                                                                    )
+                                                                }
+                                                                VideoPlaylistRepository.setPlaylist(videoItems)
+
                                                                 Log.d(
                                                                     "WebDavFileListScreen",
                                                                     file.path

@@ -56,6 +56,9 @@ object SettingsRepository {
     private const val KEY_FF_DURATION = "ff_duration"
     private const val KEY_RW_DURATION = "rw_duration"
 
+    // 🔥 新增：视频播放完成动作 (0: 循环播放, 1: 播放暂停, 2: 播放下一个)
+    private const val KEY_VIDEO_FINISH_ACTION = "video_finish_action"
+
     // --- 刮削设置 Keys ---
     private const val KEY_SOURCE_SMB = "source_smb"
     private const val KEY_SOURCE_WEBDAV = "source_webdav"
@@ -84,6 +87,9 @@ object SettingsRepository {
 
     private const val KEY_TMDB_SEARCH_LANG = "tmdb_search_lang"
     private const val KEY_TMDB_RESULT_LANG = "tmdb_result_lang"
+
+    // 🔥 新增：是否移除 WebDAV 列表的首个元素
+    private const val KEY_REMOVE_WEBDAV_FIRST_ITEM = "remove_webdav_first_item"
 
     // --- Getters & Setters ---
 
@@ -180,6 +186,10 @@ object SettingsRepository {
         get() = prefs.getInt(KEY_RW_DURATION, 15)
         set(value) = prefs.edit { putInt(KEY_RW_DURATION, value) }
 
+    var videoFinishAction: Int
+        get() = prefs.getInt(KEY_VIDEO_FINISH_ACTION, 2) // 默认 2: 播放下一个
+        set(value) = prefs.edit { putInt(KEY_VIDEO_FINISH_ACTION, value) }
+
     // 刮削源
     var enableSmb: Boolean get() = prefs.getBoolean(KEY_SOURCE_SMB, true); set(v) = prefs.edit {
         putBoolean(
@@ -240,4 +250,8 @@ object SettingsRepository {
     var tmdbResultLang: String
         get() = prefs.getString(KEY_TMDB_RESULT_LANG, "") ?: ""
         set(value) = prefs.edit { putString(KEY_TMDB_RESULT_LANG, value) }
+
+    var removeWebDavFirstItem: Boolean
+        get() = prefs.getBoolean(KEY_REMOVE_WEBDAV_FIRST_ITEM, false)
+        set(value) = prefs.edit { putBoolean(KEY_REMOVE_WEBDAV_FIRST_ITEM, value) }
 }

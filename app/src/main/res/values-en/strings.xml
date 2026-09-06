@@ -2,7 +2,7 @@
     <string name="app_name">MzDKPlayer</string>
     <string name="live">Live</string>
     <string name="ad">AD</string>
-    <string name="settings_title">Settings</string>
+    <string name="settings_title">App Settings</string>
     <string name="cat_general">General</string>
     <string name="cat_playback">Playback</string>
     <string name="cat_audio">Audio</string>
@@ -13,6 +13,9 @@
 
     <string name="setting_prioritize_nfo">Prioritize Local NFO Files</string>
     <string name="setting_prioritize_nfo_sub">If a .nfo file with the same name exists in the media directory, information will be extracted from it first instead of scraping online</string>
+
+    <string name="setting_webdav_remove_first_item">Remove first item from WebDAV list</string>
+    <string name="setting_webdav_remove_first_item_sub">Some WebDAV services return the current directory as the first item; enable this to avoid duplicates</string>
 
     <string name="setting_recursive_scan_level">Recursive Scan Level</string>
     <string name="setting_recursive_scan_level_sub">Depth for recursive video searching during bulk add</string>
@@ -456,5 +459,13 @@
     <string name="ui_label_official_website">Official Website</string>
     <string name="ui_label_copyright">Copyright © 2026 MZHSY. All Rights Reserved.</string>
     <string name="ui_label_disclaimer">Disclaimer: This software is for learning and exchange purposes only. No media resources are provided.</string>
+
+    <string name="ui_label_home">Home</string>
+    <string name="ui_label_recently_watched">Recently Watched</string>
+    <string name="ui_label_recently_added">Recently Added</string>
+    <string name="ui_label_recently_visited">Recently Visited</string>
+    <string name="iso_playback_mode_default">Default playback settings (Try to show menu)</string>
+    <string name="iso_playback_mode_main_movie">Play main movie directly</string>
+    <string name="ui_label_play_season_episode_short">Play S%1$d E%2$d</string>
 
 </resources>

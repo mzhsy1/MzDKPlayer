@@ -37,6 +37,7 @@ data class SettingsUiState(
     val dpadDownAction: String = "A",
     val ffDuration: Int = 15,
     val rwDuration: Int = 15,
+    val videoFinishAction: Int = 2, // 新增：播放完成动作 (0: 循环播放, 1: 播放暂停, 2: 播放下一个)
     // 刮削
     val smb: Boolean = true,
     val webdav: Boolean = true,
@@ -49,7 +50,8 @@ data class SettingsUiState(
     val tmdbBaseUrl: String = SettingsRepository.DEFAULT_TMDB_URL,
     val recursiveScanLevel: Int = 1,
     val tmdbSearchLang: String = "",
-    val tmdbResultLang: String = ""
+    val tmdbResultLang: String = "",
+    val removeWebDavFirstItem: Boolean = false
 )
 
 class SettingsViewModel : ViewModel() {
@@ -86,6 +88,7 @@ class SettingsViewModel : ViewModel() {
                 dpadDownAction = repo.dpadDownAction,
                 ffDuration = repo.ffDuration,
                 rwDuration = repo.rwDuration,
+                videoFinishAction = repo.videoFinishAction,
                 smb = repo.enableSmb,
                 webdav = repo.enableWebDav,
                 ftp = repo.enableFtp,
@@ -97,7 +100,8 @@ class SettingsViewModel : ViewModel() {
                 tmdbBaseUrl = repo.tmdbBaseUrl,
                 recursiveScanLevel = repo.recursiveScanLevel,
                 tmdbSearchLang = repo.tmdbSearchLang,
-                tmdbResultLang = repo.tmdbResultLang
+                tmdbResultLang = repo.tmdbResultLang,
+                removeWebDavFirstItem = repo.removeWebDavFirstItem
             )
         }
     }
@@ -131,6 +135,7 @@ class SettingsViewModel : ViewModel() {
     fun setDpadDownAction(v: String) { repo.dpadDownAction = v; refreshState() }
     fun setFFDuration(v: Int) { repo.ffDuration = v; refreshState() }
     fun setRWDuration(v: Int) { repo.rwDuration = v; refreshState() }
+    fun setVideoFinishAction(v: Int) { repo.videoFinishAction = v; refreshState() }
     fun setAppLanguage(context: Context, lang: String) {
         repo.appLanguage = lang
         LanguageManager.setLanguage(context, lang)
@@ -210,6 +215,11 @@ class SettingsViewModel : ViewModel() {
 
     fun setTmdbResultLang(v: String) {
         repo.tmdbResultLang = v
+        refreshState()
+    }
+
+    fun toggleRemoveWebDavFirstItem(v: Boolean) {
+        repo.removeWebDavFirstItem = v
         refreshState()
     }
 }

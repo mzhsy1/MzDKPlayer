@@ -450,7 +450,8 @@ fun MzDKPlayerAPP(
                     connectionName,
                     mediaHistoryViewModel,
                     shouldUseVlc,
-                    settingsVM
+                    settingsVM,
+                    mainNavController
                 )
             }
         }

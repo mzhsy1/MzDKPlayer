@@ -9,6 +9,7 @@ import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import org.mz.mzdkplayer.data.repository.AudioPlaylistRepository
+import org.mz.mzdkplayer.data.repository.VideoPlaylistRepository
 import org.mz.mzdkplayer.data.repository.SettingsRepository
 import org.mz.mzdkplayer.di.RepositoryProvider
 import org.mz.mzdkplayer.tool.LanguageManager
@@ -37,6 +38,7 @@ class MzDkPlayerApplication: Application() {
 
         // 4. 初始化音频播放列表
         AudioPlaylistRepository.init(this)
+        VideoPlaylistRepository.init(this)
 
         val cacheDir = File(filesDir, "exoplayer_cache")
         val evictor = LeastRecentlyUsedCacheEvictor(5000 * 1024 * 1024)

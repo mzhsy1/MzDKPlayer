@@ -60,7 +60,9 @@ import kotlinx.coroutines.withContext
 import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.repository.AudioPlaylistRepository
+import org.mz.mzdkplayer.data.repository.VideoPlaylistRepository
 import org.mz.mzdkplayer.data.model.AudioItem
+import org.mz.mzdkplayer.data.model.VideoItem
 import org.mz.mzdkplayer.data.model.LocalFileLoadStatus
 import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.di.RepositoryProvider
@@ -289,6 +291,20 @@ fun LocalFileListScreen(path: String?, navController: NavHostController, setting
                                                         }
 
                                                         Tools.containsVideoFormat(fileExtension) -> {
+                                                            // 构建视频播放列表
+                                                            val videoFiles = filteredFiles.filter { localFile ->
+                                                                !localFile.isDirectory && Tools.containsVideoFormat(Tools.extractFileExtension(localFile.name))
+                                                            }
+                                                            val videoItems = videoFiles.map { localFile ->
+                                                                VideoItem(
+                                                                    uri = "file://${localFile.absolutePath}",
+                                                                    fileName = localFile.name,
+                                                                    dataSourceType = "LOCAL",
+                                                                    connectionName = "本地文件"
+                                                                )
+                                                            }
+                                                            VideoPlaylistRepository.setPlaylist(videoItems)
+
                                                             // 检查是否有媒体信息（mediaId > 0, 且是焦点文件, 且未隐藏详情）
                                                             if (mediaId > 0 && focusedFileName == file.name && !settingsState.hideDetails) {
                                                                 val mediaInfoFN =

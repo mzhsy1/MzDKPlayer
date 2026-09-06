@@ -27,6 +27,10 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import androidx.media3.extractor.DefaultExtractorsFactory
+import androidx.media3.extractor.mkv.MatroskaExtractor
+import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
+import androidx.media3.extractor.ts.TsExtractor
 import androidx.media3.ui.compose.ContentFrame
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -81,6 +85,7 @@ class MzExoPlayer(
     override val aspectRatio: StateFlow<MzAspectRatio> = _aspectRatio.asStateFlow()
 
     override var onError: ((String) -> Unit)? = null
+    override var onPlaybackEnded: (() -> Unit)? = null
     override var onCuesChanged: ((Any) -> Unit)? = null
 
     private var isFirstTrackAutoSelected = false
@@ -96,6 +101,9 @@ class MzExoPlayer(
     // 3. 配置 TrackSelector (隧道模式)
     val trackSelector = DefaultTrackSelector(context)
 
+    // 3.5 配置 ExtractorsFactory (增强稳定性)
+    val extractorsFactory = DefaultExtractorsFactory()
+        .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES)
 
     // 4. 组装 ExoPlayer
     val exoPlayer: ExoPlayer = ExoPlayer.Builder(context)
@@ -105,12 +113,13 @@ class MzExoPlayer(
         .setSeekBackIncrementMs(30000)
         .setMediaSourceFactory(
             DefaultMediaSourceFactory(
-                selectedDataSourceFactory(mediaUri, dataSourceType, context)
+                selectedDataSourceFactory(mediaUri, dataSourceType, context),
+                extractorsFactory
             )
         )
         .build().apply {
             playWhenReady = true
-            repeatMode = Player.REPEAT_MODE_ONE
+            repeatMode = Player.REPEAT_MODE_OFF
         }
 
 
@@ -145,7 +154,10 @@ class MzExoPlayer(
                 _playerStatus.value = when (state) {
                     Player.STATE_READY -> VideoPlayerStatus.READY
                     Player.STATE_BUFFERING -> VideoPlayerStatus.BUFFERING
-                    Player.STATE_ENDED -> VideoPlayerStatus.ENDED
+                    Player.STATE_ENDED -> {
+                        onPlaybackEnded?.invoke()
+                        VideoPlayerStatus.ENDED
+                    }
                     else -> VideoPlayerStatus.IDLE
                 }
             }
@@ -324,10 +336,6 @@ class MzExoPlayer(
 
     override fun release() {
         exoPlayer.release()
-        // 彻底释放协议层的全局静态连接，防止句柄泄漏
-        SmbDataSource.releaseGlobalResources()
-        FtpDataSource.releaseGlobalResources()
-        WebDavDataSource.releaseGlobalResources()
     }
 
     override fun setPlaybackSpeed(speed: Float) {

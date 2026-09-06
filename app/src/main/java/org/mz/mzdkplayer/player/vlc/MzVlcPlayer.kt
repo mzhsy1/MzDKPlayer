@@ -248,7 +248,7 @@ class MzVlcPlayer(
 // 3. 接口回调
 
     override var onError: ((String) -> Unit)? = null
-
+    override var onPlaybackEnded: (() -> Unit)? = null
     override var onCuesChanged: ((Any) -> Unit)? = null // VLC 不需要，留空
 
 
@@ -448,9 +448,8 @@ class MzVlcPlayer(
                 }
 
                 MediaPlayer.Event.EndReached -> {
-
+                    onPlaybackEnded?.invoke()
                     _playerStatus.value = VideoPlayerStatus.ENDED
-
                 }
 
                 MediaPlayer.Event.EncounteredError -> {

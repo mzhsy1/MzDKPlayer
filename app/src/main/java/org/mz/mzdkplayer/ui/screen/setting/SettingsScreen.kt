@@ -511,6 +511,12 @@ fun SourceSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
             checked = state.prioritizeLocalNfo,
             onCheckedChange = { settingsVM.togglePrioritizeLocalNfo(it) }
         )
+        SwitchSettingItem(
+            title = stringResource(R.string.setting_webdav_remove_first_item),
+            subtitle = stringResource(R.string.setting_webdav_remove_first_item_sub),
+            checked = state.removeWebDavFirstItem,
+            onCheckedChange = { settingsVM.toggleRemoveWebDavFirstItem(it) }
+        )
         ActionSettingItem(
             title = stringResource(R.string.setting_recursive_scan_level),
             value = formatRecursiveScanLevel(state.recursiveScanLevel),

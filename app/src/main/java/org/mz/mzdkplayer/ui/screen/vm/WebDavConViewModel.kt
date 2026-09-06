@@ -17,6 +17,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import org.mz.mzdkplayer.data.model.FileConnectionStatus
+import org.mz.mzdkplayer.data.repository.SettingsRepository
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import javax.net.ssl.SSLContext
@@ -108,13 +109,17 @@ class WebDavConViewModel : ViewModel() {
                         val resources = sardine?.list(encodeWebDavPath(fullPath))
                             ?: throw Exception("Sardine 未初始化或连接失败")
 
-                        // 先去掉第一个元素（如果存在）
-                        //val withoutFirst = if (resources.isNotEmpty()) resources.drop(1) else emptyList()
+                        // 根据设置决定是否移除第一个元素（通常是当前目录本身）
+                        val resourcesToProcess = if (SettingsRepository.removeWebDavFirstItem && resources.isNotEmpty()) {
+                            resources.drop(1)
+                        } else {
+                            resources
+                        }
 
                         // 再过滤掉 "." 和 ".."
-                        val filteredResources = resources.filter { it.name != "." && it.name != ".." }
+                        val filteredResources = resourcesToProcess.filter { it.name != "." && it.name != ".." }
 
-                        // 构建 WebDavFileItem 列表
+                        // 构建 WebDavFileItem 列表并按名称排序
                         val webDavFileItemList = filteredResources.map { resource ->
                             WebDavFileItem(
                                 name = resource.name,
@@ -125,7 +130,7 @@ class WebDavConViewModel : ViewModel() {
                                 password = password ?: "",
                                 size = resource.contentLength
                             )
-                        }.toMutableList()
+                        }.sortedBy { it.name }
 
                         _fileList.value = webDavFileItemList
                         _currentPath.value = fullPath

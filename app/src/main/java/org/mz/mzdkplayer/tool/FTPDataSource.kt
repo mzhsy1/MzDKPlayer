@@ -40,10 +40,12 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
         private var currentHost: String? = null
         private var currentUser: String? = null
 
+        private val lock = Any()
+
         /**
          * 静态释放方法：供外部调用，彻底断开 FTP 连接
          */
-        fun releaseGlobalResources() {
+        fun releaseGlobalResources() = synchronized(lock) {
             Log.i(TAG, "Releasing GLOBAL FTP resources...")
             try {
                 if (cachedFtpClient?.isConnected == true) {
@@ -175,7 +177,7 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
         }
     }
 
-    private fun ensureGlobalConnection(dataSpec: DataSpec) {
+    private fun ensureGlobalConnection(dataSpec: DataSpec) = synchronized(lock) {
         val uri = dataSpec.uri
         val host = uri.host ?: throw IOException("Missing host")
         val port = if (uri.port != -1) uri.port else 21
@@ -191,7 +193,7 @@ class FtpDataSource : BaseDataSource(/* isNetwork= */ true) {
                 if (cachedFtpClient!!.sendNoOp()) {
                     cachedFtpClient!!.setFileType(FTP.BINARY_FILE_TYPE)
                     cachedFtpClient!!.enterLocalPassiveMode()
-                    return
+                    return@synchronized
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Cached connection stale, reconnecting...")

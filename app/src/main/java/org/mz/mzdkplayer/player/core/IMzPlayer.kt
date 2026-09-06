@@ -37,6 +37,8 @@ interface IMzPlayer {
     fun selectSubtitleTrack(track: MzBasicTrack)
     // 统一的错误回调
     var onError: ((String) -> Unit)?
+    // 播放完成回调
+    var onPlaybackEnded: (() -> Unit)?
     // 统一的字幕/排版信息回调 (对应原 onCues)
     var onCuesChanged: ((Any) -> Unit)?
     fun release()

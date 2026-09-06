@@ -451,4 +451,23 @@
     <string name="ui_label_copyright">Copyright © 2026 MZHSY. All Rights Reserved.</string>
     <string name="ui_label_disclaimer">免責事項：本ソフトウェアは学習および交流目的のみに使用され、メディアリソースは提供されません。</string>
 
+    <string name="setting_webdav_remove_first_item">WebDAV リストの最初の項目を削除</string>
+    <string name="setting_webdav_remove_first_item_sub">一部の WebDAV サービスは現在のディレクトリを最初の項目として返します。重複を避けるためにこれを有効にします</string>
+    <string name="setting_iso_playback_mode">ISO ブルーレイ再生動作</string>
+    <string name="setting_lock_video_ratio">ビデオ比率を固定</string>
+    <string name="setting_ff_duration">早送り時間 (秒)</string>
+    <string name="setting_rw_duration">巻き戻し時間 (秒)</string>
+    <string name="ui_label_seek_duration">シーク時間</string>
+    <string name="setting_iso_playback_mode_sub">ISO ファイルのデフォルトの再生動作を設定します</string>
+    <string name="iso_playback_mode_default">デフォルトの再生設定 (メニューの表示を試行)</string>
+    <string name="iso_playback_mode_main_movie">本編を直接再生</string>
+    <string name="setting_auto_load_subtitle">同名の字幕を自動読み込み</string>
+    <string name="setting_auto_load_subtitle_sub">再生時にビデオディレクトリをスキャンし、同名の字幕を自動的に読み込みます</string>
+    <string name="ui_label_home">ホーム</string>
+    <string name="ui_label_recently_watched">最近見た項目</string>
+    <string name="ui_label_recently_added">最近追加された項目</string>
+    <string name="ui_label_recently_visited">最近アクセスした項目</string>
+    <string name="ui_label_play_season_episode_short">S%1$d E%2$d を再生</string>
+    <string name="ui_label_auto_subtitle_found">同名の字幕を %1$d 件自動読み込みしました</string>
+
 </resources>

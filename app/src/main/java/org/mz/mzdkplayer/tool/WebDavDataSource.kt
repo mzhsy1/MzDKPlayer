@@ -38,11 +38,13 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
             WebDavHttpClient.restrictedTrustOkHttpClient
         }
 
+        private val lock = Any()
+
         /**
          * 静态释放方法：供外部（如 VideoPlayerScreen）调用
          * 彻底关闭连接池，释放资源。
          */
-        fun releaseGlobalResources() {
+        fun releaseGlobalResources() = synchronized(lock) {
             Log.i(TAG, "Releasing GLOBAL WebDAV resources...")
             try {
                 sharedSardine = null
@@ -136,7 +138,7 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
     /**
      * 准备全局 Client，设置凭证
      */
-    private fun prepareGlobalClient(dataSpec: DataSpec) {
+    private fun prepareGlobalClient(dataSpec: DataSpec) = synchronized(lock) {
         val uri = dataSpec.uri
         val (username, password) = uri.userInfo?.split(":")?.let {
             if (it.size == 2) Pair(it[0], it[1]) else Pair("", "")

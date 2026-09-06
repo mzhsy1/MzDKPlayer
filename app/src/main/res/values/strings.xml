@@ -2,7 +2,7 @@
     <string name="app_name">MzDKPlayer</string>
     <string name="live">直播</string>
     <string name="ad">广告</string>
-    <string name="settings_title">设置</string>
+    <string name="settings_title">应用设置</string>
     <string name="cat_general">常规设置</string>
     <string name="cat_playback">播放与视频</string>
     <string name="cat_audio">音频设置</string>
@@ -13,6 +13,9 @@
 
     <string name="setting_prioritize_nfo">优先加载本地 NFO 文件</string>
     <string name="setting_prioritize_nfo_sub">如果媒体目录下存在同名 .nfo 文件，将优先从中提取信息而非联网刮削</string>
+
+    <string name="setting_webdav_remove_first_item">移除 WebDAV 列表首个元素</string>
+    <string name="setting_webdav_remove_first_item_sub">部分 WebDAV 服务返回的列表首项为当前目录，开启此项可避免重复显示</string>
 
     <string name="setting_recursive_scan_level">批量扫描子文件夹层级</string>
     <string name="setting_recursive_scan_level_sub">批量扫描视频时递归搜索子目录的深度</string>

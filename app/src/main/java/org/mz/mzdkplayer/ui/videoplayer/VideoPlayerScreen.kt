@@ -99,6 +99,10 @@ import org.mz.mzdkplayer.tool.SmbUtils
 import org.mz.mzdkplayer.tool.SubtitleView
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.Tools.toSafeInt
+import org.mz.mzdkplayer.tool.Tools.toBase64
+import org.mz.mzdkplayer.data.repository.VideoPlaylistRepository
+import org.mz.mzdkplayer.data.model.VideoItem
+import androidx.navigation.NavHostController
 import org.mz.mzdkplayer.tool.WebDavDataSource
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
 
@@ -159,7 +163,8 @@ fun VideoPlayerScreen(
     connectionName: String,
     mediaHistoryViewModel: MediaHistoryViewModel,
     useVlc: Boolean = false, // 开关：让用户或者设置决定用哪个内核
-    settingsViewModel: SettingsViewModel = viewModel()
+    settingsViewModel: SettingsViewModel = viewModel(),
+    navController: NavHostController
 ) {
     // 获取当前 Compose 上下文
     val context = LocalContext.current
@@ -204,7 +209,7 @@ fun VideoPlayerScreen(
     var lastTimeStamp by remember { mutableLongStateOf(0L) }
 
     // 记住并创建弹幕播放器实例
-    val mDanmakuPlayer: DanmakuPlayer = remember { DanmakuPlayer(SimpleRenderer()) }
+    val mDanmakuPlayer: DanmakuPlayer = remember(mediaUri) { DanmakuPlayer(SimpleRenderer()) }
 
     // 根据媒体 URI 和数据源类型推断弹幕文件 URI
     val danmakuUri =
@@ -252,8 +257,8 @@ fun VideoPlayerScreen(
     val currentAspectRatio by player.aspectRatio.collectAsState()
     // 构建播放器 (设置媒体源等)
     //BuilderMzPlayer(context, mediaUri, exoPlayer, dataSourceType, settingsViewModel)
-    // 当 Composable 离开组合时，释放资源
-    DisposableEffect(Unit) {
+    // 当 Composable 离开组合或播放器实例变化时，释放资源
+    DisposableEffect(player, mDanmakuPlayer) {
         onDispose {
             // 1. 获取播放器当前状态
             val currentPos = player.currentPosition
@@ -548,6 +553,34 @@ fun VideoPlayerScreen(
         player.onError = { msg ->
             videoPlayerViewModel.setPlayerError(msg)
         }
+        player.onPlaybackEnded = {
+            when (settingsState.videoFinishAction) {
+                0 -> { // 循环播放
+                    player.seekTo(0)
+                    player.play()
+                }
+                1 -> { // 播放暂停
+                    player.pause()
+                }
+                2 -> { // 播放下一个
+                    val playlist = VideoPlaylistRepository.getPlaylist()
+                    if (playlist.isNotEmpty()) {
+                        val currentIndex = playlist.indexOfFirst { it.uri == mediaUri }
+                        if (currentIndex != -1 && currentIndex < playlist.size - 1) {
+                            val nextVideo = playlist[currentIndex + 1]
+                            val encodedUri = nextVideo.uri.toBase64()
+                            val encodedName = nextVideo.fileName.toBase64()
+                            val encodedConn = nextVideo.connectionName.toBase64()
+                            navController.navigate("VideoPlayer/$encodedUri/${nextVideo.dataSourceType}/$encodedName/$encodedConn") {
+                                popUpTo("VideoPlayer/{sourceUri}/{dataSourceType}/{fileName}/{connectionName}") { inclusive = true }
+                            }
+                        } else {
+                            showToast(context, "已是最后一个视频")
+                        }
+                    }
+                }
+            }
+        }
         player.onCuesChanged = { cues ->
             currentCueGroup = cues as CueGroup?
             // 处理字幕显示逻辑
@@ -740,7 +773,15 @@ fun VideoPlayerScreen(
             mDanmakuPlayer = mDanmakuPlayer,
             mediaUri = mediaUri,
             useVlc = useVlc,
-            onHideControls = { videoPlayerState.hideControls() }
+            onHideControls = { videoPlayerState.hideControls() },
+            onVideoSelected = { videoItem ->
+                val encodedUri = videoItem.uri.toBase64()
+                val encodedName = videoItem.fileName.toBase64()
+                val encodedConn = videoItem.connectionName.toBase64()
+                navController.navigate("VideoPlayer/$encodedUri/${videoItem.dataSourceType}/$encodedName/$encodedConn") {
+                    popUpTo("VideoPlayer/{sourceUri}/{dataSourceType}/{fileName}/{connectionName}") { inclusive = true }
+                }
+            }
         )
 
         // 状态层 (Error, Buffering, FirstLoad)
@@ -886,8 +927,9 @@ private fun Modifier.dPadEvents(
 
         Key.DirectionUp -> {
             if (isActionUp) {
-                if (!videoPlayerState.controlsVisible) {
-                    videoPlayerState.showControls()
+                if (!videoPlayerState.controlsVisible && !videoPlayerViewModel.atpVisibility) {
+                    videoPlayerViewModel.selectedAorVorS = dpadUpAction
+                    videoPlayerViewModel.atpVisibility = true
                     return@onKeyEvent true
                 }
             } else if (isActionDown && isLongPress) {
@@ -900,8 +942,9 @@ private fun Modifier.dPadEvents(
 
         Key.DirectionDown -> {
             if (isActionUp) {
-                if (!videoPlayerState.controlsVisible) {
-                    videoPlayerState.showControls()
+                if (!videoPlayerState.controlsVisible && !videoPlayerViewModel.atpVisibility) {
+                    videoPlayerViewModel.selectedAorVorS = dpadDownAction
+                    videoPlayerViewModel.atpVisibility = true
                     return@onKeyEvent true
                 }
             }

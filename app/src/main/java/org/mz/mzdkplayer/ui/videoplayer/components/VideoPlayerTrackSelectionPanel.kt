@@ -38,6 +38,8 @@ import org.mz.mzdkplayer.player.core.MzBasicTrack
 import org.mz.mzdkplayer.player.core.MzIsoTitle
 import org.mz.mzdkplayer.player.core.MzVideoTrack
 import org.mz.mzdkplayer.player.core.MzAspectRatio
+import org.mz.mzdkplayer.data.model.VideoItem
+import org.mz.mzdkplayer.data.repository.VideoPlaylistRepository
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.handleDPadKeyEvents
 import org.mz.mzdkplayer.ui.screen.vm.SettingsViewModel
@@ -119,16 +121,23 @@ fun RootSettingsPanel(
             }
             item {
                 SettingItem(
-                    title = stringResource(R.string.ui_label_seek_duration),
-                    icon = R.drawable.baseline_speed_24,
-                    onClick = { videoPlayerViewModel.selectedAorVorS = "DURATION" }
+                    title = stringResource(R.string.ui_label_danmaku_settings),
+                    icon = R.drawable.video_danmu_config,
+                    onClick = { videoPlayerViewModel.selectedAorVorS = "D" }
                 )
             }
             item {
                 SettingItem(
-                    title = stringResource(R.string.ui_label_danmaku_settings),
-                    icon = R.drawable.video_danmu_config,
-                    onClick = { videoPlayerViewModel.selectedAorVorS = "D" }
+                    title = "播放列表",
+                    icon = R.drawable.playlistplay24dp,
+                    onClick = { videoPlayerViewModel.selectedAorVorS = "L" }
+                )
+            }
+            item {
+                SettingItem(
+                    title = "播放完成动作",
+                    icon = R.drawable.baseline_settings_24,
+                    onClick = { videoPlayerViewModel.selectedAorVorS = "ACTION" }
                 )
             }
             item {
@@ -185,7 +194,8 @@ fun BoxScope.VideoPlayerTrackSelectionPanel(
     mDanmakuPlayer: DanmakuPlayer,
     mediaUri: String,
     useVlc: Boolean,
-    onHideControls: () -> Unit
+    onHideControls: () -> Unit,
+    onVideoSelected: (VideoItem) -> Unit
 ) {
     AnimatedVisibility(
         videoPlayerViewModel.atpVisibility,
@@ -294,8 +304,21 @@ fun BoxScope.VideoPlayerTrackSelectionPanel(
                 )
             }
 
-            "DURATION" -> {
-                SeekDurationPanel(settingsViewModel = settingsViewModel)
+            "L" -> {
+                val playlist by VideoPlaylistRepository.playlist.collectAsState()
+                val currentVideoIndex = playlist.indexOfFirst { it.uri == mediaUri }
+                VideoListPanel(
+                    selectedIndex = currentVideoIndex,
+                    onVideoSelected = { videoItem, index ->
+                        videoPlayerViewModel.atpVisibility = false
+                        onVideoSelected(videoItem)
+                    },
+                    lists = playlist
+                )
+            }
+
+            "ACTION" -> {
+                VideoFinishActionPanel(settingsViewModel = settingsViewModel)
             }
         }
         BackHandler(true) {
@@ -309,36 +332,3 @@ fun BoxScope.VideoPlayerTrackSelectionPanel(
 }
 }
 
-@Composable
-fun SeekDurationPanel(settingsViewModel: SettingsViewModel) {
-    val settingsState by settingsViewModel.uiState.collectAsState()
-    Column(modifier = Modifier.fillMaxSize()) {
-        Text(
-            text = stringResource(R.string.ui_label_seek_duration),
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
-            fontSize = 24.sp,
-            modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 10.dp)
-        )
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            item {
-                NumberControl(
-                    value = settingsState.ffDuration,
-                    onValueChange = { settingsViewModel.setFFDuration(it) },
-                    maxValue = 600,
-                    minValue = 5,
-                    label = stringResource(R.string.setting_ff_duration)
-                )
-            }
-            item {
-                NumberControl(
-                    value = settingsState.rwDuration,
-                    onValueChange = { settingsViewModel.setRWDuration(it) },
-                    maxValue = 600,
-                    minValue = 5,
-                    label = stringResource(R.string.setting_rw_duration)
-                )
-            }
-        }
-    }
-}

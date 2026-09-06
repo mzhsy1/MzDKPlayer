@@ -38,7 +38,9 @@ import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.repository.AudioPlaylistRepository
+import org.mz.mzdkplayer.data.repository.VideoPlaylistRepository
 import org.mz.mzdkplayer.data.model.AudioItem
+import org.mz.mzdkplayer.data.model.VideoItem
 import org.mz.mzdkplayer.data.model.FTPConnection
 import org.mz.mzdkplayer.data.model.FileConnectionStatus
 import org.mz.mzdkplayer.data.repository.Resource
@@ -302,6 +304,20 @@ fun FTPFileListScreen(
                                                         when {
 
                                                             Tools.containsVideoFormat(fileExtension) -> {
+                                                                // 构建视频播放列表
+                                                                val videoFiles = filteredFiles.filter { ftpFile ->
+                                                                    !ftpFile.isDirectory && Tools.containsVideoFormat(Tools.extractFileExtension(ftpFile.name))
+                                                                }
+                                                                val videoItems = videoFiles.map { ftpFile ->
+                                                                    VideoItem(
+                                                                        uri = viewModel.getResourceFullUrl(ftpFile.name),
+                                                                        fileName = ftpFile.name,
+                                                                        dataSourceType = "FTP",
+                                                                        connectionName = ftpConnection.name ?: ""
+                                                                    )
+                                                                }
+                                                                VideoPlaylistRepository.setPlaylist(videoItems)
+
                                                                 Log.d(
                                                                     "FTPFileListScreen",
                                                                     "movieId:$mediaId"

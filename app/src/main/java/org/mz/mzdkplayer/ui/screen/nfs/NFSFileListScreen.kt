@@ -40,7 +40,9 @@ import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.repository.AudioPlaylistRepository
+import org.mz.mzdkplayer.data.repository.VideoPlaylistRepository
 import org.mz.mzdkplayer.data.model.AudioItem
+import org.mz.mzdkplayer.data.model.VideoItem
 import org.mz.mzdkplayer.data.model.FileConnectionStatus
 import org.mz.mzdkplayer.data.model.NFSConnection
 import org.mz.mzdkplayer.data.repository.Resource
@@ -309,6 +311,20 @@ fun NFSFileListScreen(
                                                             )
                                                         )
                                                     ) {
+                                                        // 构建视频播放列表
+                                                        val videoFiles = filteredFiles.filter { nfsFile ->
+                                                            !nfsFile.isDirectory && Tools.containsVideoFormat(Tools.extractFileExtension(nfsFile.name))
+                                                        }
+                                                        val videoItems = videoFiles.map { nfsFile ->
+                                                            VideoItem(
+                                                                uri = "nfs://${nfsConnection.serverAddress}:${nfsConnection.shareName}:${nfsFile.path}",
+                                                                fileName = nfsFile.name,
+                                                                dataSourceType = "NFS",
+                                                                connectionName = nfsConnection.name ?: ""
+                                                            )
+                                                        }
+                                                        VideoPlaylistRepository.setPlaylist(videoItems)
+
                                                         // 检查是否有媒体信息（mediaId > 0, 且是焦点文件, 且未隐藏详情）
                                                         if (mediaId > 0 && focusedFileName == file.name && !settingsState.hideDetails) {
                                                             // 导航到视频播放器
