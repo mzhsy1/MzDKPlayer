@@ -203,12 +203,11 @@ object SmbUtils {
             // 6. 设置认证信息
             tempSardine.setCredentials(username, password)
 
-
-            val fullFileUrl = webDavUri.toString()
+            // 使用统一编码逻辑
+            val fullFileUrl = Tools.encodeWebDavUri(webDavUri.toString())
 
             try {
                 // 8. 使用 Sardine.get() 获取 InputStream
-                // Sardine.get() 返回的是 InputStream，通常内部会处理连接和 Range 请求
                 val inputStream = tempSardine.get(fullFileUrl)
 
                 // 注意：Sardine 实例 tempSardine 在这里没有显式关闭。
@@ -618,8 +617,9 @@ object SmbUtils {
     @Throws(IOException::class)
     suspend fun openHTTPLinkXmlInputStream(xmlUrl: String, sampleMimeType: String): InputStream {
         return withContext(Dispatchers.IO) {
+            val encodedUrl = Tools.encodeWebDavUri(xmlUrl)
             val okHttpClient = OkHttpClient()
-            val request = Request.Builder().url(xmlUrl).build()
+            val request = Request.Builder().url(encodedUrl).build()
             val call = okHttpClient.newCall(request)
             val response: Response = call.execute() // 同步执行，因为我们需要 Response 对象
 

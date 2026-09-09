@@ -297,7 +297,7 @@ object SubtitleScanner {
         val authority = host + (if (uri.port != -1) ":${uri.port}" else "")
         return Uri.Builder()
             .scheme(uri.scheme)
-            .authority(authority)
+            .encodedAuthority(authority) // 使用 encodedAuthority 避免对端口冒号进行二次编码
             .path(dirPath)
             .build()
             .toString()

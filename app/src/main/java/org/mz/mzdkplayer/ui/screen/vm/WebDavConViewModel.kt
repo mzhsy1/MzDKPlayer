@@ -152,34 +152,7 @@ class WebDavConViewModel : ViewModel() {
 
     // 添加 URL 编码函数
     private fun encodeWebDavPath(path: String): String {
-        return try {
-            // 分割协议和路径部分
-            val protocolSeparator = "://"
-            if (path.contains(protocolSeparator)) {
-                val parts = path.split(protocolSeparator)
-                val protocol = parts[0]
-                val hostAndPath = parts[1]
-
-                val hostPathParts = hostAndPath.split("/", limit = 2)
-                val host = hostPathParts[0]
-                val pathPart = if (hostPathParts.size > 1) hostPathParts[1] else ""
-
-                // 对路径部分进行编码，使用 %20 而不是 +
-                val encodedPath = pathPart.split("/").joinToString("/") { segment ->
-                    URLEncoder.encode(segment, "UTF-8").replace("+", "%20")
-                }
-
-                "$protocol$protocolSeparator$host/$encodedPath"
-            } else {
-                // 如果没有协议，直接编码整个路径
-                path.split("/").joinToString("/") { segment ->
-                    URLEncoder.encode(segment, "UTF-8").replace("+", "%20")
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("WebDavCon", "URL编码失败: $path", e)
-            path // 如果编码失败，返回原路径
-        }
+        return Tools.encodeWebDavUri(path)
     }
     /**
      * 断开与 WebDAV 服务器的连接

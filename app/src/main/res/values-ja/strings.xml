@@ -451,6 +451,13 @@
     <string name="ui_label_copyright">Copyright © 2026 MZHSY. All Rights Reserved.</string>
     <string name="ui_label_disclaimer">免責事項：本ソフトウェアは学習および交流目的のみに使用され、メディアリソースは提供されません。</string>
 
+    <string name="pic_viewer_zoom_in">拡大</string>
+    <string name="pic_viewer_zoom_out">縮小</string>
+    <string name="pic_viewer_rotate_left">左回転</string>
+    <string name="pic_viewer_rotate_right">右回転</string>
+    <string name="pic_viewer_scale_mode">スケーリングモード</string>
+    <string name="pic_viewer_reset">リセット</string>
+
     <string name="setting_webdav_remove_first_item">WebDAV リストの最初の項目を削除</string>
     <string name="setting_webdav_remove_first_item_sub">一部の WebDAV サービスは現在のディレクトリを最初の項目として返します。重複を避けるためにこれを有効にします</string>
     <string name="setting_iso_playback_mode">ISO ブルーレイ再生動作</string>

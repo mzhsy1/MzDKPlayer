@@ -767,46 +767,50 @@ object Tools {
      * 3. 确保空格被转义为 %20 而不是 +。
      */
     fun encodeUrlForPlayer(url: String): String {
+        return encodeWebDavUri(url)
+    }
+
+    /**
+     * 鲁棒的 WebDAV URI 编码器
+     * 处理包含特殊字符（如 [ ] { } ! 等）的路径
+     */
+    fun encodeWebDavUri(url: String): String {
         if (url.isBlank()) return url
-        
-        return try {
+        try {
             val uri = url.toUri()
-            val scheme = uri.scheme
-            val host = uri.host
-            val port = uri.port
-            val userInfo = uri.userInfo
+            val scheme = uri.scheme ?: return url
+            val authority = uri.encodedAuthority // 包含 userInfo@host:port
             
-            // 如果没有协议，可能是本地文件路径，使用原有逻辑
-            if (scheme == null) {
-                return url.split("/").joinToString("/") { segment ->
+            val path = uri.path ?: ""
+            val query = uri.encodedQuery
+            val fragment = uri.encodedFragment
+
+            // 对路径段进行手动编码
+            val encodedPath = path.split("/").joinToString("/") { segment ->
+                if (segment.isEmpty()) ""
+                else {
+                    // 先解码防止双重编码
                     val decoded = URLDecoder.decode(segment, "UTF-8")
                     URLEncoder.encode(decoded, "UTF-8").replace("+", "%20")
                 }
             }
 
-            val builder = uri.buildUpon()
-            
-            // 重新构建路径，确保每个段都被正确编码
-            val pathSegments = uri.pathSegments
-            if (pathSegments.isNotEmpty()) {
-                builder.path(null) // 清除原有路径
-                pathSegments.forEach { segment ->
-                    // 先解码（防止输入已经是编码过的），再编码
-                    val decoded = URLDecoder.decode(segment, "UTF-8")
-                    builder.appendPath(decoded)
-                }
+            val sb = StringBuilder()
+            sb.append(scheme).append("://")
+            if (authority != null) {
+                sb.append(authority)
             }
-            
-            // 某些特殊字符在 buildUpon().build().toString() 中可能不会被编码（取决于 Android 版本）
-            // 这里我们强制检查一些 VLC 敏感的字符
-            val result = builder.build().toString()
-            
-            // 再次校验：如果仍然包含非 ASCII 字符或空格，则进行最后兜底
-            // 理论上 builder.build().toString() 在现代 Android 上已经处理得很好
-            result
+            sb.append(encodedPath)
+            if (query != null) {
+                sb.append("?").append(query)
+            }
+            if (fragment != null) {
+                sb.append("#").append(fragment)
+            }
+            return sb.toString()
         } catch (e: Exception) {
-            Log.e("Tools", "URL 编码失败: $url", e)
-            url
+            Log.e("Tools", "URI 编码失败: $url", e)
+            return url
         }
     }
 

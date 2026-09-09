@@ -459,7 +459,7 @@
     <string name="ui_label_no_image">无图片</string>
     <string name="ui_label_no_poster">无海报</string>
     <string name="ui_label_subtitle_off">关闭字幕</string>
-    <string name="ui_label_subtitle_file_not_found_hint">(未找到文件，可能正在缓冲)</string>
+    <string name="ui_label_subtitle_file_not_found_hint">(外挂字幕)</string>
     <string name="ui_label_auto_subtitle_found">已自动加载 %1$d 条同名字幕</string>
 
     <string name="ui_label_author">作者</string>
@@ -468,5 +468,12 @@
     <string name="ui_label_official_website">官方网站</string>
     <string name="ui_label_copyright">Copyright © 2026 MZHSY. All Rights Reserved.</string>
     <string name="ui_label_disclaimer">免责声明：本软件仅供学习交流使用，不提供任何媒体资源。</string>
+
+    <string name="pic_viewer_zoom_in">放大</string>
+    <string name="pic_viewer_zoom_out">缩小</string>
+    <string name="pic_viewer_rotate_left">左旋转</string>
+    <string name="pic_viewer_rotate_right">右旋转</string>
+    <string name="pic_viewer_scale_mode">缩放模式</string>
+    <string name="pic_viewer_reset">重置</string>
 
 </resources>

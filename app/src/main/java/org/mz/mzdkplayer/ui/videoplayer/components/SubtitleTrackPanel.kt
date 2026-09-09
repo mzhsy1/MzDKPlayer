@@ -106,7 +106,7 @@ fun SubtitleTrackPanel(
                     val languageText = Tools.getFullLanguageName(trackLang)
 
                     val titleText = when {
-                        isExternalAutoSearch -> "$languageText $labelText ${stringResource(R.string.ui_label_subtitle_file_not_found_hint)}"
+                        isExternalAutoSearch -> "$languageText ${stringResource(R.string.ui_label_externally_loaded)} $labelText"
                         trackLabel.isNotEmpty() -> "$languageText $labelText"
                         else -> "$languageText ${stringResource(R.string.ui_label_language_subtitles)}"
                     }

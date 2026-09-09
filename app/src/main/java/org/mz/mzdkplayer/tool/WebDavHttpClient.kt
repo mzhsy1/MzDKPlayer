@@ -19,7 +19,14 @@ class WebDavHttpClient {
     companion object {
         // 单例实例，可以在任何地方调用
         val restrictedTrustOkHttpClient: OkHttpClient by lazy {
-            OkHttpClient()
+            OkHttpClient.Builder()
+                .addInterceptor { chain ->
+                    val request = chain.request().newBuilder()
+                        .header("User-Agent", "VLC/3.0.0 LibVLC/3.0.0")
+                        .build()
+                    chain.proceed(request)
+                }
+                .build()
         }
 
 //        private fun createRestrictedTrustClient(): OkHttpClient {

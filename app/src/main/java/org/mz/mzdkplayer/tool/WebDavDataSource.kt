@@ -200,28 +200,68 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
     }
 
     private fun getFileLength(u: String, p: String): Long {
+        val cleanUri = buildCleanUri(dataSpec?.uri!!)
+
+        // 1. 尝试使用 Sardine 发起 PROPFIND (WebDAV 标准方式)
+        // 使用 depth=0 仅查询当前文件，避免递归或查询子目录，提高兼容性
         try {
-            val cleanUri = buildCleanUri(dataSpec?.uri!!)
-            val credential = Credentials.basic(u, p)
-            val request = Request.Builder()
+            sharedSardine?.list(cleanUri, 0)?.firstOrNull()?.let { resource ->
+                val length = resource.contentLength
+                if (length != null && length >= 0) {
+                    Log.d(TAG, "getFileLength: 通过 PROPFIND (Depth: 0) 获取成功, length=$length")
+                    return length
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "getFileLength: PROPFIND 失败: ${e.message}")
+        }
+
+        // 2. 尝试使用 OkHttpClient 发起 HEAD 请求
+        try {
+            val requestBuilder = Request.Builder().url(cleanUri).head()
+            if (u.isNotBlank() || p.isNotBlank()) {
+                requestBuilder.header("Authorization", Credentials.basic(u, p))
+            }
+            sharedOkHttpClient.newCall(requestBuilder.build()).execute().use { response ->
+                if (response.isSuccessful) {
+                    response.header("Content-Length")?.toLongOrNull()?.let {
+                        Log.d(TAG, "getFileLength: 通过 HEAD 获取成功, length=$it")
+                        return it
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "getFileLength: HEAD 失败: ${e.message}")
+        }
+
+        // 3. 尝试使用 OkHttpClient 发起 GET Range 请求 (最后的 Fallback)
+        try {
+            val requestBuilder = Request.Builder()
                 .url(cleanUri)
-                .header("Authorization", credential)
                 .header("Range", "bytes=0-1")
                 .get()
-                .build()
 
-            sharedOkHttpClient.newCall(request).execute().use { response ->
+            if (u.isNotBlank() || p.isNotBlank()) {
+                requestBuilder.header("Authorization", Credentials.basic(u, p))
+            }
+
+            sharedOkHttpClient.newCall(requestBuilder.build()).execute().use { response ->
                 if (response.code == 206) {
                     val contentRange = response.header("Content-Range")
-                    contentRange?.substringAfterLast("/")?.toLongOrNull()?.let { return it }
+                    contentRange?.substringAfterLast("/")?.toLongOrNull()?.let {
+                        Log.d(TAG, "getFileLength: 通过 GET Range 获取成功, length=$it")
+                        return it
+                    }
                 }
                 if (response.code == 200) {
                     val contentType = response.header("Content-Type")
-                    if (contentType?.contains("text/html") == true) throw IOException("WebDAV returned HTML")
-                    response.header("Content-Length")?.toLongOrNull()?.let { return it }
+                    if (contentType?.contains("text/html") == true) throw IOException("WebDAV 返回了 HTML (可能是登录页或错误页)")
+                    response.header("Content-Length")?.toLongOrNull()?.let {
+                        Log.d(TAG, "getFileLength: 通过 GET 获取成功, length=$it")
+                        return it
+                    }
                 }
-                // 如果没获取到，可以尝试 list (PROPFIND) 作为 fallback，或者抛错
-                throw IOException("无法获取长度 code=${response.code}")
+                throw IOException("所有方法均无法获取长度, 最后错误码: ${response.code}")
             }
         } catch (e: Exception) {
             throw IOException("Get length error: ${e.message}", e)
@@ -247,14 +287,7 @@ class WebDavDataSource : BaseDataSource(/* isNetwork= */ true) {
     }
 
     private fun buildCleanUri(uri: Uri): String {
-        return Uri.Builder()
-            .scheme(uri.scheme)
-            .encodedAuthority(uri.authority?.substringAfter('@') ?: uri.authority)
-            .encodedPath(uri.encodedPath)
-            .encodedQuery(uri.encodedQuery)
-            .encodedFragment(uri.encodedFragment)
-            .build()
-            .toString()
+        return Tools.encodeWebDavUri(uri.toString())
     }
 
     override fun getUri(): Uri? = dataSpec?.uri

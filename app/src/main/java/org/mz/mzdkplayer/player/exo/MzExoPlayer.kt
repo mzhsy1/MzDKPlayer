@@ -191,9 +191,14 @@ class MzExoPlayer(
         exoPlayer.addListener(object : Player.Listener {
 
             override fun onTracksChanged(tracks: Tracks) {
-                // 只有当用户没手动选过，且设置里没有指定语言时，才强制选第一个
-                if (!isFirstTrackAutoSelected && preferredTextLanguage.isNullOrEmpty()) {
-                    autoSelectFirstSubtitle(tracks)
+                // 策略：优先自动选择外挂字幕。如果没有外挂字幕，且未设置首选语言，则选第一个。
+                if (!isFirstTrackAutoSelected) {
+                    val hasExternal = tracks.groups.any { 
+                        it.type == C.TRACK_TYPE_TEXT && it.getTrackFormat(0).label?.contains("[外部加载]") == true 
+                    }
+                    if (hasExternal || preferredTextLanguage.isNullOrEmpty()) {
+                        autoSelectFirstSubtitle(tracks)
+                    }
                 }
                 updateTracks()
             }
@@ -215,10 +220,20 @@ class MzExoPlayer(
     private fun autoSelectFirstSubtitle(tracks: Tracks) {
         val textGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT }
         if (textGroups.isNotEmpty()) {
-            Log.i("MzExoPlayer", "自动选择第一个字幕轨道")
+            // 优先查找外挂字幕轨道（带有 "[外部加载]" 标记）
+            var selectedGroupIndex = 0
+            for (i in textGroups.indices) {
+                val label = textGroups[i].getTrackFormat(0).label ?: ""
+                if (label.contains("[外部加载]")) {
+                    selectedGroupIndex = i
+                    break
+                }
+            }
+
+            Log.i("MzExoPlayer", "自动选择字幕轨道: ${textGroups[selectedGroupIndex].getTrackFormat(0).label ?: selectedGroupIndex}")
             exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters.buildUpon()
                 .setOverrideForType(
-                    TrackSelectionOverride(textGroups[0].mediaTrackGroup, 0)
+                    TrackSelectionOverride(textGroups[selectedGroupIndex].mediaTrackGroup, 0)
                 )
                 .build()
             isFirstTrackAutoSelected = true
@@ -366,7 +381,7 @@ class MzExoPlayer(
             MediaItem.SubtitleConfiguration.Builder(uri.toUri())
                 .setMimeType(mimeType)
                 .setLanguage("zh")
-                .setLabel(name)
+                .setLabel("[外部加载] $name")
                 .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
                 .build()
         }

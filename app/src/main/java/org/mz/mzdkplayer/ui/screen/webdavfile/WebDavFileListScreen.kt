@@ -216,7 +216,7 @@ fun WebDavFileListScreen(
             is FileConnectionStatus.Error -> {
                 val errorMessage = (connectionStatus as FileConnectionStatus.Error).message
                 VAErrorScreen(
-                    "${stringResource(R.string.ui_label_loading_failed,errorMessage)}",
+                    stringResource(R.string.ui_label_loading_failed,errorMessage),
                 )
             }
 
@@ -253,7 +253,8 @@ fun WebDavFileListScreen(
                                         val authenticatedUrl = viewModel.buildAuthenticatedUrl(fullFileUrl,
                                             username = webDavConnection.username?:""
                                             , password = webDavConnection.password?:"").trimEnd('/')
-                                        val encodedFileUrl = "${authenticatedUrl}/${fileName.trimEnd('/').trimStart('/')}".toBase64()
+                                        val rawFileUrl = "${authenticatedUrl}/${fileName.trimEnd('/').trimStart('/')}"
+                                        val encodedFileUrl = Tools.encodeWebDavUri(rawFileUrl).toBase64()
                                         val encodedFileName = fileName.toBase64()
                                         val encodedConnectionName = (webDavConnection.name ?: "").toBase64()
                                         ListItem(
@@ -262,7 +263,7 @@ fun WebDavFileListScreen(
                                                 coroutineScope.launch {
                                                     if (isDirectory) {
                                                         val rawNewPath = "${path?.trimEnd('/') ?:""}/${fileName.trimEnd('/').trimStart('/')}/"
-                                                        val encodedNewPath = rawNewPath.toBase64()
+                                                        val encodedNewPath = Tools.encodeWebDavUri(rawNewPath).toBase64()
                                                         val encodedUsername = (webDavConnection.username ?: "").toBase64()
                                                         val encodedPassword = (webDavConnection.password ?: "").toBase64()
                                                         val encodedName = (webDavConnection.name ?: "").toBase64()
@@ -280,7 +281,8 @@ fun WebDavFileListScreen(
                                                                     !webdavFile.isDirectory && Tools.containsVideoFormat(Tools.extractFileExtension(webdavFile.name))
                                                                 }
                                                                 val videoItems = videoFiles.map { webdavFile ->
-                                                                    val videoUrl = "${authenticatedUrl}/${webdavFile.name.trimEnd('/').trimStart('/')}"
+                                                                    val rawVideoUrl = "${authenticatedUrl}/${webdavFile.name.trimEnd('/').trimStart('/')}"
+                                                                    val videoUrl = Tools.encodeWebDavUri(rawVideoUrl)
                                                                     VideoItem(
                                                                         uri = videoUrl,
                                                                         fileName = webdavFile.name,
@@ -337,10 +339,11 @@ fun WebDavFileListScreen(
                                                                 }
                                                                 val audioItems =
                                                                     audioFiles.map { webdavFile ->
+                                                                        val rawAudioUrl = "${authenticatedUrl}/${
+                                                                            webdavFile.name.trimEnd('/').trimStart('/')
+                                                                        }"
                                                                         AudioItem(
-                                                                            uri = "${authenticatedUrl}/${
-                                                                                webdavFile.name.trimEnd('/').trimStart('/')
-                                                                            }",
+                                                                            uri = Tools.encodeWebDavUri(rawAudioUrl),
                                                                             fileName = webdavFile.name,
                                                                             dataSourceType = "WEBDAV"
                                                                         )
@@ -500,10 +503,10 @@ fun WebDavFileListScreen(
                                                                         )
                                                                     )
                                                         }.map { file ->
-                                                            val uri = "${authenticatedUrl}/${
+                                                            val rawUri = "${authenticatedUrl}/${
                                                                 file.name.trimEnd('/').trimStart('/')
                                                             }"
-                                                            file.name to uri
+                                                            file.name to Tools.encodeWebDavUri(rawUri)
                                                         }
                                                     }
 
@@ -555,9 +558,10 @@ fun WebDavFileListScreen(
 
                                                 // 2. 只有文件名和URI是必须的
                                                 val list = audioFiles.map {
-                                                    it.name to "${authenticatedUrl}/${
+                                                    val rawUri = "${authenticatedUrl}/${
                                                         it.name.trimEnd('/').trimStart('/')
                                                     }"
+                                                    it.name to Tools.encodeWebDavUri(rawUri)
                                                 }
 
                                                 // 3. 直接调用，瞬间完成

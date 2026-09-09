@@ -450,7 +450,7 @@
     <string name="ui_label_no_image">No Image</string>
     <string name="ui_label_no_poster">No Poster</string>
     <string name="ui_label_subtitle_off">Turn off Subtitles</string>
-    <string name="ui_label_subtitle_file_not_found_hint">(File not found, may be buffering)</string>
+    <string name="ui_label_subtitle_file_not_found_hint">(External)</string>
     <string name="ui_label_auto_subtitle_found">Auto-loaded %1$d subtitle(s) with the same name</string>
 
     <string name="ui_label_author">Author</string>
@@ -459,6 +459,13 @@
     <string name="ui_label_official_website">Official Website</string>
     <string name="ui_label_copyright">Copyright © 2026 MZHSY. All Rights Reserved.</string>
     <string name="ui_label_disclaimer">Disclaimer: This software is for learning and exchange purposes only. No media resources are provided.</string>
+
+    <string name="pic_viewer_zoom_in">Zoom In</string>
+    <string name="pic_viewer_zoom_out">Zoom Out</string>
+    <string name="pic_viewer_rotate_left">Rotate Left</string>
+    <string name="pic_viewer_rotate_right">Rotate Right</string>
+    <string name="pic_viewer_scale_mode">Scale Mode</string>
+    <string name="pic_viewer_reset">Reset</string>
 
     <string name="ui_label_home">Home</string>
     <string name="ui_label_recently_watched">Recently Watched</string>
