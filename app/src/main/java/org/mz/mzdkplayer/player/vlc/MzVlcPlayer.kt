@@ -128,9 +128,9 @@ class MzVlcPlayer(
 
 // 动态 caching（本地快，网络稳）
 
-        "--file-caching=${if (!isNetworkProtocol) 500 else 1200}",
+        "--file-caching=${if (!isNetworkProtocol) 200 else 1200}",
 
-        "--network-caching=200",
+        "--network-caching=100",
 
         "--clock-jitter=0",
 

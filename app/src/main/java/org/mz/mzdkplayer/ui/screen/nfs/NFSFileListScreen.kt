@@ -234,7 +234,7 @@ fun NFSFileListScreen(
                 // 显示错误信息
                 val errorMessage = (connectionStatus as FileConnectionStatus.Error).message
                 VAErrorScreen(
-                    "${stringResource(R.string.ui_label_loading_failed,errorMessage)}",
+                    stringResource(R.string.ui_label_loading_failed,errorMessage),
                 )
                 // 可以添加一个重试按钮
             }
@@ -474,6 +474,8 @@ fun NFSFileListScreen(
                                 focusedMovie = focusedMovie,
                                 focusedFileName = focusedFileName,
                                 focusedIsDir = focusedIsDir,
+                                focusedMediaUri = focusedMediaUri,
+                                focusedDataSourceType = "NFS",
                                 modifier = Modifier.weight(1f),
                                 onMediaIdResolved = { id ->
                                     mediaId = id // 更新父组件持有的状态，供 ListItem 点击逻辑使用

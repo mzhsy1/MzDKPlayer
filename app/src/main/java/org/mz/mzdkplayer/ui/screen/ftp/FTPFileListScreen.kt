@@ -460,6 +460,8 @@ fun FTPFileListScreen(
                                 focusedMovie = focusedMovie,
                                 focusedFileName = focusedFileName,
                                 focusedIsDir = focusedIsDir,
+                                focusedMediaUri = focusedMediaUri,
+                                focusedDataSourceType = "FTP",
                                 modifier = Modifier.weight(1f),
                                 onMediaIdResolved = { id ->
                                     mediaId = id // 更新父组件持有的状态，供 ListItem 点击逻辑使用

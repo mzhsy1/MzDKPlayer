@@ -3,6 +3,10 @@ package org.mz.mzdkplayer.ui.picviewer
 
 
 import android.net.Uri
+import android.webkit.MimeTypeMap
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import coil3.ImageLoader
 import coil3.decode.DataSource
 import coil3.decode.ImageSource
@@ -22,8 +26,38 @@ import java.io.InputStream
 // 1. 数据包装类保持不变
 data class RemoteMedia(
     val uri: String,
-    val type: String // "SMB", "FTP", "WEBDAV", "NFS", "LOCAL"
+    val type: String // "SMB", "FTP", "WEBDAV", "NFS", "LOCAL", "HTTP"
 )
+
+/**
+ * 创建/复用支持远程协议的 ImageLoader。
+ *
+ * ⚠️ 注意：SMB / FTP / NFS / WEBDAV 这些自定义 scheme 无法被 Coil 内置的
+ * Fetcher 处理，必须使用带 [RemoteMediaFetcher] 的 ImageLoader，
+ * 并且 model 必须传 [RemoteMedia]（不能只传 String 的 URI）。
+ */
+@Composable
+fun rememberRemoteMediaImageLoader(): ImageLoader {
+    val context = LocalContext.current
+    return remember(context) {
+        ImageLoader.Builder(context)
+            .components {
+                add(RemoteMediaFetcher.Factory())
+            }
+            .build()
+    }
+}
+
+/** 根据文件名后缀猜测 MIME 类型，兜底 image/jpeg */
+private fun guessMimeType(uri: String): String {
+    val extension = uri.substringAfterLast('/').substringAfterLast('.', "")
+        .substringBefore('?')
+        .lowercase()
+    if (extension.isEmpty()) return "image/jpeg"
+    return MimeTypeMap.getSingleton()
+        .getMimeTypeFromExtension(extension)
+        ?: "image/jpeg"
+}
 
 // 2. 修正后的 Fetcher
 class RemoteMediaFetcher(
@@ -64,7 +98,8 @@ class RemoteMediaFetcher(
                 source = bufferedSource,
                 fileSystem = FileSystem.SYSTEM // 必传参数，用于创建临时文件
             ),
-            mimeType = "image/jpeg", // 你也可以根据文件名后缀判断，或者传 null 让 Coil 自己猜
+            // 根据后缀推断，避免 png/webp 被强制当成 jpeg 而选错解码器
+            mimeType = guessMimeType(data.uri),
             dataSource = DataSource.NETWORK
         )
     }

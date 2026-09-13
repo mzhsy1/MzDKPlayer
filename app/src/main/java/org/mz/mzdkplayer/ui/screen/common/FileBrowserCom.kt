@@ -1,5 +1,6 @@
 package org.mz.mzdkplayer.ui.screen.common
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -27,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -41,12 +43,16 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.model.MediaItem
 import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.Tools.VideoBigIcon
 import org.mz.mzdkplayer.tool.Tools.formatFileSize
+import org.mz.mzdkplayer.ui.picviewer.RemoteMedia
+import org.mz.mzdkplayer.ui.picviewer.rememberRemoteMediaImageLoader
 import kotlin.Boolean
 
 @Composable
@@ -229,8 +235,10 @@ fun MediaPreviewSection(
     focusedMovie: Resource<MediaItem?>,
     focusedFileName: String?,
     focusedIsDir: Boolean,
+    onMediaIdResolved: (Int) -> Unit, // 新增回调：当解析出电影 ID 时通知外部
     modifier: Modifier = Modifier,
-    onMediaIdResolved: (Int) -> Unit // 新增回调：当解析出电影 ID 时通知外部
+    focusedMediaUri: String? = null, // 新增：当前焦点的媒体 URI
+    focusedDataSourceType: String = "LOCAL", // 新增：数据源类型，用于远程图片预览
 ) {
         Column(
             modifier = modifier, // 使用传入的 modifier
@@ -244,6 +252,15 @@ fun MediaPreviewSection(
                     .padding(top = 20.dp),
                 contentAlignment = Alignment.Center
             ) {
+                // 判断是否是图片文件
+                val isImage = focusedFileName?.let {
+                    Tools.containsImageFileExtension(Tools.extractFileExtension(it))
+                } == true
+                // 图片 + 有效 URI 才走图片预览
+                val previewUri = focusedMediaUri?.takeIf { isImage && it.isNotBlank() }
+
+                Log.d("FileBrowserCom", "focusedFileName: $focusedFileName, isImage: $isImage, focusedMediaUri: $focusedMediaUri")
+
                 when (focusedMovie) {
                     is Resource.Success -> {
                         val movie = focusedMovie.data
@@ -254,8 +271,10 @@ fun MediaPreviewSection(
                                 onMediaIdResolved(movie.id)
                             }
 
-                            if (movie.posterPath != null) {
-                                Box(
+                            when {
+                                // 图片文件优先显示图片本身，避免被同名电影的刮削海报"抢"走
+                                previewUri != null -> ImagePreview(previewUri, focusedFileName, focusedDataSourceType)
+                                movie.posterPath != null -> Box(
                                     Modifier.border(
                                         width = 2.dp,
                                         color = Color.Gray.copy(alpha = 0.5f),
@@ -272,21 +291,33 @@ fun MediaPreviewSection(
                                             .clip(RoundedCornerShape(20.dp))
                                     )
                                 }
-                            } else {
-                                VideoBigIcon(focusedIsDir, focusedFileName, Modifier.fillMaxWidth().height(200.dp))
+                                else -> VideoBigIcon(focusedIsDir, focusedFileName, Modifier.fillMaxWidth().height(200.dp))
                             }
                         } else {
                             // 如果没有匹配到电影，通知父组件重置 mediaId
                             LaunchedEffect(Unit) { onMediaIdResolved(-1) }
-                            VideoBigIcon(focusedIsDir, focusedFileName, Modifier.fillMaxWidth().height(200.dp))
+                            if (previewUri != null) {
+                                ImagePreview(previewUri, focusedFileName, focusedDataSourceType)
+                            } else {
+                                VideoBigIcon(focusedIsDir, focusedFileName, Modifier.fillMaxWidth().height(200.dp))
+                            }
                         }
                     }
                     is Resource.Loading -> {
-                        MediaInfoLoading()
+                        // 图片是本地/远程直读，不需要等待 TMDB 刮削结果
+                        if (previewUri != null) {
+                            ImagePreview(previewUri, focusedFileName, focusedDataSourceType)
+                        } else {
+                            MediaInfoLoading()
+                        }
                     }
                     is Resource.Error -> {
                         LaunchedEffect(Unit) { onMediaIdResolved(-1) }
-                        VideoBigIcon(focusedIsDir, focusedFileName, Modifier.fillMaxWidth().height(200.dp))
+                        if (previewUri != null) {
+                            ImagePreview(previewUri, focusedFileName, focusedDataSourceType)
+                        } else {
+                            VideoBigIcon(focusedIsDir, focusedFileName, Modifier.fillMaxWidth().height(200.dp))
+                        }
                     }
                 }
             }
@@ -312,4 +343,34 @@ fun MediaPreviewSection(
             }
         }
 
+}
+
+@Composable
+fun ImagePreview(uri: String, fileName: String?, dataSourceType: String = "LOCAL") {
+    val context = LocalContext.current
+    // 必须使用带 RemoteMediaFetcher 的 ImageLoader，否则 SMB/FTP/NFS/WEBDAV 等
+    // 自定义 scheme 的 URI 无法被 Coil 解析，预览会一直空白
+    val imageLoader = rememberRemoteMediaImageLoader()
+
+    Box(
+        Modifier.border(
+            width = 2.dp,
+            color = Color.Gray.copy(alpha = 0.5f),
+            shape = RoundedCornerShape(20.dp)
+        )
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(RemoteMedia(uri, dataSourceType))
+                .crossfade(true)
+                .build(),
+            imageLoader = imageLoader,
+            contentDescription = fileName,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxHeight()
+                .align(Alignment.Center)
+                .clip(RoundedCornerShape(20.dp))
+        )
+    }
 }
