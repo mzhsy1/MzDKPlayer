@@ -14,12 +14,13 @@ gdxBackendAndroid = "1.14.2"
 gson = "2.14.0"
 converterGson = "3.0.0"
 jaudiotagger = "3.0.1"
+junit = "4.13.2"
 vlcAndroidMini = "3.7.0"
-kotlin = "2.4.10"
+kotlin = "2.4.20"
 coreKtx = "1.19.0"
 appcompat = "1.8.0"
 composeBom = "2026.09.00"
-libvlcAll = "3.7.5"
+libvlcAll = "3.7.6"
 logbackAndroid = "3.0.0"
 desugarJdkLibs = "2.1.5" # 检查是否有更新版本
 media3UiCompose = "1.11.1"
@@ -93,6 +94,7 @@ commons-net = { module = "commons-net:commons-net", version.ref = "commonsNet" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "converterGson" }
 jaudiotagger = { module = "net.jthink:jaudiotagger", version.ref = "jaudiotagger" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 logback-android = { module = "com.github.tony19:logback-android", version.ref = "logbackAndroid" }
 nfs-client = { module = "com.emc.ecs:nfs-client", version.ref = "nfsClient" }

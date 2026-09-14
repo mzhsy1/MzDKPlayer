@@ -85,10 +85,17 @@ import org.mz.mzdkplayer.ui.videoplayer.BackPress
 import java.io.InputStream
 import java.net.URL
 import java.util.Locale
+import kotlin.math.abs
 
 import kotlin.time.Duration.Companion.milliseconds
 
 // --- 主要 Composable ---
+
+/** 播放历史的定时落盘间隔：播放中每隔这么久写一次数据库 */
+private const val HISTORY_SAVE_INTERVAL_MS = 10_000L
+
+/** 相比上一次落盘，播放位置至少要推进这么多毫秒，才值得再写一次库 */
+private const val HISTORY_SAVE_MIN_DELTA_MS = 1_000L
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -136,27 +143,81 @@ fun AudioPlayerScreen(
         audioPlayerViewModel
     )
 
+    // ==================== 播放进度持久化 ====================
+    // 上一次写入数据库的播放位置，用于给「定时保存」去重，避免同一进度反复写库
+    var lastSavedPosition by remember { mutableLongStateOf(-1L) }
+    // 上一次落盘对应的曲目，换歌后用它重置去重基准（否则会拿上一首的位置和新歌比较）
+    var lastSavedUri by remember { mutableStateOf(currentMediaUri) }
+
+    // 统一的历史保存入口：「定时保存」和「退出保存」共用同一份逻辑。
+    // 注意这里用 currentMediaUri / currentFileName（由 onMediaItemTransition 实时维护），
+    // 而不是入参 mediaUri / fileName —— 后者永远是进入播放页时的第一首，
+    // 换歌后会把当前进度写到第一首的记录上。
+    val savePlaybackHistory: () -> Unit = {
+        // 1. 获取播放器当前状态
+        val currentPos = exoPlayer.currentPosition
+        val totalDur = exoPlayer.duration
+
+        // 2. 只要播放过（进度 > 0）且总时长有效，才保存
+        if (currentPos > 0 && totalDur > 0) {
+            val record = MediaHistoryRecord(
+                mediaUri = currentMediaUri,
+                fileName = currentFileName,
+                playbackPosition = currentPos,
+                mediaDuration = totalDur,
+                // 处理协议名称显示的逻辑
+                protocolName = if (dataSourceType == "LOCAL") "LOCAL" else dataSourceType,
+                connectionName = connectionName,
+                serverAddress = "test", // 如果你有真实的 server IP，请传入，否则留空或用占位符
+                mediaType = "AUDIO",    // 明确标记为音频
+                timestamp = System.currentTimeMillis()
+            )
+
+            // 3. 调用 ViewModel 保存 (ViewModel 内部会启动协程写入数据库)
+            mediaHistoryViewModel.saveHistory(record)
+
+            // 4. 记下这次落盘的曲目和位置，供定时任务去重
+            lastSavedPosition = currentPos
+            lastSavedUri = currentMediaUri
+        }
+    }
+
+    // 让定时任务始终能拿到最新一版的保存逻辑
+    val currentSavePlaybackHistory by rememberUpdatedState(savePlaybackHistory)
+
+    // 定时保存：播放中每隔 HISTORY_SAVE_INTERVAL_MS 落一次盘。
+    // 这样即使崩溃、断电或被系统回收进程，最多也只会丢一个间隔的进度，而不是整段收听记录。
+    LaunchedEffect(exoPlayer) {
+        while (true) {
+            delay(HISTORY_SAVE_INTERVAL_MS)
+
+            // 换歌了：重置去重基准，避免拿上一首的位置和新曲目做减法
+            if (currentMediaUri != lastSavedUri) {
+                lastSavedPosition = -1L
+                lastSavedUri = currentMediaUri
+            }
+
+            // 只有真正在播放时才写。
+            // ExoPlayer 的 isPlaying 等价于 playWhenReady && playbackState == STATE_READY，
+            // 所以能走到这里时 duration / currentPosition 一定属于「当前曲目」，不会串到上一首；
+            // 而换歌瞬间 onMediaItemTransition 触发时播放器会先转 BUFFERING（isPlaying = false），
+            // 这段过渡窗口天然被跳过，不会把上一首的时长写到新曲目上。
+            if (!exoPlayer.isPlaying) continue
+
+            // 进度几乎没往前走（例如卡在同一帧），这次就没必要写库
+            val currentPos = exoPlayer.currentPosition
+            if (currentPos <= 0) continue
+            if (abs(currentPos - lastSavedPosition) < HISTORY_SAVE_MIN_DELTA_MS) continue
+
+            currentSavePlaybackHistory()
+        }
+    }
+
+    // 当 Composable 离开组合时：先落盘，再释放资源
     DisposableEffect(Unit) {
         onDispose {
-            // 1. 获取播放器当前状态
-            val currentPos = exoPlayer.currentPosition
-            val totalDur = exoPlayer.duration
-            if (currentPos > 0 && totalDur > 0) {
-                val record = MediaHistoryRecord(
-                    mediaUri = mediaUri,
-                    fileName = fileName,
-                    playbackPosition = currentPos,
-                    mediaDuration = totalDur,
-                    // 处理协议名称显示的逻辑
-                    protocolName = if (dataSourceType == "LOCAL") "LOCAL" else dataSourceType,
-                    connectionName = connectionName,
-                    serverAddress = "test", // 如果你有真实的 server IP，请传入，否则留空或用占位符
-                    mediaType = "AUDIO",    // 明确标记为视频
-                    timestamp = System.currentTimeMillis()
-                )
-                // 3. 调用 ViewModel 保存 (ViewModel 内部会启动协程写入数据库)
-                mediaHistoryViewModel.saveHistory(record)
-            }
+            // 退出前最后保存一次，保证库里是最新位置（播放到结尾、暂停后退出等场景）
+            savePlaybackHistory()
 
             exoPlayer.release()
             // 彻底释放协议层的全局静态连接

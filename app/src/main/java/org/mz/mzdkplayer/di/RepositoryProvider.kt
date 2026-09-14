@@ -9,6 +9,7 @@ import org.mz.mzdkplayer.data.repository.RoomMediaHistoryRepository // 👈 记�
 import org.mz.mzdkplayer.ui.screen.vm.AudioViewModel
 import org.mz.mzdkplayer.ui.screen.vm.MediaHistoryViewModel
 import org.mz.mzdkplayer.ui.screen.vm.MediaLibraryViewModel
+import org.mz.mzdkplayer.ui.screen.vm.MediaMetaViewModel
 import org.mz.mzdkplayer.ui.screen.vm.MovieViewModel
 import org.mz.mzdkplayer.ui.screen.vm.PerformanceTestViewModel
 import org.mz.mzdkplayer.ui.screen.vm.SearchViewModel
@@ -35,6 +36,11 @@ object RepositoryProvider {
     fun createMediaLibraryViewModel(): MediaLibraryViewModel {
         val db = database ?: throw IllegalStateException("RepositoryProvider.init(context) must be called before creating ViewModels")
         return MediaLibraryViewModel(db.mediaDao(), RoomMediaHistoryRepository(db.mediaHistoryDao()))
+    }
+
+    fun createMediaMetaViewModel(): MediaMetaViewModel {
+        val db = database ?: throw IllegalStateException("RepositoryProvider.init(context) must be called before creating ViewModels")
+        return MediaMetaViewModel(db.mediaDao())
     }
 
     fun createSearchViewModel(): SearchViewModel {

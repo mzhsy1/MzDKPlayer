@@ -240,58 +240,6 @@ private fun putIfNotNull(map: MutableMap<String, String>, key: String, value: St
     }
 }
 
-// 使用示例
-//fun exampleUsage(focusedIsDir: Boolean, focusedFileName: String, focusedMediaUri: String, context: Context) {
-//    if (!focusedIsDir && Tools.containsVideoFormat(
-//            Tools.extractFileExtension(focusedFileName)
-//        )) {
-//        Log.d("focusedIsDir", false.toString())
-//        Log.d("focusedIsDir","获取媒体信息")
-//        val exoPlayer = builderPlayer(mediaUri = focusedMediaUri, context, dataSourceType = "SMB")
-//
-//        // 使用回调方式获取媒体信息
-//        setupPlayer(
-//            exoPlayer,
-//            focusedMediaUri,
-//            "SMB",
-//            context,
-//            onMediaInfoReady = { mediaInfoMap ->
-//                // 在这里处理获取到的媒体信息
-//                Log.d("focusedIsDir", mediaInfoMap.toString())
-//
-//                // 可以在这里使用媒体信息进行后续操作
-//                // 例如更新UI、保存到数据库等
-//            },
-//            onError = { errorMessage ->
-//                // 在发生错误时处理
-//                Log.e("focusedIsDir", "Error occurred: $errorMessage")
-//
-//                // 可以返回一个包含错误信息的map或执行其他错误处理
-//                val errorMap = mutableMapOf<String, String>()
-//                errorMap["Error"] = errorMessage
-//                Log.d("focusedIsDir", errorMap.toString())
-//            }
-//        )
-//    }
-//}
-//
-//// 模拟的Tools类，用于编译
-//object Tools {
-//    fun containsVideoFormat(extension: String): Boolean {
-//        val videoExtensions = listOf("mp4", "avi", "mkv", "mov", "wmv", "flv", "webm", "m4v")
-//        return videoExtensions.contains(extension.lowercase())
-//    }
-//
-//    fun extractFileExtension(fileName: String): String {
-//        return fileName.substringAfterLast('.', "")
-//    }
-//}
-//
-//// 模拟的数据源工厂类，用于编译
-//class SmbDataSourceFactory
-//class WebDavDataSourceFactory
-//class FtpDataSourceFactory
-//class NFSDataSourceFactory
 
 
 

@@ -2,10 +2,8 @@ package org.mz.mzdkplayer.ui.videoplayer
 
 // 导入必要的库和组件
 
-import android.app.Activity
 import android.net.TrafficStats
 import android.view.KeyEvent
-import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
@@ -32,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
@@ -86,6 +85,7 @@ import org.mz.mzdkplayer.danmaku.DanmakuResponse
 import org.mz.mzdkplayer.danmaku.getDanmakuXmlFromFile
 import org.mz.mzdkplayer.data.model.DanmakuScreenRatio
 import org.mz.mzdkplayer.data.model.MediaHistoryRecord
+import org.mz.mzdkplayer.di.RepositoryProvider
 
 import org.mz.mzdkplayer.data.repository.DanmakuSettingsManager
 import org.mz.mzdkplayer.player.core.IMzPlayer
@@ -94,10 +94,14 @@ import org.mz.mzdkplayer.player.core.autoLoadSameNameSubtitles
 import org.mz.mzdkplayer.player.exo.MzExoPlayer
 import org.mz.mzdkplayer.player.vlc.MzVlcPlayer
 import org.mz.mzdkplayer.tool.FtpDataSource
+import org.mz.mzdkplayer.tool.FileTimeResolver
+import org.mz.mzdkplayer.tool.KeepScreenOnManager
+import org.mz.mzdkplayer.tool.PlayerMediaText
 import org.mz.mzdkplayer.tool.SmbDataSource
 import org.mz.mzdkplayer.tool.SmbUtils
 import org.mz.mzdkplayer.tool.SubtitleView
 import org.mz.mzdkplayer.tool.Tools
+import org.mz.mzdkplayer.tool.findActivity
 import org.mz.mzdkplayer.tool.Tools.toSafeInt
 import org.mz.mzdkplayer.tool.Tools.toBase64
 import org.mz.mzdkplayer.data.repository.VideoPlaylistRepository
@@ -110,10 +114,12 @@ import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.common.VAErrorScreen
 import org.mz.mzdkplayer.ui.screen.common.showToast
 import org.mz.mzdkplayer.ui.screen.vm.MediaHistoryViewModel
+import org.mz.mzdkplayer.ui.screen.vm.MediaMetaViewModel
 import org.mz.mzdkplayer.ui.screen.vm.SettingsViewModel
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerStatus
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerViewModel
 import org.mz.mzdkplayer.ui.screen.vm.asDisplayString
+import org.mz.mzdkplayer.tool.viewModelWithFactory
 import org.mz.mzdkplayer.ui.theme.myIconButtonColor
 import org.mz.mzdkplayer.ui.videoplayer.components.AkDanmakuPlayer
 import org.mz.mzdkplayer.ui.videoplayer.components.AudioTrackPanel
@@ -148,6 +154,12 @@ import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
 import androidx.compose.ui.platform.LocalLocale
 
+/** 播放历史的定时落盘间隔：播放中每隔这么久写一次数据库 */
+private const val HISTORY_SAVE_INTERVAL_MS = 10_000L
+
+/** 相比上一次落盘，播放位置至少要推进这么多毫秒，才值得再写一次库 */
+private const val HISTORY_SAVE_MIN_DELTA_MS = 1_000L
+
 /**
  * 视频播放器主界面 Composable
  *
@@ -169,12 +181,15 @@ fun VideoPlayerScreen(
     // 获取当前 Compose 上下文
     val context = LocalContext.current
 
-    // 防止屏保弹出：进入播放器时设置 FLAG_KEEP_SCREEN_ON，退出时清除
-    val activity = context as? Activity
-    DisposableEffect(Unit) {
-        activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    // 防止屏保弹出：进入播放器时设置 FLAG_KEEP_SCREEN_ON，退出时清除。
+    // 注意用引用计数管理：NavHost 切集时有 700ms 动画，新旧播放页会同时存在，
+    // 新页面 addFlags 后旧页面 onDispose 又 clearFlags，会把正在播放的页面清掉，
+    // 详见 KeepScreenOnManager 的注释。
+    val activity = context.findActivity()
+    DisposableEffect(activity) {
+        KeepScreenOnManager.acquire(activity?.window)
         onDispose {
-            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            KeepScreenOnManager.release(activity?.window)
         }
     }
 
@@ -191,6 +206,29 @@ fun VideoPlayerScreen(
     val videoPlayerState = rememberVideoPlayerState(hideSeconds = 6)
     // 获取 ViewModel 实例
     val videoPlayerViewModel: VideoPlayerViewModel = viewModel()
+
+    // 刮削信息（只读 media_cache 表）：用于把文件名替换成刮削后的标题
+    val mediaMetaViewModel: MediaMetaViewModel = viewModelWithFactory {
+        RepositoryProvider.createMediaMetaViewModel()
+    }
+    val mediaMeta by mediaMetaViewModel.mediaMeta.collectAsState()
+    // 状态：当前文件的「文件时间」（最后修改时间），0 表示未知
+    var fileTimeMillis by remember { mutableLongStateOf(0L) }
+
+    // 查询刮削信息 + 文件时间（只读，失败不影响正常播放）
+    LaunchedEffect(mediaUri, dataSourceType) {
+        mediaMetaViewModel.load(mediaUri)
+        fileTimeMillis = FileTimeResolver.resolve(mediaUri, dataSourceType) ?: 0L
+    }
+
+    // 播放界面展示的标题与日期：有刮削信息时用刮削标题，否则回退到文件名
+    val displayTitle = remember(fileName, mediaMeta) {
+        PlayerMediaText.buildTitle(mediaMeta, fileName)
+    }
+    val displayDateText = remember(fileTimeMillis) {
+        PlayerMediaText.buildFileDateText(fileTimeMillis)
+    }
+
     // 状态：是否显示 Toast 提示
     var showToast by remember { mutableStateOf(false) }
     // 状态：返回按钮按压状态，用于双击退出逻辑
@@ -257,34 +295,69 @@ fun VideoPlayerScreen(
     val currentAspectRatio by player.aspectRatio.collectAsState()
     // 构建播放器 (设置媒体源等)
     //BuilderMzPlayer(context, mediaUri, exoPlayer, dataSourceType, settingsViewModel)
-    // 当 Composable 离开组合或播放器实例变化时，释放资源
+
+    // ==================== 播放进度持久化 ====================
+    // 上一次写入数据库的播放位置，用于给「定时保存」去重，避免同一进度反复写库
+    var lastSavedPosition by remember { mutableLongStateOf(-1L) }
+
+    // 统一的历史保存入口：「定时保存」和「退出保存」共用同一份逻辑
+    val savePlaybackHistory: () -> Unit = {
+        // 1. 获取播放器当前状态
+        val currentPos = player.currentPosition
+        val totalDur = player.duration
+
+        // 2. 构建历史记录对象
+        // 只要播放过（进度 > 0）且总时长有效，才保存
+        if (currentPos > 0 && totalDur > 0) {
+            val record = MediaHistoryRecord(
+                mediaUri = mediaUri,
+                fileName = fileName,
+                playbackPosition = currentPos,
+                mediaDuration = totalDur,
+                // 处理协议名称显示的逻辑
+                protocolName = if (dataSourceType == "LOCAL") "LOCAL" else dataSourceType,
+                connectionName = connectionName,
+                serverAddress = "test", // 如果你有真实的 server IP，请传入，否则留空或用占位符
+                mediaType = "VIDEO",    // 明确标记为视频
+                timestamp = System.currentTimeMillis()
+            )
+
+            // 3. 调用 ViewModel 保存 (ViewModel 内部会启动协程写入数据库)
+            mediaHistoryViewModel.saveHistory(record)
+
+            // 4. 记下这次落盘的位置，供定时任务去重
+            lastSavedPosition = currentPos
+        }
+    }
+
+    // 让定时任务始终能拿到最新一版的保存逻辑，避免闭包捕获到旧的 player / mediaUri
+    val currentSavePlaybackHistory by rememberUpdatedState(savePlaybackHistory)
+
+    // 定时保存：播放中每隔 HISTORY_SAVE_INTERVAL_MS 落一次盘。
+    // 这样即使崩溃、断电或被系统回收进程，最多也只会丢一个间隔的进度，而不是整段观看记录。
+    LaunchedEffect(player, mediaUri) {
+        while (true) {
+            delay(HISTORY_SAVE_INTERVAL_MS)
+
+            // 只有真正在播放时才写：暂停 / 缓冲 / 加载中不写，避免把有效进度覆盖成无效值
+            if (!player.isPlaying) continue
+
+            // 进度几乎没往前走（例如卡在同一帧），这次就没必要写库
+            val currentPos = player.currentPosition
+            if (currentPos <= 0) continue
+            if (abs(currentPos - lastSavedPosition) < HISTORY_SAVE_MIN_DELTA_MS) continue
+
+            currentSavePlaybackHistory()
+        }
+    }
+
+    // 当 Composable 离开组合或播放器实例变化时：先落盘，再释放资源
     DisposableEffect(player, mDanmakuPlayer) {
         onDispose {
-            // 1. 获取播放器当前状态
-            val currentPos = player.currentPosition
-            val totalDur = player.duration
+            // 退出前最后保存一次，保证库里是最新位置（播放到结尾、暂停后退出等场景）
+            savePlaybackHistory()
 
-            // 2. 构建历史记录对象
-            // 只要播放过（进度 > 0）且总时长有效，才保存
-            if (currentPos > 0 && totalDur > 0) {
-                val record = MediaHistoryRecord(
-                    mediaUri = mediaUri,
-                    fileName = fileName,
-                    playbackPosition = currentPos,
-                    mediaDuration = totalDur,
-                    // 处理协议名称显示的逻辑
-                    protocolName = if (dataSourceType == "LOCAL") "LOCAL" else dataSourceType,
-                    connectionName = connectionName,
-                    serverAddress = "test", // 如果你有真实的 server IP，请传入，否则留空或用占位符
-                    mediaType = "VIDEO",    // 明确标记为视频
-                    timestamp = System.currentTimeMillis()
-                )
-
-                // 3. 调用 ViewModel 保存 (ViewModel 内部会启动协程写入数据库)
-                mediaHistoryViewModel.saveHistory(record)
-            }
-
-            // 4. 释放资源
+            // 释放资源
             player.release()
             mDanmakuPlayer.release()
         }
@@ -677,7 +750,8 @@ fun VideoPlayerScreen(
                 pulseState = pulseState,
                 currentPositionProvider = { contentCurrentPosition },
                 player = player,
-                fileName = fileName,
+                mediaTitle = displayTitle,
+                mediaDateText = displayDateText,
                 statusText = statusText,
                 mDanmakuPlayer = mDanmakuPlayer,
                 settingsManager = settingsManager,

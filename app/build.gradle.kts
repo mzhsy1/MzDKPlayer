@@ -15,8 +15,8 @@ android {
         applicationId = "org.mz.mzdkplayer"
         minSdk = 23
         targetSdk = 37
-        versionCode = 111
-        versionName = "1.17.3"
+        versionCode = 112
+        versionName = "1.17.4"
         ndk {
             //noinspection ChromeOsAbiSupport
             abiFilters += listOf("armeabi-v7a", "arm64-v8a","x86")
@@ -176,6 +176,8 @@ dependencies {
     implementation(libs.nfs.client)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
+    // JVM 单元测试
+    testImplementation(libs.junit)
     implementation(libs.androidx.ui.tooling)
     coreLibraryDesugaring(libs.desugarJdkLibs)
     debugImplementation(libs.androidx.ui.test.manifest)
