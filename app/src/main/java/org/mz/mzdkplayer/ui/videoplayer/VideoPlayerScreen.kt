@@ -625,6 +625,14 @@ fun VideoPlayerScreen(
             videoPlayerViewModel.updatePlayerStatus(playerStatus)
         }
     }
+
+    // 字幕时间轴偏移：Exo 在构造播放器时就已经带上了保存的偏移量（值没变就不会重建媒体源），
+    // 这里主要是让 VLC 在媒体就绪之后补设一次——媒体加载之前设 spu-delay 会被丢掉。
+    LaunchedEffect(playerStatus) {
+        if (playerStatus == VideoPlayerStatus.READY) {
+            player.setSubtitleDelay(settingsState.subtitleDelayMs)
+        }
+    }
     // 3. 设置错误回调
     DisposableEffect(player) {
         player.onError = { msg ->

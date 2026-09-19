@@ -52,6 +52,8 @@
   - ✅ HTTP protocol (Supported via NGINX servers)
 - 🎚️ **Track Selection** - Supports switching audio, video, and subtitle tracks, playback speed control, and audio software/hardware decoding.
 - 🔤 **Subtitle Customization** - Text-based subtitles (ExoPlayer) support custom font, size, color, background color, and bottom padding.
+- 🔤 **Subtitle Timing** - Shift subtitles earlier or later (0.5 s steps, up to ±30 s). With the ExoPlayer engine this applies to text subtitles only; graphic subtitles such as PGS are not supported.
+- 🧠 **Playback Preference Memory** - Remember the audio track, subtitle track, playback speed and aspect ratio per file, and restore them the next time it is played.
 - 📱 **Phone Remote Control** - The app can start a LAN remote page; scan the QR code with your phone to use it as a remote.
 - 🌏 **Multi-language UI** - Simplified Chinese / English / Japanese / Traditional Chinese
 
@@ -96,7 +98,7 @@ MzDKPlayer supports audio passthrough, allowing raw audio signals (source) to be
 
 ---
 
-> ⚠️ **Note**: TMDB may require a proxy or Host modification for stable access in some regions. You can also set a mirror under `Settings -> Data Source & Scraping -> TMDB API Address (Mirror)`.
+> ⚠️ **Note**: TMDB may require a proxy or Host modification for stable access in some regions. You can also set a mirror under `Settings -> Scraping & Library -> TMDB API Address (Mirror)`.
 
 > 💡 Tip 1: If used frequently, it's recommended to set this player as the default video player in your TV system for a smoother experience.
 
@@ -274,15 +276,16 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 ### Example 4: TMDB scraping and local NFO
 
 - Movie / TV detail pages pull data from TMDB and need working network access plus an API key.
-- If a same-named `.nfo` file exists in the media directory, enable `Settings -> Data Source & Scraping -> Prefer local NFO files` to read it offline instead.
+- If a same-named `.nfo` file exists in the media directory, enable `Settings -> Scraping & Library -> Prefer local NFO files` to read it offline instead.
 - Scraping results are cached in the local database. The player title prefers the scraped name (episodes automatically get `SxxExx` and the year) and falls back to the file name when no scraped record exists.
-- Adjust the recursion depth for batch scanning under `Settings -> Data Source & Scraping -> Batch scan subfolder depth`.
+- Adjust the recursion depth for batch scanning under `Settings -> Scraping & Library -> Batch scan subfolder depth`.
 
 ### Example 5: Subtitles
 
 - Press the **Menu** key during playback to bring up the control bar, then open the subtitle menu to switch tracks.
-- With `Settings -> Subtitle Appearance -> Auto-load same-name subtitles` enabled, the player scans the video's directory and loads matching subtitles automatically.
+- With `Settings -> Subtitles -> Auto-load same-name subtitles` enabled, the player scans the video's directory and loads matching subtitles automatically.
 - Text-based subtitles (rendered by ExoPlayer) support custom font, size, color, background color, and bottom padding; fonts can be picked from a local folder.
+- When subtitles are out of sync, use **Subtitle timing** in the playback overlay to shift them in 0.5 s steps (up to ±30 s); `Settings -> Subtitles -> Subtitle timing` edits the very same value. Note that with the ExoPlayer engine this only works for text subtitles — switch to the VLC engine for PGS and other graphic subtitles.
 
 ### Example 6: Phone remote control by QR code
 
@@ -307,7 +310,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 | Down | Audio track selection (configurable) |
 | Back | Exit playback / collapse the control bar |
 
-> The Up and Down key behaviors can be customized under `Settings -> Playback & Video -> Remote Up Key / Remote Down Key`.
+> The Up and Down key behaviors can be customized under `Settings -> Remote & Input -> Remote Up Key / Remote Down Key`.
 
 ---
 

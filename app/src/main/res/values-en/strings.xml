@@ -5,9 +5,11 @@
     <string name="settings_title">App Settings</string>
     <string name="cat_general">General</string>
     <string name="cat_playback">Playback</string>
+    <string name="cat_remote">Remote &amp; Input</string>
     <string name="cat_audio">Audio</string>
     <string name="cat_subtitle">Subtitles</string>
-    <string name="cat_source">Sources &amp; Scraping</string>
+    <string name="cat_source">Sources</string>
+    <string name="cat_metadata">Scraping &amp; Library</string>
     <string name="cat_tools">Tools</string>
     <string name="cat_about">About</string>
 
@@ -44,6 +46,17 @@
     <string name="setting_default_player">Default Player Engine</string>
     <string name="setting_iso_playback_mode">ISO Blu-ray Playback Mode</string>
     <string name="setting_lock_video_ratio">Lock Video Ratio</string>
+    <string name="setting_global_video_ratio">Global Aspect Ratio</string>
+    <string name="setting_global_video_ratio_sub">Only effective when Lock Video Ratio is on; otherwise every playback starts from Fit</string>
+    <string name="setting_video_finish_action">On Playback Finished</string>
+    <string name="video_finish_loop">Loop</string>
+    <string name="video_finish_pause">Pause</string>
+    <string name="video_finish_next">Play Next</string>
+    <string name="ratio_auto_fit">Fit</string>
+    <string name="ratio_stretch">Stretch</string>
+    <string name="ratio_16_9">16:9</string>
+    <string name="ratio_4_3">4:3</string>
+    <string name="ratio_zoom">Crop to Fill</string>
     <string name="setting_dpad_up_action">Up Key Action</string>
     <string name="setting_dpad_down_action">Down Key Action</string>
     <string name="setting_ff_duration">Fast Forward Duration (sec)</string>
@@ -437,6 +450,7 @@
     <string name="unit_bps">B/s</string>
     <string name="unit_kbps">KB/s</string>
     <string name="unit_mbps">MB/s</string>
+    <string name="unit_seconds">s</string>
     <string name="ui_label_video_track">Video Track</string>
     <string name="ui_label_audio_track">Audio Track</string>
     <string name="ui_label_subtitle_select">Subtitle Selection</string>
@@ -474,5 +488,13 @@
     <string name="iso_playback_mode_default">Default playback settings (Try to show menu)</string>
     <string name="iso_playback_mode_main_movie">Play main movie directly</string>
     <string name="ui_label_play_season_episode_short">Play S%1$d E%2$d</string>
+
+    <string name="setting_subtitle_delay">Subtitle timing (+ delay / - advance)</string>
+    <string name="setting_remember_playback_pref">Remember playback preferences</string>
+    <string name="setting_remember_playback_pref_sub">Remember the audio track, subtitle track, playback speed and aspect ratio for each file and restore them next time it is played (aspect ratio is only remembered while &quot;Lock video ratio&quot; is off)</string>
+    <string name="ui_label_subtitle_delay">Subtitle timing</string>
+    <string name="ui_label_subtitle_delay_hint">+ delays subtitles, - advances them</string>
+    <string name="ui_label_subtitle_delay_text_only">With ExoPlayer this only applies to text subtitles; graphic subtitles such as PGS are not supported (not limited with the VLC engine)</string>
+    <string name="ui_label_reset">Reset</string>
 
 </resources>

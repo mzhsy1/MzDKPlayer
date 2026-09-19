@@ -107,6 +107,13 @@ fun RootSettingsPanel(
             }
             item {
                 SettingItem(
+                    title = stringResource(R.string.ui_label_subtitle_delay),
+                    icon = R.drawable.sync24dp,
+                    onClick = { videoPlayerViewModel.selectedAorVorS = "SUBTIME" }
+                )
+            }
+            item {
+                SettingItem(
                     title = stringResource(R.string.ui_label_speed),
                     icon = R.drawable.baseline_speed_24,
                     onClick = { videoPlayerViewModel.selectedAorVorS = "SPEED" }
@@ -135,7 +142,7 @@ fun RootSettingsPanel(
             }
             item {
                 SettingItem(
-                    title = "播放完成动作",
+                    title = stringResource(R.string.setting_video_finish_action),
                     icon = R.drawable.baseline_settings_24,
                     onClick = { videoPlayerViewModel.selectedAorVorS = "ACTION" }
                 )
@@ -300,6 +307,19 @@ fun BoxScope.VideoPlayerTrackSelectionPanel(
                             }
                             player.addExternalSubtitles(subList)
                         }
+                    }
+                )
+            }
+
+            "SUBTIME" -> {
+                val settingsState by settingsViewModel.uiState.collectAsState()
+                SubtitleTimingPanel(
+                    currentDelayMs = settingsState.subtitleDelayMs,
+                    useVlc = useVlc,
+                    onDelayChange = { newDelayMs ->
+                        // 设置页与这里共用同一个存储值，顺手同步给播放器即时生效
+                        settingsViewModel.setSubtitleDelayMs(newDelayMs)
+                        player.setSubtitleDelay(newDelayMs)
                     }
                 )
             }

@@ -5,9 +5,11 @@
     <string name="settings_title">設定</string>
     <string name="cat_general">一般設定</string>
     <string name="cat_playback">再生とビデオ</string>
+    <string name="cat_remote">リモコンと操作</string>
     <string name="cat_audio">オーディオ設定</string>
-    <string name="cat_subtitle">字幕の外観</string>
-    <string name="cat_source">ソースとスクレイピング</string>
+    <string name="cat_subtitle">字幕設定</string>
+    <string name="cat_source">ソース</string>
+    <string name="cat_metadata">スクレイピングとライブラリ</string>
     <string name="cat_tools">ツールと権限</string>
     <string name="cat_about">このアプリについて</string>
 
@@ -429,6 +431,7 @@
     <string name="unit_bps">B/s</string>
     <string name="unit_kbps">KB/s</string>
     <string name="unit_mbps">MB/s</string>
+    <string name="unit_seconds">秒</string>
     <string name="ui_label_video_track">ビデオトラック</string>
     <string name="ui_label_audio_track">オーディオトラック</string>
     <string name="ui_label_subtitle_select">字幕選択</string>
@@ -462,6 +465,17 @@
     <string name="setting_webdav_remove_first_item_sub">一部の WebDAV サービスは現在のディレクトリを最初の項目として返します。重複を避けるためにこれを有効にします</string>
     <string name="setting_iso_playback_mode">ISO ブルーレイ再生動作</string>
     <string name="setting_lock_video_ratio">ビデオ比率を固定</string>
+    <string name="setting_global_video_ratio">全体の画面比率</string>
+    <string name="setting_global_video_ratio_sub">「ビデオ比率を固定」がオンの場合のみ有効。オフの場合は毎回「自動」から開始します</string>
+    <string name="setting_video_finish_action">再生終了時の動作</string>
+    <string name="video_finish_loop">ループ再生</string>
+    <string name="video_finish_pause">一時停止</string>
+    <string name="video_finish_next">次の動画を再生</string>
+    <string name="ratio_auto_fit">自動</string>
+    <string name="ratio_stretch">画面いっぱいに伸縮</string>
+    <string name="ratio_16_9">16:9</string>
+    <string name="ratio_4_3">4:3</string>
+    <string name="ratio_zoom">切り抜き拡大</string>
     <string name="setting_ff_duration">早送り時間 (秒)</string>
     <string name="setting_rw_duration">巻き戻し時間 (秒)</string>
     <string name="ui_label_seek_duration">シーク時間</string>
@@ -476,5 +490,13 @@
     <string name="ui_label_recently_visited">最近アクセスした項目</string>
     <string name="ui_label_play_season_episode_short">S%1$d E%2$d を再生</string>
     <string name="ui_label_auto_subtitle_found">同名の字幕を %1$d 件自動読み込みしました</string>
+
+    <string name="setting_subtitle_delay">字幕タイミング（+ 遅らせる / − 早める）</string>
+    <string name="setting_remember_playback_pref">再生設定を記憶</string>
+    <string name="setting_remember_playback_pref_sub">ファイルごとに音声トラック・字幕トラック・再生速度・画面比を記憶し、次回の再生時に復元します（画面比は「画面比を固定」がオフのときのみ）</string>
+    <string name="ui_label_subtitle_delay">字幕タイミング</string>
+    <string name="ui_label_subtitle_delay_hint">+ で字幕が遅れ、− で早まります</string>
+    <string name="ui_label_subtitle_delay_text_only">ExoPlayer ではテキスト字幕のみ有効です（PGS などのグラフィック字幕は未対応。VLC エンジンでは制限されません）</string>
+    <string name="ui_label_reset">リセット</string>
 
 </resources>

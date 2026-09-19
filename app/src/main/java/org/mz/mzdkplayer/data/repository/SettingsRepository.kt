@@ -39,6 +39,12 @@ object SettingsRepository {
     // 第三方自定义字幕字体文件绝对路径（仅对 CustomSubtitleView 纯文本字幕生效）
     private const val KEY_SUB_FONT_PATH = "sub_font_path"
 
+    // 字幕时间轴偏移（毫秒）：正值=字幕延后出现，负值=字幕提前出现
+    private const val KEY_SUB_DELAY_MS = "sub_delay_ms"
+
+    // 是否按文件记住播放偏好（音轨/字幕轨/倍速/画面比例）
+    private const val KEY_REMEMBER_PLAYBACK_PREF = "remember_playback_pref"
+
     // 🔥 新增：自动加载同名字幕
     private const val KEY_AUTO_LOAD_SUBTITLE = "auto_load_subtitle"
 
@@ -156,6 +162,16 @@ object SettingsRepository {
     var subFontPath: String
         get() = prefs.getString(KEY_SUB_FONT_PATH, "") ?: ""
         set(value) = prefs.edit { putString(KEY_SUB_FONT_PATH, value) }
+
+    /** 字幕时间轴偏移（毫秒）。正值 = 字幕延后出现，负值 = 字幕提前出现 */
+    var subtitleDelayMs: Int
+        get() = prefs.getInt(KEY_SUB_DELAY_MS, 0)
+        set(value) = prefs.edit { putInt(KEY_SUB_DELAY_MS, value) }
+
+    /** 是否按文件记住播放偏好（音轨/字幕轨/倍速/画面比例） */
+    var rememberPlaybackPreference: Boolean
+        get() = prefs.getBoolean(KEY_REMEMBER_PLAYBACK_PREF, true)
+        set(value) = prefs.edit { putBoolean(KEY_REMEMBER_PLAYBACK_PREF, value) }
 
     var autoLoadSubtitle: Boolean
         get() = prefs.getBoolean(KEY_AUTO_LOAD_SUBTITLE, true)

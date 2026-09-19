@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,24 +27,23 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
+import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.tool.focusOnInitialVisibility
+import org.mz.mzdkplayer.ui.common.VIDEO_FINISH_ACTION_COUNT
+import org.mz.mzdkplayer.ui.common.formatVideoFinishAction
 import org.mz.mzdkplayer.ui.screen.vm.SettingsViewModel
 
 @Composable
 fun VideoFinishActionPanel(settingsViewModel: SettingsViewModel) {
     val settingsState by settingsViewModel.uiState.collectAsState()
     val currentAction = settingsState.videoFinishAction
-    val actions = listOf(
-        0 to "循环播放",
-        1 to "播放暂停",
-        2 to "播放下一个"
-    )
 
     val focusRequester = remember { FocusRequester() }
     val isVis = remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
-    val selectedIndex = actions.indexOfFirst { it.first == currentAction }.takeIf { it >= 0 } ?: 0
+    // 0 循环播放 / 1 播放暂停 / 2 播放下一个，与设置页「播放完成动作」共用同一套文案
+    val selectedIndex = currentAction.takeIf { it in 0 until VIDEO_FINISH_ACTION_COUNT } ?: 0
 
     LaunchedEffect(currentAction) {
         listState.animateScrollToItem(index = selectedIndex)
@@ -51,7 +51,7 @@ fun VideoFinishActionPanel(settingsViewModel: SettingsViewModel) {
 
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
-            text = "播放完成动作",
+            text = stringResource(R.string.setting_video_finish_action),
             fontWeight = FontWeight.Bold,
             color = Color.White,
             fontSize = 24.sp,
@@ -63,12 +63,11 @@ fun VideoFinishActionPanel(settingsViewModel: SettingsViewModel) {
                 .focusRequester(focusRequester),
             state = listState
         ) {
-            items(actions.size) { index ->
-                val (actionValue, actionName) = actions[index]
-                val isSelected = currentAction == actionValue
+            items(VIDEO_FINISH_ACTION_COUNT) { index ->
+                val isSelected = currentAction == index
                 ListItem(
                     selected = false,
-                    onClick = { settingsViewModel.setVideoFinishAction(actionValue) },
+                    onClick = { settingsViewModel.setVideoFinishAction(index) },
                     modifier = Modifier
                         .padding(horizontal = 12.dp, vertical = 4.dp)
                         .let {
@@ -81,9 +80,15 @@ fun VideoFinishActionPanel(settingsViewModel: SettingsViewModel) {
                         focusedContainerColor = Color.White,
                         focusedContentColor = Color.Black
                     ),
-                    headlineContent = { Text(actionName, fontWeight = FontWeight.Medium) },
+                    headlineContent = { Text(formatVideoFinishAction(index), fontWeight = FontWeight.Medium) },
                     leadingContent = if (isSelected) {
-                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp)) }
+                        {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = stringResource(R.string.ui_label_selected),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     } else null
                 )
             }

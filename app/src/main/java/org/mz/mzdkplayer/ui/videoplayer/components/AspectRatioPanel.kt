@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.player.core.MzAspectRatio
 import org.mz.mzdkplayer.tool.focusOnInitialVisibility
+import org.mz.mzdkplayer.ui.common.formatAspectRatio
 
 @Composable
 fun AspectRatioPanel(
@@ -104,10 +105,10 @@ fun AspectRatioPanel(
                         focusedContentColor = Color.Black
                     ),
                     headlineContent = {
-                        Text(ratio.description)
+                        Text(formatAspectRatio(ratio))
                     },
                     leadingContent = if (isSelected) {
-                        { Icon(Icons.Filled.Check, contentDescription = "已选择") }
+                        { Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.ui_label_selected)) }
                     } else null,
                     onClick = {
                         onRatioSelected(ratio)

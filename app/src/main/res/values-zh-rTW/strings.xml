@@ -5,9 +5,11 @@
     <string name="settings_title">應用程式設定</string>
     <string name="cat_general">一般設定</string>
     <string name="cat_playback">播放與影片</string>
+    <string name="cat_remote">遙控器與操作</string>
     <string name="cat_audio">音訊設定</string>
-    <string name="cat_subtitle">字幕外觀</string>
-    <string name="cat_source">數據源與刮削</string>
+    <string name="cat_subtitle">字幕設定</string>
+    <string name="cat_source">數據源</string>
+    <string name="cat_metadata">刮削與媒體庫</string>
     <string name="cat_tools">工具與權限</string>
     <string name="cat_about">關於軟體</string>
     <string name="setting_prioritize_nfo">優先載入本地 NFO 檔案</string>
@@ -39,6 +41,17 @@
     <string name="setting_default_player">預設播放器核心</string>
     <string name="setting_iso_playback_mode">ISO 藍光播放行為</string>
     <string name="setting_lock_video_ratio">鎖定影片比例</string>
+    <string name="setting_global_video_ratio">全域畫面比例</string>
+    <string name="setting_global_video_ratio_sub">僅在「鎖定影片比例」開啟時生效；關閉時每次播放都從自動適應開始</string>
+    <string name="setting_video_finish_action">播放完成動作</string>
+    <string name="video_finish_loop">循環播放</string>
+    <string name="video_finish_pause">播放暫停</string>
+    <string name="video_finish_next">播放下一個</string>
+    <string name="ratio_auto_fit">自動適應</string>
+    <string name="ratio_stretch">拉伸鋪滿</string>
+    <string name="ratio_16_9">16:9</string>
+    <string name="ratio_4_3">4:3</string>
+    <string name="ratio_zoom">裁剪填充</string>
     <string name="setting_dpad_up_action">遙控器上鍵功能</string>
     <string name="setting_dpad_down_action">遙控器下鍵功能</string>
     <string name="setting_ff_duration">快進時長 (秒)</string>
@@ -428,6 +441,7 @@
     <string name="unit_bps">B/s</string>
     <string name="unit_kbps">KB/s</string>
     <string name="unit_mbps">MB/s</string>
+    <string name="unit_seconds">秒</string>
     <string name="ui_label_video_track">影片軌道</string>
     <string name="ui_label_audio_track">音訊軌道</string>
     <string name="ui_label_subtitle_select">字幕選擇</string>
@@ -456,4 +470,12 @@
     <string name="pic_viewer_rotate_right">右旋轉</string>
     <string name="pic_viewer_scale_mode">縮放模式</string>
     <string name="pic_viewer_reset">重置</string>
+    <string name="setting_subtitle_delay">字幕時間軸（+ 延後 / − 提前）</string>
+    <string name="setting_remember_playback_pref">記住播放偏好</string>
+    <string name="setting_remember_playback_pref_sub">依檔案記住音軌、字幕軌、倍速與畫面比例，再次播放同一檔案時自動還原（畫面比例僅在未開啟「鎖定畫面比例」時記憶）</string>
+    <string name="ui_label_subtitle_delay">字幕時間軸</string>
+    <string name="ui_label_subtitle_delay_hint">+ 字幕延後出現，− 字幕提前出現</string>
+    <string name="ui_label_subtitle_delay_text_only">ExoPlayer 下僅對文字字幕生效，PGS 等圖形字幕尚未支援；VLC 引擎不受此限制</string>
+    <string name="ui_label_reset">歸零</string>
+
 </resources>

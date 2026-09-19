@@ -36,15 +36,29 @@ import androidx.media3.common.util.UnstableApi
 
 import org.mz.mzdkplayer.player.core.IMzPlayer
 
+import org.mz.mzdkplayer.player.core.MzAspectRatio
+
 import org.mz.mzdkplayer.player.core.MzBasicTrack
 
 import org.mz.mzdkplayer.player.core.MzIsoTitle
 
 import org.mz.mzdkplayer.player.core.MzVideoTrack
 
+import org.mz.mzdkplayer.data.repository.PlaybackPreferenceRepository
+
+import org.mz.mzdkplayer.data.repository.SettingsRepository
+
 import org.mz.mzdkplayer.tool.FtpDataSource
 
+import org.mz.mzdkplayer.tool.PlaybackPreference
+
+import org.mz.mzdkplayer.tool.PlaybackPreferenceLogic
+
+import org.mz.mzdkplayer.tool.PlaybackTrackRef
+
 import org.mz.mzdkplayer.tool.SmbDataSource
+
+import org.mz.mzdkplayer.tool.SubtitleOffsetLogic
 
 import org.mz.mzdkplayer.tool.Tools
 
@@ -243,6 +257,15 @@ class MzVlcPlayer(
         }
     )
     override val aspectRatio: StateFlow<org.mz.mzdkplayer.player.core.MzAspectRatio> = _aspectRatio.asStateFlow()
+
+    // 字幕时间轴偏移：初值取全局设置，之后由播放页浮层调整
+    private val _subtitleDelayMs = MutableStateFlow(
+        SubtitleOffsetLogic.clamp(settingsViewModel.uiState.value.subtitleDelayMs)
+    )
+    override val subtitleDelayMs: StateFlow<Int> = _subtitleDelayMs.asStateFlow()
+
+    /** 本文件的播放偏好（音轨/字幕轨/倍速/画面比例）是否已经尝试恢复过 */
+    private var playbackPreferenceRestored = false
 
 
 // 3. 接口回调
@@ -710,6 +733,13 @@ class MzVlcPlayer(
 
         }
 
+        // 轨道列表填好之后尝试恢复本文件上次的播放偏好，一次播放只做一次
+        if (_audioTracks.value.isNotEmpty() || _subtitleTracks.value.isNotEmpty()) {
+
+            restorePlaybackPreference()
+
+        }
+
     }
 
 
@@ -760,6 +790,9 @@ class MzVlcPlayer(
 
         updateTracks()
 
+        // 用入参而不是轨道列表里的状态：updateTracks 之后列表才会反映新选择
+        rememberTrackSelection { it.copy(audio = PlaybackTrackRef(track.id, track.index)) }
+
     }
 
 
@@ -769,6 +802,75 @@ class MzVlcPlayer(
         mediaPlayer.spuTrack = track.rawData as? Int ?: -1
 
         updateTracks()
+
+        rememberTrackSelection { it.copy(subtitle = PlaybackTrackRef(track.id, track.index)) }
+
+    }
+
+    override fun setSubtitleDelay(ms: Int) {
+
+        // VLC 原生支持字幕延迟（微秒），改完立即生效，不需要重建媒体源
+        val clamped = SubtitleOffsetLogic.clamp(ms)
+
+        _subtitleDelayMs.value = clamped
+
+        mediaPlayer.setSpuDelay(SubtitleOffsetLogic.toMicroseconds(clamped))
+
+    }
+
+    /**
+     * 恢复本文件上次的播放偏好。只在第一次拿到非空轨道列表时尝试一次；
+     * 偏好里记的轨道在当前媒体里找不到时，保持播放器自己的选择不动。
+     */
+    private fun restorePlaybackPreference() {
+
+        if (playbackPreferenceRestored) return
+
+        playbackPreferenceRestored = true
+
+        if (!SettingsRepository.rememberPlaybackPreference) return
+
+        val saved = PlaybackPreferenceRepository.load(mediaUri) ?: return
+
+        saved.playbackSpeed?.takeIf { it in MIN_SPEED..MAX_SPEED }?.let { setPlaybackSpeed(it) }
+
+        if (PlaybackPreferenceLogic.shouldRememberAspectRatio(SettingsRepository.lockVideoRatio)) {
+
+            saved.aspectRatio
+                ?.let { name -> runCatching { MzAspectRatio.valueOf(name) }.getOrNull() }
+                ?.let { setAspectRatio(it) }
+
+        }
+
+        val audioIndex = PlaybackPreferenceLogic.selectIndex(
+            _audioTracks.value.map { PlaybackTrackRef(it.id, it.index) },
+            saved.audio
+        )
+
+        if (audioIndex >= 0) selectAudioTrack(_audioTracks.value[audioIndex])
+
+        val subtitleIndex = PlaybackPreferenceLogic.selectIndex(
+            _subtitleTracks.value.map { PlaybackTrackRef(it.id, it.index) },
+            saved.subtitle
+        )
+
+        if (subtitleIndex >= 0) selectSubtitleTrack(_subtitleTracks.value[subtitleIndex])
+
+    }
+
+
+
+    /** 读改写一条记录：只动这次变的那一项，其余保持原样 */
+
+    private fun rememberTrackSelection(transform: (PlaybackPreference) -> PlaybackPreference) {
+
+        if (!SettingsRepository.rememberPlaybackPreference) return
+
+        if (mediaUri.isEmpty()) return
+
+        val saved = PlaybackPreferenceRepository.load(mediaUri) ?: PlaybackPreference()
+
+        PlaybackPreferenceRepository.save(mediaUri, transform(saved))
 
     }
 
@@ -806,10 +908,15 @@ class MzVlcPlayer(
         }
         _playbackSpeed.value = speed
         mediaPlayer.rate = speed
+        // 1.0 倍速是默认值，没必要占一条记录，改成 null 相当于「这项没记忆」
+        rememberTrackSelection { it.copy(playbackSpeed = speed.takeIf { v -> v != 1.0f }) }
     }
 
     override fun setAspectRatio(ratio: org.mz.mzdkplayer.player.core.MzAspectRatio) {
         _aspectRatio.value = ratio
+        if (PlaybackPreferenceLogic.shouldRememberAspectRatio(SettingsRepository.lockVideoRatio)) {
+            rememberTrackSelection { it.copy(aspectRatio = ratio.name) }
+        }
     }
 
     @Composable
@@ -884,6 +991,16 @@ class MzVlcPlayer(
         MzToastManager.show("加载外部字幕中...")
 
 
+
+    }
+
+    companion object {
+
+        /** 恢复倍速记录时的合理区间，超出范围的值只可能是脏数据 */
+
+        private const val MIN_SPEED = 0.25f
+
+        private const val MAX_SPEED = 4.0f
 
     }
 

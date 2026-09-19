@@ -46,7 +46,13 @@ import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.di.RepositoryProvider
 import org.mz.mzdkplayer.data.repository.SettingsRepository
+import org.mz.mzdkplayer.player.core.MzAspectRatio
+import org.mz.mzdkplayer.tool.SubtitleOffsetLogic
 import org.mz.mzdkplayer.tool.viewModelWithFactory
+import org.mz.mzdkplayer.ui.common.VIDEO_FINISH_ACTION_COUNT
+import org.mz.mzdkplayer.ui.common.aspectRatioFromName
+import org.mz.mzdkplayer.ui.common.formatAspectRatio
+import org.mz.mzdkplayer.ui.common.formatVideoFinishAction
 import org.mz.mzdkplayer.ui.screen.common.DeleteConfirmDialog
 import org.mz.mzdkplayer.ui.screen.common.FilePermissionScreen
 import org.mz.mzdkplayer.ui.screen.common.MyIconButton
@@ -60,12 +66,15 @@ import org.mz.mzdkplayer.ui.videoplayer.components.NumberControl
 import androidx.core.net.toUri
 
 // 定义左侧菜单分类
+// 顺序：通用 → 播放 → 遥控器 → 音频 → 字幕 → 数据源 → 刮削与媒体库 → 工具 → 关于
 enum class SettingCategory(@param:StringRes val titleRes: Int, val iconRes: Int? = null) {
     General(R.string.cat_general),
     Playback(R.string.cat_playback),
+    Remote(R.string.cat_remote),
     Audio(R.string.cat_audio),
     Subtitle(R.string.cat_subtitle),
     Source(R.string.cat_source),
+    Metadata(R.string.cat_metadata),
     Tools(R.string.cat_tools),
     About(R.string.cat_about)
 }
@@ -180,6 +189,10 @@ fun SettingsScreen(
                         PlaybackSection(state, settingsVM)
                     }
 
+                    SettingCategory.Remote -> item {
+                        RemoteSection(state, settingsVM)
+                    }
+
                     SettingCategory.Audio -> item {
                         AudioSection(state, settingsVM)
                     }
@@ -190,6 +203,10 @@ fun SettingsScreen(
 
                     SettingCategory.Source -> item {
                         SourceSection(state, settingsVM)
+                    }
+
+                    SettingCategory.Metadata -> item {
+                        MetadataSection(state, settingsVM)
                     }
 
                     SettingCategory.Tools -> item {
@@ -232,18 +249,6 @@ fun CategoryItem(
 @Composable
 fun GeneralSection(state: SettingsUiState, settingsVM: SettingsViewModel,context: Context) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SwitchSettingItem(
-            title = stringResource(R.string.setting_hide_details),
-            subtitle = stringResource(R.string.setting_hide_details_sub),
-            checked = state.hideDetails,
-            onCheckedChange = { settingsVM.toggleHideDetails(it) }
-        )
-
-        SwitchSettingItem(
-            title = stringResource(R.string.setting_hide_net_speed),
-            checked = state.hideNetworkSpeed,
-            onCheckedChange = { settingsVM.toggleHideNetWorkSpeed(it) }
-        )
         ActionSettingItem(
             title = stringResource(R.string.setting_app_lang),
             value = formatAppLang(state.appLang),
@@ -257,6 +262,19 @@ fun GeneralSection(state: SettingsUiState, settingsVM: SettingsViewModel,context
                 settingsVM.setAppLanguage(context,next)
             }
         )
+
+        SwitchSettingItem(
+            title = stringResource(R.string.setting_hide_details),
+            subtitle = stringResource(R.string.setting_hide_details_sub),
+            checked = state.hideDetails,
+            onCheckedChange = { settingsVM.toggleHideDetails(it) }
+        )
+
+        SwitchSettingItem(
+            title = stringResource(R.string.setting_hide_net_speed),
+            checked = state.hideNetworkSpeed,
+            onCheckedChange = { settingsVM.toggleHideNetWorkSpeed(it) }
+        )
     }
 }
 
@@ -264,17 +282,7 @@ fun GeneralSection(state: SettingsUiState, settingsVM: SettingsViewModel,context
 fun PlaybackSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        ActionSettingItem(
-            title = stringResource(R.string.setting_audio_lang),
-            value = formatLang(state.audioLang),
-            onClick = {
-                val next = when (state.audioLang) {
-                    "" -> "zh"; "zh" -> "en"; else -> ""
-                }
-                settingsVM.setAudioLanguage(next)
-            }
-        )
-        // ==================== 新增：播放器内核选择 ====================
+        // --- 播放内核 ---
         ActionSettingItem(
             title = stringResource(R.string.setting_default_player),
             value = if (state.defaultPlayer == "vlc") stringResource(R.string.setting_default_player_vlc) else stringResource(R.string.setting_default_player_exo),
@@ -291,39 +299,36 @@ fun PlaybackSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
                 settingsVM.setIsoPlaybackMode(next)
             }
         )
-        ActionSettingItem(
-            title = stringResource(R.string.setting_sub_lang),
-            value = formatLang(state.subLang),
-            onClick = {
-                val next = when (state.subLang) {
-                    "" -> "zh"; "zh" -> "en"; else -> ""
-                }
-                settingsVM.setSubLanguage(next)
-            }
-        )
         SwitchSettingItem(
             title = stringResource(R.string.setting_tunneling),
             subtitle = stringResource(R.string.setting_tunneling_sub),
             checked = state.enableTunneling,
             onCheckedChange = { settingsVM.toggleTunneling(it) }
         )
+
+        // --- 画面 ---
         SwitchSettingItem(
             title = stringResource(R.string.setting_lock_video_ratio),
             checked = state.lockVideoRatio,
             onCheckedChange = { settingsVM.toggleLockVideoRatio(it) }
         )
         ActionSettingItem(
-            title = stringResource(R.string.setting_dpad_up_action),
-            value = formatDpadAction(state.dpadUpAction),
+            title = stringResource(R.string.setting_global_video_ratio),
+            subtitle = stringResource(R.string.setting_global_video_ratio_sub),
+            value = formatAspectRatio(aspectRatioFromName(state.globalVideoRatio)),
             onClick = {
-                settingsVM.setDpadUpAction(nextDpadAction(state.dpadUpAction))
+                val entries = MzAspectRatio.entries
+                val next = entries[(aspectRatioFromName(state.globalVideoRatio).ordinal + 1) % entries.size]
+                settingsVM.setGlobalVideoRatio(next.name)
             }
         )
+
+        // --- 播放行为 ---
         ActionSettingItem(
-            title = stringResource(R.string.setting_dpad_down_action),
-            value = formatDpadAction(state.dpadDownAction),
+            title = stringResource(R.string.setting_video_finish_action),
+            value = formatVideoFinishAction(state.videoFinishAction),
             onClick = {
-                settingsVM.setDpadDownAction(nextDpadAction(state.dpadDownAction))
+                settingsVM.setVideoFinishAction((state.videoFinishAction + 1) % VIDEO_FINISH_ACTION_COUNT)
             }
         )
         NumberControl(
@@ -340,12 +345,49 @@ fun PlaybackSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
             minValue = 5,
             label = stringResource(R.string.setting_rw_duration)
         )
+        SwitchSettingItem(
+            title = stringResource(R.string.setting_remember_playback_pref),
+            subtitle = stringResource(R.string.setting_remember_playback_pref_sub),
+            checked = state.rememberPlaybackPreference,
+            onCheckedChange = { settingsVM.toggleRememberPlaybackPreference(it) }
+        )
+    }
+}
+
+// 遥控器与交互：播放页内上/下键绑定的功能
+@Composable
+fun RemoteSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ActionSettingItem(
+            title = stringResource(R.string.setting_dpad_up_action),
+            value = formatDpadAction(state.dpadUpAction),
+            onClick = {
+                settingsVM.setDpadUpAction(nextDpadAction(state.dpadUpAction))
+            }
+        )
+        ActionSettingItem(
+            title = stringResource(R.string.setting_dpad_down_action),
+            value = formatDpadAction(state.dpadDownAction),
+            onClick = {
+                settingsVM.setDpadDownAction(nextDpadAction(state.dpadDownAction))
+            }
+        )
     }
 }
 
 @Composable
 fun AudioSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ActionSettingItem(
+            title = stringResource(R.string.setting_audio_lang),
+            value = formatLang(state.audioLang),
+            onClick = {
+                val next = when (state.audioLang) {
+                    "" -> "zh"; "zh" -> "en"; else -> ""
+                }
+                settingsVM.setAudioLanguage(next)
+            }
+        )
         SwitchSettingItem(
             title =stringResource(R.string.setting_passthrough),
             subtitle = stringResource(R.string.setting_passthrough_sub),
@@ -372,7 +414,30 @@ fun AudioSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
 
 @Composable
 fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel, navController: NavHostController) {
+    val secondsUnit = stringResource(R.string.unit_seconds)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ActionSettingItem(
+            title = stringResource(R.string.setting_sub_lang),
+            value = formatLang(state.subLang),
+            onClick = {
+                val next = when (state.subLang) {
+                    "" -> "zh"; "zh" -> "en"; else -> ""
+                }
+                settingsVM.setSubLanguage(next)
+            }
+        )
+        // 字幕时间轴偏移：正值 = 字幕延后出现，负值 = 字幕提前出现。
+        // 播放页浮层里也有同样一个入口，改的是同一个值。
+        NumberControl(
+            value = state.subtitleDelayMs,
+            onValueChange = { settingsVM.setSubtitleDelayMs(it) },
+            maxValue = SubtitleOffsetLogic.MAX_MS,
+            minValue = -SubtitleOffsetLogic.MAX_MS,
+            label = stringResource(R.string.setting_subtitle_delay),
+            step = SubtitleOffsetLogic.STEP_MS,
+            displayValue = { SubtitleOffsetLogic.formatSeconds(it) + secondsUnit },
+            subtitle = stringResource(R.string.ui_label_subtitle_delay_text_only)
+        )
         // 字体大小 - 数字调节
         NumberControl(
             value = state.subFontSize.toInt(),
@@ -436,7 +501,6 @@ fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel, navCo
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun SourceSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
-    var showTmdbConfig by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -467,12 +531,26 @@ fun SourceSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
             DataSourceSwitch("HTTP", state.http, modifier) { settingsVM.toggleSource("HTTP", it) }
         }
         Spacer(modifier = Modifier.height(16.dp))
+        SwitchSettingItem(
+            title = stringResource(R.string.setting_webdav_remove_first_item),
+            subtitle = stringResource(R.string.setting_webdav_remove_first_item_sub),
+            checked = state.removeWebDavFirstItem,
+            onCheckedChange = { settingsVM.toggleRemoveWebDavFirstItem(it) }
+        )
+    }
+}
+
+// 刮削与媒体库：TMDB 元数据来源 + 本地 NFO 优先 + 批量扫描深度
+@Composable
+fun MetadataSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
+    var showTmdbConfig by remember { mutableStateOf(false) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         ActionSettingItem(
             title = stringResource(R.string.setting_tmdb_api_mirror),
             value = if (state.tmdbBaseUrl == SettingsRepository.DEFAULT_TMDB_URL) "Official" else state.tmdbBaseUrl,
             onClick = { showTmdbConfig = true }
         )
-        Spacer(modifier = Modifier.height(8.dp))
         ActionSettingItem(
             title = stringResource(R.string.setting_tmdb_search_lang),
             value = formatTmdbLang(state.tmdbSearchLang),
@@ -488,7 +566,6 @@ fun SourceSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
                 settingsVM.setTmdbSearchLang(next)
             }
         )
-        Spacer(modifier = Modifier.height(8.dp))
         ActionSettingItem(
             title = stringResource(R.string.setting_tmdb_result_lang),
             value = formatTmdbLang(state.tmdbResultLang),
@@ -504,21 +581,15 @@ fun SourceSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
                 settingsVM.setTmdbResultLang(next)
             }
         )
-        Spacer(modifier = Modifier.height(8.dp))
         SwitchSettingItem(
             title = stringResource(R.string.setting_prioritize_nfo),
             subtitle = stringResource(R.string.setting_prioritize_nfo_sub),
             checked = state.prioritizeLocalNfo,
             onCheckedChange = { settingsVM.togglePrioritizeLocalNfo(it) }
         )
-        SwitchSettingItem(
-            title = stringResource(R.string.setting_webdav_remove_first_item),
-            subtitle = stringResource(R.string.setting_webdav_remove_first_item_sub),
-            checked = state.removeWebDavFirstItem,
-            onCheckedChange = { settingsVM.toggleRemoveWebDavFirstItem(it) }
-        )
         ActionSettingItem(
             title = stringResource(R.string.setting_recursive_scan_level),
+            subtitle = stringResource(R.string.setting_recursive_scan_level_sub),
             value = formatRecursiveScanLevel(state.recursiveScanLevel),
             onClick = {
                 val next = (state.recursiveScanLevel + 1) % 6
@@ -682,6 +753,7 @@ fun SwitchSettingItem(
 fun ActionSettingItem(
     title: String,
     value: String,
+    subtitle: String? = null,
     onClick: () -> Unit
 ) {
     ListItem(
@@ -689,6 +761,9 @@ fun ActionSettingItem(
         onClick = onClick,
         headlineContent = { Text(title) },
         colors = myListItemCoverColor(),
+        supportingContent = if (subtitle != null) {
+            { Text(subtitle) }
+        } else null,
         trailingContent = {
             Text(text = value, style = MaterialTheme.typography.bodyMedium)
         },

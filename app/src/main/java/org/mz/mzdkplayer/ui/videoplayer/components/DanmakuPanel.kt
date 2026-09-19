@@ -107,14 +107,55 @@ fun NumberControl(
     onValueChange: (Int) -> Unit,
     maxValue: Int = Int.MAX_VALUE,
     minValue: Int = Int.MIN_VALUE,
-    label: String = ""
+    label: String = "",
+    /** 每按一次 ± 的步进，默认 1 */
+    step: Int = 1,
+    /** 中间那块显示什么，默认就是数值本身（例如字幕偏移要显示成 "+0.5 秒"） */
+    displayValue: (Int) -> String = { it.toString() },
+    /** 控件下方的一行说明，默认没有（例如字幕偏移要提示只对文本字幕生效） */
+    subtitle: String? = null
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .padding(vertical = 8.dp)
-    ) {
-        if (label.isNotEmpty()) {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        if (subtitle != null) {
+            Text(
+                text = subtitle,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+            )
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (label.isNotEmpty()) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .background(Color(0xFF333333), shape = RoundedCornerShape(6.dp)) // 中灰色背景
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        label,
+                        color = Color(0xFFFFFFFF), // 纯白色文字
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+
+            // 减少按钮
+            CircularIconButton(
+                onClick = {
+                    val next = value - step
+                    if (next >= minValue) {
+                        onValueChange(next)
+                    }
+                },
+                icon = Icons.Outlined.KeyboardArrowDown
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -122,51 +163,25 @@ fun NumberControl(
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Text(
-                    label,
+                    displayValue(value),
                     color = Color(0xFFFFFFFF), // 纯白色文字
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )
             }
 
             Spacer(modifier = Modifier.width(8.dp))
-        }
 
-        // 减少按钮
-        CircularIconButton(
-            onClick = {
-                if (value > minValue) {
-                    onValueChange(value - 1)
-                }
-            },
-            icon = Icons.Outlined.KeyboardArrowDown
-        )
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .background(Color(0xFF333333), shape = RoundedCornerShape(6.dp)) // 中灰色背景
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-        ) {
-            Text(
-                value.toString(),
-                color = Color(0xFFFFFFFF), // 纯白色文字
-                modifier = Modifier.padding(horizontal = 8.dp)
+            // 增加按钮
+            CircularIconButton(
+                onClick = {
+                    val next = value + step
+                    if (next <= maxValue) {
+                        onValueChange(next)
+                    }
+                },
+                icon = Icons.Outlined.KeyboardArrowUp
             )
         }
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        // 增加按钮
-        CircularIconButton(
-            onClick = {
-                if (value < maxValue) {
-                    onValueChange(value + 1)
-                }
-            },
-            icon = Icons.Outlined.KeyboardArrowUp
-        )
     }
 }
 

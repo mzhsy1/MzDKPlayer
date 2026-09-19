@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.data.repository.SettingsRepository
 import org.mz.mzdkplayer.tool.LanguageManager
+import org.mz.mzdkplayer.tool.SubtitleOffsetLogic
 
 // 简单的数据类用于 UI 状态
 data class SettingsUiState(
@@ -28,6 +29,10 @@ data class SettingsUiState(
     val subFontPath: String = "",
     val forcePgsCenter: Boolean = false,
     val autoLoadSubtitle: Boolean = true,
+    /** 字幕时间轴偏移（毫秒）：正值 = 字幕延后出现，负值 = 字幕提前出现 */
+    val subtitleDelayMs: Int = 0,
+    /** 是否按文件记住播放偏好（音轨/字幕轨/倍速/画面比例） */
+    val rememberPlaybackPreference: Boolean = true,
     val lockVideoRatio: Boolean = false,
     val globalVideoRatio: String = "FIT",
     val defaultPlayer: String = "exo",
@@ -80,6 +85,8 @@ class SettingsViewModel : ViewModel() {
                 subFontPath = repo.subFontPath,
                 forcePgsCenter = repo.forcePgsCenter,
                 autoLoadSubtitle = repo.autoLoadSubtitle,
+                subtitleDelayMs = repo.subtitleDelayMs,
+                rememberPlaybackPreference = repo.rememberPlaybackPreference,
                 lockVideoRatio = repo.lockVideoRatio,
                 globalVideoRatio = repo.globalVideoRatio,
                 defaultPlayer = repo.defaultPlayer,
@@ -121,6 +128,14 @@ class SettingsViewModel : ViewModel() {
     fun setSubFontPath(v: String) { repo.subFontPath = v; refreshState() }
     fun togglePgsCenter(v: Boolean) { repo.forcePgsCenter = v; refreshState() }
     fun toggleAutoLoadSubtitle(v: Boolean) { repo.autoLoadSubtitle = v; refreshState() }
+    fun setSubtitleDelayMs(v: Int) {
+        repo.subtitleDelayMs = SubtitleOffsetLogic.clamp(v)
+        refreshState()
+    }
+    fun toggleRememberPlaybackPreference(v: Boolean) {
+        repo.rememberPlaybackPreference = v
+        refreshState()
+    }
     fun toggleLockVideoRatio(v: Boolean) { repo.lockVideoRatio = v; refreshState() }
     fun setGlobalVideoRatio(v: String) { repo.globalVideoRatio = v; refreshState() }
     fun setDefaultPlayer(kernel: String) {

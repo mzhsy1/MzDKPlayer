@@ -74,6 +74,22 @@ interface IMzPlayer {
      * 当前视频比例
      */
     val aspectRatio: StateFlow<MzAspectRatio>
+
+    /**
+     * 设置字幕时间轴偏移（毫秒）。
+     *
+     * 口径：**正值 = 字幕延后出现，负值 = 字幕提前出现**（与 VLC 的 spu-delay 一致）。
+     * 两个内核的实现方式不同：VLC 走原生 `spuDelay`，是立即生效的；Exo 需要把字幕解析器
+     * 包一层再重建媒体源，因此实现里做了防抖，连点遥控器不会反复重建。
+     *
+     * 越界值由实现收敛到 ±30 秒。
+     */
+    fun setSubtitleDelay(ms: Int)
+
+    /**
+     * 当前字幕时间轴偏移（毫秒），供播放页浮层显示
+     */
+    val subtitleDelayMs: StateFlow<Int>
 }
 
 /**
@@ -99,10 +115,12 @@ data class MzIsoTitle(
     val isSelected: Boolean
 )
 
-enum class MzAspectRatio(val description: String) {
-    FIT("自动适应"),
-    STRETCH("拉伸铺满"),
-    RATIO_16_9("16:9"),
-    RATIO_4_3("4:3"),
-    ZOOM("裁剪填充")
+// 画面比例。这里只保留枚举名，展示文案统一走 ui/common/SettingOptionText.kt 的多语言字串，
+// 不要在枚举里写死中文，否则英文/日文环境下会漏翻译。
+enum class MzAspectRatio {
+    FIT,
+    STRETCH,
+    RATIO_16_9,
+    RATIO_4_3,
+    ZOOM
 }

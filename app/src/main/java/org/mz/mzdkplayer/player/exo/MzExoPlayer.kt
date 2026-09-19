@@ -2,6 +2,8 @@ package org.mz.mzdkplayer.player.exo
 
 import android.content.Context
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.Box
@@ -29,6 +31,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.extractor.mkv.MatroskaExtractor
+import androidx.media3.extractor.text.DefaultSubtitleParserFactory
 import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
 import androidx.media3.extractor.ts.TsExtractor
 import androidx.media3.ui.compose.ContentFrame
@@ -43,8 +46,14 @@ import org.mz.mzdkplayer.player.core.MzAspectRatio
 import org.mz.mzdkplayer.player.core.MzBasicTrack
 import org.mz.mzdkplayer.player.core.MzIsoTitle
 import org.mz.mzdkplayer.player.core.MzVideoTrack
+import org.mz.mzdkplayer.data.repository.PlaybackPreferenceRepository
+import org.mz.mzdkplayer.data.repository.SettingsRepository
 import org.mz.mzdkplayer.tool.FtpDataSource
+import org.mz.mzdkplayer.tool.PlaybackPreference
+import org.mz.mzdkplayer.tool.PlaybackPreferenceLogic
+import org.mz.mzdkplayer.tool.PlaybackTrackRef
 import org.mz.mzdkplayer.tool.SmbDataSource
+import org.mz.mzdkplayer.tool.SubtitleOffsetLogic
 import org.mz.mzdkplayer.tool.WebDavDataSource
 import org.mz.mzdkplayer.ui.screen.vm.VideoPlayerStatus
 import androidx.core.net.toUri
@@ -52,7 +61,7 @@ import androidx.core.net.toUri
 @OptIn(UnstableApi::class)
 class MzExoPlayer(
     context: Context,
-    mediaUri: String,
+    private val mediaUri: String,
     dataSourceType: String,
     settingsViewModel: SettingsViewModel
     // 可以把你原来的 settingsViewModel 相关的配置通过构造传进来
@@ -90,6 +99,27 @@ class MzExoPlayer(
 
     private var isFirstTrackAutoSelected = false
 
+    /** 本文件的播放偏好（音轨/字幕轨/倍速/画面比例）是否已经尝试恢复过，一次播放只做一次 */
+    private var playbackPreferenceRestored = false
+
+    // 字幕时间轴偏移：初值取全局设置，之后由播放页浮层调整
+    private val _subtitleDelayMs = MutableStateFlow(
+        SubtitleOffsetLogic.clamp(settingsViewModel.uiState.value.subtitleDelayMs)
+    )
+    override val subtitleDelayMs: StateFlow<Int> = _subtitleDelayMs.asStateFlow()
+
+    // 改偏移量必须重建媒体源（字幕已经解析完了），连点遥控器时合并成一次，避免反复重新缓冲
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val subtitleDelayReloadTask = Runnable { reloadMediaSource() }
+
+    /**
+     * 把字幕解析器包一层，之后解析出来的每条字幕都会带上当前偏移量。
+     * 见 SubtitleOffsetParserFactory 的注释：这一处注入同时覆盖内嵌字幕与外挂字幕。
+     */
+    private val subtitleParserFactory = SubtitleOffsetParserFactory(
+        DefaultSubtitleParserFactory()
+    ) { SubtitleOffsetLogic.toMicroseconds(_subtitleDelayMs.value) }
+
     val settingsState = settingsViewModel.uiState.value // 获取当前的设置状态
 
     // 这里放入你原本 rememberPlayer 中的 ExoPlayer 初始化逻辑
@@ -115,7 +145,7 @@ class MzExoPlayer(
             DefaultMediaSourceFactory(
                 selectedDataSourceFactory(mediaUri, dataSourceType, context),
                 extractorsFactory
-            )
+            ).setSubtitleParserFactory(subtitleParserFactory)
         )
         .build().apply {
             playWhenReady = true
@@ -314,6 +344,12 @@ class MzExoPlayer(
         _videoTracks.value = vTracks
         _audioTracks.value = aTracks
         _subtitleTracks.value = sTracks
+
+        // 轨道列表出来后尝试恢复本文件上次的播放偏好。
+        // 放在这里而不是 onTracksChanged 里，是为了确保恢复时轨道列表已经填好了。
+        if (aTracks.isNotEmpty() || sTracks.isNotEmpty()) {
+            restorePlaybackPreference()
+        }
     }
 
     override val isPlaying: Boolean get() = exoPlayer.isPlaying
@@ -339,6 +375,9 @@ class MzExoPlayer(
         exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters.buildUpon()
             .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, 0))
             .build()
+        // 用入参而不是 audioTracks 里的状态：trackSelectionParameters 改完之后
+        // 轨道列表要等 onTracksChanged 才会刷新，此刻读列表拿到的是旧值
+        rememberTrackSelection { it.copy(audio = PlaybackTrackRef(track.id, track.index)) }
         Log.i("AudioTrackSwitch", "AudioTrackSwitchE")
     }
 
@@ -347,9 +386,12 @@ class MzExoPlayer(
         exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters.buildUpon()
             .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, 0))
             .build()
+        rememberTrackSelection { it.copy(subtitle = PlaybackTrackRef(track.id, track.index)) }
     }
 
     override fun release() {
+        // 重建媒体源的任务还挂着的话要撤掉，否则 release 之后会被回调到已释放的播放器上
+        mainHandler.removeCallbacks(subtitleDelayReloadTask)
         exoPlayer.release()
     }
 
@@ -359,10 +401,86 @@ class MzExoPlayer(
         }
         _playbackSpeed.value = speed
         exoPlayer.playbackParameters = PlaybackParameters(speed)
+        // 1.0 倍速是默认值，没必要占一条记录，改成 null 相当于「这项没记忆」
+        rememberTrackSelection { it.copy(playbackSpeed = speed.takeIf { v -> v != 1.0f }) }
     }
 
     override fun setAspectRatio(ratio: MzAspectRatio) {
         _aspectRatio.value = ratio
+        if (PlaybackPreferenceLogic.shouldRememberAspectRatio(SettingsRepository.lockVideoRatio)) {
+            rememberTrackSelection { it.copy(aspectRatio = ratio.name) }
+        }
+    }
+
+    override fun setSubtitleDelay(ms: Int) {
+        val clamped = SubtitleOffsetLogic.clamp(ms)
+        if (clamped == _subtitleDelayMs.value) return
+
+        _subtitleDelayMs.value = clamped
+        mainHandler.removeCallbacks(subtitleDelayReloadTask)
+        mainHandler.postDelayed(subtitleDelayReloadTask, SUBTITLE_DELAY_RELOAD_DEBOUNCE_MS)
+    }
+
+    /**
+     * 重建媒体源，让新的字幕偏移量生效。
+     *
+     * 字幕在解封装阶段就被一次性解析完了，已经解析出来的字幕改不了，
+     * 所以只能带着新偏移量重新走一遍解析。位置与播放/暂停状态都保留，
+     * 做法与 [addExternalSubtitles] 一致。
+     */
+    private fun reloadMediaSource() {
+        val item = exoPlayer.currentMediaItem ?: return
+        val position = exoPlayer.currentPosition
+        val playWhenReady = exoPlayer.playWhenReady
+
+        // 重新准备后会重新走一遍轨道选择，允许它再自动选一次（与加载外挂字幕时一致）；
+        // 同时把「已恢复偏好」的标记清掉，让新的轨道列表出来后按记录再选一遍，
+        // 否则调整字幕偏移会把用户之前选的音轨/字幕轨冲掉。
+        isFirstTrackAutoSelected = false
+        playbackPreferenceRestored = false
+
+        exoPlayer.setMediaItem(item, position)
+        exoPlayer.prepare()
+        exoPlayer.playWhenReady = playWhenReady
+    }
+
+    /**
+     * 恢复本文件上次的播放偏好。只在第一次拿到非空轨道列表时尝试一次；
+     * 偏好里记的轨道在新一轮轨道列表里找不到时，保持播放器自己的选择不动。
+     */
+    private fun restorePlaybackPreference() {
+        if (playbackPreferenceRestored) return
+        playbackPreferenceRestored = true
+
+        if (!SettingsRepository.rememberPlaybackPreference) return
+        val saved = PlaybackPreferenceRepository.load(mediaUri) ?: return
+
+        saved.playbackSpeed?.takeIf { it in MIN_SPEED..MAX_SPEED }?.let { setPlaybackSpeed(it) }
+        if (PlaybackPreferenceLogic.shouldRememberAspectRatio(SettingsRepository.lockVideoRatio)) {
+            saved.aspectRatio
+                ?.let { name -> runCatching { MzAspectRatio.valueOf(name) }.getOrNull() }
+                ?.let { setAspectRatio(it) }
+        }
+
+        val audioIndex = PlaybackPreferenceLogic.selectIndex(
+            _audioTracks.value.map { PlaybackTrackRef(it.id, it.index) },
+            saved.audio
+        )
+        if (audioIndex >= 0) selectAudioTrack(_audioTracks.value[audioIndex])
+
+        val subtitleIndex = PlaybackPreferenceLogic.selectIndex(
+            _subtitleTracks.value.map { PlaybackTrackRef(it.id, it.index) },
+            saved.subtitle
+        )
+        if (subtitleIndex >= 0) selectSubtitleTrack(_subtitleTracks.value[subtitleIndex])
+    }
+
+    /** 读改写一条记录：只动这次变的那一项，其余保持原样 */
+    private fun rememberTrackSelection(transform: (PlaybackPreference) -> PlaybackPreference) {
+        if (!SettingsRepository.rememberPlaybackPreference) return
+        if (mediaUri.isEmpty()) return
+        val saved = PlaybackPreferenceRepository.load(mediaUri) ?: PlaybackPreference()
+        PlaybackPreferenceRepository.save(mediaUri, transform(saved))
     }
 
     override fun addExternalSubtitles(subtitles: List<Pair<String, String>>) {
@@ -447,5 +565,14 @@ class MzExoPlayer(
                 }
             }
         }
+    }
+
+    companion object {
+        /** 改字幕偏移后延迟重建媒体源，把连点遥控器产生的多次调整合并成一次 */
+        private const val SUBTITLE_DELAY_RELOAD_DEBOUNCE_MS = 250L
+
+        /** 恢复倍速记录时的合理区间，超出范围的值只可能是脏数据 */
+        private const val MIN_SPEED = 0.25f
+        private const val MAX_SPEED = 4.0f
     }
 }
