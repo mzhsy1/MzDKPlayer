@@ -167,8 +167,8 @@ jobs:
           ./gradlew :app:testDebugUnitTest --console=plain 2>&1 | tee "$log"
           status="${PIPESTATUS[0]}"
           if [ "$status" -ne 0 ]; then
-            summary="$(awk '/What went wrong:/{f=1} f{print; if(++n>=8) exit}' "$log" | tr '\n' ' ' | tr -s ' ' | cut -c1-1000)"
-            [ -n "$summary" ] || summary="$(grep -m1 -E 'FAILURE:|^> Task .* FAILED|Could not|Caused by:' "$log" | tr '\n' ' ' | cut -c1-1000)"
+            summary="$(awk '/What went wrong:/{f=1} f{print; if(++n>=8) exit}' "$log" | tr '\n' ' ' | tr -s ' ' | cut -c1-2000)"
+            [ -n "$summary" ] || summary="$(grep -m1 -E 'FAILURE:|^> Task .* FAILED|Could not|Caused by:' "$log" | tr '\n' ' ' | cut -c1-2000)"
             {
               echo "## 单元测试失败"
               echo
@@ -195,8 +195,8 @@ jobs:
           ./gradlew :app:assembleRelease --console=plain 2>&1 | tee "$log"
           status="${PIPESTATUS[0]}"
           if [ "$status" -ne 0 ]; then
-            summary="$(awk '/What went wrong:/{f=1} f{print; if(++n>=8) exit}' "$log" | tr '\n' ' ' | tr -s ' ' | cut -c1-1000)"
-            [ -n "$summary" ] || summary="$(grep -m1 -E 'FAILURE:|^> Task .* FAILED|Could not|Caused by:' "$log" | tr '\n' ' ' | cut -c1-1000)"
+            summary="$(awk '/What went wrong:/{f=1} f{print; if(++n>=8) exit}' "$log" | tr '\n' ' ' | tr -s ' ' | cut -c1-2000)"
+            [ -n "$summary" ] || summary="$(grep -m1 -E 'FAILURE:|^> Task .* FAILED|Could not|Caused by:' "$log" | tr '\n' ' ' | cut -c1-2000)"
             {
               echo "## assembleRelease 失败"
               echo
