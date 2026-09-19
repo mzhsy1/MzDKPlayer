@@ -23,22 +23,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
-
-      # 项目 compileSdk 是 37，先装好 cmdline-tools 并接受 licenses，
-      # 缺的平台/构建工具交给 AGP 自动下载
-      - name: 准备 Android SDK
-        uses: android-actions/setup-android@v3
+        uses: actions/checkout@v7
 
       # build.gradle.kts 里是 jvmToolchain(21)，所以 CI 也必须是 JDK 21
       - name: 配置 JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
 
+      # runner 自带 Android SDK（ANDROID_HOME + 已接受的 licenses），这里只负责：
+      # 装好 compileSdk 需要的平台，缺什么由 AGP 自己再补。
+      # 故意不依赖第三方 setup-android action，少一层会过期的依赖。
+      - name: 准备 Android SDK
+        run: |
+          set -euo pipefail
+          sdk="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          if [ -z "$sdk" ]; then
+            echo "::error::runner 上没有 ANDROID_SDK_ROOT / ANDROID_HOME"
+            exit 1
+          fi
+          echo "Android SDK: $sdk"
+          sdkmanager="$(find "$sdk/cmdline-tools" -maxdepth 3 -name sdkmanager -type f 2>/dev/null | head -n1)"
+          if [ -z "$sdkmanager" ]; then
+            echo "::warning::没找到 sdkmanager，交给 AGP 自己下载缺失组件"
+            exit 0
+          fi
+          yes | "$sdkmanager" --licenses >/dev/null 2>&1 || true
+          "$sdkmanager" "platforms;android-37" || echo "::warning::platforms;android-37 预装失败，交给 AGP 重试"
+
       - name: 配置 Gradle 缓存
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       # 不需要 TMDB_API_KEY：空值只影响运行时刮削，不影响编译与单测
       - name: 编译并运行单元测试
@@ -46,7 +61,7 @@ jobs:
 
       - name: 上传测试报告
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: unit-test-report
           path: |
