@@ -1,10 +1,34 @@
 # MzDKPlayer - Android TV Local Danmaku Media Player
+
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/mzhsy1/MzDKPlayer/total)
+![License](https://img.shields.io/badge/license-GPL--3.0-blue)
 
 [中文](README.md) | English
-> GitHub https://github.com/mzhsy1/MzDKPlayer Gitee Mirror https://gitee.com/mzhsy/MzDKPlayer
+
+> GitHub https://github.com/mzhsy1/MzDKPlayer | Gitee Mirror https://gitee.com/mzhsy/MzDKPlayer | Website https://mzdkplayer.pages.dev/
 
 > MzDKPlayer is a local music and video player specifically designed for Android TV, supporting danmaku (bullet comments), multiple network protocols, and various audio/video formats.
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Format Support](#format-support)
+- [App Preview](#app-preview)
+- [Quick Start](#quick-start)
+  - [Option 1: Download the APK](#option-1-download-the-apk)
+  - [Option 2: Build from Source](#option-2-build-from-source)
+  - [Common Build Issues](#common-build-issues)
+- [Usage Examples](#usage-examples)
+- [Remote Control Keys](#remote-control-keys)
+- [Technical Architecture](#technical-architecture)
+- [Development Guide](#development-guide)
+- [Hardware Requirements](#hardware-requirements)
+- [Project Status](#project-status)
+- [Contributing](#contributing)
+- [Disclaimer](#disclaimer)
+- [License](#license)
 
 ---
 
@@ -27,6 +51,9 @@
   - ✅ NFS protocol (Supported)
   - ✅ HTTP protocol (Supported via NGINX servers)
 - 🎚️ **Track Selection** - Supports switching audio, video, and subtitle tracks, playback speed control, and audio software/hardware decoding.
+- 🔤 **Subtitle Customization** - Text-based subtitles (ExoPlayer) support custom font, size, color, background color, and bottom padding.
+- 📱 **Phone Remote Control** - The app can start a LAN remote page; scan the QR code with your phone to use it as a remote.
+- 🌏 **Multi-language UI** - Simplified Chinese / English / Japanese / Traditional Chinese
 
 ### 🔊 Advanced Playback: Audio Passthrough
 
@@ -35,39 +62,41 @@ MzDKPlayer supports audio passthrough, allowing raw audio signals (source) to be
 * **Path**: `Settings` -> `Audio Settings` -> `Audio Passthrough`
 * **Applicability**: **This toggle only affects the VLC playback engine**. The ExoPlayer engine will automatically determine this based on your device, no manual intervention needed.
 * **Suggestions**:
-* **Default State**: Recommended to keep it **Off**. ExoPlayer already meets the automatic adaptation needs of most devices.
-* **Prerequisites**: Only enable this if you have an external amplifier or high-end audio decoding device and are certain it supports the audio encoding format (e.g., DTS-HD, TrueHD) of the video being played.
-* **Troubleshooting**: If you encounter **no sound** during playback after enabling, it means your audio device does not support the current video's audio track format (e.g., some TVs do not support TrueHD passthrough). **In this case, please turn off this toggle** to let the player output via PCM through software decoding.
+  * **Default State**: Recommended to keep it **Off**. ExoPlayer already meets the automatic adaptation needs of most devices.
+  * **Prerequisites**: Only enable this if you have an external amplifier or high-end audio decoding device and are certain it supports the audio encoding format (e.g., DTS-HD, TrueHD) of the video being played.
+  * **Troubleshooting**: If you encounter **no sound** during playback after enabling, it means your audio device does not support the current video's audio track format (e.g., some TVs do not support TrueHD passthrough). **In this case, please turn off this toggle** to let the player output via PCM through software decoding.
 
-### Format Support
+---
 
-#### 📺 Video Formats
+## Format Support
+
+### 📺 Video Formats
 
 * **Common Containers**: MP4, MKV, MOV, AVI, WMV, FLV, WebM
 * **Blu-ray/Professional Formats**: **ISO (Blu-ray Image)**, **M2TS**, **MTS**, TS, VOB
 * **Video Encodings**: H.264 (AVC), **H.265 (HEVC)**, **AV1**, VP9, MPEG-2
 * **Feature Support**: 4K/8K UHD playback, HDR10/HLG, Dolby Vision
 
-#### 🎵 Audio Formats
+### 🎵 Audio Formats
 
 * **Lossless/Hi-Fi**: **FLAC**, WAV, ALAC (Apple Lossless)
 * **General Formats**: MP3, AAC, OGG, Opus, WMA
 * **Cinema-grade Tracks**: **DTS**, **DTS-HD**, **TrueHD**, AC3 (Dolby Digital), E-AC3
 
-#### 🖼️ Image Formats
+### 🖼️ Image Formats
 
 * **Standard Formats**: JPEG (JPG), PNG, WebP, BMP
 * **Modern Formats**: HEIC / HEIF
 * *Note: Apple Live Photos are currently not supported.*
 
-#### 💬 Subtitle Support
+### 💬 Subtitle Support
 
 * **External Subtitles**: **SRT**, **ASS**, **SSA**, VTT
 * **Embedded Subtitles**: MKV Internal, **PGS (Blu-ray Subtitles)**, DVB, Teletext
 
 ---
 
-> ⚠️ **Note**: TMDB may require a proxy or Host modification for stable access in some regions.
+> ⚠️ **Note**: TMDB may require a proxy or Host modification for stable access in some regions. You can also set a mirror under `Settings -> Data Source & Scraping -> TMDB API Address (Mirror)`.
 
 > 💡 Tip 1: If used frequently, it's recommended to set this player as the default video player in your TV system for a smoother experience.
 
@@ -104,15 +133,234 @@ MzDKPlayer supports audio passthrough, allowing raw audio signals (source) to be
 
 ---
 
+## Quick Start
+
+### Option 1: Download the APK
+
+> For users who just want to use the app on their TV — no development environment needed.
+
+1. Open the [Releases](https://github.com/mzhsy1/MzDKPlayer/releases) page and download the latest APK.
+2. Pick the package matching your TV's chipset (**use the universal package if unsure**):
+
+   | Package | Target devices |
+   | --- | --- |
+   | `arm64-v8a` | Most recent TV boxes / TVs (Amlogic S905X3/S928X, MT9653, etc.) |
+   | `armeabi-v7a` | Older low-end boxes (e.g. S905L, 32-bit systems) |
+   | `universal` | Largest size, compatible with all the ABIs above |
+
+3. Transfer the APK to your TV and install it (USB drive, app stores, or the TV's built-in file manager).
+
+Installing from a computer via ADB is recommended:
+
+```bash
+# Enable "Developer options -> USB debugging / Network debugging" on the TV first
+adb connect 192.168.1.100:5555        # replace with your TV's actual IP
+adb install -r app-arm64-v8a-release.apk
+```
+
+### Option 2: Build from Source
+
+#### 1. Requirements
+
+| Item | Requirement | Notes |
+| --- | --- | --- |
+| JDK | **17 or higher** | Source and target bytecode are Java 17 |
+| Kotlin toolchain | JDK 21 | The project declares `jvmToolchain(21)`; Gradle provisions it automatically if missing |
+| Android SDK | **compileSdk 37** | Requires `Android SDK Platform 37` and `Build-Tools` |
+| Gradle | 9.7.1 | Use the bundled `gradlew`; no separate installation needed |
+| Android Studio | Latest stable | Optional — the command line can build everything |
+
+#### 2. Clone the project
+
+```bash
+git clone https://github.com/mzhsy1/MzDKPlayer.git
+cd MzDKPlayer
+```
+
+#### 3. Configure `local.properties`
+
+Create `local.properties` in the project root (**already covered by `.gitignore`, never committed**) and fill in the SDK path and TMDB API key:
+
+```properties
+sdk.dir=D:\\Android\\Sdk
+TMDB_API_KEY=your_tmdb_api_key
+```
+
+> ⚠️ **`TMDB_API_KEY` is required.** It is injected as `BuildConfig.TMDB_API_KEY`. The project still compiles without it, but TMDB scraping in the media library will not work.
+> You can request a free API key at [TMDB developer settings](https://www.themoviedb.org/settings/api), then point the API address at a reachable mirror in the settings page.
+
+#### 4. Build
+
+```bash
+# Use gradlew.bat on Windows, ./gradlew on macOS / Linux
+
+# Debug build (debug-signed, installable directly — best for local testing)
+./gradlew :app:assembleDebug
+
+# Release build (minification and resource shrinking enabled, unsigned)
+./gradlew :app:assembleRelease
+
+# Compile-only check, the fastest option
+./gradlew :app:compileDebugKotlin
+```
+
+Output locations:
+
+| Command | Output |
+| --- | --- |
+| `assembleDebug` | `app/build/outputs/apk/debug/app-debug.apk` |
+| `assembleRelease` | `app/build/outputs/apk/release/app-<abi>-release.apk`, `app-release-unsigned.apk` |
+
+> Release builds are **not signed** by default. Sign them with `apksigner` or Android Studio's *Generate Signed Bundle or APK* before distributing.
+> ABI splits are enabled (`armeabi-v7a`, `arm64-v8a`, plus a universal APK), so the release directory contains several APKs.
+
+#### 5. Install on your TV
+
+```bash
+adb connect 192.168.1.100:5555
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+#### 6. Run the unit tests (to verify your environment)
+
+```bash
+./gradlew :app:testDebugUnitTest
+```
+
+### Common Build Issues
+
+| Symptom | Cause and fix |
+| --- | --- |
+| `Unable to delete directory ... a process has files open` | Android Studio is running and holding `app/build`. Close Studio and retry from the command line — **do not delete `app/build` manually** |
+| `TMDB_API_KEY` missing / scraping does not work | `local.properties` is missing or the key name is wrong (do not write `TMDB_KEY`) |
+| `SDK location not found` | `sdk.dir` is missing in `local.properties`, or set the SDK path in Android Studio |
+| Kotlin toolchain download fails | `jvmToolchain(21)` downloads JDK 21; installing JDK 21 locally lets Gradle reuse it |
+| Dependency downloads time out | `settings.gradle.kts` already configures Aliyun/Tencent Cloud mirrors; adjust repository order as needed |
+| `fileHashes.lock access denied` | Run `./gradlew --stop` to confirm the daemon exited, then delete `.gradle/9.7.1/fileHashes/fileHashes.lock` |
+
+---
+
+## Usage Examples
+
+### Example 1: Play a local file
+
+1. The app requests storage permission on first launch. On Android 11+, choosing **"Allow management of all files"** gives the best experience (otherwise some directories are not scanned).
+2. Home / File Browsing -> pick a category (video / audio / image).
+3. Tap a file inside a directory to play it. The player automatically loads a same-named `.xml` danmaku file and same-named subtitles from the same directory.
+
+### Example 2: Add network storage (SMB / FTP / WebDAV / NFS / HTTP)
+
+1. Open **"Network Storage"** from the sidebar and pick the protocol.
+2. Tap **"New Connection"** in the top-right corner and fill in the address, username, and password (SMB needs a share name; FTP needs a port).
+3. Saved storages appear in the connection list — browse and play them like a local directory.
+4. Supported URI forms (useful when troubleshooting):
+
+   | Protocol | Example |
+   | --- | --- |
+   | SMB | `smb://user:pass@host/share/path` |
+   | FTP | `ftp://user:pass@host:21/path` |
+   | WebDAV | `https://user:pass@host/path` |
+   | NFS | `nfs://host:/export:path` |
+   | HTTP | `http://host/path` (NGINX directory listing) |
+   | Local | `file:///storage/emulated/0/Movies/a.mkv` |
+
+> All network protocol connections have timeouts and degrade gracefully on failure, so they never hang or crash the app.
+
+### Example 3: Danmaku
+
+- Danmaku files are Bilibili-style `.xml`, placed in the same directory as the video with the **same file name** to be loaded automatically.
+- Press the **Up** key on the remote during playback to open danmaku settings and adjust font size, speed, opacity, and display area.
+
+### Example 4: TMDB scraping and local NFO
+
+- Movie / TV detail pages pull data from TMDB and need working network access plus an API key.
+- If a same-named `.nfo` file exists in the media directory, enable `Settings -> Data Source & Scraping -> Prefer local NFO files` to read it offline instead.
+- Scraping results are cached in the local database. The player title prefers the scraped name (episodes automatically get `SxxExx` and the year) and falls back to the file name when no scraped record exists.
+- Adjust the recursion depth for batch scanning under `Settings -> Data Source & Scraping -> Batch scan subfolder depth`.
+
+### Example 5: Subtitles
+
+- Press the **Menu** key during playback to bring up the control bar, then open the subtitle menu to switch tracks.
+- With `Settings -> Subtitle Appearance -> Auto-load same-name subtitles` enabled, the player scans the video's directory and loads matching subtitles automatically.
+- Text-based subtitles (rendered by ExoPlayer) support custom font, size, color, background color, and bottom padding; fonts can be picked from a local folder.
+
+### Example 6: Phone remote control by QR code
+
+1. Open the remote entry in the UI; the app starts a lightweight HTTP service on the LAN and shows a QR code.
+2. Connect your phone to the same Wi-Fi and scan the code to use the web page as a remote.
+
+### Example 7: Playlists and history
+
+- Video / audio playback screens support playlists and post-playback actions (e.g. auto-advance to the next episode).
+- Playback progress is saved automatically (flushed every 10 seconds and again when leaving the player), so you can resume from **History**.
+
+---
+
+## Remote Control Keys
+
+| Key | Function on the playback screen |
+| --- | --- |
+| Left / Right | Rewind / Fast forward (long-press for continuous seeking) |
+| OK | Pause / Play |
+| Menu | Show / hide the control bar (tracks, subtitles, speed, danmaku, etc.) |
+| Up | Danmaku settings (configurable) |
+| Down | Audio track selection (configurable) |
+| Back | Exit playback / collapse the control bar |
+
+> The Up and Down key behaviors can be customized under `Settings -> Playback & Video -> Remote Up Key / Remote Down Key`.
+
+---
+
 ## Technical Architecture
 
 ### Key Tech Stack
 
-- **Media Playback**: ExoPlayer + Custom Extensions
-- **UI Framework**: Jetpack Compose for TV
-- **Danmaku Engine**: AKDanmaku
-- **Subtitle Rendering**: ASS Subtitle Library
-- **Network Protocols**: Custom SMB/FTP/WebDAV client implementations
+| Category | Choice | Version |
+| --- | --- | --- |
+| Language | Kotlin | 2.4.20 |
+| Build | Gradle / AGP / KSP | 9.7.1 / 9.4.0 / 2.3.9 |
+| UI | Jetpack Compose for TV (`tv-foundation` / `tv-material`) + Navigation Compose | Compose BOM 2026.09.00 / Navigation 2.9.8 |
+| Playback engines | Media3 ExoPlayer + libVLC (dual engine behind a shared abstraction) | 1.11.1 / 3.7.6 |
+| Danmaku | AKDanmaku + libGDX / Ashley | — |
+| Database | Room | 2.8.5 |
+| Preferences | DataStore Preferences | 1.2.1 |
+| Networking | smbj (SMB) / commons-net (FTP) / sardine (WebDAV) / nfs-client (NFS) / OkHttp | — |
+| Image loading | Coil 3 | 3.6.2 |
+| Built-in services | NanoHTTPD (local proxy + phone remote page), ZXing (QR code) | — |
+| Metadata | Retrofit + Gson (TMDB), jaudiotagger (audio tags) | — |
+
+### Module Structure
+
+```
+app/src/main/java/org/mz/mzdkplayer/
+├── MainActivity.kt / LaunchScreen.kt / MzDkPlayerApplication.kt   # Entry point and splash
+├── danmaku/          # Danmaku parsing and rendering
+├── data/
+│   ├── api/          # TMDB API (Retrofit)
+│   ├── local/        # Room: AppDatabase, MediaCacheEntity, AudioCacheEntity, MediaHistoryEntity
+│   ├── model/        # Data models
+│   └── repository/   # Repository layer hiding data sources
+├── di/               # RepositoryProvider: DAO injection via viewModelWithFactory
+├── player/
+│   ├── core/         # IMzPlayer abstraction, track models
+│   ├── exo/          # MzExoPlayer implementation
+│   └── vlc/          # MzVlcPlayer implementation
+├── tool/             # Utilities: protocol data sources, subtitle scanning, time parsing, LAN proxy and remote services
+└── ui/
+    ├── MzDKPlayerAPP.kt      # Navigation graph and app shell
+    ├── videoplayer/          # Player screen (components/ holds controls, title, overlays)
+    ├── audioplayer/          # Audio player screen
+    ├── picviewer/            # Image viewer
+    ├── screen/               # Pages: filehome / localfile / smbfile / ftp / webdavfile / nfs /
+    │                         #        httplink / library / movie / tv / history / search / setting
+    └── theme/                # Theme
+```
+
+Pure JVM unit tests live in `app/src/test/java/org/mz/mzdkplayer/tool/`.
+
+### Dual Playback Engines
+
+Playback is abstracted behind `player/core/IMzPlayer.kt`, implemented by `MzExoPlayer` (default: hardware-decoding friendly, fast startup) and `MzVlcPlayer` (broader format compatibility, supports passthrough). The UI depends only on the interface, so you can switch engines at any time under `Settings -> Playback & Video -> Default Player Engine`, and plugging in a new engine stays straightforward.
 
 ### Core Components
 
@@ -121,6 +369,42 @@ MzDKPlayer supports audio passthrough, allowing raw audio signals (source) to be
 - `AkDanmakuPlayer` - Danmaku playback component
 - `MovieDetailsScreen` / `TVSeriesDetailsScreen` - Movie/TV show details pages
 - `FullDescriptionDialog` - Detailed description popup dialog
+- `LocalProxyServer` / `ProxyManager` - Local HTTP proxy that works around compatibility issues between certain protocols and ExoPlayer
+- `RemoteInputServer` / `RemoteInputQRPanel` - Phone remote control via QR code
+
+### Data Layer Notes
+
+- The Room database `AppDatabase` holds three tables: `media_cache` (scraped media cache keyed by `videoUri`), an audio cache, and playback history.
+- The URI passed from list screens to the player matches `media_cache.videoUri`, so the player can hit the scraped cache directly without re-fetching.
+- Navigation arguments (URI, file name, connection name, etc.) are Base64-encoded to keep special characters from breaking the routes.
+
+---
+
+## Development Guide
+
+### Common Commands
+
+```bash
+./gradlew :app:compileDebugKotlin          # Compile only — fastest syntax check
+./gradlew :app:assembleDebug               # Build a debug APK
+./gradlew :app:assembleRelease             # Build a release APK (unsigned)
+./gradlew :app:testDebugUnitTest           # Run all JVM unit tests
+./gradlew :app:testDebugUnitTest --tests "org.mz.mzdkplayer.tool.PlayerMediaTextTest"   # Run one test class
+./gradlew clean                            # Clean build outputs
+./gradlew --stop                           # Stop the Gradle daemon (when lock files conflict)
+```
+
+### Unit Tests
+
+- Tests depend on **JUnit 4 only** — no mockito, no robolectric, and `returnDefaultValues` is **not** enabled.
+  Tests must therefore be pure JVM tests: calling Android types such as `android.net.Uri`, `android.util.Log`, `android.util.Base64`, or `Context` throws `RuntimeException("Stub!")`.
+- Extract testable pure logic into `object` / `internal object` declarations that do not depend on Android (`internal` is visible to the test source set of the same module).
+- Naming convention: class names end with `Test`, and test functions use backtick-quoted descriptions, e.g. `` `Series - title with season/episode/year` ``.
+- Existing tests: `MediaInfoExtractorFormFileNameTest` (file name parsing), `PlayerMediaTextTest` (player title and date), `FileTimeParseTest` (HTTP date / protocol inference / credentials / NFS path splitting).
+
+### Logging
+
+The project uses logback-android. All network protocol implementations (SMB / FTP / WebDAV / NFS) configure timeouts and degrade gracefully on failure, returning an empty list or falling back to local reads instead of interrupting playback.
 
 ---
 
@@ -142,36 +426,9 @@ MzDKPlayer supports audio passthrough, allowing raw audio signals (source) to be
 
 - **Chipset**: Amlogic S905L or equivalent performance chipset
 - **RAM**: 1GB RAM
-- **System**: Android TV 7 and above
+- **System**: Android 6.0 (API 23) and above (`minSdk = 23`); remote operation requires D-pad support on the TV or box
 
 > ⚠️ **Note**: The code is not well-optimized; it's a success if it runs. There are bugs. Insufficient device performance may cause video and danmaku playback lag, or failure to play high-bitrate videos.
-
----
-
-## Build, Installation & Usage
-
-### Build Requirements
-
-- Latest version of Android Studio
-- Android SDK 36+
-- Java 17
-
-### Build Steps
-
-1. Clone the project locally
-2. Open the project with Android Studio
-3. Connect an Android TV device with ADB debugging enabled
-4. Build and run the application
-
-### Basic Usage
-
-1. Select a video file (local or network) on the main interface; the player will automatically look for an XML danmaku file with the same name in the same directory.
-2. Control the playback interface using the remote:
-   - Left/Right keys: Fast forward / Rewind
-   - OK key: Pause / Play
-   - Menu key: Show control interface
-   - Remote Up key: Danmaku settings; Down key: Audio track selection
-3. Click a video file to view movie/TV series details (including poster, summary, rating, year, country, genre, etc.)
 
 ---
 
@@ -190,17 +447,80 @@ MzDKPlayer supports audio passthrough, allowing raw audio signals (source) to be
 - [ ] Online danmaku loading function
 - [ ] Settings interface optimization
 
+See [CHANGELOG.md](CHANGELOG.md) for the full version history.
+
 ---
 
 ## Contributing
 
-Contributions via Issues and Pull Requests are welcome to help improve this project. Contributions to **player stability** are especially welcome!
+Contributions of any kind are welcome — contributions to **player stability** are especially welcome!
+
+### Reporting Issues
+
+When filing an issue, please include: device model and chipset, system version, app version (`Settings -> About`), the protocol in use (SMB / FTP / WebDAV / NFS / HTTP or local), reproduction steps, and a captured `adb logcat` snippet. Issues with logs are usually resolved much faster.
+
+### Code Contribution Workflow
+
+1. **Fork** this repository and branch off `main`. Suggested branch names:
+
+   | Prefix | Purpose | Example |
+   | --- | --- | --- |
+   | `feat/` | New feature | `feat/nfs-reconnect` |
+   | `fix/` | Bug fix | `fix/vlc-audio-crackle` |
+   | `docs/` | Documentation | `docs/readme-usage` |
+   | `refactor/` | Refactoring | `refactor/player-engine-interface` |
+
+2. Verify compilation and tests locally before committing:
+
+   ```bash
+   ./gradlew :app:compileDebugKotlin
+   ./gradlew :app:testDebugUnitTest
+   ```
+
+3. Commit and open a Pull Request against `main`, describing what was fixed, how it was verified, and which modules are affected.
+
+### Commit Message Convention
+
+This repository uses one-line descriptive commit messages: state what changed, and separate multiple changes with commas.
+
+```
+Show scraped title and file date on the player screen, flush playback progress periodically, rewrite file name parsing
+```
+
+### Code Style and Conventions
+
+- Follow the official Kotlin code style (`kotlin.code.style=official`).
+- Build all UI with Jetpack Compose for TV. New pages belong in their own package under `ui/screen/`, registered as a route in `MzDKPlayerAPP.kt`.
+- Inject DAOs into ViewModels via `viewModelWithFactory { RepositoryProvider.xxx() }`; never fetch a DAO directly inside a composable.
+- Network protocol code **must set timeouts** and degrade gracefully on failure — never block playback or throw onto the UI thread.
+- Implement player-engine changes against `IMzPlayer`; do not write `if (exo) ... else ...` in the UI layer.
+- Do not hardcode user-facing strings — add them to `res/values/strings.xml` and mirror them into `values-en` / `values-ja` / `values-zh-rTW`.
+- For user-visible changes, update [CHANGELOG.md](CHANGELOG.md) and the `versionName` in `app/build.gradle.kts`.
+
+### Pull Request Checklist
+
+- [ ] `./gradlew :app:compileDebugKotlin` passes
+- [ ] `./gradlew :app:testDebugUnitTest` passes (add tests for new pure logic)
+- [ ] No local files committed (`local.properties`, `app/build/`, `.gradle/`, `.idea/`, etc.)
+- [ ] New strings added to every language's `strings.xml`
+- [ ] User-visible changes reflected in `CHANGELOG.md` (and `versionName` when appropriate)
+- [ ] Verified on a real device / TV (state the device and system version)
+
+### About the Binary Dependencies in This Repository
+
+`akdanmaku.aar` and `lib-decoder-ffmpeg-release*.aar` under `app/libs/` are prebuilt local libraries required by the player. They are shipped with the repository — **no need to build them yourself, and do not delete them**.
 
 ---
 
 ## Disclaimer
 
 This software is for learning and exchange purposes only; please do not use it for commercial purposes. The developer is not responsible for any issues caused by the use of this software.
+
+---
+
+## License
+
+This project is released under the [GNU General Public License v3.0](LICENSE).
 
 ---
 
