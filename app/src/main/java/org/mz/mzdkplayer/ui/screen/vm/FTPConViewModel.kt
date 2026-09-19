@@ -14,6 +14,7 @@ import org.apache.commons.net.ftp.FTP
 import org.apache.commons.net.ftp.FTPClient
 import org.apache.commons.net.ftp.FTPFile
 import org.mz.mzdkplayer.data.model.FileConnectionStatus
+import org.mz.mzdkplayer.tool.FileBrowserLogic
 import java.io.IOException
 
 class FTPConViewModel : ViewModel() {
@@ -83,11 +84,8 @@ class FTPConViewModel : ViewModel() {
                         ftpClient?.setFileType(FTP.BINARY_FILE_TYPE)
                         ftpClient?.enterLocalPassiveMode()
 
-                        // 4. 计算初始路径
-                        val initialPathRaw = shareName ?: ""
-                        // 确保路径以 / 开头用于请求，但逻辑上处理干净
-                        val targetDir = if (initialPathRaw.startsWith("/")) initialPathRaw else "/$initialPathRaw"
-                        val safeTargetDir = if (targetDir.endsWith("/")) targetDir else "$targetDir/"
+                        // 4. 计算初始路径（保证前后都有 /）
+                        val safeTargetDir = FileBrowserLogic.normalizeFtpDirectory(shareName ?: "")
 
                         // 5. 直接拉取文件列表 (避免死锁的关键优化)
                         // 不调用 public listFiles()，而是直接调用内部逻辑
@@ -95,7 +93,7 @@ class FTPConViewModel : ViewModel() {
 
                         // 6. 更新 UI 状态
                         _fileList.value = files
-                        _currentPath.value = safeTargetDir.removePrefix("/").removeSuffix("/") // UI显示用的纯净路径
+                        _currentPath.value = FileBrowserLogic.ftpDisplayPath(safeTargetDir) // UI显示用的纯净路径
                         _connectionStatus.value = FileConnectionStatus.FilesLoaded
 
                         Log.d("FTPConViewModel", "连接成功，初始目录: $safeTargetDir")
@@ -124,9 +122,8 @@ class FTPConViewModel : ViewModel() {
                 _connectionStatus.value = FileConnectionStatus.LoadingFile
                 try {
                     withContext(Dispatchers.IO) {
-                        // 格式化路径
-                        val targetPath = if (path.startsWith("/")) path else "/$path"
-                        val dirPath = if (targetPath.endsWith("/")) targetPath else "$targetPath/"
+                        // 格式化路径（保证前后都有 /）
+                        val dirPath = FileBrowserLogic.normalizeFtpDirectory(path)
 
                         // 调用内部逻辑拉取文件
                         val files = fetchFilesInternal(dirPath)
@@ -165,10 +162,7 @@ class FTPConViewModel : ViewModel() {
         val files = ftpClient?.listFiles(dirPath) ?: throw IOException("获取文件列表返回空")
 
         // 过滤掉当前目录(.)和上级目录(..)以及空名称
-        return files.filter {
-            val name = it.name
-            name != "." && name != ".." && name.isNotBlank()
-        }
+        return files.filter { !FileBrowserLogic.isHiddenDirEntry(it.name) }
     }
 
     /**
@@ -179,20 +173,10 @@ class FTPConViewModel : ViewModel() {
         if (current.isEmpty()) return // 已经在根目录
 
         // 简单的字符串处理：去掉最后一级
-        val parentPath = getParentPath(current)
+        val parentPath = FileBrowserLogic.ftpParentPath(current)
         listFiles(parentPath)
     }
 
-    private fun getParentPath(current: String): String {
-        // 移除末尾斜杠以防干扰
-        val cleanCurrent = current.removeSuffix("/")
-        val lastSlashIndex = cleanCurrent.lastIndexOf('/')
-        return if (lastSlashIndex >= 0) {
-            cleanCurrent.substring(0, lastSlashIndex)
-        } else {
-            "" // 回到根目录
-        }
-    }
     /**
      * 检查当前是否已连接
      */
@@ -205,15 +189,15 @@ class FTPConViewModel : ViewModel() {
      * 获取完整 URL 用于播放
      */
     fun getResourceFullUrl(resourceName: String): String {
-        val server = this.server
-        val port = this.port
-        val path = _currentPath.value
-        // 拼接逻辑优化，防止多斜杠
-        val cleanPath = if (path.isEmpty()) "" else if (path.endsWith("/")) path else "$path/"
-        val cleanResourceName = resourceName.removePrefix("/")
-
         // 最终格式: ftp://user:pass@host:port/path/file
-        return "ftp://$username:$password@$server:$port/$cleanPath$cleanResourceName"
+        return FileBrowserLogic.buildFtpResourceUrl(
+            server = server,
+            port = port,
+            username = username,
+            password = password,
+            currentPath = _currentPath.value,
+            resourceName = resourceName
+        )
     }
     /**
      * 断开与 FTP 服务器的连接
@@ -267,19 +251,19 @@ class FTPConViewModel : ViewModel() {
             if (currentDepth > maxDepth) return
 
             try {
-                val dirPath = if (currentPath.endsWith("/")) currentPath else "$currentPath/"
+                val dirPath = FileBrowserLogic.normalizeFtpDirectory(currentPath)
                 val files = ftpClient?.listFiles(dirPath) ?: return
 
                 files.forEach { file ->
                     val fileName = file.name
-                    if (fileName == "." || fileName == "..") return@forEach
+                    if (FileBrowserLogic.isHiddenDirEntry(fileName)) return@forEach
 
                     val filePath = "$dirPath$fileName"
 
                     if (file.isDirectory) {
                         scanRecursive(filePath, currentDepth + 1)
                     } else if (org.mz.mzdkplayer.tool.Tools.containsVideoFormat(org.mz.mzdkplayer.tool.Tools.extractFileExtension(fileName))) {
-                        val fullUri = "ftp://$username:$password@$server:$port${filePath}"
+                        val fullUri = FileBrowserLogic.buildFtpUrl(server, port, username, password, filePath)
                         result.add(fileName to fullUri)
                     }
                 }

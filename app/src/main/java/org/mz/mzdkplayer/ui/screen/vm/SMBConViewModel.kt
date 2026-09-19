@@ -3,7 +3,6 @@ package org.mz.mzdkplayer.ui.screen.vm
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.hierynomus.msfscc.FileAttributes
 import com.hierynomus.msfscc.fileinformation.FileIdBothDirectoryInformation
 import com.hierynomus.protocol.transport.TransportException
 import com.hierynomus.smbj.SMBClient
@@ -20,6 +19,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.mz.mzdkplayer.data.model.FileConnectionStatus
+import org.mz.mzdkplayer.tool.FileBrowserLogic
 import java.util.concurrent.TimeUnit
 
 import kotlin.collections.forEach
@@ -121,26 +121,20 @@ class SMBConViewModel : ViewModel() {
                     // 在 IO 线程执行所有繁重工作
                     val files = withContext(Dispatchers.IO) {
                         try {
-                            val cleanPath = config.path.let {
-                                if (it == "/") "\\" else it.replace("/", "\\").trimEnd('\\')
-                            }
+                            val cleanPath = FileBrowserLogic.normalizeSmbDirectory(config.path)
                             val startTime = System.currentTimeMillis()
                             val fileList = mutableListOf<SMBFileItem>()
                             share?.list(cleanPath)
                                 ?.forEach { fileInfo: FileIdBothDirectoryInformation ->
                                     val fileName = fileInfo.fileName
-                                    if (fileName != "." && fileName != "..") {
+                                    if (!FileBrowserLogic.isHiddenDirEntry(fileName)) {
                                         val isDirectory = isDirectory(fileInfo.fileAttributes)
-                                        val filePath = if (cleanPath == "\\") {
-                                            "\\$fileName"
-                                        } else {
-                                            "$cleanPath\\$fileName"
-                                        }
+                                        val filePath = FileBrowserLogic.joinSmbPath(cleanPath, fileName)
 
                                         fileList.add(
                                             SMBFileItem(
                                                 name = fileName,
-                                                fullPath = filePath.replace("\\", "/"),
+                                                fullPath = FileBrowserLogic.toSmbDisplayPath(filePath),
                                                 isDirectory = isDirectory,
                                                 fileSize = fileInfo.endOfFile,
                                                 server = config.server,
@@ -227,20 +221,13 @@ class SMBConViewModel : ViewModel() {
 
     fun parseSMBPath(path: String): SMBConfig {
         // 格式: smb://username:password@server/share/path/to/directory
-        val pattern = Regex("^smb://(?:([^:]+):([^@]+)@)?([^/]+)/([^/]+)(/.*)?$")
-        val match = pattern.find(path) ?: return SMBConfig("", "", "", "", "")
-
-        val (username, password, server, share, rawPath) = match.destructured
-        val cleanPath = rawPath.trim().let {
-            it.ifEmpty { "/" }
-        }
-
+        val parts = FileBrowserLogic.parseSmbUrl(path) ?: return SMBConfig("", "", "", "", "")
         return SMBConfig(
-            server = server,
-            share = share,
-            path = cleanPath,
-            username = username.ifEmpty { "guest" },
-            password = password.ifEmpty { "" }
+            server = parts.server,
+            share = parts.share,
+            path = parts.path,
+            username = parts.username,
+            password = parts.password
         )
     }
 
@@ -251,25 +238,19 @@ class SMBConViewModel : ViewModel() {
         username: String,
         password: String
     ): String {
-        return if (username.isNotEmpty() && password.isNotEmpty()) {
-            "smb://$username:$password@$server/$share$path"
-        } else {
-            "smb://$server/$share$path"
-        }
+        return FileBrowserLogic.buildSmbUrl(server, share, path, username, password)
     }
 
     // 方法1：使用 FileAttributes 常量进行位运算判断
     fun isDirectory(fileAttributes: Long): Boolean {
-        return (fileAttributes and FileAttributes.FILE_ATTRIBUTE_DIRECTORY.value) != 0L
+        return FileBrowserLogic.isSmbDirectory(fileAttributes)
     }
 
     suspend fun scanVideosRecursive(config: SMBConfig, maxDepth: Int): List<Pair<String, String>> = withContext(Dispatchers.IO) {
         val result = mutableListOf<Pair<String, String>>()
         if (share == null) return@withContext emptyList()
 
-        val cleanPath = config.path.let {
-            if (it == "/") "\\" else it.replace("/", "\\").trimEnd('\\')
-        }
+        val cleanPath = FileBrowserLogic.normalizeSmbDirectory(config.path)
 
         fun scanRecursive(currentPath: String, currentDepth: Int) {
             if (currentDepth > maxDepth) return
@@ -277,16 +258,18 @@ class SMBConViewModel : ViewModel() {
             try {
                 share?.list(currentPath)?.forEach { fileInfo ->
                     val fileName = fileInfo.fileName
-                    if (fileName == "." || fileName == "..") return@forEach
+                    if (FileBrowserLogic.isHiddenDirEntry(fileName)) return@forEach
 
                     val isDirectory = isDirectory(fileInfo.fileAttributes)
-                    val filePath = if (currentPath == "\\") "\\$fileName" else "$currentPath\\$fileName"
-                    val fullPath = filePath.replace("\\", "/")
+                    val filePath = FileBrowserLogic.joinSmbPath(currentPath, fileName)
+                    val fullPath = FileBrowserLogic.toSmbDisplayPath(filePath)
 
                     if (isDirectory) {
                         scanRecursive(filePath, currentDepth + 1)
                     } else if (org.mz.mzdkplayer.tool.Tools.containsVideoFormat(org.mz.mzdkplayer.tool.Tools.extractFileExtension(fileName))) {
-                        val fullUri = "smb://${config.username}:${config.password}@${config.server}/${config.share}$fullPath"
+                        val fullUri = FileBrowserLogic.buildSmbUrlWithCredentials(
+                            config.server, config.share, fullPath, config.username, config.password
+                        )
                         result.add(fileName to fullUri)
                     }
                 }

@@ -25,6 +25,7 @@ import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 import androidx.core.net.toUri
 import okhttp3.Dns
+import org.mz.mzdkplayer.tool.FileBrowserLogic
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.WebDavHttpClient
 import org.mz.mzdkplayer.tool.WebDavHttpClient.Companion.restrictedTrustOkHttpClient
@@ -117,7 +118,7 @@ class WebDavConViewModel : ViewModel() {
                         }
 
                         // 再过滤掉 "." 和 ".."
-                        val filteredResources = resourcesToProcess.filter { it.name != "." && it.name != ".." }
+                        val filteredResources = resourcesToProcess.filter { !FileBrowserLogic.isHiddenDirEntry(it.name) }
 
                         // 构建 WebDavFileItem 列表并按名称排序
                         val webDavFileItemList = filteredResources.map { resource ->
@@ -204,9 +205,7 @@ class WebDavConViewModel : ViewModel() {
         authenticatedBaseUrl: String
     ): String {
         // 确保路径拼接正确（避免双斜杠）
-        val cleanParent = parentPath.trimEnd('/')
-        val cleanFile = fileName.trimStart('/').trimEnd('/')
-        return "$cleanParent/$cleanFile"
+        return FileBrowserLogic.joinUrlPath(parentPath, fileName)
     }
 
     /**
@@ -263,11 +262,8 @@ class WebDavConViewModel : ViewModel() {
      * @param resourceName 文件或文件夹名
      */
     fun getResourceFullUrl(resourceName: String): String {
-        val currentFullUrl = getCurrentFullUrl()
         // 确保 URL 以 '/' 结尾
-        val baseUrlWithSlash =
-            if (currentFullUrl.endsWith("/")) currentFullUrl else "$currentFullUrl/"
-        return "$baseUrlWithSlash$resourceName"
+        return "${FileBrowserLogic.ensureTrailingSlash(getCurrentFullUrl())}$resourceName"
     }
 
     override fun onCleared() {

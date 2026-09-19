@@ -17,6 +17,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.mz.mzdkplayer.data.model.FileConnectionStatus
 import org.mz.mzdkplayer.data.model.NFSConnection
+import org.mz.mzdkplayer.tool.FileBrowserLogic
 import java.io.IOException
 
 /**
@@ -180,20 +181,7 @@ class NFSConViewModel(application: Application) : AndroidViewModel(application) 
      * @param currentPath 当前相对路径
      */
     fun getParentPath(currentPath: String): String {
-        if (currentPath.isEmpty() || currentPath == "/") {
-            return "" // 已经在根目录
-        }
-        // 规范化路径：确保以 '/' 开头，不以 '/' 结尾 (除非是根目录)
-        var normalizedPath = if (currentPath.startsWith("/")) currentPath else "/$currentPath"
-        normalizedPath = normalizedPath.trimEnd('/')
-
-        // 找到最后一个 '/' 并截取前面的部分
-        val lastSlashIndex = normalizedPath.lastIndexOf('/')
-        return if (lastSlashIndex >= 0) {
-            normalizedPath.substring(0, lastSlashIndex).ifEmpty { "/" } // 确保根目录是 "/"
-        } else {
-            "/" // fallback 到根目录
-        }
+        return FileBrowserLogic.nfsParentPath(currentPath)
     }
 
     /**
@@ -201,12 +189,7 @@ class NFSConViewModel(application: Application) : AndroidViewModel(application) 
      * @param fileName 子目录名称
      */
     fun navigateToSubdirectory(fileName: String) {
-        val newPath = if (_currentPath.value.isEmpty()) {
-            "/$fileName"
-        } else {
-            "${_currentPath.value}/$fileName"
-        }
-        listFiles(newPath)
+        listFiles(FileBrowserLogic.nfsChildPath(_currentPath.value, fileName))
     }
 
     /**
@@ -239,9 +222,9 @@ class NFSConViewModel(application: Application) : AndroidViewModel(application) 
 
                 dir.listFiles()?.filterNotNull()?.forEach { file ->
                     val fileName = file.name
-                    if (fileName == "." || fileName == "..") return@forEach
+                    if (FileBrowserLogic.isHiddenDirEntry(fileName)) return@forEach
 
-                    val filePath = if (currentPath == "/") "/$fileName" else "$currentPath/$fileName"
+                    val filePath = FileBrowserLogic.nfsChildPath(currentPath, fileName)
 
                     if (file.isDirectory) {
                         scanRecursive(filePath, currentDepth + 1)

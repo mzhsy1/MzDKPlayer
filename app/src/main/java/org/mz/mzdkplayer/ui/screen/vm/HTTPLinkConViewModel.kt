@@ -14,10 +14,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import org.mz.mzdkplayer.data.model.FileConnectionStatus
+import org.mz.mzdkplayer.tool.FileBrowserLogic
 import java.io.IOException
-import java.net.URLDecoder
-import java.nio.charset.StandardCharsets
-import java.util.regex.Pattern
 
 class HTTPLinkConViewModel : ViewModel() {
 
@@ -67,7 +65,7 @@ class HTTPLinkConViewModel : ViewModel() {
      * 返回上一级目录
      */
     fun navigateToParent() {
-        val parentUrl = getParentUrl(baseUrl)
+        val parentUrl = FileBrowserLogic.httpParentUrl(baseUrl)
         if (parentUrl == baseUrl) {
             // 已在根目录，无法再返回
             Log.w("HTTPLinkConViewModel", "已在根目录，无法返回上级")
@@ -80,7 +78,7 @@ class HTTPLinkConViewModel : ViewModel() {
      * 获取当前逻辑路径（用于 UI 显示，从 baseUrl 推导）
      */
     fun getCurrentLogicalPath(): String {
-        return extractLogicalPath(baseUrl)
+        return FileBrowserLogic.httpLogicalPath(baseUrl)
     }
 
     /**
@@ -94,7 +92,7 @@ class HTTPLinkConViewModel : ViewModel() {
                 try {
                     withContext(Dispatchers.IO) {
                         val resources = listDirectoryFromUrl(fullUrl)
-                        val filteredResources = resources.filter { it.name != "." && it.name != ".." }
+                        val filteredResources = resources.filter { !FileBrowserLogic.isHiddenDirEntry(it.name) }
                         _fileList.value = filteredResources
                         _connectionStatus.value = FileConnectionStatus.FilesLoaded
                     }
@@ -134,47 +132,6 @@ class HTTPLinkConViewModel : ViewModel() {
 
     // --- 工具方法 ---
 
-    /**
-     * 从完整 URL 提取逻辑路径（用于显示）
-     * 例如: http://x/nas/movies/action/ → /movies/action
-     */
-    private fun extractLogicalPath(fullUrl: String): String {
-        try {
-            val urlObj = java.net.URL(fullUrl)
-            val path = urlObj.path
-            // 假设服务器根是固定的，但我们不知道，所以只能返回整个 path
-            // 如果你知道服务器根（如 /nas/），可以在这里裁剪
-            return path.trim('/').let { if (it.isEmpty()) "" else "/$it" }
-        } catch (e: Exception) {
-            Log.e("HTTPLinkConViewModel", "解析路径失败: $fullUrl", e)
-            return ""
-        }
-    }
-
-    /**
-     * 获取父级完整 URL
-     */
-    private fun getParentUrl(currentUrl: String): String {
-        try {
-            val urlObj = java.net.URL(currentUrl)
-            val path = urlObj.path
-            if (path == "/" || path.count { it == '/' } <= 1) {
-                return currentUrl // 已在根
-            }
-            val parentPath = path.trimEnd('/').substringBeforeLast("/", "")
-            val parentUrlStr = if (parentPath.isEmpty()) {
-                "${urlObj.protocol}://${urlObj.host}${if (urlObj.port != -1) ":${urlObj.port}" else ""}/"
-            } else {
-                "${urlObj.protocol}://${urlObj.host}${if (urlObj.port != -1) ":${urlObj.port}" else ""}$parentPath/"
-            }
-            return parentUrlStr
-        } catch (e: Exception) {
-            Log.e("HTTPLinkConViewModel", "获取父目录失败: $currentUrl", e)
-            return currentUrl
-        }
-    }
-
-    // --- 保留原有解析逻辑 ---
     private fun listDirectoryFromUrl(url: String): List<HTTPLinkResource> {
         val request = Request.Builder().url(url).build()
         val response: Response = okHttpClient.newCall(request).execute()
@@ -193,60 +150,19 @@ class HTTPLinkConViewModel : ViewModel() {
     }
 
     private fun parseHtmlDirectoryListing(html: String, baseUrl: String): List<HTTPLinkResource> {
-        val resources = mutableListOf<HTTPLinkResource>()
-
-        // 改进后的正则：捕获链接 href、链接文字 以及 标签后面的文本（包含日期和大小）
-        // 这个正则会匹配 <a>...</a> 后面直到下一个 < 的所有内容
-        val rowPattern = Pattern.compile(
-            "<a\\s+[^>]*href\\s*=\\s*[\"']([^\"']*)[\"'][^>]*>([^<]*)</a>([^<]*)",
-            Pattern.CASE_INSENSITIVE or Pattern.DOTALL
-        )
-        val matcher = rowPattern.matcher(html)
-
-        while (matcher.find()) {
-            var href = matcher.group(1) ?: continue
-            href = URLDecoder.decode(href, StandardCharsets.UTF_8.name())
-
-            // 提取 <a> 标签后的文本内容
-            val afterText = matcher.group(3) ?: ""
-
-            if (!href.startsWith("#") && !href.startsWith("javascript:")) {
-                val fullHref = resolveUrl(href, baseUrl)
-                if (isSubPathOf(fullHref, baseUrl)) {
-                    val isDirectory = href.endsWith("/")
-                    val cleanHref = href.trimEnd('/')
-                    val name = cleanHref.substringAfterLast("/", cleanHref)
-
-                    if (name != ".." && name != ".") {
-                        // --- 提取文件大小逻辑 ---
-                        var size: Long = 0
-                        if (!isDirectory) {
-                            size = parseNginxSize(afterText)
-                        }
-
-                        resources.add(HTTPLinkResource(name, isDirectory, href, size))
-                    }
-                }
-            }
-        }
-        return resources.distinctBy { it.name }
-    }
-
-    private fun isSubPathOf(url: String, baseUrl: String): Boolean {
-        try {
-            val baseUrlObj = java.net.URL(baseUrl)
-            val urlObj = java.net.URL(url)
-            if (urlObj.protocol != baseUrlObj.protocol || urlObj.host != baseUrlObj.host || urlObj.port != baseUrlObj.port) {
-                return false
-            }
-            return urlObj.path.startsWith(baseUrlObj.path)
-        } catch (e: Exception) {
-            return false
+        // 解析逻辑（正则、过滤、大小提取）已下沉到 FileBrowserLogic，便于单测
+        return FileBrowserLogic.parseHttpDirectoryListing(html, baseUrl).map { entry ->
+            HTTPLinkResource(
+                name = entry.name,
+                isDirectory = entry.isDirectory,
+                path = entry.href, // 保留服务端原始链接，播放时再按当前目录解析
+                fileSize = entry.size
+            )
         }
     }
 
     private fun resolveUrl(relativeUrl: String, baseUrl: String): String {
-        return java.net.URL(java.net.URL(baseUrl), relativeUrl).toString()
+        return FileBrowserLogic.resolveHttpUrl(relativeUrl, baseUrl)
     }
 
     private val okHttpClient = OkHttpClient()
@@ -269,7 +185,7 @@ class HTTPLinkConViewModel : ViewModel() {
                 val resources = listDirectoryFromUrl(normalizedUrl)
 
                 resources.forEach { resource ->
-                    if (resource.name == "." || resource.name == "..") return@forEach
+                    if (FileBrowserLogic.isHiddenDirEntry(resource.name)) return@forEach
 
                     val resourceUrl = resolveUrl(resource.path, normalizedUrl)
 
@@ -286,25 +202,6 @@ class HTTPLinkConViewModel : ViewModel() {
 
         scanRecursive(fullUrl, 0)
         result
-    }
-}
-/**
- * 辅助方法：从 Nginx 的行文本中提取大小数字
- */
-private fun parseNginxSize(text: String): Long {
-    return try {
-        // Nginx 的格式通常是:  Date Time  Size
-        // 我们寻找末尾的数字部分
-        val parts = text.trim().split(Regex("\\s+"))
-        if (parts.isNotEmpty()) {
-            val lastPart = parts.last()
-            // 如果是目录，Nginx 显示 "-"，如果是文件显示字节数
-            if (lastPart == "-") 0L else lastPart.toLong()
-        } else {
-            0L
-        }
-    } catch (e: Exception) {
-        0L
     }
 }
 data class HTTPLinkResource(
