@@ -1,0 +1,55 @@
+name: CI
+
+# 每次推送到 main、以及每个 PR：编译 + 跑 JVM 单元测试。
+# 打包发布在 release.yml 里，只有版本号是新的才会跑。
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 同一个分支上重复触发时，取消上一次还没跑完的
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: 编译与单元测试
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # 项目 compileSdk 是 37，先装好 cmdline-tools 并接受 licenses，
+      # 缺的平台/构建工具交给 AGP 自动下载
+      - name: 准备 Android SDK
+        uses: android-actions/setup-android@v3
+
+      # build.gradle.kts 里是 jvmToolchain(21)，所以 CI 也必须是 JDK 21
+      - name: 配置 JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: 配置 Gradle 缓存
+        uses: gradle/actions/setup-gradle@v4
+
+      # 不需要 TMDB_API_KEY：空值只影响运行时刮削，不影响编译与单测
+      - name: 编译并运行单元测试
+        run: ./gradlew :app:testDebugUnitTest --console=plain
+
+      - name: 上传测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: |
+            app/build/reports/tests/testDebugUnitTest
+            app/build/test-results/testDebugUnitTest
+          if-no-files-found: ignore

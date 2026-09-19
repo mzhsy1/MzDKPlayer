@@ -12,3 +12,9 @@ local.properties
 /app/release/
 gradle/gradle-daemon-jvm.properties
 .workbuddy/
+
+# 签名密钥：只放在本地或 GitHub Secrets 里，绝不入库
+*.jks
+*.keystore
+keystore/
+release.jks

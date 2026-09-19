@@ -141,7 +141,7 @@ MzDKPlayer supports audio passthrough, allowing raw audio signals (source) to be
 
 > For users who just want to use the app on their TV — no development environment needed.
 
-1. Open the [Releases](https://github.com/mzhsy1/MzDKPlayer/releases) page and download the latest APK.
+1. Open the [Releases](https://github.com/mzhsy1/MzDKPlayer/releases) page and download the latest APK (built automatically by GitHub Actions).
 2. Pick the package matching your TV's chipset (**use the universal package if unsure**):
 
    | Package | Target devices |
@@ -512,6 +512,33 @@ Show scraped title and file date on the player screen, flush playback progress p
 ### About the Binary Dependencies in This Repository
 
 `akdanmaku.aar` and `lib-decoder-ffmpeg-release*.aar` under `app/libs/` are prebuilt local libraries required by the player. They are shipped with the repository — **no need to build them yourself, and do not delete them**.
+
+### Automated Build and Release (GitHub Actions)
+
+Two workflows ship with the repository, so you never have to package a build by hand:
+
+| Workflow | Trigger | What it does |
+| --- | --- | --- |
+| `ci.yml` | Push to `main`, every PR | Compiles and runs the JVM unit tests, uploads the test report as an artifact |
+| `release.yml` | Push to `main` (when the version is new), `V*` tag push, manual run | Runs the tests → builds signed APKs → creates the Release with all three APKs attached |
+
+**Releases are version-driven**: `release.yml` reads `versionName` from `app/build.gradle.kts` and, if there is no `V<version>` Release yet, builds and publishes automatically. In other words, bump `versionName` as usual, push, and the Release appears — no manual tagging needed (the workflow creates the tag, keeping the historical uppercase `V` prefix such as `V1.17.4`).
+
+The release body is taken from the "未发布" (unreleased) section of [CHANGELOG.md](CHANGELOG.md), so **write the changelog entry before releasing**.
+
+Publishing needs these Secrets (`Settings → Secrets and variables → Actions`). If any is missing the workflow skips publishing and lists what is missing in the run summary:
+
+| Secret | Purpose |
+| --- | --- |
+| `TMDB_API_KEY` | Written into `BuildConfig.TMDB_API_KEY` at build time; an empty value silently breaks TMDB scraping |
+| `RELEASE_KEYSTORE_BASE64` | base64 of the signing keystore: `base64 -w0 release.jks` |
+| `RELEASE_KEYSTORE_PASSWORD` | Keystore password |
+| `RELEASE_KEY_ALIAS` | Key alias |
+| `RELEASE_KEY_PASSWORD` | Key password |
+
+Signing material is passed to Gradle only through environment variables (`MZDK_KEYSTORE_FILE` and friends) — **never commit the keystore**. Without those variables, `assembleRelease` keeps producing `app-*-release-unsigned.apk` exactly as before.
+
+To republish the same version, run the `Release` workflow manually and tick `force`.
 
 ---
 

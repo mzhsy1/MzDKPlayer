@@ -1,0 +1,207 @@
+name: Release
+
+# 版本号驱动：推送到 main 之后，如果 app/build.gradle.kts 里的 versionName
+# 还没有对应的 Release，就自动构建签名 APK 并发布。
+# 也可以手动触发（Actions 页面 → Release → Run workflow）。
+#
+# 发布需要的 Secrets（Settings → Secrets and variables → Actions）：
+#   TMDB_API_KEY               打包写入 BuildConfig，空值会让 TMDB 刮削静默失效
+#   RELEASE_KEYSTORE_BASE64    签名库的 base64：base64 -w0 release.jks
+#   RELEASE_KEYSTORE_PASSWORD  密钥库口令
+#   RELEASE_KEY_ALIAS          密钥别名
+#   RELEASE_KEY_PASSWORD       密钥口令
+# 缺任何一项都会跳过发布（未签名的 APK 在电视上装不上，宁可不发），
+# 具体缺什么会在本次运行的 Summary 里列出来。
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'V*', 'v*' ]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 该版本号已经发布过时，是否重新发布
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: 构建并发布
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 读取版本号
+        id: version
+        run: |
+          set -euo pipefail
+          version="$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -n1)"
+          if [ -z "$version" ]; then
+            echo "::error::没能从 app/build.gradle.kts 读出版本号"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "检测到版本号：$version"
+
+      - name: 判断是否需要发布
+        id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+
+          if [ "$FORCE" != "true" ] && gh release view "V$version" >/dev/null 2>&1; then
+            echo "::notice::V$version 已经发布过，本次跳过（需要重发的话手动 Run workflow 并勾选 force）"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          missing=""
+          [ -n "$TMDB_API_KEY" ] || missing="$missing TMDB_API_KEY"
+          [ -n "$KEYSTORE_BASE64" ] || missing="$missing RELEASE_KEYSTORE_BASE64"
+          if [ -n "$missing" ]; then
+            {
+              echo "## 已跳过发布：缺少必需的密钥"
+              echo ""
+              echo '缺少：`'"$missing"'`'
+              echo ""
+              echo "到仓库 **Settings → Secrets and variables → Actions** 补齐下列 Secrets，再重新运行本工作流："
+              echo ""
+              echo "| Secret | 用途 |"
+              echo "| --- | --- |"
+              echo '| `TMDB_API_KEY` | 打包时写入 BuildConfig，空值会让 TMDB 刮削静默失效 |'
+              echo '| `RELEASE_KEYSTORE_BASE64` | 签名库的 base64：`base64 -w0 release.jks` |'
+              echo '| `RELEASE_KEYSTORE_PASSWORD` | 密钥库口令 |'
+              echo '| `RELEASE_KEY_ALIAS` | 密钥别名 |'
+              echo '| `RELEASE_KEY_PASSWORD` | 密钥口令 |'
+              echo ""
+              echo "补齐前不会产出未签名的 Release —— 那种包装不到电视上。"
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::缺少$missing，跳过 Release 发布（缺什么见本次运行的 Summary）"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+
+      - name: 准备 Android SDK
+        if: steps.guard.outputs.publish == 'true'
+        uses: android-actions/setup-android@v3
+
+      - name: 配置 JDK 21
+        if: steps.guard.outputs.publish == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: 配置 Gradle 缓存
+        if: steps.guard.outputs.publish == 'true'
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: 写入 local.properties
+        if: steps.guard.outputs.publish == 'true'
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: |
+          set -euo pipefail
+          printf 'TMDB_API_KEY=%s\n' "$TMDB_API_KEY" > local.properties
+          # sdk.dir 不写：AGP 会用 ANDROID_HOME
+
+      - name: 解码签名密钥
+        if: steps.guard.outputs.publish == 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "MZDK_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+
+      - name: 单元测试
+        if: steps.guard.outputs.publish == 'true'
+        run: ./gradlew :app:testDebugUnitTest --console=plain
+
+      - name: 构建 Release APK
+        if: steps.guard.outputs.publish == 'true'
+        env:
+          MZDK_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          MZDK_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          MZDK_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: ./gradlew :app:assembleRelease --console=plain
+
+      - name: 校验产物已签名
+        if: steps.guard.outputs.publish == 'true'
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          apks=(app/build/outputs/apk/release/*.apk)
+          if [ ${#apks[@]} -eq 0 ]; then
+            echo "::error::没有产出任何 APK"
+            exit 1
+          fi
+          for apk in "${apks[@]}"; do
+            case "$apk" in
+              *unsigned*)
+                echo "::error::$apk 是未签名包，说明签名配置没生效"
+                exit 1
+                ;;
+            esac
+            ls -lh "$apk"
+          done
+
+      - name: 生成发布说明
+        if: steps.guard.outputs.publish == 'true'
+        env:
+          NOTES_PATH: ${{ runner.temp }}/release-notes.md
+        run: |
+          set -euo pipefail
+          python3 - "$NOTES_PATH" <<'PY'
+          import re, sys
+          text = open('CHANGELOG.md', encoding='utf-8').read()
+          m = re.search(r'^## \[未发布\][ \t]*\r?\n(.*?)(?=^## |\Z)', text, re.M | re.S)
+          body = m.group(1).strip() if m else ''
+          open(sys.argv[1], 'w', encoding='utf-8').write(
+              body or '本次发布未在 CHANGELOG 的「未发布」段落里记录变更。'
+          )
+          PY
+          cat >> "$NOTES_PATH" <<'MD'
+
+          ---
+
+          **怎么选包**：64 位电视 / 盒子选 `app-arm64-v8a-release.apk`；老旧 32 位设备选 `app-armeabi-v7a-release.apk`；不确定就选 `app-universal-release.apk`（体积最大，但一定能装）。
+
+          本版本由 GitHub Actions 自动构建，版本号取自 `app/build.gradle.kts` 的 `versionName`。
+          MD
+          cat "$NOTES_PATH"
+
+      - name: 上传构建产物
+        if: steps.guard.outputs.publish == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: MzDKPlayer-V${{ steps.version.outputs.version }}
+          path: app/build/outputs/apk/release/*.apk
+
+      - name: 发布 Release
+        if: steps.guard.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          gh release create "V$version" \
+            --title "V$version" \
+            --notes-file "${{ runner.temp }}/release-notes.md" \
+            --target "${{ github.sha }}" \
+            app/build/outputs/apk/release/*.apk
+          echo "已发布：V$version"

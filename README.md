@@ -141,7 +141,7 @@ MzDKPlayer 支持音频直通功能，可以将原始音频信号（源码）直
 
 > 适合只想在电视上使用的用户，不需要任何开发环境。
 
-1. 打开 [Releases](https://github.com/mzhsy1/MzDKPlayer/releases) 页面，下载最新版本的 APK。
+1. 打开 [Releases](https://github.com/mzhsy1/MzDKPlayer/releases) 页面，下载最新版本的 APK（由 GitHub Actions 自动构建）。
 2. 根据电视芯片架构选择安装包（**不确定就先用通用包**）：
 
    | 安装包 | 适用设备 |
@@ -512,6 +512,33 @@ app/src/main/java/org/mz/mzdkplayer/
 ### 关于仓库内的二进制依赖
 
 `app/libs/` 下的 `akdanmaku.aar` 与 `lib-decoder-ffmpeg-release*.aar` 是播放器依赖的本地预编译库，已随仓库提供，**无需自行构建，也不要删除**。
+
+### 自动构建与发布（GitHub Actions）
+
+仓库里有两个工作流，不需要手动打包：
+
+| 工作流 | 触发时机 | 做什么 |
+| --- | --- | --- |
+| `ci.yml` | 推送到 `main`、每个 PR | 编译 + 跑 JVM 单元测试，测试报告作为 artifact 上传 |
+| `release.yml` | 推送到 `main`（版本号是新的）、推送 `V*` tag、手动触发 | 跑测试 → 构建签名 APK → 创建 Release 并上传三个 APK |
+
+**发布是版本号驱动的**：`release.yml` 会读取 `app/build.gradle.kts` 里的 `versionName`，如果还没有对应的 `V<版本号>` Release，就自动构建并发布。也就是说，按约定 bump 完 `versionName` 并推送，Release 就自动出来了，不需要手动打 tag（tag 会由工作流创建，沿用历史的 `V1.17.4` 这种大写 `V` 前缀）。
+
+Release 正文取自 [CHANGELOG.md](CHANGELOG.md) 的「未发布」段落，所以**发布前记得先把变更写进 CHANGELOG**。
+
+发布需要以下 Secrets（`Settings → Secrets and variables → Actions`），缺任意一项工作流会跳过发布并在运行摘要里列出缺什么：
+
+| Secret | 用途 |
+| --- | --- |
+| `TMDB_API_KEY` | 打包时写入 `BuildConfig.TMDB_API_KEY`，空值会让 TMDB 刮削静默失效 |
+| `RELEASE_KEYSTORE_BASE64` | 签名密钥库的 base64：`base64 -w0 release.jks` |
+| `RELEASE_KEYSTORE_PASSWORD` | 密钥库口令 |
+| `RELEASE_KEY_ALIAS` | 密钥别名 |
+| `RELEASE_KEY_PASSWORD` | 密钥口令 |
+
+签名材料只通过环境变量传给 Gradle（`MZDK_KEYSTORE_FILE` 等），**密钥文件不要提交到仓库**。本地没有配这些变量时，`assembleRelease` 会照旧产出 `app-*-release-unsigned.apk`，行为与以前一致。
+
+想重新发布同一个版本：到 Actions 页面手动运行 `Release`，并把 `force` 勾上。
 
 ---
 

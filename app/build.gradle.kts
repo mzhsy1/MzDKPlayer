@@ -1,4 +1,5 @@
 
+import java.io.File
 import java.util.Properties
 
 plugins {
@@ -57,12 +58,18 @@ android {
             //pickFirsts.add("lib/**/libc++_shared.so")
         }
     }
-    signingConfigs {
-        create("release") {
-            // 你的密钥配置...
-            enableV1Signing = true
-            enableV2Signing = true
+    // 签名材料由环境变量提供（CI 里来自 GitHub Secrets），本地不配就维持「不签名」的现状。
+    // 相关变量：MZDK_KEYSTORE_FILE / MZDK_KEYSTORE_PASSWORD / MZDK_KEY_ALIAS / MZDK_KEY_PASSWORD
+    val releaseSigning = signingConfigs.create("release") {
+        val keystorePath = System.getenv("MZDK_KEYSTORE_FILE")
+        if (!keystorePath.isNullOrBlank() && File(keystorePath).exists()) {
+            storeFile = File(keystorePath)
+            storePassword = System.getenv("MZDK_KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("MZDK_KEY_ALIAS")
+            keyPassword = System.getenv("MZDK_KEY_PASSWORD")
         }
+        enableV1Signing = true
+        enableV2Signing = true
     }
     buildTypes {
         release {
@@ -72,6 +79,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // 拿到签名材料才挂签名配置，否则照旧产出 app-*-release-unsigned.apk
+            if (releaseSigning.storeFile != null) {
+                signingConfig = releaseSigning
+            }
         }
     }
     compileOptions {
