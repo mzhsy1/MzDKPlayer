@@ -122,14 +122,18 @@ jobs:
             exit 0
           fi
           yes | "$sdkmanager" --sdk_root="$sdk" --licenses >/dev/null 2>&1 || true
-          for pkg in "platforms;android-37.0" "build-tools;37.0.0"; do
-            out="$("$sdkmanager" --sdk_root="$sdk" "$pkg" 2>&1)" || {
+          # rc / canary 版本要带 channel，AGP 9 用的 build-tools 就是 36.1.0-rc1 这类
+          yes | "$sdkmanager" --sdk_root="$sdk" --channel=3 --licenses >/dev/null 2>&1 || true
+          for pkg in "platforms;android-37.0" "build-tools;36.1.0-rc1" "build-tools;37.0.0"; do
+            out="$("$sdkmanager" --sdk_root="$sdk" --channel=3 "$pkg" 2>&1)" || {
               echo "$out" | tail -n 5
               echo "::warning title=预装 $pkg 失败::$(echo "$out" | tail -n 3 | tr '\n' ' ' | cut -c1-300)"
             }
           done
           echo "装完后平台：$(ls "$sdk/platforms" 2>/dev/null | tr '\n' ' ')"
           echo "build-tools：$(ls "$sdk/build-tools" 2>/dev/null | tr '\n' ' ')"
+          # 把关键环境写进注解，CI 挂了不看日志也能定位
+          echo "::notice title=CI 环境::java=$(java -version 2>&1 | head -n1) | JAVA_HOME=${JAVA_HOME:-无} | SDK=$sdk | platforms=$(ls "$sdk/platforms" 2>/dev/null | tr '\n' ' ') | build-tools=$(ls "$sdk/build-tools" 2>/dev/null | tr '\n' ' ')"
 
       - name: 配置 Gradle 缓存
         if: steps.guard.outputs.publish == 'true'
@@ -153,21 +157,27 @@ jobs:
           printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
           echo "MZDK_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
 
+      # 注意：GitHub 默认 shell 自带 -e，失败收集日志前必须 set +e
       - name: 单元测试
         if: steps.guard.outputs.publish == 'true'
         run: |
           set -uo pipefail
+          set +e
           log="$RUNNER_TEMP/gradle-test.log"
           ./gradlew :app:testDebugUnitTest --console=plain 2>&1 | tee "$log"
           status="${PIPESTATUS[0]}"
           if [ "$status" -ne 0 ]; then
+            summary="$(awk '/What went wrong:/{getline; print; exit}' "$log" | tr '\n' ' ' | cut -c1-400)"
+            [ -n "$summary" ] || summary="$(grep -m1 -E 'FAILURE:|^> Task .* FAILED|Could not|Caused by:' "$log" | tr '\n' ' ' | cut -c1-400)"
             {
-              echo "## 单元测试失败，日志尾部"
+              echo "## 单元测试失败"
+              echo
+              echo '**原因**：'"${summary:-未识别，见日志尾部}"
+              echo
               echo '```'
               tail -n 60 "$log"
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
-            summary="$(grep -m1 -E 'FAILURE:|^> Task .* FAILED|Could not|error:|Caused by:' "$log" | tr '\n' ' ' | cut -c1-400)"
             echo "::error title=单元测试失败::${summary:-见运行摘要}"
             exit "$status"
           fi
@@ -180,17 +190,22 @@ jobs:
           MZDK_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           set -uo pipefail
+          set +e
           log="$RUNNER_TEMP/gradle-release.log"
           ./gradlew :app:assembleRelease --console=plain 2>&1 | tee "$log"
           status="${PIPESTATUS[0]}"
           if [ "$status" -ne 0 ]; then
+            summary="$(awk '/What went wrong:/{getline; print; exit}' "$log" | tr '\n' ' ' | cut -c1-400)"
+            [ -n "$summary" ] || summary="$(grep -m1 -E 'FAILURE:|^> Task .* FAILED|Could not|Caused by:' "$log" | tr '\n' ' ' | cut -c1-400)"
             {
-              echo "## assembleRelease 失败，日志尾部"
+              echo "## assembleRelease 失败"
+              echo
+              echo '**原因**：'"${summary:-未识别，见日志尾部}"
+              echo
               echo '```'
               tail -n 60 "$log"
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
-            summary="$(grep -m1 -E 'FAILURE:|^> Task .* FAILED|Could not|error:|Caused by:' "$log" | tr '\n' ' ' | cut -c1-400)"
             echo "::error title=assembleRelease 失败::${summary:-见运行摘要}"
             exit "$status"
           fi
