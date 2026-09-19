@@ -102,25 +102,34 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      # runner 自带 Android SDK 与已接受的 licenses；这里补上 compileSdk 需要的平台，
+      # runner 自带 Android SDK 与已接受的 licenses。
+      # 注意平台包名带 minor 版本：compileSdk = 37 对应 packages 里的 platforms;android-37.0。
       # 故意不依赖第三方 setup-android action，少一层会过期的依赖。
       - name: 准备 Android SDK
         if: steps.guard.outputs.publish == 'true'
         run: |
-          set -euo pipefail
+          set -uo pipefail
           sdk="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
           if [ -z "$sdk" ]; then
             echo "::error::runner 上没有 ANDROID_SDK_ROOT / ANDROID_HOME"
             exit 1
           fi
           echo "Android SDK: $sdk"
+          echo "已装平台：$(ls "$sdk/platforms" 2>/dev/null | tr '\n' ' ')"
           sdkmanager="$(find "$sdk/cmdline-tools" -maxdepth 3 -name sdkmanager -type f 2>/dev/null | head -n1)"
           if [ -z "$sdkmanager" ]; then
             echo "::warning::没找到 sdkmanager，交给 AGP 自己下载缺失组件"
             exit 0
           fi
-          yes | "$sdkmanager" --licenses >/dev/null 2>&1 || true
-          "$sdkmanager" "platforms;android-37" || echo "::warning::platforms;android-37 预装失败，交给 AGP 重试"
+          yes | "$sdkmanager" --sdk_root="$sdk" --licenses >/dev/null 2>&1 || true
+          for pkg in "platforms;android-37.0" "build-tools;37.0.0"; do
+            out="$("$sdkmanager" --sdk_root="$sdk" "$pkg" 2>&1)" || {
+              echo "$out" | tail -n 5
+              echo "::warning title=预装 $pkg 失败::$(echo "$out" | tail -n 3 | tr '\n' ' ' | cut -c1-300)"
+            }
+          done
+          echo "装完后平台：$(ls "$sdk/platforms" 2>/dev/null | tr '\n' ' ')"
+          echo "build-tools：$(ls "$sdk/build-tools" 2>/dev/null | tr '\n' ' ')"
 
       - name: 配置 Gradle 缓存
         if: steps.guard.outputs.publish == 'true'
@@ -146,7 +155,22 @@ jobs:
 
       - name: 单元测试
         if: steps.guard.outputs.publish == 'true'
-        run: ./gradlew :app:testDebugUnitTest --console=plain
+        run: |
+          set -uo pipefail
+          log="$RUNNER_TEMP/gradle-test.log"
+          ./gradlew :app:testDebugUnitTest --console=plain 2>&1 | tee "$log"
+          status="${PIPESTATUS[0]}"
+          if [ "$status" -ne 0 ]; then
+            {
+              echo "## 单元测试失败，日志尾部"
+              echo '```'
+              tail -n 60 "$log"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            summary="$(grep -m1 -E 'FAILURE:|^> Task .* FAILED|Could not|error:|Caused by:' "$log" | tr '\n' ' ' | cut -c1-400)"
+            echo "::error title=单元测试失败::${summary:-见运行摘要}"
+            exit "$status"
+          fi
 
       - name: 构建 Release APK
         if: steps.guard.outputs.publish == 'true'
@@ -154,7 +178,22 @@ jobs:
           MZDK_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           MZDK_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           MZDK_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew :app:assembleRelease --console=plain
+        run: |
+          set -uo pipefail
+          log="$RUNNER_TEMP/gradle-release.log"
+          ./gradlew :app:assembleRelease --console=plain 2>&1 | tee "$log"
+          status="${PIPESTATUS[0]}"
+          if [ "$status" -ne 0 ]; then
+            {
+              echo "## assembleRelease 失败，日志尾部"
+              echo '```'
+              tail -n 60 "$log"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            summary="$(grep -m1 -E 'FAILURE:|^> Task .* FAILED|Could not|error:|Caused by:' "$log" | tr '\n' ' ' | cut -c1-400)"
+            echo "::error title=assembleRelease 失败::${summary:-见运行摘要}"
+            exit "$status"
+          fi
 
       - name: 校验产物已签名
         if: steps.guard.outputs.publish == 'true'
