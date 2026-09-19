@@ -236,7 +236,10 @@ internal object FileBrowserLogic {
             val afterAnchorText = matcher.group(3) ?: ""
 
             if (href.startsWith("#") || href.startsWith("javascript:")) continue
-            if (!isHttpSubPath(resolveHttpUrl(href, baseUrl), baseUrl)) continue
+            // 无法解析的 href（例如 mailto: / ftp: 等未知协议）直接跳过，
+            // 不能让一条坏链接把整页目录解析掉
+            val resolved = runCatching { resolveHttpUrl(href, baseUrl) }.getOrNull() ?: continue
+            if (!isHttpSubPath(resolved, baseUrl)) continue
 
             val isDirectory = href.endsWith("/")
             val cleanHref = href.trimEnd('/')

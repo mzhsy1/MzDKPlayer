@@ -115,6 +115,28 @@ class HttpDirectoryListingTest {
     }
 
     @Test
+    fun `目录页 - 未知协议的链接被跳过而不影响整页解析`() {
+        // mailto: / ftp: 这类 href 无法用 URL(base, href) 解析，历史上会让整个列表解析抛异常
+        val html = nginxPage(
+            "<a href=\"mailto:admin@example.com\">联系管理员</a>",
+            "<a href=\"ftp://192.168.1.4/movies/x.mkv\">x.mkv</a>",
+            fileRow("a.mkv", 100L)
+        )
+        assertEquals(listOf("a.mkv"), FileBrowserLogic.parseHttpDirectoryListing(html, baseUrl).map { it.name })
+    }
+
+    @Test
+    fun `目录页 - baseUrl 缺少结尾斜杠时同级条目会被判成不在子树下`() {
+        // 调用方必须传带结尾 '/' 的目录地址：URL("http://host/movies", "a.mkv") 会解析成
+        // http://host/a.mkv，于是被「子树校验」挡掉。字幕扫描那边就是靠补 '/' 规避的。
+        val html = nginxPage(fileRow("a.mkv", 100L))
+        assertEquals(
+            emptyList<String>(),
+            FileBrowserLogic.parseHttpDirectoryListing(html, "http://192.168.1.4/movies").map { it.name }
+        )
+    }
+
+    @Test
     fun `目录页 - 同名条目只保留第一次出现的那个`() {
         val entries = FileBrowserLogic.parseHttpDirectoryListing(
             nginxPage(fileRow("a.mkv", 100L), fileRow("a.mkv", 200L)),

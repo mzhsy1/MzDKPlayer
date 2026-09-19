@@ -694,8 +694,7 @@ object SmbUtils {
      */
     fun getDanmakuSmbUri(videoSmbUri: Uri): Uri {
         val videoPath = videoSmbUri.path ?: throw IllegalArgumentException("Invalid video URI")
-        val basePath = videoPath.substringBeforeLast(".", "")
-        val danmakuPath = "$basePath.xml"
+        val danmakuPath = SidecarPathLogic.withExtension(videoPath, ".xml")
 
         return videoSmbUri.buildUpon().path(danmakuPath).build()
     }
@@ -721,52 +720,37 @@ object SmbUtils {
         if (!originalPath.startsWith("/")) {
             throw IllegalArgumentException("Invalid NFS video URI path: '$originalPath'. Must start with '/'.")
         }
-        val colonIndexInPath = originalPath.indexOf(':', 1) // 从索引1开始查找
-        if (colonIndexInPath == -1) {
-            throw IllegalArgumentException("Invalid NFS video URI path: '$originalPath'. Missing colon ':' separating exported_path and path_within_export.")
-        }
+        val nfsParts = SidecarPathLogic.splitNfsRaw(originalPath)
+            ?: throw IllegalArgumentException("Invalid NFS video URI path: '$originalPath'. Missing colon ':' separating exported_path and path_within_export.")
 
         // exported_path 是从第一个 '/' 到第一个冒号 ':' 之间的部分
-        val exportedPath = originalPath.substring(1, colonIndexInPath)
+        val exportedPath = nfsParts.first
         if (exportedPath.isEmpty()) {
             throw IllegalArgumentException("Invalid NFS video URI path: '$originalPath'. exported_path is empty.")
         }
 
         // path_within_export 是冒号 ':' 之后的部分
-        val pathWithinExport = originalPath.substring(colonIndexInPath + 1)
+        val pathWithinExport = nfsParts.second
         if (pathWithinExport.isEmpty()) {
             throw IllegalArgumentException("Invalid NFS video URI path: '$originalPath'. path_within_export is empty.")
         }
         // --- 解析逻辑结束 ---
 
         // 从 path_within_export 中提取基础路径和文件名
-        val lastSlashIndex = pathWithinExport.lastIndexOf('/')
-        val directoryPath = if (lastSlashIndex != -1) {
-            pathWithinExport.take(lastSlashIndex + 1) // 包含最后的 '/'
-        } else {
-            "" // 文件在导出根目录下
-        }
-        val fileName = if (lastSlashIndex != -1) {
-            pathWithinExport.substring(lastSlashIndex + 1)
-        } else {
-            pathWithinExport // 整个 pathWithinExport 就是文件名
+        val directoryPath = SidecarPathLogic.directoryOf(pathWithinExport)
+        val fileName = SidecarPathLogic.fileNameOf(pathWithinExport)
+        if (fileName.isEmpty()) {
+            throw IllegalArgumentException("Invalid NFS video URI path: '$originalPath'. Missing file name.")
         }
 
-        // 替换文件扩展名
-        val baseName = fileName.substringBeforeLast(".", "")
-        if (baseName.isEmpty()) {
-            // 如果文件名没有扩展名前的部分（例如 ".xml" 或 "file"），则认为 baseName 为空是不合理的
-            // 或者可以考虑直接在原文件名后加 .xml
-            // 这里选择抛出异常，因为通常视频文件都有名称部分
-            throw IllegalArgumentException("Invalid file name in NFS video URI path: '$fileName'. No name part before extension.")
-        }
-        val danmakuFileName = "$baseName.xml"
+        // 替换文件扩展名（没有扩展名就在末尾追加，与其它三处口径一致）
+        val danmakuFileName = SidecarPathLogic.withExtension(fileName, ".xml")
 
         // 组合新的 path_within_export
         val danmakuPathWithinExport = "$directoryPath$danmakuFileName"
 
         // 组合完整的 NFS 弹幕 URI 路径: /<exported_path>:<danmaku_path_within_export>
-        val danmakuNfsPath = "/$exportedPath:$danmakuPathWithinExport"
+        val danmakuNfsPath = SidecarPathLogic.joinNfsPath(exportedPath, danmakuPathWithinExport)
 
         // 获取 host
         val host =

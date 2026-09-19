@@ -17,11 +17,13 @@ import okhttp3.Request
 import org.apache.commons.net.ftp.FTPClient
 import org.apache.commons.net.ftp.FTPReply
 import java.util.concurrent.TimeUnit
-import java.util.regex.Pattern
 import androidx.core.net.toUri
 
 /**
  * 同名字幕扫描器：根据视频 URI 扫描其所在目录，找出与视频同名的字幕文件。
+ *
+ * 「哪些文件算同名字幕」以及字幕 URI 的拼装口径统一收在 [SubtitleMatchLogic]
+ * （纯 JDK，可被 `SubtitleMatchTest` 直接覆盖），本文件只负责各协议的连接与列目录。
  *
  * 支持协议：
  * - 本地文件（file:// 或绝对路径）
@@ -35,15 +37,7 @@ object SubtitleScanner {
 
     private const val TAG = "SubtitleScanner"
 
-    // 常见字幕文件扩展名（统一小写）
-//    private val SUBTITLE_EXTENSIONS = setOf(
-//        "srt", "ass", "ssa", "vtt", "sub", "idx", "smi", "sami",
-//        "scc", "ttml", "dfxp", "stl", "lrc", "sup", "pgs", "mks"
-//    )
-     private val SUBTITLE_EXTENSIONS = setOf(
-        "srt", "ass", "ssa", "vtt", "sub",
-        "sup", "pgs",
-    )
+    // 同名匹配 / URI 拼装口径统一收在 SubtitleMatchLogic（可被单测覆盖）
     /**
      * 扫描入口：在 IO 线程执行，返回 (字幕URI, 文件名) 列表。
      */
@@ -77,7 +71,7 @@ object SubtitleScanner {
         val parent = videoFile.parentFile ?: return emptyList()
 
         val matched = parent.listFiles { f ->
-            f.isFile && isSameNameSubtitle(f.name, videoFile.name)
+            f.isFile && SubtitleMatchLogic.isSameNameSubtitle(f.name, videoFile.name)
         }?.map { f -> f.toURI().toString() to f.name } ?: emptyList()
 
         return matched.sortedBy { it.second }
@@ -108,7 +102,7 @@ object SubtitleScanner {
                 val share = session.connectShare(shareName) as? DiskShare ?: return emptyList()
                 try {
                     val names = share.list(smbDir).map { it.fileName }
-                    buildSubtitlePairs(videoUri, fileName, names)
+                    SubtitleMatchLogic.buildSubtitlePairs(videoUri, fileName, names)
                 } finally {
                     runCatching { share.close() }
                 }
@@ -141,7 +135,7 @@ object SubtitleScanner {
             val dir = Nfs3File(client, dirPath)
             if (!dir.exists() || !dir.isDirectory) return emptyList()
             val names = dir.listFiles()?.filterNotNull()?.map { it.name } ?: emptyList()
-            buildSubtitlePairs(videoUri, fileName, names)
+            SubtitleMatchLogic.buildSubtitlePairs(videoUri, fileName, names)
         } catch (e: Exception) {
             Log.w(TAG, "NFS scan failed: ${e.message}")
             emptyList()
@@ -167,7 +161,7 @@ object SubtitleScanner {
             if (!client.login(user, pass)) return emptyList()
             client.enterLocalPassiveMode()
             val names = client.listFiles(dirPath)?.map { it.name } ?: emptyList()
-            buildSubtitlePairs(videoUri, fileName, names)
+            SubtitleMatchLogic.buildSubtitlePairs(videoUri, fileName, names)
         } catch (e: Exception) {
             Log.w(TAG, "FTP scan failed: ${e.message}")
             emptyList()
@@ -194,7 +188,7 @@ object SubtitleScanner {
             val names = sardine.list(dirUrl)
                 .map { it.name }
                 .filter { it != "." && it != ".." }
-            buildSubtitlePairs(videoUri, fileName, names)
+            SubtitleMatchLogic.buildSubtitlePairs(videoUri, fileName, names)
         } catch (e: Exception) {
             Log.w(TAG, "WebDAV scan failed: ${e.message}")
             emptyList()
@@ -211,73 +205,33 @@ object SubtitleScanner {
 
         return try {
             val names = listHttpDirNames(dirUrl)
-            buildSubtitlePairs(videoUri, fileName, names)
+            SubtitleMatchLogic.buildSubtitlePairs(videoUri, fileName, names)
         } catch (e: Exception) {
             Log.w(TAG, "HTTP scan failed: ${e.message}")
             emptyList()
         }
     }
 
+    /**
+     * 抓取 HTTP 目录页并列出其中的条目名。
+     *
+     * HTML 解析复用 [FileBrowserLogic.parseHttpDirectoryListing]（Nginx autoindex / Apache 目录列表），
+     * 不再自己写一套正则：好处是同名条目去重、`../` 与锚点过滤、百分号解码容错、
+     * 以及「只认当前目录子树下的链接」这几条口径与文件浏览页完全一致。
+     */
     private fun listHttpDirNames(dirUrl: String): List<String> {
         val request = Request.Builder().url(dirUrl).get().build()
         val response = HTTP_CLIENT.newCall(request).execute()
         if (!response.isSuccessful) return emptyList()
         val html = response.body?.string() ?: return emptyList()
 
-        val pattern = Pattern.compile(
-            "<a\\s+[^>]*href\\s*=\\s*[\"']([^\"']*)[\"'][^>]*>",
-            Pattern.CASE_INSENSITIVE
-        )
-        val matcher = pattern.matcher(html)
-        val names = mutableListOf<String>()
-        while (matcher.find()) {
-            var href = matcher.group(1) ?: continue
-            href = java.net.URLDecoder.decode(href, "UTF-8")
-            if (href.startsWith("#") || href.startsWith("javascript:")) continue
-            val name = href.trimEnd('/').substringAfterLast('/')
-            if (name.isNotBlank() && name != "." && name != "..") names.add(name)
-        }
-        return names.distinct()
+        // baseUrl 必须带结尾 '/'：否则相对链接会被当作「替换最后一段」来解析
+        // （/movies + 影片.srt → /影片.srt），同目录条目会被「子树校验」全部丢掉。
+        val baseUrl = if (dirUrl.endsWith('/')) dirUrl else "$dirUrl/"
+        return FileBrowserLogic.parseHttpDirectoryListing(html, baseUrl).map { it.name }
     }
 
     // ---------- 公共工具 ----------
-
-    /**
-     * 判断文件名是否为「视频名」的同名字幕。
-     * 规则：以「视频名.」开头（覆盖 .srt / .chs.srt / .国语.ass 等变体），且扩展名属于字幕集合，且不等于视频自身。
-     */
-    private fun isSameNameSubtitle(candidateName: String, videoName: String): Boolean {
-        val baseName = videoName.substringBeforeLast('.', videoName)
-        if (baseName.isBlank()) return false
-        if (candidateName == videoName) return false
-        if (!candidateName.startsWith("$baseName.")) return false
-        val ext = candidateName.substringAfterLast('.', "").lowercase()
-        return ext in SUBTITLE_EXTENSIONS
-    }
-
-    /**
-     * 从目录文件名列表里筛出同名字幕，并拼成 (字幕URI, 文件名) 列表。
-     */
-    private fun buildSubtitlePairs(
-        videoUri: String,
-        videoName: String,
-        dirNames: List<String>
-    ): List<Pair<String, String>> {
-        val matched = dirNames
-            .filter { isSameNameSubtitle(it, videoName) }
-            .distinct()
-            .sorted()
-        val prefix = dirPrefixOf(videoUri)
-        return matched.map { prefix + it to it }
-    }
-
-    /**
-     * 提取视频 URI 的目录前缀（保留协议/凭证/host/目录，以 / 结尾）。
-     */
-    private fun dirPrefixOf(videoUri: String): String {
-        val idx = videoUri.lastIndexOf('/')
-        return if (idx >= 0) videoUri.substring(0, idx + 1) else ""
-    }
 
     /**
      * 解析 URI 中的 user:pass。

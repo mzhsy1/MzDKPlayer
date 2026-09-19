@@ -88,10 +88,8 @@ object NfoReader {
                 getNfoNfsUri(videoUri)
             } else {
                 val path = videoUri.path ?: return null
-                val lastDotIndex = path.lastIndexOf('.')
-                if (lastDotIndex == -1) return null
-                
-                val nfoPath = path.substring(0, lastDotIndex) + ".nfo"
+                // 没有扩展名时按统一口径在末尾追加 .nfo（此前是直接放弃查询）
+                val nfoPath = SidecarPathLogic.withExtension(path, ".nfo")
                 videoUri.buildUpon().path(nfoPath).build()
             }
         } catch (e: Exception) {
@@ -106,22 +104,16 @@ object NfoReader {
      */
     private fun getNfoNfsUri(videoNfsUri: Uri): Uri {
         val originalPath = videoNfsUri.path ?: throw IllegalArgumentException("Invalid NFS path")
-        
+
         // 分离导出路径和内部路径 (e.g., /exported_path:path/within)
-        val colonIndex = originalPath.indexOf(':', 1)
-        if (colonIndex == -1) throw IllegalArgumentException("Malformed NFS path")
+        val nfsParts = SidecarPathLogic.splitNfsRaw(originalPath)
+            ?: throw IllegalArgumentException("Malformed NFS path")
 
-        val exportedPath = originalPath.substring(1, colonIndex)
-        val pathWithinExport = originalPath.substring(colonIndex + 1)
+        val exportedPath = nfsParts.first
+        val pathWithinExport = nfsParts.second
 
-        val lastDotIndex = pathWithinExport.lastIndexOf('.')
-        val nfoPathWithinExport = if (lastDotIndex != -1) {
-            pathWithinExport.substring(0, lastDotIndex) + ".nfo"
-        } else {
-            "$pathWithinExport.nfo"
-        }
-
-        val nfoNfsPath = "/$exportedPath:$nfoPathWithinExport"
+        val nfoPathWithinExport = SidecarPathLogic.withExtension(pathWithinExport, ".nfo")
+        val nfoNfsPath = SidecarPathLogic.joinNfsPath(exportedPath, nfoPathWithinExport)
         val host = videoNfsUri.host ?: throw IllegalArgumentException("Missing host")
 
         return "nfs://$host:$nfoNfsPath".toUri()

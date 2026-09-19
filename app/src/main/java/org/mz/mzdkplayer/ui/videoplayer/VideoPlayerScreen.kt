@@ -250,10 +250,14 @@ fun VideoPlayerScreen(
     val mDanmakuPlayer: DanmakuPlayer = remember(mediaUri) { DanmakuPlayer(SimpleRenderer()) }
 
     // 根据媒体 URI 和数据源类型推断弹幕文件 URI
-    val danmakuUri =
-        if (dataSourceType == "NFS") SmbUtils.getDanmakuNfsUri(mediaUri.toUri()) else SmbUtils.getDanmakuSmbUri(
-            mediaUri.toUri()
-        )
+    // 地址构造失败（URI 畸形等）只应导致「没有弹幕」，不能把播放页带崩，因此这里软降级成空地址
+    val danmakuUri = runCatching {
+        if (dataSourceType == "NFS") SmbUtils.getDanmakuNfsUri(mediaUri.toUri())
+        else SmbUtils.getDanmakuSmbUri(mediaUri.toUri())
+    }.getOrElse {
+        Log.w("VideoPlayerScreen", "构造弹幕地址失败，跳过弹幕加载: $mediaUri", it)
+        "".toUri()
+    }
     // 状态：当前的字幕组 (CueGroup)
     var currentCueGroup: CueGroup? by remember { mutableStateOf<CueGroup?>(null) }
     // 弹幕数据
