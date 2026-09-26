@@ -197,21 +197,26 @@ TMDB_API_KEY=你的TMDB_API_KEY
 # Windows 用 gradlew.bat，macOS / Linux 用 ./gradlew
 
 # 调试包（用 debug 签名，直接能装，日常自测用这个）
-./gradlew :app:assembleDebug
+./gradlew :app:assembleTvDebug        # 电视端
+./gradlew :app:assemblePhoneDebug     # 手机端
 
 # 发布包（开启混淆与资源压缩，产物未签名）
-./gradlew :app:assembleRelease
+./gradlew :app:assembleTvRelease
 
 # 只做编译校验，速度最快
-./gradlew :app:compileDebugKotlin
+./gradlew :app:compileTvDebugKotlin   # 电视端；手机端把 Tv 换成 Phone
 ```
+
+> 电视端与手机端是同一 module 下的两个 **product flavor**（`tv` / `phone`），
+> 源码分别在 `app/src/tv/`、`app/src/phone/`，业务层在独立的 `:core` module。
+> 它们的 `applicationId` 不同（`org.mz.mzdkplayer` / `org.mz.mzdkplayer.phone`），可以同时装在一台设备上。
 
 产物路径：
 
 | 命令 | 产物位置 |
 | --- | --- |
-| `assembleDebug` | `app/build/outputs/apk/debug/app-debug.apk` |
-| `assembleRelease` | `app/build/outputs/apk/release/app-<abi>-release.apk`、`app-release-unsigned.apk` |
+| `assembleTvDebug` / `assemblePhoneDebug` | `app/build/outputs/apk/tv/debug/app-tv-debug.apk`、`app/build/outputs/apk/phone/debug/app-phone-debug.apk` |
+| `assembleTvRelease` | `app/build/outputs/apk/tv/release/app-tv-<abi>-release.apk`、`app-tv-universal-release.apk` |
 
 > 发布包默认**不签名**，上架或分发前需要用 `apksigner` / Android Studio 的 *Generate Signed Bundle or APK* 补上签名。
 > 项目开启了 ABI 拆分（`armeabi-v7a`、`arm64-v8a` + 通用包），所以 release 目录下会有多个 APK。
@@ -220,14 +225,16 @@ TMDB_API_KEY=你的TMDB_API_KEY
 
 ```bash
 adb connect 192.168.1.100:5555
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 ```
 
 #### 6. 跑一遍单元测试（确认环境没问题）
 
 ```bash
-./gradlew :app:testDebugUnitTest
+./gradlew :core:testDebugUnitTest
 ```
+
+> 单元测试全部跟着业务层放在 `:core`，跑一次 `:core:testDebugUnitTest` 即可覆盖两端。
 
 ### 构建常见问题
 
@@ -334,21 +341,29 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ### 模块结构
 
+工程分成一个业务层 module（`:core`）+ 一个带两个 product flavor 的应用 module（`:app`）：
+
 ```
-app/src/main/java/org/mz/mzdkplayer/
-├── MainActivity.kt / LaunchScreen.kt / MzDkPlayerApplication.kt   # 入口与启动页
-├── danmaku/          # 弹幕解析与渲染
+core/src/main/java/org/mz/mzdkplayer/     # :core —— 业务层，tv / phone 共用
+├── danmaku/          # 弹幕解析
 ├── data/
 │   ├── api/          # TMDB 接口（Retrofit）
 │   ├── local/        # Room：AppDatabase、MediaCacheEntity、AudioCacheEntity、MediaHistoryEntity
 │   ├── model/        # 数据模型
 │   └── repository/   # 仓库层，屏蔽数据来源
-├── di/               # RepositoryProvider：以 viewModelWithFactory 方式注入 DAO
+├── di/               # RepositoryProvider（以 viewModelWithFactory 注入 DAO）、AppContext
 ├── player/
-│   ├── core/         # IMzPlayer 抽象、轨道模型
+│   ├── core/         # IMzPlayer 抽象、轨道模型、数据源工厂
 │   ├── exo/          # MzExoPlayer 实现
 │   └── vlc/          # MzVlcPlayer 实现
 ├── tool/             # 工具层：协议 DataSource、字幕扫描、时间解析、局域网代理与遥控服务
+└── viewmodel/        # 各页面的 ViewModel
+
+app/src/main/java/org/mz/mzdkplayer/
+└── MzDkPlayerApplication.kt              # 两个 flavor 共用的 Application
+
+app/src/tv/java/org/mz/mzdkplayer/        # 电视端 flavor（只用 androidx.tv.material3）
+├── MainActivity.kt / LaunchScreen.kt     # LEANBACK_LAUNCHER 入口
 └── ui/
     ├── MzDKPlayerAPP.kt      # 导航图与主框架
     ├── videoplayer/          # 播放页（components/ 下为控件、标题、弹层）
@@ -356,10 +371,19 @@ app/src/main/java/org/mz/mzdkplayer/
     ├── picviewer/            # 图片查看
     ├── screen/               # 各页面：filehome / localfile / smbfile / ftp / webdavfile / nfs /
     │                         #        httplink / library / movie / tv / history / search / setting
-    └── theme/                # 主题
+    └── theme/                # 电视端主题
+
+app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # 手机端 flavor（只用 androidx.compose.material3）
+├── PhoneMainActivity.kt    # LAUNCHER 入口（applicationId = org.mz.mzdkplayer.phone）
+├── PhoneApp.kt             # 底部导航 + 导航图
+├── PhoneTheme.kt / PhoneIcons.kt / PhoneRoutes.kt
+└── screen/                 # 首页 / 文件 / SMB 浏览 / 播放 / 设置
 ```
 
-`app/src/test/java/org/mz/mzdkplayer/tool/` 下为纯 JVM 单元测试。
+两套设计系统**零交叉**：`:core` 不依赖任何 Material 库，电视端只引 `androidx.tv.material3`（compose 1.12.x），
+手机端只引 `androidx.compose.material3` 1.5.0-alpha（会带进 compose 1.13.0-alpha），依赖按 variant 解析、互不污染。
+
+`core/src/test/java/org/mz/mzdkplayer/` 下为纯 JVM 单元测试。
 
 ### 播放器双引擎
 
@@ -388,11 +412,11 @@ app/src/main/java/org/mz/mzdkplayer/
 ### 常用命令
 
 ```bash
-./gradlew :app:compileDebugKotlin          # 只编译，最快的语法校验
-./gradlew :app:assembleDebug               # 打调试包
-./gradlew :app:assembleRelease             # 打发布包（未签名）
-./gradlew :app:testDebugUnitTest           # 跑全部 JVM 单元测试
-./gradlew :app:testDebugUnitTest --tests "org.mz.mzdkplayer.tool.PlayerMediaTextTest"   # 跑单个测试类
+./gradlew :app:compileTvDebugKotlin          # 只编译，最快的语法校验
+./gradlew :app:assembleTvDebug               # 打调试包
+./gradlew :app:assembleTvRelease             # 打发布包（未签名）
+./gradlew :core:testDebugUnitTest           # 跑全部 JVM 单元测试
+./gradlew :core:testDebugUnitTest --tests "org.mz.mzdkplayer.tool.PlayerMediaTextTest"   # 跑单个测试类
 ./gradlew clean                            # 清理构建产物
 ./gradlew --stop                           # 停掉 Gradle 守护进程（锁文件冲突时用）
 ```
@@ -401,7 +425,7 @@ app/src/main/java/org/mz/mzdkplayer/
 
 - 测试只依赖 **JUnit 4**，没有引入 mockito / robolectric，也**没有开启** `returnDefaultValues`。
   因此测试必须写成纯 JVM 测试：`android.net.Uri`、`android.util.Log`、`android.util.Base64`、`Context` 等 Android 类型一旦调用就会抛 `RuntimeException("Stub!")`。
-- 需要测试的纯逻辑请抽到不依赖 Android 的 `object` / `internal object` 中（同模块的 test 源集可见 `internal`）。
+- 需要测试的纯逻辑请抽到不依赖 Android 的 `object` / `internal object` 中；测试与被测代码同在 `:core`（`internal` 对 app 不可见，这条边界是有意保留的）。
 - 命名约定：类名 `XxxTest`，测试函数用反引号中文描述，例如 `` `剧集 - 标题加季集加年份` ``。
 - 现有测试：`MediaInfoExtractorFormFileNameTest`（文件名解析）、`PlayerMediaTextTest`（播放页标题与日期）、`FileTimeParseTest`（HTTP 日期 / 协议推断 / 账号密码 / NFS 路径拆分）。
 
@@ -476,8 +500,8 @@ app/src/main/java/org/mz/mzdkplayer/
 2. 提交前先在本地跑通编译与测试：
 
    ```bash
-   ./gradlew :app:compileDebugKotlin
-   ./gradlew :app:testDebugUnitTest
+   ./gradlew :app:compileTvDebugKotlin
+   ./gradlew :core:testDebugUnitTest
    ```
 
 3. 提交代码，向 `main` 发起 Pull Request，并在描述中说明：改了什么问题、怎么验证的、涉及哪些模块。
@@ -493,7 +517,8 @@ app/src/main/java/org/mz/mzdkplayer/
 ### 代码风格与约定
 
 - 遵循 Kotlin 官方代码风格（`kotlin.code.style=official`）。
-- 界面层统一使用 Jetpack Compose for TV；新增页面请在 `ui/screen/` 下建对应包，并在 `MzDKPlayerAPP.kt` 中注册路由。
+- 业务逻辑一律放 `:core`，且不要往里引 Material：电视端唯一的设计系统是 `androidx.tv.material3`，手机端是 `androidx.compose.material3`，两者不得交叉。
+- 电视端新增页面请在 `app/src/tv/java/org/mz/mzdkplayer/ui/screen/` 下建对应包，并在 `MzDKPlayerAPP.kt` 中注册路由；手机端页面放 `app/src/phone/java/org/mz/mzdkplayer/ui/phone/screen/`，路由在 `PhoneRoutes.kt`。
 - 需要访问数据库的 ViewModel 请通过 `viewModelWithFactory { RepositoryProvider.xxx() }` 注入，不要在 Composable 里直接拿 DAO。
 - 网络协议相关代码**必须设置超时**，失败时走「软降级」，不能阻塞播放或抛到界面线程。
 - 涉及播放内核的改动，请在 `IMzPlayer` 层面实现，不要在 UI 层写 `if (exo) ... else ...`。
@@ -502,8 +527,8 @@ app/src/main/java/org/mz/mzdkplayer/
 
 ### Pull Request 检查清单
 
-- [ ] `./gradlew :app:compileDebugKotlin` 通过
-- [ ] `./gradlew :app:testDebugUnitTest` 通过（有新增纯逻辑时补测试）
+- [ ] `./gradlew :app:compileTvDebugKotlin` 通过
+- [ ] `./gradlew :core:testDebugUnitTest` 通过（有新增纯逻辑时补测试）
 - [ ] 没有提交 `local.properties`、`app/build/`、`.gradle/`、`.idea/` 等本地文件
 - [ ] 新增文案已加入各语言 `strings.xml`
 - [ ] 用户可见的改动已更新 `CHANGELOG.md`（必要时更新 `versionName`）
@@ -536,7 +561,7 @@ Release 正文取自 [CHANGELOG.md](CHANGELOG.md) 的「未发布」段落，所
 | `RELEASE_KEY_ALIAS` | 密钥别名 |
 | `RELEASE_KEY_PASSWORD` | 密钥口令 |
 
-签名材料只通过环境变量传给 Gradle（`MZDK_KEYSTORE_FILE` 等），**密钥文件不要提交到仓库**。本地没有配这些变量时，`assembleRelease` 会照旧产出 `app-*-release-unsigned.apk`，行为与以前一致。
+签名材料只通过环境变量传给 Gradle（`MZDK_KEYSTORE_FILE` 等），**密钥文件不要提交到仓库**。本地没有配这些变量时，`assembleTvRelease` 会照旧产出 `app-tv-*-release-unsigned.apk`，行为与以前一致。
 
 想重新发布同一个版本：到 Actions 页面手动运行 `Release`，并把 `force` 勾上。
 

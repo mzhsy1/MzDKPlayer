@@ -164,7 +164,8 @@ jobs:
           set -uo pipefail
           set +e
           log="$RUNNER_TEMP/gradle-test.log"
-          ./gradlew :app:testDebugUnitTest --console=plain 2>&1 | tee "$log"
+          # 单测随业务层搬到 :core（加了 product flavor 后没有 :app:testDebugUnitTest 任务了）
+          ./gradlew :core:testDebugUnitTest --console=plain 2>&1 | tee "$log"
           status="${PIPESTATUS[0]}"
           if [ "$status" -ne 0 ]; then
             summary="$(awk '/What went wrong:/{f=1} f{print; if(++n>=8) exit}' "$log" | tr '\n' ' ' | tr -s ' ' | cut -c1-2000)"
@@ -182,6 +183,7 @@ jobs:
             exit "$status"
           fi
 
+      # 只发行电视端（tv flavor）：手机端还在骨架阶段，没到发版的完成度。
       - name: 构建 Release APK
         if: steps.guard.outputs.publish == 'true'
         env:
@@ -192,7 +194,7 @@ jobs:
           set -uo pipefail
           set +e
           log="$RUNNER_TEMP/gradle-release.log"
-          ./gradlew :app:assembleRelease --console=plain 2>&1 | tee "$log"
+          ./gradlew :app:assembleTvRelease --console=plain 2>&1 | tee "$log"
           status="${PIPESTATUS[0]}"
           if [ "$status" -ne 0 ]; then
             summary="$(awk '/What went wrong:/{f=1} f{print; if(++n>=8) exit}' "$log" | tr '\n' ' ' | tr -s ' ' | cut -c1-2000)"
@@ -215,7 +217,7 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          apks=(app/build/outputs/apk/release/*.apk)
+          apks=(app/build/outputs/apk/tv/release/*.apk)
           if [ ${#apks[@]} -eq 0 ]; then
             echo "::error::没有产出任何 APK"
             exit 1
@@ -249,7 +251,7 @@ jobs:
 
           ---
 
-          **怎么选包**：64 位电视 / 盒子选 `app-arm64-v8a-release.apk`；老旧 32 位设备选 `app-armeabi-v7a-release.apk`；不确定就选 `app-universal-release.apk`（体积最大，但一定能装）。
+          **怎么选包**：64 位电视 / 盒子选 `app-tv-arm64-v8a-release.apk`；老旧 32 位设备选 `app-tv-armeabi-v7a-release.apk`；不确定就选 `app-tv-universal-release.apk`（体积最大，但一定能装）。
 
           本版本由 GitHub Actions 自动构建，版本号取自 `app/build.gradle.kts` 的 `versionName`。
           MD
@@ -260,7 +262,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: MzDKPlayer-V${{ steps.version.outputs.version }}
-          path: app/build/outputs/apk/release/*.apk
+          path: app/build/outputs/apk/tv/release/*.apk
 
       - name: 发布 Release
         if: steps.guard.outputs.publish == 'true'
@@ -273,5 +275,5 @@ jobs:
             --title "V$version" \
             --notes-file "${{ runner.temp }}/release-notes.md" \
             --target "${{ github.sha }}" \
-            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/tv/release/*.apk
           echo "已发布：V$version"

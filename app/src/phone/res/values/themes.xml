@@ -1,0 +1,17 @@
+<resources>
+
+    <!--
+        手机端主题：窗口背景 + 透明系统栏。
+        窗口背景按日夜给色（values/values-night 两套，都在 phone 的 res 里），
+        避免 Compose 首帧之前闪白/闪黑；状态栏图标明暗由 Compose 里的 PhoneSystemBars 动态设置
+        （手机端主题可以脱离系统日夜）。
+
+        注意：父主题不再指向电视端的 Theme.MzDKPlayer —— 那个 style 在 phone 变体里根本不存在，
+        所以这里直接继承 AppCompat 的 DayNight 主题，两个 flavor 的资源互不依赖。
+    -->
+    <style name="Theme.MzDKPlayer.Phone" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/phone_window_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>

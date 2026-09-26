@@ -48,4 +48,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "MzDKPlayer"
 include(":app")
+// 共享业务层：data / player / tool / ViewModel，tv 与 phone 两个 flavor 都依赖它
+include(":core")
  

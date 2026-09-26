@@ -1,0 +1,17 @@
+package org.mz.mzdkplayer.viewmodel
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModel
+
+class AudioPlayerViewModel:ViewModel() {
+    var atpFocus by mutableStateOf(false)
+    var atpVisibility by mutableStateOf(false)
+
+    var selectedAorVorS by mutableStateOf("L")
+
+    var selectedAtIndex by mutableIntStateOf(0)
+    var conFocus by mutableStateOf(false)
+}

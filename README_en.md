@@ -197,21 +197,26 @@ TMDB_API_KEY=your_tmdb_api_key
 # Use gradlew.bat on Windows, ./gradlew on macOS / Linux
 
 # Debug build (debug-signed, installable directly — best for local testing)
-./gradlew :app:assembleDebug
+./gradlew :app:assembleTvDebug        # TV
+./gradlew :app:assemblePhoneDebug     # phone
 
 # Release build (minification and resource shrinking enabled, unsigned)
-./gradlew :app:assembleRelease
+./gradlew :app:assembleTvRelease
 
 # Compile-only check, the fastest option
-./gradlew :app:compileDebugKotlin
+./gradlew :app:compileTvDebugKotlin   # TV; swap Tv for Phone for the phone build
 ```
+
+> The TV and phone apps are two **product flavors** (`tv` / `phone`) of the same module:
+> sources live in `app/src/tv/` and `app/src/phone/`, and the shared business layer lives in the separate `:core` module.
+> They use different `applicationId`s (`org.mz.mzdkplayer` / `org.mz.mzdkplayer.phone`), so both can be installed on one device.
 
 Output locations:
 
 | Command | Output |
 | --- | --- |
-| `assembleDebug` | `app/build/outputs/apk/debug/app-debug.apk` |
-| `assembleRelease` | `app/build/outputs/apk/release/app-<abi>-release.apk`, `app-release-unsigned.apk` |
+| `assembleTvDebug` / `assemblePhoneDebug` | `app/build/outputs/apk/tv/debug/app-tv-debug.apk`, `app/build/outputs/apk/phone/debug/app-phone-debug.apk` |
+| `assembleTvRelease` | `app/build/outputs/apk/tv/release/app-tv-<abi>-release.apk`, `app-tv-universal-release.apk` |
 
 > Release builds are **not signed** by default. Sign them with `apksigner` or Android Studio's *Generate Signed Bundle or APK* before distributing.
 > ABI splits are enabled (`armeabi-v7a`, `arm64-v8a`, plus a universal APK), so the release directory contains several APKs.
@@ -220,14 +225,16 @@ Output locations:
 
 ```bash
 adb connect 192.168.1.100:5555
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 ```
 
 #### 6. Run the unit tests (to verify your environment)
 
 ```bash
-./gradlew :app:testDebugUnitTest
+./gradlew :core:testDebugUnitTest
 ```
+
+> All unit tests live with the business layer in `:core`, so a single `:core:testDebugUnitTest` run covers both apps.
 
 ### Common Build Issues
 
@@ -334,21 +341,29 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ### Module Structure
 
+The project is one business-layer module (`:core`) plus an application module (`:app`) with two product flavors:
+
 ```
-app/src/main/java/org/mz/mzdkplayer/
-├── MainActivity.kt / LaunchScreen.kt / MzDkPlayerApplication.kt   # Entry point and splash
-├── danmaku/          # Danmaku parsing and rendering
+core/src/main/java/org/mz/mzdkplayer/     # :core — business layer, shared by tv / phone
+├── danmaku/          # Danmaku parsing
 ├── data/
 │   ├── api/          # TMDB API (Retrofit)
 │   ├── local/        # Room: AppDatabase, MediaCacheEntity, AudioCacheEntity, MediaHistoryEntity
 │   ├── model/        # Data models
 │   └── repository/   # Repository layer hiding data sources
-├── di/               # RepositoryProvider: DAO injection via viewModelWithFactory
+├── di/               # RepositoryProvider (DAO injection via viewModelWithFactory), AppContext
 ├── player/
-│   ├── core/         # IMzPlayer abstraction, track models
+│   ├── core/         # IMzPlayer abstraction, track models, data source factories
 │   ├── exo/          # MzExoPlayer implementation
 │   └── vlc/          # MzVlcPlayer implementation
 ├── tool/             # Utilities: protocol data sources, subtitle scanning, time parsing, LAN proxy and remote services
+└── viewmodel/        # ViewModels for every screen
+
+app/src/main/java/org/mz/mzdkplayer/
+└── MzDkPlayerApplication.kt              # Application shared by both flavors
+
+app/src/tv/java/org/mz/mzdkplayer/        # TV flavor (androidx.tv.material3 only)
+├── MainActivity.kt / LaunchScreen.kt     # LEANBACK_LAUNCHER entry point
 └── ui/
     ├── MzDKPlayerAPP.kt      # Navigation graph and app shell
     ├── videoplayer/          # Player screen (components/ holds controls, title, overlays)
@@ -356,10 +371,20 @@ app/src/main/java/org/mz/mzdkplayer/
     ├── picviewer/            # Image viewer
     ├── screen/               # Pages: filehome / localfile / smbfile / ftp / webdavfile / nfs /
     │                         #        httplink / library / movie / tv / history / search / setting
-    └── theme/                # Theme
+    └── theme/                # TV theme
+
+app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # Phone flavor (androidx.compose.material3 only)
+├── PhoneMainActivity.kt    # LAUNCHER entry point (applicationId = org.mz.mzdkplayer.phone)
+├── PhoneApp.kt             # Bottom navigation + navigation graph
+├── PhoneTheme.kt / PhoneIcons.kt / PhoneRoutes.kt
+└── screen/                 # Home / Files / SMB browser / Player / Settings
 ```
 
-Pure JVM unit tests live in `app/src/test/java/org/mz/mzdkplayer/tool/`.
+The two design systems never cross: `:core` depends on no Material library at all, the TV flavor pulls only
+`androidx.tv.material3` (compose 1.12.x) and the phone flavor only `androidx.compose.material3` 1.5.0-alpha
+(which drags in compose 1.13.0-alpha). Dependencies resolve per variant, so neither pollutes the other.
+
+Pure JVM unit tests live in `core/src/test/java/org/mz/mzdkplayer/`.
 
 ### Dual Playback Engines
 
@@ -388,11 +413,11 @@ Playback is abstracted behind `player/core/IMzPlayer.kt`, implemented by `MzExoP
 ### Common Commands
 
 ```bash
-./gradlew :app:compileDebugKotlin          # Compile only — fastest syntax check
-./gradlew :app:assembleDebug               # Build a debug APK
-./gradlew :app:assembleRelease             # Build a release APK (unsigned)
-./gradlew :app:testDebugUnitTest           # Run all JVM unit tests
-./gradlew :app:testDebugUnitTest --tests "org.mz.mzdkplayer.tool.PlayerMediaTextTest"   # Run one test class
+./gradlew :app:compileTvDebugKotlin          # Compile only — fastest syntax check
+./gradlew :app:assembleTvDebug               # Build a debug APK
+./gradlew :app:assembleTvRelease             # Build a release APK (unsigned)
+./gradlew :core:testDebugUnitTest           # Run all JVM unit tests
+./gradlew :core:testDebugUnitTest --tests "org.mz.mzdkplayer.tool.PlayerMediaTextTest"   # Run one test class
 ./gradlew clean                            # Clean build outputs
 ./gradlew --stop                           # Stop the Gradle daemon (when lock files conflict)
 ```
@@ -401,7 +426,7 @@ Playback is abstracted behind `player/core/IMzPlayer.kt`, implemented by `MzExoP
 
 - Tests depend on **JUnit 4 only** — no mockito, no robolectric, and `returnDefaultValues` is **not** enabled.
   Tests must therefore be pure JVM tests: calling Android types such as `android.net.Uri`, `android.util.Log`, `android.util.Base64`, or `Context` throws `RuntimeException("Stub!")`.
-- Extract testable pure logic into `object` / `internal object` declarations that do not depend on Android (`internal` is visible to the test source set of the same module).
+- Extract testable pure logic into `object` / `internal object` declarations that do not depend on Android; tests and the code under test both live in `:core` (`internal` is deliberately invisible to the app module).
 - Naming convention: class names end with `Test`, and test functions use backtick-quoted descriptions, e.g. `` `Series - title with season/episode/year` ``.
 - Existing tests: `MediaInfoExtractorFormFileNameTest` (file name parsing), `PlayerMediaTextTest` (player title and date), `FileTimeParseTest` (HTTP date / protocol inference / credentials / NFS path splitting).
 
@@ -476,8 +501,8 @@ When filing an issue, please include: device model and chipset, system version, 
 2. Verify compilation and tests locally before committing:
 
    ```bash
-   ./gradlew :app:compileDebugKotlin
-   ./gradlew :app:testDebugUnitTest
+   ./gradlew :app:compileTvDebugKotlin
+   ./gradlew :core:testDebugUnitTest
    ```
 
 3. Commit and open a Pull Request against `main`, describing what was fixed, how it was verified, and which modules are affected.
@@ -493,7 +518,8 @@ Show scraped title and file date on the player screen, flush playback progress p
 ### Code Style and Conventions
 
 - Follow the official Kotlin code style (`kotlin.code.style=official`).
-- Build all UI with Jetpack Compose for TV. New pages belong in their own package under `ui/screen/`, registered as a route in `MzDKPlayerAPP.kt`.
+- Keep all business logic in `:core` and never pull Material into it: the TV side only uses `androidx.tv.material3` and the phone side only `androidx.compose.material3`; the two must not cross.
+- TV pages belong in their own package under `app/src/tv/java/org/mz/mzdkplayer/ui/screen/` and are registered as routes in `MzDKPlayerAPP.kt`; phone pages live in `app/src/phone/java/org/mz/mzdkplayer/ui/phone/screen/` with routes in `PhoneRoutes.kt`.
 - Inject DAOs into ViewModels via `viewModelWithFactory { RepositoryProvider.xxx() }`; never fetch a DAO directly inside a composable.
 - Network protocol code **must set timeouts** and degrade gracefully on failure — never block playback or throw onto the UI thread.
 - Implement player-engine changes against `IMzPlayer`; do not write `if (exo) ... else ...` in the UI layer.
@@ -502,8 +528,8 @@ Show scraped title and file date on the player screen, flush playback progress p
 
 ### Pull Request Checklist
 
-- [ ] `./gradlew :app:compileDebugKotlin` passes
-- [ ] `./gradlew :app:testDebugUnitTest` passes (add tests for new pure logic)
+- [ ] `./gradlew :app:compileTvDebugKotlin` passes
+- [ ] `./gradlew :core:testDebugUnitTest` passes (add tests for new pure logic)
 - [ ] No local files committed (`local.properties`, `app/build/`, `.gradle/`, `.idea/`, etc.)
 - [ ] New strings added to every language's `strings.xml`
 - [ ] User-visible changes reflected in `CHANGELOG.md` (and `versionName` when appropriate)
@@ -536,7 +562,7 @@ Publishing needs these Secrets (`Settings → Secrets and variables → Actions`
 | `RELEASE_KEY_ALIAS` | Key alias |
 | `RELEASE_KEY_PASSWORD` | Key password |
 
-Signing material is passed to Gradle only through environment variables (`MZDK_KEYSTORE_FILE` and friends) — **never commit the keystore**. Without those variables, `assembleRelease` keeps producing `app-*-release-unsigned.apk` exactly as before.
+Signing material is passed to Gradle only through environment variables (`MZDK_KEYSTORE_FILE` and friends) — **never commit the keystore**. Without those variables, `assembleTvRelease` keeps producing `app-tv-*-release-unsigned.apk` exactly as before.
 
 To republish the same version, run the `Release` workflow manually and tick `force`.
 

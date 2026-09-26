@@ -8,6 +8,7 @@ import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
+import org.mz.mzdkplayer.di.AppContext
 import org.mz.mzdkplayer.data.repository.AudioPlaylistRepository
 import org.mz.mzdkplayer.data.repository.PlaybackPreferenceRepository
 import org.mz.mzdkplayer.data.repository.VideoPlaylistRepository
@@ -27,6 +28,8 @@ class MzDkPlayerApplication: Application() {
     override fun onCreate() {
         super.onCreate()
         context = applicationContext
+        // :core 里的业务层（如 MovieViewModel 读 NFO）通过它拿 Application Context
+        AppContext.init(this)
 
         // 1. 初始化设置（最优先，因为其他组件可能依赖它）
         SettingsRepository.init(this)

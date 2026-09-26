@@ -3,7 +3,8 @@
 /local.properties
 .idea/
 .DS_Store
-/build
+# 各 module 自己的 build/ 也要忽略（`:core` 与 `:app` 各有一份，只写 `/build` 会漏掉 `core/build`）
+build/
 /captures
 .externalNativeBuild
 .cxx

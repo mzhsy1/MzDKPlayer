@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    共享业务层不声明任何组件与权限：
+    权限、Activity、Application 全部由 app 模块（含各自 flavor）的清单负责。
+-->
+<manifest />

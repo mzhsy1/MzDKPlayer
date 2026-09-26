@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    手机端专有清单：Material 3 Expressive 主题 + 触屏 Launcher 入口。
+    这里**不出现** MainActivity，也不引电视端的 banner —— tv 的清单与这里互不可见。
+
+    已知缺口：手机端暂时不接管 `video/*` 的 VIEW intent（那是电视端 MainActivity 的整套路由），
+    后续手机端自己补一份。
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        Android 17（API 37）的「本地网络保护」：targetSdk ≥ 37 的应用访问局域网地址
+        （SMB 的 192.168.x.x 就在这个范围内）必须持有该权限，否则网络栈会**静默丢弃**连接，
+        表现是 SocketTimeoutException（连接超时），而不是「连接被拒绝」。
+        运行时申请在 `ui/phone/PhoneLocalNetworkPermission.kt` 里，SMB 连接前先要授权。
+    -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+
+    <application android:theme="@style/Theme.MzDKPlayer.Phone">
+
+        <activity
+            android:name=".ui.phone.PhoneMainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

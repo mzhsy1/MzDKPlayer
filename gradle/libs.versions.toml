@@ -39,6 +39,11 @@ smbj = "0.15.0"
 tvFoundation = "1.0.0"
 tvMaterial = "1.1.0"
 media3Ui = "1.11.1"
+# 手机端 UI 专用的 Compose Material 3。电视端用 androidx.tv.material3，两边是两套独立的设计系统，不共用组件。
+# 只有 1.5.0-alpha 起 MaterialExpressiveTheme / MotionScheme / LoadingIndicator / ButtonGroup 才是 public
+# （1.4.0 稳定版里这些全是 internal），要「全面 Expressive」只能上这个版本。
+material3 = "1.5.0-alpha29"
+materialIconsCore = "1.7.8"
 lifecycleRuntimeKtx = "2.11.0"
 activityCompose = "1.13.0"
 datastorePreferences = "1.2.1"
@@ -64,6 +69,12 @@ androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomKtx" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomCompiler" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" ,version.ref = "ui"  }
+androidx-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "ui" }
+androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
+androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycleRuntimeKtx" }
+# 手机端 UI（Material 3 Expressive）
+androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
+androidx-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core", version.ref = "materialIconsCore" }
 
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
@@ -104,6 +115,7 @@ thegrizzlylabs-sardine-android = { module = "com.github.thegrizzlylabs:sardine-a
 desugarJdkLibs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugarJdkLibs" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
 # kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 

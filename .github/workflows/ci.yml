@@ -1,6 +1,7 @@
 name: CI
 
-# 每次推送到 main、以及每个 PR：编译 + 跑 JVM 单元测试。
+# 每次推送到 main、以及每个 PR：编译两个 flavor + 跑 JVM 单元测试。
+# 单测全部在 :core（业务层）里；app 侧改成 assemble 两个变体，连清单/资源合并一起验。
 # 打包发布在 release.yml 里，只有版本号是新的才会跑。
 on:
   push:
@@ -77,7 +78,9 @@ jobs:
           log="$RUNNER_TEMP/gradle.log"
           {
             ./gradlew --version
-            ./gradlew :app:testDebugUnitTest --console=plain
+            # 注：加了 product flavor 之后没有 :app:testDebugUnitTest 这个任务了，
+            # 变体任务名形如 testTvDebugUnitTest / assemblePhoneDebug。
+            ./gradlew :core:testDebugUnitTest :app:assembleTvDebug :app:assemblePhoneDebug --console=plain
           } 2>&1 | tee "$log"
           status="${PIPESTATUS[0]}"
           if [ "$status" -ne 0 ]; then
@@ -102,6 +105,6 @@ jobs:
         with:
           name: unit-test-report
           path: |
-            app/build/reports/tests/testDebugUnitTest
-            app/build/test-results/testDebugUnitTest
+            core/build/reports/tests/testDebugUnitTest
+            core/build/test-results/testDebugUnitTest
           if-no-files-found: ignore

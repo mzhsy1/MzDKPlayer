@@ -1,0 +1,5 @@
+<resources>
+
+    <!-- 电视端主题：沿用历史配置，手机端不再共享它 -->
+    <style name="Theme.MzDKPlayer" parent="Theme.AppCompat.DayNight.NoActionBar" />
+</resources>
