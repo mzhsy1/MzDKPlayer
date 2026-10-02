@@ -63,15 +63,15 @@ import org.mz.mzdkplayer.data.model.AudioInfo
 import org.mz.mzdkplayer.data.model.AudioItem
 import org.mz.mzdkplayer.data.model.MediaHistoryRecord
 
-import org.mz.mzdkplayer.tool.SmbUtils
+import org.mz.mzdkplayer.data.datasource.SmbUtils
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.Tools.saveCoverImageToInternalStorage
-import org.mz.mzdkplayer.tool.FtpDataSource
-import org.mz.mzdkplayer.tool.SmbDataSource
-import org.mz.mzdkplayer.tool.WebDavDataSource
-import org.mz.mzdkplayer.tool.createArtworkBitmap
-import org.mz.mzdkplayer.tool.extractAudioInfoAndLyricsFromStream
-import org.mz.mzdkplayer.tool.handleDPadKeyEvents
+import org.mz.mzdkplayer.data.datasource.FtpDataSource
+import org.mz.mzdkplayer.data.datasource.SmbDataSource
+import org.mz.mzdkplayer.data.datasource.WebDavDataSource
+import org.mz.mzdkplayer.tool.metadata.createArtworkBitmap
+import org.mz.mzdkplayer.tool.metadata.extractAudioInfoAndLyricsFromStream
+import org.mz.mzdkplayer.common.handleDPadKeyEvents
 
 import org.mz.mzdkplayer.ui.audioplayer.components.*
 
@@ -113,7 +113,6 @@ fun AudioPlayerScreen(
     val exoPlayer = rememberAudioPlayer(context, mediaUri, dataSourceType)
     val audioPlayerState = rememberAudioPlayerState(hideSeconds = 6)
     val audioPlayerViewModel: AudioPlayerViewModel = viewModel()
-    var showToast by remember { mutableStateOf(false) }
     var backPressState by remember { mutableStateOf<BackPress>(BackPress.Idle) }
     var contentCurrentPosition by remember { mutableLongStateOf(0L) }
     var isPlaying: Boolean by remember { mutableStateOf(exoPlayer.isPlaying) }
@@ -565,12 +564,6 @@ fun AudioPlayerScreen(
         }
     }
 
-    // 显示 "再按一次退出" Toast
-    if (showToast) {
-        showToast(context, context.getString(R.string.ui_label_press_again_to_exit))
-        showToast = false
-    }
-
     // 处理双击返回退出逻辑
     LaunchedEffect(key1 = backPressState) {
         if (backPressState == BackPress.InitialTouch) {
@@ -580,7 +573,10 @@ fun AudioPlayerScreen(
     }
     BackHandler(backPressState == BackPress.Idle) {
         backPressState = BackPress.InitialTouch
-        showToast = true
+        // 提示必须在按键回调里发：原来写在组合里的 if (showToast) 属于组合期副作用，
+        // 播放页每次重组都会重新 show 一遍、把 3 秒的自动消失计时重置，
+        // 于是提示有时正常消失、有时一直挂在屏幕上（与视频播放页同一处问题）
+        showToast(context, context.getString(R.string.ui_label_press_again_to_exit))
     }
 
     LaunchedEffect(audioSessionId) {

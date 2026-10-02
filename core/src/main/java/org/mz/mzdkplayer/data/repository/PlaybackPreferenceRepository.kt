@@ -3,8 +3,8 @@ package org.mz.mzdkplayer.data.repository
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import org.mz.mzdkplayer.tool.PlaybackPreference
-import org.mz.mzdkplayer.tool.PlaybackPreferenceLogic
+import org.mz.mzdkplayer.tool.logic.PlaybackPreference
+import org.mz.mzdkplayer.tool.logic.PlaybackPreferenceLogic
 
 /**
  * 「按文件记住播放偏好」的落盘层。

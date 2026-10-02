@@ -3,6 +3,10 @@ package org.mz.mzdkplayer.tool
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import org.mz.mzdkplayer.tool.metadata.LyricEntry
+import org.mz.mzdkplayer.tool.metadata.lyricIndexAt
+import org.mz.mzdkplayer.tool.metadata.parseLrc
+import org.mz.mzdkplayer.tool.metadata.parseTime
 
 /**
  * LRC 歌词解析与「当前唱到哪一行」的纯逻辑。

@@ -3,6 +3,7 @@ package org.mz.mzdkplayer.tool
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import org.mz.mzdkplayer.tool.logic.SidecarPathLogic
 
 /**
  * [SidecarPathLogic] 的 JVM 单元测试 —— 由视频路径推出伴生文件（弹幕 `.xml` / 刮削信息 `.nfo`）的路径。

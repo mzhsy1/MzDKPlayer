@@ -5,6 +5,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.mz.mzdkplayer.tool.logic.PlaybackPreference
+import org.mz.mzdkplayer.tool.logic.PlaybackPreferenceLogic
+import org.mz.mzdkplayer.tool.logic.PlaybackTrackRef
 
 /**
  * 「按文件记住播放偏好」的纯逻辑测试：编解码、存储键、轨道匹配、索引淘汰。

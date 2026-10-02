@@ -1,9 +1,6 @@
 package org.mz.mzdkplayer.player.core
 
 
-// 统一的轨道类型
-enum class MzTrackType { AUDIO, VIDEO, SUBTITLE }
-
 // 统一的视频轨道模型
 data class MzVideoTrack(
     val id: String,              // 唯一标识

@@ -12,7 +12,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.di.RepositoryProvider
-import org.mz.mzdkplayer.tool.viewModelWithFactory
+import org.mz.mzdkplayer.di.viewModelWithFactory
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.common.MyIconButton
 import org.mz.mzdkplayer.viewmodel.PerformanceTestViewModel

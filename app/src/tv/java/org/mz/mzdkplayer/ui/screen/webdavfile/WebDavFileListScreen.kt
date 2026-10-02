@@ -4,7 +4,7 @@ package org.mz.mzdkplayer.ui.screen.webdavfile
 
 import NoSearchResult
 import android.util.Log
-import org.mz.mzdkplayer.tool.MzToastManager
+import org.mz.mzdkplayer.common.MzToastManager
 import androidx.annotation.OptIn
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -48,9 +48,9 @@ import org.mz.mzdkplayer.data.model.VideoItem
 import org.mz.mzdkplayer.data.model.FileConnectionStatus
 import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.di.RepositoryProvider
-import org.mz.mzdkplayer.tool.MediaInfoExtractorFormFileName
+import org.mz.mzdkplayer.tool.metadata.MediaInfoExtractorFormFileName
 import org.mz.mzdkplayer.ui.common.VideoBigIcon
-import org.mz.mzdkplayer.tool.viewModelWithFactory
+import org.mz.mzdkplayer.di.viewModelWithFactory
 import org.mz.mzdkplayer.ui.screen.common.CirCleIconButton
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 import org.mz.mzdkplayer.ui.screen.common.FileIcon
@@ -64,14 +64,13 @@ import org.mz.mzdkplayer.ui.screen.common.MediaPreviewSection
 import org.mz.mzdkplayer.ui.screen.common.MediaReleaseDate
 import org.mz.mzdkplayer.ui.screen.common.MediaTitle
 import org.mz.mzdkplayer.ui.screen.common.VAErrorScreen
-import org.mz.mzdkplayer.ui.theme.myTTFColor
 import org.mz.mzdkplayer.ui.theme.MyFileListItemColor
 
 import org.mz.mzdkplayer.ui.screen.common.TvTextField
 import org.mz.mzdkplayer.viewmodel.AudioViewModel
 import org.mz.mzdkplayer.viewmodel.MovieViewModel
 import org.mz.mzdkplayer.viewmodel.SettingsViewModel
-import org.mz.mzdkplayer.tool.FileBrowserLogic
+import org.mz.mzdkplayer.tool.logic.FileBrowserLogic
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(UnstableApi::class)
@@ -425,7 +424,6 @@ fun WebDavFileListScreen(
                                 value = seaText,
                                 onValueChange = { seaText = it },
                                 modifier = Modifier.fillMaxWidth(),
-                                colors = myTTFColor(),
                                 placeholder =stringResource(R.string.ui_label_please_enter_filename),
                                 textStyle = TextStyle(color = Color.White),
                             )

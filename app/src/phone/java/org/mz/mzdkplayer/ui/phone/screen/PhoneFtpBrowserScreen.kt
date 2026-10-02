@@ -1,29 +1,29 @@
 package org.mz.mzdkplayer.ui.phone.screen
 
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.apache.commons.net.ftp.FTPFile
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.model.FTPConnection
 import org.mz.mzdkplayer.data.model.FileConnectionStatus
-import org.mz.mzdkplayer.tool.FileBrowserLogic
-import org.mz.mzdkplayer.tool.PhoneMediaLogic
+import org.mz.mzdkplayer.tool.logic.FileBrowserLogic
+import org.mz.mzdkplayer.tool.logic.PhoneMediaLogic
+import org.mz.mzdkplayer.ui.phone.component.PhoneBrowserPage
+import org.mz.mzdkplayer.ui.phone.component.PhoneBrowserSpec
+import org.mz.mzdkplayer.ui.phone.model.PhoneBrowserEntry
+import org.mz.mzdkplayer.ui.phone.model.PhoneBrowserState
+import org.mz.mzdkplayer.ui.phone.model.isPlayableMediaFileName
+import org.mz.mzdkplayer.ui.phone.model.sortedForBrowser
 import org.mz.mzdkplayer.viewmodel.FTPConViewModel
 import org.mz.mzdkplayer.viewmodel.FTPListViewModel
 import org.mz.mzdkplayer.viewmodel.MediaMetaViewModel
 import org.mz.mzdkplayer.viewmodel.MovieViewModel
+import org.mz.mzdkplayer.ui.phone.model.PhoneFileProtocol
 
 /** FTP 默认端口，与电视端 `FTPConScreen` 一致 */
 private const val FTP_DEFAULT_PORT = 21
@@ -35,7 +35,7 @@ private const val FTP_LOAD_TIMEOUT_MS = 30_000L
  * FTP 目录浏览（第三阶段；第四阶段接入刮削）。
  *
  * 连接与列目录复用电视端的 [FTPConViewModel]（commons-net 实现 + `FileBrowserLogic` 路径口径），
- * 这里只做手机端列表渲染与「目录下钻 / 视频交给播放页」的分发。
+ * 页面只声明「FTP 与其它来源不同的那几点」，其余交给 `PhoneBrowserPage`。
  *
  * 两条与电视端**有意**不同的口径：
  * 1. 连接时把**当前要看的目录**当作起始目录传给 `connectToFTP`（电视端只传连接里配置的起始目录后再逐级下钻），
@@ -55,7 +55,7 @@ fun PhoneFtpBrowserScreen(
     autoScrape: Boolean,
     onBack: () -> Unit,
     onOpenDirectory: (String) -> Unit,
-    onPlayVideo: (sourceUri: String, name: String) -> Unit,
+    onPlayVideo: (sourceUri: String, name: String, connectionName: String) -> Unit,
     onOpenMedia: (PhoneMediaLogic.MediaOpen) -> Unit,
     onOpenDetail: (sourceUri: String, fileName: String, connectionName: String) -> Unit,
 ) {
@@ -64,103 +64,68 @@ fun PhoneFtpBrowserScreen(
         connections.firstOrNull { it.id == connectionId }
     }
 
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    var retryToken by remember { mutableIntStateOf(0) }
-    var uiState by remember(path) { mutableStateOf<PhoneBrowserState>(PhoneBrowserState.Loading) }
-
     val loadFailedText = stringResource(R.string.phone_files_load_failed)
-    val unsupportedText = stringResource(R.string.phone_player_unsupported)
+    val port = connection?.port ?: FTP_DEFAULT_PORT
+    // 显示路径（不带前导 /）："" 表示共享根目录；请求前统一由 normalizeFtpDirectory 规整
+    val requested = FileBrowserLogic.ftpDisplayPath(FileBrowserLogic.normalizeFtpDirectory(path))
 
-    LaunchedEffect(connection, path, retryToken) {
-        uiState = PhoneBrowserState.Loading
-
-        val target = connection
-        val server = target?.ip.orEmpty()
-        if (target == null || server.isBlank()) {
-            uiState = PhoneBrowserState.Failed(loadFailedText)
-            return@LaunchedEffect
-        }
-
-        val port = target.port ?: FTP_DEFAULT_PORT
-        // 显示路径（不带前导 /）："" 表示共享根目录；请求前统一由 normalizeFtpDirectory 规整
-        val requested = FileBrowserLogic.ftpDisplayPath(FileBrowserLogic.normalizeFtpDirectory(path))
-
-        if (!ftpConViewModel.isConnected()) {
-            ftpConViewModel.connectToFTP(
-                server = server,
-                port = port,
-                username = target.username.orEmpty(),
-                password = target.password.orEmpty(),
-                shareName = requested,
-            )
-        } else {
-            ftpConViewModel.listFiles(requested)
-        }
-
-        val settled = withTimeoutOrNull(FTP_LOAD_TIMEOUT_MS) {
-            ftpConViewModel.connectionStatus.first {
-                it is FileConnectionStatus.FilesLoaded || it is FileConnectionStatus.Error
-            }
-        }
-
-        uiState = when (settled) {
-            is FileConnectionStatus.FilesLoaded -> PhoneBrowserState.Ready(
-                path = requested,
-                entries = ftpConViewModel.fileList.value
-                    .mapNotNull { it.toBrowserEntry(target, requested, port) }
-                    .sortedForBrowser(),
-            )
-
-            is FileConnectionStatus.Error -> PhoneBrowserState.Failed(settled.message)
-            else -> PhoneBrowserState.Failed(loadFailedText)
-        }
-    }
-
-    val ready = uiState as? PhoneBrowserState.Ready
-    val loadedPath = ready?.path.orEmpty()
-    val entries = ready?.entries.orEmpty()
-    val parentPath = FileBrowserLogic.ftpParentPath(loadedPath)
-
-    val scrape = rememberPhoneScrapeUi(
+    PhoneBrowserPage(
+        spec = PhoneBrowserSpec(
+            dataSourceType = PhoneFileProtocol.FTP.routeValue,
+            title = connection?.name?.takeIf { it.isNotBlank() } ?: connection?.ip.orEmpty(),
+            connectionName = connection?.name.orEmpty(),
+            subtitleOf = { it.ifEmpty { "/" } },
+            parentPathOf = { FileBrowserLogic.ftpParentPath(it) },
+            directoryTargetOf = { entry, loadedPath ->
+                if (loadedPath.isEmpty()) entry.name else "$loadedPath/${entry.name}"
+            },
+        ),
+        connectionKey = connection,
+        requestPath = path,
         movieViewModel = movieViewModel,
         mediaMetaViewModel = mediaMetaViewModel,
-        dataSourceType = PhoneFileProtocol.FTP.routeValue,
-        connectionName = connection?.name.orEmpty(),
         autoScrape = autoScrape,
-        entries = entries,
-        snackbarHostState = snackbarHostState,
-    )
-
-    PhoneBrowserScaffold(
-        title = connection?.name?.takeIf { it.isNotBlank() } ?: connection?.ip.orEmpty(),
-        subtitle = loadedPath.ifEmpty { "/" },
-        snackbarHostState = snackbarHostState,
         onBack = onBack,
-        state = uiState,
-        showParent = loadedPath.isNotEmpty(),
-        onOpenParent = { onOpenDirectory(parentPath) },
-        onRetry = { retryToken++ },
-        onOpenEntry = { entry ->
-            dispatchEntryClick(
-                entry = entry,
-                siblings = entries,
-                dataSourceType = PhoneFileProtocol.FTP.routeValue,
-                connectionName = connection?.name.orEmpty(),
-                directoryTarget = if (loadedPath.isEmpty()) {
-                    entry.name
+        onOpenDirectory = onOpenDirectory,
+        onPlayVideo = onPlayVideo,
+        onOpenMedia = onOpenMedia,
+        onOpenDetail = onOpenDetail,
+        load = {
+            val target = connection
+            val server = target?.ip.orEmpty()
+            if (target == null || server.isBlank()) {
+                PhoneBrowserState.Failed(loadFailedText)
+            } else {
+                if (!ftpConViewModel.isConnected()) {
+                    ftpConViewModel.connectToFTP(
+                        server = server,
+                        port = port,
+                        username = target.username.orEmpty(),
+                        password = target.password.orEmpty(),
+                        shareName = requested,
+                    )
                 } else {
-                    "$loadedPath/${entry.name}"
-                },
-                onOpenDirectory = onOpenDirectory,
-                onPlayVideo = onPlayVideo,
-                onOpenMedia = onOpenMedia,
-                onUnsupported = { scope.launch { snackbarHostState.showSnackbar(unsupportedText) } },
-            )
-        },
-        scrape = scrape,
-        onOpenDetailEntry = { entry ->
-            entry.playbackUri?.let { onOpenDetail(it, entry.name, connection?.name.orEmpty()) }
+                    ftpConViewModel.listFiles(requested)
+                }
+
+                val settled = withTimeoutOrNull(FTP_LOAD_TIMEOUT_MS) {
+                    ftpConViewModel.connectionStatus.first {
+                        it is FileConnectionStatus.FilesLoaded || it is FileConnectionStatus.Error
+                    }
+                }
+
+                when (settled) {
+                    is FileConnectionStatus.FilesLoaded -> PhoneBrowserState.Ready(
+                        path = requested,
+                        entries = ftpConViewModel.fileList.value
+                            .mapNotNull { it.toBrowserEntry(target, requested, port) }
+                            .sortedForBrowser(),
+                    )
+
+                    is FileConnectionStatus.Error -> PhoneBrowserState.Failed(settled.message)
+                    else -> PhoneBrowserState.Failed(loadFailedText)
+                }
+            }
         },
     )
 }

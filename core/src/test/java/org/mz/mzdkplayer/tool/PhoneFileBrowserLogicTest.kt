@@ -2,6 +2,7 @@ package org.mz.mzdkplayer.tool
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.mz.mzdkplayer.tool.logic.PhoneFileBrowserLogic
 
 /**
  * 手机端文件浏览的纯逻辑：本地目录上溯与 NFS 播放地址拼接。
@@ -104,5 +105,43 @@ class PhoneFileBrowserLogicTest {
             "nfs://192.168.1.4:/media:/Movies/a.mkv",
             PhoneFileBrowserLogic.nfsPlaybackUri("192.168.1.4", "/media/", "Movies/a.mkv"),
         )
+    }
+
+    @Test
+    fun `SMB 共享根目录返回自身`() {
+        // 空串与 "/" 都表示共享根：返回自身，调用方据此隐藏「返回上一级」
+        assertEquals("/", PhoneFileBrowserLogic.smbParentPath(""))
+        assertEquals("/", PhoneFileBrowserLogic.smbParentPath("/"))
+    }
+
+    @Test
+    fun `SMB 显示路径能逐级上溯`() {
+        assertEquals("/", PhoneFileBrowserLogic.smbParentPath("Movies"))
+        assertEquals("Movies", PhoneFileBrowserLogic.smbParentPath("Movies/动作"))
+        assertEquals("/Movies", PhoneFileBrowserLogic.smbParentPath("/Movies/动作"))
+    }
+
+    @Test
+    fun `SMB 显示路径结尾斜杠不影响结果`() {
+        assertEquals("Movies", PhoneFileBrowserLogic.smbParentPath("Movies/动作/"))
+    }
+
+    @Test
+    fun `HTTP 起始目录统一补成带结尾斜杠的 URL`() {
+        // 结尾 / 是 parseHttpDirectoryListing 的硬要求，缺了同级条目会被子树校验全丢
+        assertEquals(
+            "http://host:81/media/",
+            PhoneFileBrowserLogic.httpInitialDirectory("http://host:81", "media"),
+        )
+        assertEquals(
+            "http://host:81/media/",
+            PhoneFileBrowserLogic.httpInitialDirectory("http://host:81/", "/media/"),
+        )
+        assertEquals(
+            "http://host:81/",
+            PhoneFileBrowserLogic.httpInitialDirectory("http://host:81", ""),
+        )
+        // 站点地址缺失时只剩一个根路径，不会拼出半截 URL
+        assertEquals("/", PhoneFileBrowserLogic.httpInitialDirectory(null, null))
     }
 }

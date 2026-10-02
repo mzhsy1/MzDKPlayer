@@ -25,6 +25,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,8 +34,9 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
+import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.model.VideoItem
-import org.mz.mzdkplayer.tool.focusOnInitialVisibility
+import org.mz.mzdkplayer.common.focusOnInitialVisibility
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -69,7 +71,7 @@ fun VideoListPanel(
     Box(Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             Text(
-                text = "播放列表",
+                text = stringResource(R.string.ui_label_playlist),
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 fontSize = 24.sp,
@@ -89,7 +91,7 @@ fun VideoListPanel(
                                 .height(300.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(text = "无内容", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 20.sp)
+                            Text(text = stringResource(R.string.ui_label_no_content), fontWeight = FontWeight.Bold, color = Color.White, fontSize = 20.sp)
                         }
                     }
                 } else {

@@ -11,8 +11,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
@@ -28,9 +29,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -40,18 +41,24 @@ import org.mz.mzdkplayer.data.model.WebDavConnection
 import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.viewmodel.WebDavConViewModel
 import org.mz.mzdkplayer.viewmodel.WebDavListViewModel
-import org.mz.mzdkplayer.ui.theme.myTTFColor
 import org.mz.mzdkplayer.ui.screen.common.MyIconButton
-import org.mz.mzdkplayer.tool.MzToastManager
+import org.mz.mzdkplayer.common.MzToastManager
 import org.mz.mzdkplayer.ui.screen.common.RemoteInputQRPanel
 import org.mz.mzdkplayer.ui.screen.common.TvTextField
+import org.mz.mzdkplayer.ui.screen.common.ConnectionFormCard
+import org.mz.mzdkplayer.ui.screen.common.ConnectionStatusPill
+import org.mz.mzdkplayer.ui.screen.common.connectionStatusColor
 import java.util.UUID
 
 /**
  * WebDAV 连接界面
  */
 @Composable
-fun WebDavConScreen(webDavListViewModel: WebDavListViewModel) {
+fun WebDavConScreen(
+    mainNavController: NavHostController,
+    connectionId: String? = null,
+    webDavListViewModel: WebDavListViewModel
+) {
     val webDavConViewModel: WebDavConViewModel = viewModel()
     //val webDavListViewModel: WebDavListViewModel = viewModel()
 
@@ -60,11 +67,16 @@ fun WebDavConScreen(webDavListViewModel: WebDavListViewModel) {
     val fileList by webDavConViewModel.fileList.collectAsState()
     var currentPath by remember { mutableStateOf("") }
 
+    // 编辑模式：连接列表带 connId 进入时，用已有连接回填表单
+    val editingConnection = remember(connectionId) {
+        connectionId?.let { webDavListViewModel.getConnectionById(it) }
+    }
+
     // 用户输入状态 - baseUrl 现在表示完整的路径
-    var baseUrl by remember { mutableStateOf("") }
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var aliasName by remember { mutableStateOf("") }
+    var baseUrl by remember { mutableStateOf(editingConnection?.baseUrl ?: "") }
+    var username by remember { mutableStateOf(editingConnection?.username ?: "") }
+    var password by remember { mutableStateOf(editingConnection?.password ?: "") }
+    var aliasName by remember { mutableStateOf(editingConnection?.name ?: "") }
 
     // 用于控制键盘
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -75,119 +87,116 @@ fun WebDavConScreen(webDavListViewModel: WebDavListViewModel) {
         Column(
             modifier = Modifier
                 .padding(16.dp)
-                .fillMaxHeight() .fillMaxWidth(0.5f), // 占据左半边,
+                .fillMaxHeight() .fillMaxWidth(0.5f) // 占据左半边
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // 连接状态显示
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = stringResource(R.string.ui_label_webdav_connection_status,connectionStatus.toString()),
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.widthIn(100.dp, 400.dp),
-                    maxLines = 1
+            ConnectionStatusPill(
+                text = stringResource(R.string.ui_label_webdav_connection_status, connectionStatus.toString()),
+                color = connectionStatusColor(connectionStatus),
+            )
+
+            // 建议先拼接好完整的提示文字
+            val placeholderText = "${stringResource(R.string.ui_hint_webdav_path)} ${stringResource(R.string.ui_hint_http_only_lan)}"
+
+            ConnectionFormCard(title = stringResource(R.string.ui_label_webdav_file_sharing)) {
+                TvTextField(
+                    value = baseUrl,
+                    onValueChange = { baseUrl = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = stringResource(R.string.ui_label_server_address),
+                    placeholder = placeholderText,
                 )
-                // 状态指示灯
-                Icon(
-                    painter = painterResource(R.drawable.baseline_circle_24),
-                    contentDescription = null,
-                    tint = when (connectionStatus) {
-                        is FileConnectionStatus.Connected -> Color.Green
-                        is FileConnectionStatus.Connecting -> Color.Yellow
-                        is FileConnectionStatus.Error -> Color.Red
-                        is FileConnectionStatus.LoadingFile -> Color.Yellow
-                        is FileConnectionStatus.FilesLoaded -> Color.Cyan
-                        else -> Color.Gray
-                    }
+
+                TvTextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = stringResource(R.string.ui_label_username),
+                )
+
+                TvTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = stringResource(R.string.ui_label_password),
+                    isPassword = true,
+                )
+
+                TvTextField(
+                    value = aliasName,
+                    onValueChange = { aliasName = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = stringResource(R.string.ui_label_connection_alias),
                 )
             }
-// 建议先拼接好完整的提示文字
-            val placeholderText = "${stringResource(R.string.ui_hint_webdav_path)} ${stringResource(R.string.ui_hint_http_only_lan)}"
-            // 输入字段 - baseUrl 现在表示完整路径
-            TvTextField(
-                value = baseUrl,
-                onValueChange = { baseUrl = it },
+
+            // 操作按钮：测试与保存并排一行，矮屏下少占一行高度
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = placeholderText,
-                colors = myTTFColor(),
-                textStyle = TextStyle(color = Color.White),
-            )
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                MyIconButton(
+                    text = stringResource(R.string.ui_label_test_connection),
+                    icon = R.drawable.check24dp,
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        keyboardController?.hide()
+                        currentPath = "" // 使用完整的 baseUrl 作为当前路径
+                        if (!Tools.validateWebConnectionParams(serverAddress = baseUrl)) {
+                            return@MyIconButton
+                        }
+                        webDavConViewModel.connectToWebDav(baseUrl, username, password, true)
+                    },
+                )
 
-            TvTextField(
-                value = username,
-                onValueChange = { username = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = stringResource(R.string.ui_label_username),
-                colors = myTTFColor(),
-                textStyle = TextStyle(color = Color.White),
-            )
+                MyIconButton(
+                    text = stringResource(R.string.ui_label_save_connection),
+                    icon = R.drawable.save24dp,
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        keyboardController?.hide()
+                        currentPath = baseUrl
+                        if (!Tools.validateWebConnectionParams(serverAddress = baseUrl)) {
+                            return@MyIconButton
+                        }
 
-            TvTextField(
-                value = password,
-                onValueChange = { password = it },
-                modifier = Modifier.fillMaxWidth(),
-                colors = myTTFColor(),
-                placeholder = stringResource(R.string.ui_label_password),
-                textStyle = TextStyle(color = Color.White),
-            )
-
-            TvTextField(
-                value = aliasName,
-                onValueChange = { aliasName = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = stringResource(R.string.ui_label_connection_alias),
-                colors = myTTFColor(),
-                textStyle = TextStyle(color = Color.White),
-            )
-
-            // 操作按钮
-            MyIconButton(
-                text = stringResource(R.string.ui_label_test_connection),
-                icon = R.drawable.check24dp,
-                modifier = Modifier.fillMaxWidth(),
-                onClick = {
-                    keyboardController?.hide()
-                    currentPath = "" // 使用完整的 baseUrl 作为当前路径
-                    if (!Tools.validateWebConnectionParams(serverAddress = baseUrl)) {
-                        return@MyIconButton
-                    }
-                    webDavConViewModel.connectToWebDav(baseUrl, username, password,true)
-                },
-            )
-
-            MyIconButton(
-                text = stringResource(R.string.ui_label_save_connection),
-                icon = R.drawable.save24dp,
-                modifier = Modifier.fillMaxWidth(),
-                onClick = {
-                    keyboardController?.hide()
-                    currentPath = baseUrl
-                    if (!Tools.validateWebConnectionParams(serverAddress = baseUrl)) {
-                        return@MyIconButton
-                    }
-
-                    if (!webDavConViewModel.isConnected()) {
-                        MzToastManager.show(context.getString(R.string.ui_label_save_after_successful_connection))
-                        return@MyIconButton
-                    }
-
-                    val newConnection = WebDavConnection(
-                        id = UUID.randomUUID().toString(),
-                        name = aliasName.ifBlank { context.getString(R.string.ui_label_unnamed_webdav_connection) },
-                        baseUrl = baseUrl, // 保存完整路径
-                        username = username,
-                        password = password
-                    )
-                    if (webDavListViewModel.addConnection(newConnection)) {
-                        MzToastManager.show(context.getString(R.string.ui_label_connection_saved))
-                    } else {
-                        MzToastManager.show(
-                            context.getString(R.string.ui_label_save_failed_connection_exists)
+                        val newConnection = WebDavConnection(
+                            id = editingConnection?.id ?: UUID.randomUUID().toString(),
+                            name = aliasName.ifBlank { context.getString(R.string.ui_label_unnamed_webdav_connection) },
+                            baseUrl = baseUrl, // 保存完整路径
+                            username = username,
+                            password = password
                         )
-                    }
-                    Log.d("WebDavConScreen", "保存连接: $aliasName, 路径: $baseUrl")
-                },
-            )
+
+                        val editing = editingConnection
+                        if (editing != null) {
+                            // 编辑模式：只改了别名这类非连接信息时，不必重新测试连接
+                            val networkChanged = baseUrl != editing.baseUrl ||
+                                    username != editing.username ||
+                                    password != editing.password
+                            if (networkChanged && !webDavConViewModel.isConnected()) {
+                                MzToastManager.show(context.getString(R.string.ui_label_save_after_successful_connection))
+                                return@MyIconButton
+                            }
+                            webDavListViewModel.updateConnection(newConnection)
+                            MzToastManager.show(context.getString(R.string.ui_label_connection_saved))
+                            mainNavController.popBackStack()
+                        } else if (webDavConViewModel.isConnected()) {
+                            if (webDavListViewModel.addConnection(newConnection)) {
+                                MzToastManager.show(context.getString(R.string.ui_label_connection_saved))
+                            } else {
+                                MzToastManager.show(
+                                    context.getString(R.string.ui_label_save_failed_connection_exists)
+                                )
+                            }
+                        } else {
+                            MzToastManager.show(context.getString(R.string.ui_label_save_after_successful_connection))
+                        }
+                        Log.d("WebDavConScreen", "保存连接: $aliasName, 路径: $baseUrl")
+                    },
+                )
+            }
 
             MyIconButton(
                 text = stringResource(R.string.ui_label_disconnect),

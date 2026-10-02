@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
@@ -49,6 +50,7 @@ import kotlinx.coroutines.delay
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.tool.Tools.fromBase64
 import org.mz.mzdkplayer.tool.Tools.toBase64
+import org.mz.mzdkplayer.ui.screen.common.ConListAccent
 import org.mz.mzdkplayer.ui.screen.common.ConOpPanel
 
 import org.mz.mzdkplayer.ui.screen.common.ConnectionCard
@@ -119,11 +121,21 @@ fun SMBConListScreen(mainNavController: NavHostController,smbListViewModel: SMBL
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF121212)) // 深黑背景
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color(0xFF141419), Color(0xFF0E0E12))
+                    )
+                )
         )
         {
             // 标题
-            FCLMainTitle(mainNavController = mainNavController, stringResource(R.string.ui_label_smb_file_sharing), "SMBConScreen")
+            FCLMainTitle(
+                mainNavController = mainNavController,
+                titleText = stringResource(R.string.ui_label_smb_file_sharing),
+                addTargetRouter = "SMBConScreen",
+                protocolIconRes = R.drawable.smb,
+                accentColor = ConListAccent.smb
+            )
             // ====== 内容区域m ======
             Column(
                 modifier = Modifier
@@ -132,10 +144,15 @@ fun SMBConListScreen(mainNavController: NavHostController,smbListViewModel: SMBL
             ) {
                 if (connections.isEmpty()) {
                     // 空状态设计
-                    ConnectionListEmpty("SMB")
+                    ConnectionListEmpty(
+                        poolText = "SMB",
+                        protocolIconRes = R.drawable.smb,
+                        accentColor = ConListAccent.smb,
+                        onAddClick = { mainNavController.navigate("SMBConScreen") }
+                    )
                 } else {
                     // 连接列表标题
-                    ConnectionListTitle(connections.size)
+                    ConnectionListTitle(connections.size, ConListAccent.smb)
                     // 卡片列表
                     LazyColumn(
                         state = listState,
@@ -201,7 +218,10 @@ fun SMBConListScreen(mainNavController: NavHostController,smbListViewModel: SMBL
                                 onDelete = { },
                                 isSelected = smbListViewModel.selectedIndex.collectAsState().value == index && !isOPanelShow,
                                 isOPanelShow = isOPanelShow,
-                                selectedIndex = smbListViewModel.selectedIndex.value
+                                selectedIndex = smbListViewModel.selectedIndex.value,
+                                accentColor = ConListAccent.smb,
+                                protocolIconRes = R.drawable.smb,
+                                protocolLabel = "SMB"
                             )
                         }
                     }
@@ -229,9 +249,15 @@ fun SMBConListScreen(mainNavController: NavHostController,smbListViewModel: SMBL
                 showDeleteDialog = true
                 smbListViewModel.closeOPanel()
             },
+            onClickForEdit = {
+                smbListViewModel.closeOPanel()
+                mainNavController.navigate("SMBConScreen?connId=$selectedId")
+            },
             onClickForCancel = {
                 smbListViewModel.closeOPanel()
-            })
+            },
+            accentColor = ConListAccent.smb,
+            protocolLabel = "SMB")
 
         // 把弹窗挂载在最外层，保证它不会随着面板的消失而消失
         if (showDeleteDialog) {

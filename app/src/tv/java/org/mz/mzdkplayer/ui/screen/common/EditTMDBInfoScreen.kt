@@ -41,15 +41,14 @@ import coil3.compose.AsyncImage
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.viewmodel.MovieViewModel
-import org.mz.mzdkplayer.ui.theme.myTTFColor
 
 // 假设 MediaInfoExtractorFormFileName 已经在同一个包或正确导入
-import org.mz.mzdkplayer.tool.MediaInfoExtractorFormFileName
+import org.mz.mzdkplayer.tool.metadata.MediaInfoExtractorFormFileName
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.tv.material3.Icon
 import org.mz.mzdkplayer.di.RepositoryProvider
-import org.mz.mzdkplayer.tool.viewModelWithFactory
+import org.mz.mzdkplayer.di.viewModelWithFactory
 import org.mz.mzdkplayer.ui.theme.myListItemCoverColor
 import org.mz.mzdkplayer.ui.theme.mySideFilterChipColor
 
@@ -126,7 +125,6 @@ fun EditTMDBInfoScreen(
                 value = searchKeyword,
                 onValueChange = { searchKeyword = it },
                 placeholder = stringResource(R.string.ui_label_enter_movie_series_name),
-                colors = myTTFColor()
             )
 
             // 2. 类型切换 (电影 / 电视剧)
@@ -163,7 +161,6 @@ fun EditTMDBInfoScreen(
                             value = seasonText,
                             onValueChange = { if (it.all { char -> char.isDigit() }) seasonText = it },
                             placeholder = "1",
-                            colors = myTTFColor()
                         )
                     }
                     Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
@@ -172,7 +169,6 @@ fun EditTMDBInfoScreen(
                             value = episodeText,
                             onValueChange = { if (it.all { char -> char.isDigit() }) episodeText = it },
                             placeholder = "1",
-                            colors = myTTFColor()
                         )
                     }
                 }

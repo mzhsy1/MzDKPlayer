@@ -9,8 +9,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
@@ -27,9 +28,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -40,11 +41,13 @@ import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.viewmodel.HTTPLinkConViewModel
 
 import org.mz.mzdkplayer.viewmodel.HTTPLinkListViewModel // 假设你也有一个管理 HTTPLink 连接列表的 ViewModel
-import org.mz.mzdkplayer.ui.theme.myTTFColor
 import org.mz.mzdkplayer.ui.screen.common.MyIconButton
 import org.mz.mzdkplayer.ui.screen.common.MzToast
 import org.mz.mzdkplayer.ui.screen.common.RemoteInputQRPanel
 import org.mz.mzdkplayer.ui.screen.common.TvTextField
+import org.mz.mzdkplayer.ui.screen.common.ConnectionFormCard
+import org.mz.mzdkplayer.ui.screen.common.ConnectionStatusPill
+import org.mz.mzdkplayer.ui.screen.common.connectionStatusColor
 import org.mz.mzdkplayer.ui.screen.common.rememberMzToastState
 import java.util.UUID
 
@@ -52,7 +55,11 @@ import java.util.UUID
  * HTTP Link 连接与文件浏览界面
  */
 @Composable
-fun HTTPLinkConScreen(httpLinkListViewModel: HTTPLinkListViewModel) {
+fun HTTPLinkConScreen(
+    mainNavController: NavHostController,
+    connectionId: String? = null,
+    httpLinkListViewModel: HTTPLinkListViewModel
+) {
     // 使用 HTTPLink 的 ViewModel
     val httpLinkConViewModel: HTTPLinkConViewModel = viewModel()
     //val httpLinkListViewModel: HTTPLinkListViewModel = viewModel() // 如果不需要保存功能，可以移除
@@ -64,11 +71,15 @@ fun HTTPLinkConScreen(httpLinkListViewModel: HTTPLinkListViewModel) {
     val toastState = rememberMzToastState()
     val coroutineScope = rememberCoroutineScope()
 
+    // 编辑模式：连接列表带 connId 进入时，用已有连接回填表单
+    val editingConnection = remember(connectionId) {
+        connectionId?.let { httpLinkListViewModel.getConnectionById(it) }
+    }
 
     // 用户输入状态 - HTTPLink 需要服务器地址和共享名称
-    var serverAddress by remember { mutableStateOf("") } // HTTP 服务器地址 (例如 http://192.168.1.4:81)
-    var shareName by remember { mutableStateOf("") } // HTTPLink 共享路径 (例如 /movies)
-    var aliasName by remember { mutableStateOf("") } // 连接别名
+    var serverAddress by remember { mutableStateOf(editingConnection?.serverAddress ?: "") } // HTTP 服务器地址 (例如 http://192.168.1.4:81)
+    var shareName by remember { mutableStateOf(editingConnection?.shareName ?: "") } // HTTPLink 共享路径 (例如 /movies)
+    var aliasName by remember { mutableStateOf(editingConnection?.name ?: "") } // 连接别名
 
     // 用于控制键盘
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -80,62 +91,39 @@ fun HTTPLinkConScreen(httpLinkListViewModel: HTTPLinkListViewModel) {
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxHeight()
-                .fillMaxWidth(0.5f), // 占据左半边
+                .fillMaxWidth(0.5f) // 占据左半边
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // 连接状态显示
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = stringResource(R.string.ui_label_http_link_status,connectionStatus.toString()),
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.widthIn(100.dp, 400.dp),
-                    maxLines = 1
+            ConnectionStatusPill(
+                text = stringResource(R.string.ui_label_http_link_status, connectionStatus.toString()),
+                color = connectionStatusColor(connectionStatus),
+            )
+
+            ConnectionFormCard(title = stringResource(R.string.ui_label_nginx_file_sharing)) {
+                TvTextField(
+                    value = serverAddress,
+                    onValueChange = { serverAddress = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = stringResource(R.string.ui_label_server_address),
+                    placeholder = "http://192.168.1.4:81",
                 )
-                // 状态指示灯
-                Icon(
-                    painter = painterResource(R.drawable.baseline_circle_24), // 确保有此图标资源
-                    contentDescription = null,
-                    tint = when (connectionStatus) {
-                        is FileConnectionStatus.Connected -> Color.Green
-                        is FileConnectionStatus.Connecting -> Color.Yellow
-                        is FileConnectionStatus.Error -> Color.Red
-                        is FileConnectionStatus.LoadingFile -> Color.Yellow
-                        is FileConnectionStatus.FilesLoaded -> Color.Cyan
-                        else -> Color.Gray // Disconnected
-                    }
+
+                TvTextField(
+                    value = shareName,
+                    onValueChange = { shareName = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = stringResource(R.string.ui_label_shared_directory),
+                    placeholder = stringResource(R.string.ui_label_http_link_shared_path),
+                )
+
+                TvTextField(
+                    value = aliasName,
+                    modifier = Modifier.fillMaxWidth(),
+                    onValueChange = { aliasName = it },
+                    label = stringResource(R.string.ui_label_connection_alias),
                 )
             }
-
-            // 输入字段 - HTTPLink 服务器地址
-            TvTextField(
-                value = serverAddress,
-                onValueChange = { serverAddress = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = "HTTPLink 服务器地址 (e.g., http://192.168.1.4:81)",
-                colors = myTTFColor(),
-                textStyle = TextStyle(color = Color.White),
-            )
-
-            // 输入字段 - HTTPLink 共享路径
-            TvTextField(
-                value = shareName,
-                onValueChange = { shareName = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = stringResource(R.string.ui_label_http_link_shared_path),
-                colors = myTTFColor(),
-                textStyle = TextStyle(color = Color.White),
-            )
-
-            // 输入字段 - 连接别名
-            TvTextField(
-                value = aliasName,
-                modifier = Modifier.fillMaxWidth(),
-                onValueChange = { aliasName = it },
-                placeholder = stringResource(R.string.ui_label_connection_alias),
-                colors = myTTFColor(),
-                textStyle = TextStyle(color = Color.White),
-            )
 
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween, // 让两个按钮之间有间距
@@ -187,25 +175,37 @@ fun HTTPLinkConScreen(httpLinkListViewModel: HTTPLinkListViewModel) {
                         if (!Tools.validateConnectionParams(serverAddress, shareName = shareName,aliasName=aliasName)) {
                             return@MyIconButton
                         }
-                        if (!httpLinkConViewModel.isConnected()){
-                            toastState.show(context.getString(R.string.ui_label_save_after_successful_connection), coroutineScope)
-                            return@MyIconButton
-                        }
                         // 创建 HTTPLinkConnection 数据对象
                         val newConnection = HTTPLinkConnection(
-                            id = UUID.randomUUID().toString(),
+                            id = editingConnection?.id ?: UUID.randomUUID().toString(),
                             name = aliasName.ifBlank { context.getString(R.string.ui_label_unnamed_http_connection) },
                             serverAddress = serverAddress.trimEnd('/'),
                             shareName = if (!shareName.endsWith("/")) shareName.plus("/")  else shareName
                         )
-                        // 假设 HTTPLinkListViewModel 有 addConnection 方法
-                        if (httpLinkListViewModel.addConnection(newConnection)) {
+                        val editing = editingConnection
+                        if (editing != null) {
+                            // 编辑模式：只改了别名这类非连接信息时，不必重新测试连接
+                            val networkChanged = serverAddress.trimEnd('/') != editing.serverAddress ||
+                                    shareName != editing.shareName
+                            if (networkChanged && !httpLinkConViewModel.isConnected()) {
+                                toastState.show(context.getString(R.string.ui_label_save_after_successful_connection), coroutineScope)
+                                return@MyIconButton
+                            }
+                            httpLinkListViewModel.updateConnection(newConnection)
                             toastState.show(context.getString(R.string.ui_label_http_link_connection_saved), coroutineScope)
+                            mainNavController.popBackStack()
+                        } else if (httpLinkConViewModel.isConnected()) {
+                            // 假设 HTTPLinkListViewModel 有 addConnection 方法
+                            if (httpLinkListViewModel.addConnection(newConnection)) {
+                                toastState.show(context.getString(R.string.ui_label_http_link_connection_saved), coroutineScope)
+                            } else {
+                                toastState.show(
+                                    context.getString(R.string.ui_label_save_failed_connection_exists),
+                                    coroutineScope
+                                )
+                            }
                         } else {
-                            toastState.show(
-                                context.getString(R.string.ui_label_save_failed_connection_exists),
-                                coroutineScope
-                            )
+                            toastState.show(context.getString(R.string.ui_label_save_after_successful_connection), coroutineScope)
                         }
                         Log.d("HTTPLinkConScreen", "保存连接: $aliasName")
                     },

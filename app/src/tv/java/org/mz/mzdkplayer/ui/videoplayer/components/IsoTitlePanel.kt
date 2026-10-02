@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.player.core.MzIsoTitle
-import org.mz.mzdkplayer.tool.focusOnInitialVisibility
+import org.mz.mzdkplayer.common.focusOnInitialVisibility
 
 @Composable
 fun IsoTitlePanel(

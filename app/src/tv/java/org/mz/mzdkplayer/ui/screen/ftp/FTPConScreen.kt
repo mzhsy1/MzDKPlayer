@@ -13,8 +13,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
@@ -31,9 +32,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -44,11 +45,13 @@ import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.viewmodel.FTPConViewModel // 引入 FTP ViewModel
 
 import org.mz.mzdkplayer.viewmodel.FTPListViewModel // 引入 FTP List ViewModel
-import org.mz.mzdkplayer.ui.theme.myTTFColor
 import org.mz.mzdkplayer.ui.screen.common.MyIconButton
 import org.mz.mzdkplayer.ui.screen.common.MzToast
 import org.mz.mzdkplayer.ui.screen.common.RemoteInputQRPanel
 import org.mz.mzdkplayer.ui.screen.common.TvTextField
+import org.mz.mzdkplayer.ui.screen.common.ConnectionFormCard
+import org.mz.mzdkplayer.ui.screen.common.ConnectionStatusPill
+import org.mz.mzdkplayer.ui.screen.common.connectionStatusColor
 import org.mz.mzdkplayer.ui.screen.common.rememberMzToastState
 import java.util.Locale
 
@@ -59,7 +62,11 @@ import java.util.UUID
  */
 @SuppressLint("LocalContextGetResourceValueCall")
 @Composable
-fun FTPConScreen(ftpListViewModel: FTPListViewModel) {
+fun FTPConScreen(
+    mainNavController: NavHostController,
+    connectionId: String? = null,
+    ftpListViewModel: FTPListViewModel
+) {
     // 使用 FTP 的 ViewModel
     val ftpConViewModel: FTPConViewModel = viewModel()
     //val ftpListViewModel: FTPListViewModel = viewModel()
@@ -72,13 +79,18 @@ fun FTPConScreen(ftpListViewModel: FTPListViewModel) {
     val toastState = rememberMzToastState()
     val coroutineScope = rememberCoroutineScope()
 
+    // 编辑模式：连接列表带 connId 进入时，用已有连接回填表单
+    val editingConnection = remember(connectionId) {
+        connectionId?.let { ftpListViewModel.getConnectionById(it) }
+    }
+
     // 用户输入状态 - 注意 FTP 需要服务器地址和端口
-    var server by remember { mutableStateOf("") } // 服务器地址
-    var port by remember { mutableStateOf("21") } // FTP 端口，默认 21
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var aliasName by remember { mutableStateOf("") } // 连接别名
-    var shareName by remember { mutableStateOf("") } // FTP 共享文件夹名称
+    var server by remember { mutableStateOf(editingConnection?.ip ?: "") } // 服务器地址
+    var port by remember { mutableStateOf((editingConnection?.port ?: 21).toString()) } // FTP 端口，默认 21
+    var username by remember { mutableStateOf(editingConnection?.username ?: "") }
+    var password by remember { mutableStateOf(editingConnection?.password ?: "") }
+    var aliasName by remember { mutableStateOf(editingConnection?.name ?: "") } // 连接别名
+    var shareName by remember { mutableStateOf(editingConnection?.shareName ?: "") } // FTP 共享文件夹名称
 
     // 用于控制键盘
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -90,98 +102,70 @@ fun FTPConScreen(ftpListViewModel: FTPListViewModel) {
         Column(
             modifier = Modifier
                 .padding(16.dp)
-                .fillMaxHeight().fillMaxWidth(0.5f),
+                .fillMaxHeight().fillMaxWidth(0.5f)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // 连接状态显示
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = stringResource(R.string.ui_label_ftp_status),
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.widthIn(100.dp, 400.dp),
-                    maxLines = 1
+            ConnectionStatusPill(
+                text = stringResource(R.string.ui_label_ftp_status),
+                color = connectionStatusColor(connectionStatus),
+            )
+
+            ConnectionFormCard(title = stringResource(R.string.ui_label_ftp_file_sharing)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    TvTextField(
+                        value = server,
+                        onValueChange = { server = it },
+                        modifier = Modifier.weight(0.65f),
+                        label = stringResource(R.string.ui_label_server_address),
+                        placeholder = stringResource(R.string.ui_label_ip_address_example),
+                    )
+
+                    TvTextField(
+                        value = port,
+                        onValueChange = { newValue ->
+                            // 简单校验端口号为数字，允许空值
+                            if (newValue.all { it.isDigit() } || newValue.isEmpty()) {
+                                port = newValue
+                            }
+                        },
+                        modifier = Modifier.weight(0.35f),
+                        label = stringResource(R.string.ui_label_port_example),
+                    )
+                }
+
+                TvTextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = stringResource(R.string.ui_label_username),
                 )
-                // 状态指示灯
-                Icon(
-                    painter = painterResource(R.drawable.baseline_circle_24), // 确保有此图标资源
-                    contentDescription = null,
-                    tint = when (connectionStatus) {
-                        is FileConnectionStatus.Connected -> Color.Green
-                        is FileConnectionStatus.Connecting -> Color.Yellow
-                        is FileConnectionStatus.Error -> Color.Red
-                        is FileConnectionStatus.LoadingFile -> Color.Yellow
-                        is FileConnectionStatus.FilesLoaded -> Color.Cyan
-                        else -> Color.Gray // Disconnected
-                    }
+
+                TvTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = stringResource(R.string.ui_label_password),
+                    isPassword = true,
+                )
+
+                TvTextField(
+                    value = aliasName,
+                    modifier = Modifier.fillMaxWidth(),
+                    onValueChange = { aliasName = it },
+                    label = stringResource(R.string.ui_label_connection_alias),
+                )
+
+                TvTextField(
+                    value = shareName,
+                    onValueChange = { shareName = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = stringResource(R.string.ui_label_initial_shared_folder_name),
                 )
             }
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                // 输入字段 - FTP 服务器地址
-                TvTextField(
-                    value = server,
-                    onValueChange = { server = it },
-                    modifier = Modifier.weight(0.6f),
-                    placeholder = stringResource(R.string.ui_label_ip_address_example),
-                    colors = myTTFColor(),
-                    textStyle = TextStyle(color = Color.White),
-                )
-
-                // 输入字段 - FTP 端口
-                TvTextField(
-                    value = port,
-                    modifier = Modifier.weight(0.4f).padding(start = 8.dp),
-                    onValueChange = { newValue ->
-                        // 简单校验端口号为数字，允许空值
-                        if (newValue.all { it.isDigit() } || newValue.isEmpty()) {
-                            port = newValue
-                        }
-                    },
-                    placeholder = stringResource(R.string.ui_label_port_example),
-                    colors = myTTFColor(),
-                    textStyle = TextStyle(color = Color.White),
-                )
-            }
-
-            TvTextField(
-                value = username,
-                onValueChange = { username = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = stringResource(R.string.ui_label_username),
-                colors = myTTFColor(),
-                textStyle = TextStyle(color = Color.White),
-            )
-
-            TvTextField(
-                value = password,
-                onValueChange = { password = it },
-                modifier = Modifier.fillMaxWidth(),
-                colors = myTTFColor(),
-                placeholder = stringResource(R.string.ui_label_password),
-                textStyle = TextStyle(color = Color.White),
-                // 可以考虑设置为密码输入类型 (如果 TvTextField 支持)
-                // visualTransformation = PasswordVisualTransformation()
-            )
-
-            // 输入字段 - 连接别名
-            TvTextField(
-                value = aliasName,
-                modifier = Modifier.fillMaxWidth(),
-                onValueChange = { aliasName = it },
-                placeholder = stringResource(R.string.ui_label_alias),
-                colors = myTTFColor(),
-                textStyle = TextStyle(color = Color.White),
-            )
-
-            // 输入字段 - 初始共享文件夹名称 (可选)
-            TvTextField(
-                value = shareName,
-                onValueChange = { shareName = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = stringResource(R.string.ui_label_initial_shared_folder_name),
-                colors = myTTFColor(),
-                textStyle = TextStyle(color = Color.White),
-            )
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween, // 可选：让两个按钮之间有间距
                 modifier = Modifier.fillMaxWidth(),
@@ -215,14 +199,10 @@ fun FTPConScreen(ftpListViewModel: FTPListViewModel) {
                         if (!Tools.validateConnectionParams(server, shareName = shareName, aliasName = aliasName)) {
                             return@MyIconButton
                         }
-                        if (!ftpConViewModel.isConnected()){
-                            toastState.show(context.getString(R.string.ui_label_save_after_successful_connection), coroutineScope)
-                            return@MyIconButton
-                        }
                         val portInt = port.toIntOrNull() ?: 21 // 保存时也转换端口，空值则默认 21
                         // 创建 FTPConnection 数据对象
                         val newConnection = FTPConnection(
-                            id = UUID.randomUUID().toString(),
+                            id = editingConnection?.id ?: UUID.randomUUID().toString(),
                             name = aliasName.ifBlank { context.getString(R.string.ui_label_unnamed_ftp_connection)},
                             ip = server, // 使用 ip 字段存储服务器地址
                             username = username,
@@ -230,10 +210,29 @@ fun FTPConScreen(ftpListViewModel: FTPListViewModel) {
                             shareName = shareName ,// 存储共享文件夹名称
                             port = portInt
                         )
-                        if (ftpListViewModel.addConnection(newConnection)) {
+                        val editing = editingConnection
+                        if (editing != null) {
+                            // 编辑模式：只改了别名这类非连接信息时，不必重新测试连接
+                            val networkChanged = server != editing.ip ||
+                                    portInt != editing.port ||
+                                    username != editing.username ||
+                                    password != editing.password ||
+                                    shareName != editing.shareName
+                            if (networkChanged && !ftpConViewModel.isConnected()) {
+                                toastState.show(context.getString(R.string.ui_label_save_after_successful_connection), coroutineScope)
+                                return@MyIconButton
+                            }
+                            ftpListViewModel.updateConnection(newConnection)
                             toastState.show(context.getString(R.string.ui_label_ftp_connection_saved), coroutineScope)
+                            mainNavController.popBackStack()
+                        } else if (ftpConViewModel.isConnected()) {
+                            if (ftpListViewModel.addConnection(newConnection)) {
+                                toastState.show(context.getString(R.string.ui_label_ftp_connection_saved), coroutineScope)
+                            } else {
+                                toastState.show(context.getString(R.string.ui_label_save_failed_connection_exists), coroutineScope)
+                            }
                         } else {
-                            toastState.show(context.getString(R.string.ui_label_save_failed_connection_exists), coroutineScope)
+                            toastState.show(context.getString(R.string.ui_label_save_after_successful_connection), coroutineScope)
                         }
                         Log.d("FtpConScreen", "保存连接: $aliasName")
                     },

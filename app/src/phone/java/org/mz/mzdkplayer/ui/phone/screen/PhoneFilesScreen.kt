@@ -50,7 +50,8 @@ import org.mz.mzdkplayer.data.model.HTTPLinkConnection
 import org.mz.mzdkplayer.data.model.NFSConnection
 import org.mz.mzdkplayer.data.model.SMBConnection
 import org.mz.mzdkplayer.data.model.WebDavConnection
-import org.mz.mzdkplayer.tool.FileBrowserLogic
+import org.mz.mzdkplayer.tool.logic.FileBrowserLogic
+import org.mz.mzdkplayer.tool.logic.PhoneFileBrowserLogic.httpInitialDirectory
 import org.mz.mzdkplayer.ui.phone.PhoneIcons
 import org.mz.mzdkplayer.ui.phone.SMB_ROOT_PATH
 import org.mz.mzdkplayer.viewmodel.FTPListViewModel
@@ -58,21 +59,7 @@ import org.mz.mzdkplayer.viewmodel.HTTPLinkListViewModel
 import org.mz.mzdkplayer.viewmodel.NFSListViewModel
 import org.mz.mzdkplayer.viewmodel.SMBListViewModel
 import org.mz.mzdkplayer.viewmodel.WebDavListViewModel
-
-/**
- * 文件页支持的协议（第三种形态：手机端五种协议 + SMB）。
- *
- * [routeValue] 同时就是播放页的 `dataSourceType`（口径与电视端 `selectedDataSourceFactory` 一致），
- * 也是「协议浏览页」路由里的协议段。
- */
-enum class PhoneFileProtocol(val routeValue: String, val supportsConnections: Boolean) {
-    LOCAL("LOCAL", false),
-    SMB("SMB", true),
-    FTP("FTP", true),
-    NFS("NFS", true),
-    WEBDAV("WEBDAV", true),
-    HTTP("HTTP", true),
-}
+import org.mz.mzdkplayer.ui.phone.model.PhoneFileProtocol
 
 /** 各协议连接在列表里共用的展示形态；[initialPath] 是点进去时第一个要加载的目录/地址 */
 private data class PhoneConnectionItem(

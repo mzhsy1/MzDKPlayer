@@ -115,6 +115,101 @@ internal object PhoneIcons {
         )
     }
 
+    // ---- 第七阶段（视频播放页）：core 里没有字幕 / 同步 / 倍速 / 比例 / 弹幕 / 完成动作，自绘 ----
+
+    /** 字幕（一个带两条字幕线的圆角框） */
+    val Subtitles: ImageVector by lazy {
+        materialIcon(
+            "Subtitles",
+            "M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z" +
+                    "M4 12h4v2H4v-2zm10 6H4v-2h10v2zm6 0h-4v-2h4v2zm0-4H10v-2h10v2z"
+        )
+    }
+
+    /** 同步（字幕时间轴偏移与「重置」共用） */
+    val Sync: ImageVector by lazy {
+        materialIcon(
+            "Sync",
+            "M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12" +
+                    "c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12" +
+                    "c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"
+        )
+    }
+
+    /** 倍速（仪表盘） */
+    val Speed: ImageVector by lazy {
+        materialIcon(
+            "Speed",
+            "M20.38 8.57l-1.23 1.85a8 8 0 0 1-.22 7.58H5.07A8 8 0 0 1 15.58 6.85l1.85-1.23" +
+                    "A10 10 0 0 0 3.35 19a2 2 0 0 0 1.72 1h13.85a2 2 0 0 0 1.74-1 10 10 0 0 0-.27-10.44z" +
+                    "m-9.79 6.84a2 2 0 0 0 2.83 0l5.66-8.49-8.49 5.66a2 2 0 0 0 0 2.83z"
+        )
+    }
+
+    /** 画面比例（外框 + 两个直角标记） */
+    val AspectRatio: ImageVector by lazy {
+        materialIcon(
+            "AspectRatio",
+            "M19 12h-2v3h-3v2h5v-5zM7 9h3V7H5v5h2V9zm14-6H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18" +
+                    "c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16.01H3V4.99h18v14.02z"
+        )
+    }
+
+    /** 弹幕（带三行文字的对话框） */
+    val Danmaku: ImageVector by lazy {
+        materialIcon(
+            "Danmaku",
+            "M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z" +
+                    "M18 14H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"
+        )
+    }
+
+    /** 播放完成动作（小旗） */
+    val FinishAction: ImageVector by lazy {
+        materialIcon("FinishAction", "M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z")
+    }
+
+    /** 快退 / 快进（双击屏幕与底部按钮共用） */
+    val Rewind: ImageVector by lazy {
+        materialIcon("FastRewind", "M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z")
+    }
+
+    val Forward: ImageVector by lazy {
+        materialIcon("FastForward", "M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z")
+    }
+
+    /**
+     * 全屏 / 退出全屏（播放页的横竖屏切换）。
+     *
+     * `Fullscreen` 与 `FullscreenExit` 都在 `material-icons-extended` 里，
+     * core 只带到 `Settings` / `PlayArrow` 这一批，所以按官方 24dp 路径自绘。
+     */
+    val Fullscreen: ImageVector by lazy {
+        materialIcon(
+            "Fullscreen",
+            "M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"
+        )
+    }
+
+    val FullscreenExit: ImageVector by lazy {
+        materialIcon(
+            "FullscreenExit",
+            "M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"
+        )
+    }
+
+    // ---- 第八阶段（设置页）：core 里有 Build / Info，但**没有**减号，自绘 ----
+
+    /**
+     * 减号（数值调节的「−」按钮）。
+     *
+     * `Icons.Filled.Add` 在 core 里，`Remove` 不在；这里补一个同尺寸的横杠，
+     * 免得为了一个减号把 material-icons-extended 拖进来。
+     */
+    val Minus: ImageVector by lazy {
+        materialIcon("Minus", "M19 13H5v-2h14v2z")
+    }
+
     val RotateRight: ImageVector by lazy {
         materialIcon(
             "RotateRight",

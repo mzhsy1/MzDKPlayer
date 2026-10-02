@@ -1,28 +1,29 @@
 package org.mz.mzdkplayer.ui.phone.screen
 
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.model.FileConnectionStatus
-import org.mz.mzdkplayer.tool.FileBrowserLogic
-import org.mz.mzdkplayer.tool.PhoneMediaLogic
+import org.mz.mzdkplayer.data.model.WebDavConnection
+import org.mz.mzdkplayer.tool.logic.FileBrowserLogic
+import org.mz.mzdkplayer.tool.logic.PhoneMediaLogic
+import org.mz.mzdkplayer.ui.phone.component.PhoneBrowserPage
+import org.mz.mzdkplayer.ui.phone.component.PhoneBrowserSpec
+import org.mz.mzdkplayer.ui.phone.model.PhoneBrowserEntry
+import org.mz.mzdkplayer.ui.phone.model.PhoneBrowserState
+import org.mz.mzdkplayer.ui.phone.model.isPlayableMediaFileName
+import org.mz.mzdkplayer.ui.phone.model.sortedForBrowser
 import org.mz.mzdkplayer.viewmodel.MediaMetaViewModel
 import org.mz.mzdkplayer.viewmodel.MovieViewModel
 import org.mz.mzdkplayer.viewmodel.WebDavConViewModel
 import org.mz.mzdkplayer.viewmodel.WebDavFileItem
 import org.mz.mzdkplayer.viewmodel.WebDavListViewModel
+import org.mz.mzdkplayer.ui.phone.model.PhoneFileProtocol
 
 /** 连接 / 列目录等待上限 */
 private const val WEBDAV_LOAD_TIMEOUT_MS = 30_000L
@@ -47,7 +48,7 @@ fun PhoneWebDavBrowserScreen(
     autoScrape: Boolean,
     onBack: () -> Unit,
     onOpenDirectory: (String) -> Unit,
-    onPlayVideo: (sourceUri: String, name: String) -> Unit,
+    onPlayVideo: (sourceUri: String, name: String, connectionName: String) -> Unit,
     onOpenMedia: (PhoneMediaLogic.MediaOpen) -> Unit,
     onOpenDetail: (sourceUri: String, fileName: String, connectionName: String) -> Unit,
 ) {
@@ -56,108 +57,82 @@ fun PhoneWebDavBrowserScreen(
         connections.firstOrNull { it.id == connectionId }
     }
 
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    var retryToken by remember { mutableIntStateOf(0) }
-    var uiState by remember(path) { mutableStateOf<PhoneBrowserState>(PhoneBrowserState.Loading) }
-
     val loadFailedText = stringResource(R.string.phone_files_load_failed)
-    val unsupportedText = stringResource(R.string.phone_player_unsupported)
 
-    LaunchedEffect(connection, path, retryToken) {
-        uiState = PhoneBrowserState.Loading
+    PhoneBrowserPage(
+        spec = PhoneBrowserSpec(
+            dataSourceType = PhoneFileProtocol.WEBDAV.routeValue,
+            title = connection?.name?.takeIf { it.isNotBlank() }
+                ?: connection?.baseUrl.orEmpty(),
+            connectionName = connection?.name.orEmpty(),
+            subtitleOf = { it },
+            parentPathOf = { FileBrowserLogic.httpParentUrl(it) },
+            directoryTargetOf = { entry, loadedPath ->
+                FileBrowserLogic.joinUrlDirectory(loadedPath, entry.name)
+            },
+        ),
+        connectionKey = connection,
+        requestPath = path,
+        movieViewModel = movieViewModel,
+        mediaMetaViewModel = mediaMetaViewModel,
+        autoScrape = autoScrape,
+        onBack = onBack,
+        onOpenDirectory = onOpenDirectory,
+        onPlayVideo = onPlayVideo,
+        onOpenMedia = onOpenMedia,
+        onOpenDetail = onOpenDetail,
+        load = { loadWebDavDirectory(connection, path, webDavConViewModel, loadFailedText) },
+    )
+}
 
-        val target = connection
-        val username = target?.username.orEmpty()
-        val password = target?.password.orEmpty()
-        // 目录 URL：路由里给的是「连接里存的 baseUrl」或点进去的子目录 URL，统一补结尾 /
-        val requested = FileBrowserLogic
-            .ensureTrailingSlash(path.ifBlank { target?.baseUrl.orEmpty() })
-            .takeIf { it.startsWith("http") || it.startsWith("https") }
+/** 必要时先连上（连接时顺带列目录），否则直接列 [path] 目录 */
+private suspend fun loadWebDavDirectory(
+    connection: WebDavConnection?,
+    path: String,
+    viewModel: WebDavConViewModel,
+    loadFailedText: String,
+): PhoneBrowserState {
+    val username = connection?.username.orEmpty()
+    val password = connection?.password.orEmpty()
+    // 目录 URL：路由里给的是「连接里存的 baseUrl」或点进去的子目录 URL，统一补结尾 /
+    val requested = FileBrowserLogic
+        .ensureTrailingSlash(path.ifBlank { connection?.baseUrl.orEmpty() })
+        .takeIf { it.startsWith("http") || it.startsWith("https") }
 
-        if (target == null || requested == null) {
-            uiState = PhoneBrowserState.Failed(loadFailedText)
-            return@LaunchedEffect
-        }
+    if (connection == null || requested == null) return PhoneBrowserState.Failed(loadFailedText)
 
-        if (!webDavConViewModel.isConnected()) {
-            // isTest = true：连接成功后顺带把这个目录列出来
-            webDavConViewModel.connectToWebDav(requested, username, password, isTest = true)
-        } else {
-            webDavConViewModel.listFiles(requested, username, password)
-        }
+    if (!viewModel.isConnected()) {
+        // isTest = true：连接成功后顺带把这个目录列出来
+        viewModel.connectToWebDav(requested, username, password, isTest = true)
+    } else {
+        viewModel.listFiles(requested, username, password)
+    }
 
-        val settled = withTimeoutOrNull(WEBDAV_LOAD_TIMEOUT_MS) {
-            webDavConViewModel.connectionStatus.first {
-                it is FileConnectionStatus.FilesLoaded || it is FileConnectionStatus.Error
-            }
-        }
-
-        uiState = when (settled) {
-            is FileConnectionStatus.FilesLoaded -> {
-                // 带账号密码的目录地址只算一次，列表里每个文件的播放地址都在它后面接文件名
-                val authenticatedDir = webDavConViewModel.buildAuthenticatedUrl(
-                    baseUrl = requested,
-                    username = username,
-                    password = password,
-                )
-                PhoneBrowserState.Ready(
-                    path = requested,
-                    entries = webDavConViewModel.fileList.value
-                        .mapNotNull { it.toBrowserEntry(authenticatedDir) }
-                        .sortedForBrowser(),
-                )
-            }
-
-            is FileConnectionStatus.Error -> PhoneBrowserState.Failed(settled.message)
-            else -> PhoneBrowserState.Failed(loadFailedText)
+    val settled = withTimeoutOrNull(WEBDAV_LOAD_TIMEOUT_MS) {
+        viewModel.connectionStatus.first {
+            it is FileConnectionStatus.FilesLoaded || it is FileConnectionStatus.Error
         }
     }
 
-    val ready = uiState as? PhoneBrowserState.Ready
-    val loadedPath = ready?.path.orEmpty()
-    val entries = ready?.entries.orEmpty()
-    val parentPath = FileBrowserLogic.httpParentUrl(loadedPath)
-
-    val scrape = rememberPhoneScrapeUi(
-        movieViewModel = movieViewModel,
-        mediaMetaViewModel = mediaMetaViewModel,
-        dataSourceType = PhoneFileProtocol.WEBDAV.routeValue,
-        connectionName = connection?.name.orEmpty(),
-        autoScrape = autoScrape,
-        entries = entries,
-        snackbarHostState = snackbarHostState,
-    )
-
-    PhoneBrowserScaffold(
-        title = connection?.name?.takeIf { it.isNotBlank() }
-            ?: connection?.baseUrl.orEmpty(),
-        subtitle = loadedPath,
-        snackbarHostState = snackbarHostState,
-        onBack = onBack,
-        state = uiState,
-        // httpParentUrl 在站点根会原样返回，等于「没有上一级」
-        showParent = loadedPath.isNotEmpty() && parentPath != loadedPath,
-        onOpenParent = { onOpenDirectory(parentPath) },
-        onRetry = { retryToken++ },
-        onOpenEntry = { entry ->
-            dispatchEntryClick(
-                entry = entry,
-                siblings = entries,
-                dataSourceType = PhoneFileProtocol.WEBDAV.routeValue,
-                connectionName = connection?.name.orEmpty(),
-                directoryTarget = FileBrowserLogic.joinUrlDirectory(loadedPath, entry.name),
-                onOpenDirectory = onOpenDirectory,
-                onPlayVideo = onPlayVideo,
-                onOpenMedia = onOpenMedia,
-                onUnsupported = { scope.launch { snackbarHostState.showSnackbar(unsupportedText) } },
+    return when (settled) {
+        is FileConnectionStatus.FilesLoaded -> {
+            // 带账号密码的目录地址只算一次，列表里每个文件的播放地址都在它后面接文件名
+            val authenticatedDir = viewModel.buildAuthenticatedUrl(
+                baseUrl = requested,
+                username = username,
+                password = password,
             )
-        },
-        scrape = scrape,
-        onOpenDetailEntry = { entry ->
-            entry.playbackUri?.let { onOpenDetail(it, entry.name, connection?.name.orEmpty()) }
-        },
-    )
+            PhoneBrowserState.Ready(
+                path = requested,
+                entries = viewModel.fileList.value
+                    .mapNotNull { it.toBrowserEntry(authenticatedDir) }
+                    .sortedForBrowser(),
+            )
+        }
+
+        is FileConnectionStatus.Error -> PhoneBrowserState.Failed(settled.message)
+        else -> PhoneBrowserState.Failed(loadFailedText)
+    }
 }
 
 /** [authenticatedDirUrl] 是已经带上账号密码、且以 `/` 结尾的目录地址 */

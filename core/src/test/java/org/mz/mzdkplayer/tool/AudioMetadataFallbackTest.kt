@@ -2,6 +2,7 @@ package org.mz.mzdkplayer.tool
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.mz.mzdkplayer.tool.metadata.pickMetadata
 
 /**
  * 音频元数据取值的优先级：解析值（非占位）→ ID3 兜底 → 文件名解析 → 占位值。

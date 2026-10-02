@@ -1,6 +1,6 @@
 package org.mz.mzdkplayer.ui.phone
 
-import org.mz.mzdkplayer.tool.PhoneMediaLogic
+import org.mz.mzdkplayer.tool.logic.PhoneMediaLogic
 import org.mz.mzdkplayer.tool.Tools.fromBase64
 import org.mz.mzdkplayer.tool.Tools.toBase64
 
@@ -17,6 +17,15 @@ object PhoneRoutes {
     const val FILES = "phone/files"
     const val SETTINGS = "phone/settings"
 
+    /**
+     * 设置页的二级分类（第八阶段）。
+     *
+     * 与 [SETTINGS] 是两段不同的路由：`phone/settings` 是设置首页（底部标签栏的三个主页之一），
+     * `phone/settings/playback` 之类的分类页是二级页面，进入后底部标签栏会收起。
+     * 导航按路径段数匹配，两者不会互相抢。
+     */
+    const val SETTINGS_SECTION = "phone/settings/{category}"
+
     // ---- 二级页面 ----
     const val SMB_BROWSER = "phone/smb/{connectionId}/{path}"
 
@@ -25,7 +34,16 @@ object PhoneRoutes {
      * 同时就是播放页的 `dataSourceType`。
      */
     const val BROWSER = "phone/browser/{protocol}/{connectionId}/{path}"
-    const val PLAYER = "phone/player/{sourceUri}/{dataSourceType}/{title}"
+
+    /**
+     * 视频播放页（第七阶段补齐）。
+     *
+     * [title] 已经在第七阶段改成**文件名**（此前有的入口塞的是刮削标题）：播放页要用它
+     * 写 `media_history`、也要用它去 `media_cache` 查刮削结果，展示标题由播放页自己拼。
+     *
+     * [connectionName] 是第七阶段新加的：写播放历史要用（本机文件为空串）。
+     */
+    const val PLAYER = "phone/player/{sourceUri}/{dataSourceType}/{title}/{connectionName}"
 
     /**
      * 手动匹配页（第四阶段）：[videoUri] 同时是 `media_cache` 的主键与播放地址。
@@ -69,6 +87,9 @@ object PhoneRoutes {
      */
     private const val BLANK_ARG = "~"
 
+    /** 设置页的二级分类页：[category] 取 `PhoneSettingCategory.routeValue` */
+    fun settingsSection(category: String): String = "phone/settings/$category"
+
     /** SMB 目录浏览页：[connectionId] 是 `SMBConnection.id`，[path] 是显示用正斜杠路径（`/` 表示共享根目录）。 */
     fun smbBrowser(connectionId: String, path: String): String =
         "phone/smb/${connectionId.toBase64()}/${path.toBase64()}"
@@ -83,9 +104,18 @@ object PhoneRoutes {
                 "${connectionId.ifBlank { BLANK_ARG }.toBase64()}/" +
                 "${path.ifBlank { BLANK_ARG }.toBase64()}"
 
-    /** 播放验证页：[sourceUri] 是完整播放地址（已含账号密码），[dataSourceType] 是 SMB/LOCAL/FTP… */
-    fun player(sourceUri: String, dataSourceType: String, title: String): String =
-        "phone/player/${sourceUri.toBase64()}/$dataSourceType/${title.toBase64()}"
+    /**
+     * 视频播放页：[sourceUri] 是完整播放地址（已含账号密码），[dataSourceType] 是 SMB/LOCAL/FTP…，
+     * [fileName] 是原始文件名，[connectionName] 是本机文件时为空的连接名。
+     */
+    fun player(
+        sourceUri: String,
+        dataSourceType: String,
+        fileName: String,
+        connectionName: String = "",
+    ): String =
+        "phone/player/${sourceUri.toBase64()}/$dataSourceType/" +
+                "${fileName.toBase64()}/${connectionName.ifBlank { BLANK_ARG }.toBase64()}"
 
     /** 手动匹配页：[connectionName] 本机文件为空（用 `~` 占位） */
     fun match(videoUri: String, dataSourceType: String, fileName: String, connectionName: String): String =
@@ -117,7 +147,16 @@ object PhoneRoutes {
         "${videoUri.toBase64()}/$dataSourceType/" +
                 "${fileName.toBase64()}/${connectionName.ifBlank { BLANK_ARG }.toBase64()}"
 
-    /** 还原 [BLANK_ARG] 占位的路由参数（顺带把 Base64 解回去） */
-    fun decodeArg(raw: String?): String =
-        if (raw.isNullOrEmpty() || raw == BLANK_ARG) "" else raw.fromBase64()
+    /**
+     * 还原 [BLANK_ARG] 占位的路由参数（顺带把 Base64 解回去）。
+     *
+     * 空值在路由里写的是 `BLANK_ARG` 的 Base64（`fg==`），所以**必须先解码再比**
+     * ——直接拿原串比 `~` 是比不中的（第七阶段修掉的老问题：本机文件的连接名
+     * 一直带着一个 `~` 落进 `media_cache` 与播放历史）。
+     */
+    fun decodeArg(raw: String?): String {
+        if (raw.isNullOrEmpty() || raw == BLANK_ARG) return ""
+        val decoded = raw.fromBase64()
+        return if (decoded == BLANK_ARG) "" else decoded
+    }
 }

@@ -6,31 +6,33 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.mz.mzdkplayer.R
-import org.mz.mzdkplayer.tool.PhoneFileBrowserLogic
-import org.mz.mzdkplayer.tool.PhoneMediaLogic
+import org.mz.mzdkplayer.tool.logic.PhoneFileBrowserLogic
+import org.mz.mzdkplayer.tool.logic.PhoneMediaLogic
 import org.mz.mzdkplayer.ui.phone.PhoneStoragePermission
+import org.mz.mzdkplayer.ui.phone.component.PhoneBrowserPage
+import org.mz.mzdkplayer.ui.phone.component.PhoneBrowserSpec
+import org.mz.mzdkplayer.ui.phone.model.PhoneBrowserEntry
+import org.mz.mzdkplayer.ui.phone.model.PhoneBrowserState
+import org.mz.mzdkplayer.ui.phone.model.isPlayableMediaFileName
+import org.mz.mzdkplayer.ui.phone.model.sortedForBrowser
 import org.mz.mzdkplayer.viewmodel.MediaMetaViewModel
 import org.mz.mzdkplayer.viewmodel.MovieViewModel
 import java.io.File
+import org.mz.mzdkplayer.ui.phone.model.PhoneFileProtocol
 
 /**
  * 手机端「浏览本机文件」的根目录。
@@ -49,6 +51,9 @@ internal fun localBrowserRoot(): String = Environment.getExternalStorageDirector
  *   手机上「所有文件访问」拿到后直接列目录就够）；
  * - 目录权限用 [PhoneStoragePermission] 判定，未授权时给「去授权 / 重试」两个按钮；
  * - 视频条目的 `file://` 播放地址在列目录时算好，刮削与播放共用同一个地址。
+ *
+ * 本机没有「连接」概念，所以 [PhoneBrowserSpec.connectionName] 留空 —— 与 `media_cache`
+ * 和播放历史里写的那一条保持一致。
  */
 @Composable
 fun PhoneLocalBrowserScreen(
@@ -58,23 +63,18 @@ fun PhoneLocalBrowserScreen(
     autoScrape: Boolean,
     onBack: () -> Unit,
     onOpenDirectory: (String) -> Unit,
-    onPlayVideo: (sourceUri: String, name: String) -> Unit,
+    onPlayVideo: (sourceUri: String, name: String, connectionName: String) -> Unit,
     onOpenMedia: (PhoneMediaLogic.MediaOpen) -> Unit,
     onOpenDetail: (sourceUri: String, fileName: String, connectionName: String) -> Unit,
 ) {
     val context = LocalContext.current
     val root = remember { localBrowserRoot() }
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     var granted by remember { mutableStateOf(PhoneStoragePermission.isGranted(context)) }
-    var retryToken by remember { mutableIntStateOf(0) }
-    var uiState by remember(path) { mutableStateOf<PhoneBrowserState>(PhoneBrowserState.Loading) }
 
     val permissionTitle = stringResource(R.string.phone_files_local_permission_title)
     val permissionMessage = stringResource(R.string.phone_files_local_permission_message)
     val unreadableMessage = stringResource(R.string.phone_files_directory_unreadable)
-    val unsupportedText = stringResource(R.string.phone_player_unsupported)
 
     // 「所有文件访问」授权页返回后重新判定；低版本走运行时权限
     val settingsLauncher = rememberLauncherForActivityResult(
@@ -84,63 +84,28 @@ fun PhoneLocalBrowserScreen(
         contract = ActivityResultContracts.RequestPermission(),
     ) { granted = PhoneStoragePermission.isGranted(context) }
 
-    LaunchedEffect(path, retryToken, granted) {
-        if (!granted) {
-            uiState = PhoneBrowserState.Blocked(
-                title = permissionTitle,
-                message = permissionMessage,
-            )
-            return@LaunchedEffect
-        }
-        uiState = PhoneBrowserState.Loading
-        val entries = withContext(Dispatchers.IO) { listLocalDirectory(path) }
-        uiState = if (entries == null) {
-            // 读不到（目录被删、或只授了媒体权限时访问受限目录）
-            PhoneBrowserState.Failed(unreadableMessage)
-        } else {
-            PhoneBrowserState.Ready(path, entries.sortedForBrowser())
-        }
-    }
-
-    val parentPath = PhoneFileBrowserLogic.localParentPath(path, root)
-    // 真正加载出来的条目（不是路由里请求的那个目录），点击分流与刮削都用它
-    val entries = (uiState as? PhoneBrowserState.Ready)?.entries.orEmpty()
-
-    val scrape = rememberPhoneScrapeUi(
+    PhoneBrowserPage(
+        spec = PhoneBrowserSpec(
+            dataSourceType = PhoneFileProtocol.LOCAL.routeValue,
+            title = stringResource(R.string.ui_label_local_files),
+            // 本机文件没有连接概念，连接名留空（电视端本地列表也是这么写的）
+            connectionName = "",
+            subtitleOf = { path },
+            parentPathOf = { PhoneFileBrowserLogic.localParentPath(it, root) },
+            showParentOf = { loadedPath, parentPath -> parentPath != loadedPath.trimEnd('/') },
+            directoryTargetOf = { entry, _ -> entry.key },
+        ),
+        connectionKey = granted,
+        requestPath = path,
         movieViewModel = movieViewModel,
         mediaMetaViewModel = mediaMetaViewModel,
-        dataSourceType = PhoneFileProtocol.LOCAL.routeValue,
-        // 本机文件没有连接概念，连接名留空（电视端本地列表也是这么写的）
-        connectionName = "",
         autoScrape = autoScrape,
-        entries = entries,
-        snackbarHostState = snackbarHostState,
-    )
-
-    PhoneBrowserScaffold(
-        title = stringResource(R.string.ui_label_local_files),
-        subtitle = path,
-        snackbarHostState = snackbarHostState,
         onBack = onBack,
-        state = uiState,
-        showParent = parentPath != path.trimEnd('/'),
-        onOpenParent = { onOpenDirectory(parentPath) },
-        onRetry = { retryToken++ },
-        onOpenEntry = { entry ->
-            dispatchEntryClick(
-                entry = entry,
-                siblings = entries,
-                dataSourceType = PhoneFileProtocol.LOCAL.routeValue,
-                // 本机文件没有连接概念，与 `media_cache` / 播放历史里写的那一条保持一致
-                connectionName = "",
-                directoryTarget = entry.key,
-                onOpenDirectory = onOpenDirectory,
-                onPlayVideo = onPlayVideo,
-                onOpenMedia = onOpenMedia,
-                onUnsupported = { scope.launch { snackbarHostState.showSnackbar(unsupportedText) } },
-            )
-        },
-        blockedActions = {
+        onOpenDirectory = onOpenDirectory,
+        onPlayVideo = onPlayVideo,
+        onOpenMedia = onOpenMedia,
+        onOpenDetail = onOpenDetail,
+        blockedActions = { retry ->
             Column(modifier = Modifier.padding(top = 16.dp)) {
                 FilledTonalButton(
                     onClick = {
@@ -153,15 +118,26 @@ fun PhoneLocalBrowserScreen(
                 ) {
                     Text(stringResource(R.string.phone_action_grant))
                 }
-                TextButton(onClick = { retryToken++ }) {
+                TextButton(onClick = retry) {
                     Text(stringResource(R.string.phone_action_retry))
                 }
             }
         },
-        scrape = scrape,
-        onOpenDetailEntry = { entry ->
-            // 本机文件没有连接名，与 `media_cache` 里写的那一条保持一致
-            entry.playbackUri?.let { onOpenDetail(it, entry.name, "") }
+        load = {
+            if (!granted) {
+                PhoneBrowserState.Blocked(
+                    title = permissionTitle,
+                    message = permissionMessage,
+                )
+            } else {
+                val entries = withContext(Dispatchers.IO) { listLocalDirectory(path) }
+                if (entries == null) {
+                    // 读不到（目录被删、或只授了媒体权限时访问受限目录）
+                    PhoneBrowserState.Failed(unreadableMessage)
+                } else {
+                    PhoneBrowserState.Ready(path, entries.sortedForBrowser())
+                }
+            }
         },
     )
 }

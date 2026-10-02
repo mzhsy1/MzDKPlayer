@@ -1,9 +1,9 @@
 package org.mz.mzdkplayer.ui.screen.smbfile
 
-import org.mz.mzdkplayer.tool.MediaInfoExtractorFormFileName
+import org.mz.mzdkplayer.tool.metadata.MediaInfoExtractorFormFileName
 import NoSearchResult
 import android.util.Log
-import org.mz.mzdkplayer.tool.MzToastManager
+import org.mz.mzdkplayer.common.MzToastManager
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -68,7 +68,7 @@ import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.ui.common.VideoBigIcon
 import org.mz.mzdkplayer.tool.Tools.fromBase64
 import org.mz.mzdkplayer.tool.Tools.toBase64
-import org.mz.mzdkplayer.tool.viewModelWithFactory
+import org.mz.mzdkplayer.di.viewModelWithFactory
 import org.mz.mzdkplayer.ui.screen.common.CirCleIconButton
 
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
@@ -87,7 +87,6 @@ import org.mz.mzdkplayer.ui.screen.common.MyFileDialog
 import org.mz.mzdkplayer.ui.screen.common.VAErrorScreen
 import org.mz.mzdkplayer.viewmodel.SMBConViewModel
 
-import org.mz.mzdkplayer.ui.theme.myTTFColor
 import org.mz.mzdkplayer.ui.theme.MyFileListItemColor
 import org.mz.mzdkplayer.ui.screen.common.TvTextField
 import org.mz.mzdkplayer.viewmodel.AudioViewModel
@@ -493,7 +492,6 @@ fun SMBFileListScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 8.dp),
-                                colors = myTTFColor(),
                                 placeholder =stringResource(R.string.ui_label_please_enter_filename),
                                 textStyle = TextStyle(color = Color.White),
                             )

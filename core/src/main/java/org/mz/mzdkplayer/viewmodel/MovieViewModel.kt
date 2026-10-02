@@ -1,6 +1,6 @@
 package org.mz.mzdkplayer.viewmodel
 
-import org.mz.mzdkplayer.tool.MediaInfoExtractorFormFileName
+import org.mz.mzdkplayer.tool.metadata.MediaInfoExtractorFormFileName
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -23,9 +23,9 @@ import org.mz.mzdkplayer.data.model.TVSeriesDetails
 import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.data.repository.TmdbRepository
 import org.mz.mzdkplayer.data.repository.SettingsRepository
-import org.mz.mzdkplayer.tool.NfoReader
-import org.mz.mzdkplayer.tool.NfoTool
-import org.mz.mzdkplayer.tool.MediaInfo
+import org.mz.mzdkplayer.tool.metadata.NfoReader
+import org.mz.mzdkplayer.tool.metadata.NfoTool
+import org.mz.mzdkplayer.tool.metadata.MediaInfo
 import org.mz.mzdkplayer.di.AppContext
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi

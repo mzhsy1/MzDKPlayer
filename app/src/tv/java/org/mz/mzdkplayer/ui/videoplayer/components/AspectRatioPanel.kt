@@ -28,7 +28,7 @@ import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.player.core.MzAspectRatio
-import org.mz.mzdkplayer.tool.focusOnInitialVisibility
+import org.mz.mzdkplayer.common.focusOnInitialVisibility
 import org.mz.mzdkplayer.ui.common.formatAspectRatio
 
 @Composable

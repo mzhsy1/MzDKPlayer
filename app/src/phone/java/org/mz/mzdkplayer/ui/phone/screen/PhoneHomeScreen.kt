@@ -53,9 +53,10 @@ import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.local.MediaCacheEntity
 import org.mz.mzdkplayer.data.local.MediaHistoryEntity
 import org.mz.mzdkplayer.data.model.HistoryWithMetadata
-import org.mz.mzdkplayer.tool.PlayerMediaText
+import org.mz.mzdkplayer.tool.logic.PlayerMediaText
 import org.mz.mzdkplayer.ui.phone.PhoneIcons
 import org.mz.mzdkplayer.viewmodel.MediaLibraryViewModel
+import org.mz.mzdkplayer.ui.phone.component.PhonePosterImage
 
 private val HistoryCardWidth = 200.dp
 private val PosterCardWidth = 124.dp
@@ -76,7 +77,17 @@ fun PhoneHomeScreen(
     libraryViewModel: MediaLibraryViewModel,
     onOpenFiles: () -> Unit,
     onOpenSettings: () -> Unit,
-    onPlay: (sourceUri: String, dataSourceType: String, title: String) -> Unit,
+    /** 三个区块是否显示（「设置 → 界面与首页 → 首页显示」里可关，默认全开） */
+    showRecentlyWatched: Boolean = true,
+    showRecentlyAdded: Boolean = true,
+    showRecentlyVisited: Boolean = true,
+    /** [fileName] 是原始文件名（播放页自己拼刮削标题）、[connectionName] 用于写播放历史 */
+    onPlay: (
+        sourceUri: String,
+        dataSourceType: String,
+        fileName: String,
+        connectionName: String,
+    ) -> Unit,
 ) {
     val recentlyWatched by libraryViewModel.recentlyWatched.collectAsState()
     val recentlyAccessed by libraryViewModel.recentlyAccessedFiles.collectAsState()
@@ -84,6 +95,8 @@ fun PhoneHomeScreen(
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val isLoading = recentlyAdded.loadState.refresh is LoadState.Loading
+    // 判断「有没有内容」只看数据本身，不看区块开关：全部关掉区块时应该只留快捷入口，
+    // 而不是弹一张「还没有内容」的引导卡（那是给真的没有数据的人看的）
     val isEmpty = !isLoading &&
             recentlyWatched.isEmpty() &&
             recentlyAccessed.isEmpty() &&
@@ -112,7 +125,7 @@ fun PhoneHomeScreen(
                 isEmpty -> item { WelcomeCard(onOpenFiles = onOpenFiles) }
 
                 else -> {
-                    if (recentlyWatched.isNotEmpty()) {
+                    if (showRecentlyWatched && recentlyWatched.isNotEmpty()) {
                         item {
                             SectionTitle(stringResource(R.string.ui_label_recently_watched))
                             LazyRow(
@@ -123,11 +136,11 @@ fun PhoneHomeScreen(
                                     HistoryCard(
                                         item = item,
                                         onClick = {
-                                            val meta = item.metadata
                                             onPlay(
                                                 item.history.mediaUri,
                                                 item.history.protocolName,
-                                                PlayerMediaText.buildTitle(meta, item.history.fileName),
+                                                item.history.fileName,
+                                                item.history.connectionName,
                                             )
                                         },
                                     )
@@ -136,7 +149,7 @@ fun PhoneHomeScreen(
                         }
                     }
 
-                    if (recentlyAdded.itemCount > 0) {
+                    if (showRecentlyAdded && recentlyAdded.itemCount > 0) {
                         item {
                             SectionTitle(stringResource(R.string.ui_label_recently_added))
                             LazyRow(
@@ -154,7 +167,8 @@ fun PhoneHomeScreen(
                                                 onPlay(
                                                     media.videoUri,
                                                     media.dataSourceType,
-                                                    PlayerMediaText.buildTitle(media, media.fileName),
+                                                    media.fileName,
+                                                    media.connectionName,
                                                 )
                                             },
                                         )
@@ -164,7 +178,7 @@ fun PhoneHomeScreen(
                         }
                     }
 
-                    if (recentlyAccessed.isNotEmpty()) {
+                    if (showRecentlyVisited && recentlyAccessed.isNotEmpty()) {
                         item {
                             SectionTitle(stringResource(R.string.ui_label_recently_visited))
                         }
@@ -174,7 +188,14 @@ fun PhoneHomeScreen(
                         ) { file ->
                             RecentFileRow(
                                 file = file,
-                                onClick = { onPlay(file.mediaUri, file.protocolName, file.fileName) },
+                                onClick = {
+                                    onPlay(
+                                        file.mediaUri,
+                                        file.protocolName,
+                                        file.fileName,
+                                        file.connectionName,
+                                    )
+                                },
                             )
                         }
                     }

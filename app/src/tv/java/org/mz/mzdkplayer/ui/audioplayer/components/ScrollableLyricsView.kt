@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.R
-import org.mz.mzdkplayer.tool.LyricEntry
+import org.mz.mzdkplayer.tool.metadata.LyricEntry
 import kotlin.math.roundToInt
 import kotlin.text.ifEmpty
 import kotlin.time.Duration

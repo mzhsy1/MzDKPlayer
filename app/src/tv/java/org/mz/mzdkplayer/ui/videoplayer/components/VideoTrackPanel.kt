@@ -42,7 +42,7 @@ import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.R // 确保 R.drawable.hdr_1 和 R.drawable.dolby_vision_seeklogo 等存在
 import org.mz.mzdkplayer.player.core.MzVideoTrack
-import org.mz.mzdkplayer.tool.focusOnInitialVisibility
+import org.mz.mzdkplayer.common.focusOnInitialVisibility
 import java.util.Locale
 
 

@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mz.mzdkplayer.data.model.PhoneThemeMode
+import org.mz.mzdkplayer.tool.logic.PhoneThemeLogic
 
 /**
  * 手机端主题取值的纯逻辑：存储字符串 → 枚举，枚举 + 系统深色 → 是否用深色。

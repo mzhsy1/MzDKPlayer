@@ -28,7 +28,7 @@ import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
-import org.mz.mzdkplayer.tool.focusOnInitialVisibility
+import org.mz.mzdkplayer.common.focusOnInitialVisibility
 import org.mz.mzdkplayer.ui.common.VIDEO_FINISH_ACTION_COUNT
 import org.mz.mzdkplayer.ui.common.formatVideoFinishAction
 import org.mz.mzdkplayer.viewmodel.SettingsViewModel

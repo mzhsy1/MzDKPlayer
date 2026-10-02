@@ -1,11 +1,7 @@
 package org.mz.mzdkplayer.ui.phone.screen
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -22,26 +18,23 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.request.crossfade
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.local.MediaCacheEntity
-import org.mz.mzdkplayer.tool.PhoneScrapeLogic
-import org.mz.mzdkplayer.tool.Tools
+import org.mz.mzdkplayer.tool.logic.PhoneScrapeLogic
 import org.mz.mzdkplayer.ui.phone.PhoneIcons
+import org.mz.mzdkplayer.ui.phone.model.PhoneBrowserEntry
 import org.mz.mzdkplayer.viewmodel.MediaMetaViewModel
 import org.mz.mzdkplayer.viewmodel.MovieViewModel
+
+/**
+ * 协议浏览页的刮削会话：读缓存、自动发起、扫描期间回读，以及顶栏那个入口按钮。
+ * 通用海报组件（`PhonePosterImage` / `PosterThumb`）已移到 `ui/phone/component/PhonePoster.kt`。
+ */
 
 /** 扫描中定期回读数据库的间隔：刮到一条就能在列表里立刻看到海报 */
 private const val SCRAPE_REFRESH_INTERVAL_MS = 1_500L
@@ -49,7 +42,7 @@ private const val SCRAPE_REFRESH_INTERVAL_MS = 1_500L
 /** 刮削结果 → 列表展示形态（只取列表要用的字段，方便纯逻辑单测） */
 internal fun MediaCacheEntity.toScrapeMeta(): PhoneScrapeLogic.Meta = PhoneScrapeLogic.Meta(
     title = title,
-    year = releaseDate?.take(4)?.takeIf { it.length == 4 && it.toIntOrNull() != null },
+    year = PhoneScrapeLogic.yearOf(releaseDate),
     voteAverage = voteAverage,
     mediaType = mediaType,
     seasonNumber = seasonNumber,
@@ -202,53 +195,4 @@ internal fun PhoneScrapeProgressBar(ui: PhoneBrowserScrapeUi, modifier: Modifier
         progress = { ui.progress },
         modifier = modifier.fillMaxWidth(),
     )
-}
-
-/**
- * 海报 / 剧照。
- *
- * `posterPath` 为空（没刮到）时返回 false，由调用方回退到图标 —— 这样调用方
- * 不用在 Compose 里做 `if (url == null) Icon() else AsyncImage()` 的重复分支。
- */
-@Composable
-internal fun PhonePosterImage(
-    posterPath: String?,
-    modifier: Modifier = Modifier,
-    size: String = "w200",
-): Boolean {
-    val url = Tools.formatImageUrl(posterPath, size) ?: return false
-    AsyncImage(
-        model = ImageRequest.Builder(LocalContext.current).data(url).crossfade(true).build(),
-        contentDescription = null,
-        contentScale = ContentScale.Crop,
-        modifier = modifier,
-    )
-    return true
-}
-
-/** 列表行 / 详情页共用的海报缩略图，没有图就用占位底色 + 影片图标 */
-@Composable
-internal fun PosterThumb(
-    posterPath: String?,
-    width: Dp,
-    height: Dp,
-    modifier: Modifier = Modifier,
-) {
-    val shape = RoundedCornerShape(12.dp)
-    Box(
-        modifier = modifier
-            .size(width = width, height = height)
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (!PhonePosterImage(posterPath = posterPath, modifier = Modifier.size(width, height))) {
-            Icon(
-                imageVector = PhoneIcons.Movie,
-                contentDescription = null,
-                modifier = Modifier.size(28.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
 }

@@ -20,7 +20,7 @@ import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
 import com.kuaishou.akdanmaku.ui.DanmakuPlayer
 import org.mz.mzdkplayer.player.core.IMzPlayer
-import org.mz.mzdkplayer.tool.SubtitleView
+import org.mz.mzdkplayer.common.SubtitleView
 
 @OptIn(UnstableApi::class)
 @Composable

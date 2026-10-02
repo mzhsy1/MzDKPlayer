@@ -26,7 +26,7 @@ import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
-import org.mz.mzdkplayer.tool.focusOnInitialVisibility
+import org.mz.mzdkplayer.common.focusOnInitialVisibility
 
 @Composable
 fun PlaybackSpeedPanel(
@@ -57,7 +57,7 @@ fun PlaybackSpeedPanel(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "音频直通模式下不可更改倍速",
+                        text = stringResource(R.string.ui_label_speed_passthrough_locked),
                         color = Color.Yellow,
                         fontSize = 14.sp
                     )

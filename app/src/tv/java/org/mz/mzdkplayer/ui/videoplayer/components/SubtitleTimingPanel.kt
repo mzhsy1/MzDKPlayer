@@ -27,8 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
-import org.mz.mzdkplayer.tool.SubtitleOffsetLogic
-import org.mz.mzdkplayer.tool.focusOnInitialVisibility
+import org.mz.mzdkplayer.tool.logic.SubtitleOffsetLogic
+import org.mz.mzdkplayer.common.focusOnInitialVisibility
 import org.mz.mzdkplayer.ui.screen.common.MyIconButton
 
 /**

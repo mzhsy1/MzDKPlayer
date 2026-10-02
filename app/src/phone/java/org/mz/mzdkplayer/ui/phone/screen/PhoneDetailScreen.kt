@@ -58,10 +58,11 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.local.MediaCacheEntity
-import org.mz.mzdkplayer.tool.PlayerMediaText
+import org.mz.mzdkplayer.tool.logic.PlayerMediaText
 import org.mz.mzdkplayer.viewmodel.MediaMetaViewModel
 import org.mz.mzdkplayer.viewmodel.MovieViewModel
 import java.util.Locale
+import org.mz.mzdkplayer.ui.phone.component.PhonePosterImage
 
 /** 简介默认折叠到几行 */
 private const val OVERVIEW_COLLAPSED_LINES = 4
@@ -89,7 +90,13 @@ fun PhoneDetailScreen(
     movieViewModel: MovieViewModel,
     mediaMetaViewModel: MediaMetaViewModel,
     onBack: () -> Unit,
-    onPlay: (sourceUri: String, dataSourceType: String, title: String) -> Unit,
+    /** [fileName] 是原始文件名（播放页自己拼刮削标题）、[connectionName] 用于写播放历史 */
+    onPlay: (
+        sourceUri: String,
+        dataSourceType: String,
+        fileName: String,
+        connectionName: String,
+    ) -> Unit,
     onRematch: (sourceUri: String, fileName: String, connectionName: String) -> Unit,
 ) {
     val meta by mediaMetaViewModel.mediaMeta.collectAsState()
@@ -156,7 +163,7 @@ fun PhoneDetailScreen(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(
-                        onClick = { onPlay(videoUri, dataSourceType, title) },
+                        onClick = { onPlay(videoUri, dataSourceType, fileName, connectionName) },
                         modifier = Modifier.weight(1f),
                     ) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null)

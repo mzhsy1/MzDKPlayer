@@ -1,7 +1,7 @@
 package org.mz.mzdkplayer.ui.screen.common
 
 
-import org.mz.mzdkplayer.tool.MzToastManager
+import org.mz.mzdkplayer.common.MzToastManager
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -22,8 +22,8 @@ import androidx.tv.material3.Text
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import org.mz.mzdkplayer.R
-import org.mz.mzdkplayer.tool.RemoteConfig
-import org.mz.mzdkplayer.tool.RemoteInputServer
+import org.mz.mzdkplayer.tool.server.RemoteConfig
+import org.mz.mzdkplayer.tool.server.RemoteInputServer
 import org.mz.mzdkplayer.tool.Tools
 
 /**

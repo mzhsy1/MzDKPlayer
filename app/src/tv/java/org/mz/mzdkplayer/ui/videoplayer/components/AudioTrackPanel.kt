@@ -37,7 +37,7 @@ import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.player.core.MzBasicTrack
 import org.mz.mzdkplayer.tool.Tools
-import org.mz.mzdkplayer.tool.focusOnInitialVisibility
+import org.mz.mzdkplayer.common.focusOnInitialVisibility
 import java.util.Locale
 import androidx.compose.ui.platform.LocalLocale
 

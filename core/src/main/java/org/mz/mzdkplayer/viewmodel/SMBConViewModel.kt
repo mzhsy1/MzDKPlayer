@@ -19,7 +19,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.mz.mzdkplayer.data.model.FileConnectionStatus
-import org.mz.mzdkplayer.tool.FileBrowserLogic
+import org.mz.mzdkplayer.tool.logic.FileBrowserLogic
 import java.util.concurrent.TimeUnit
 
 import kotlin.collections.forEach

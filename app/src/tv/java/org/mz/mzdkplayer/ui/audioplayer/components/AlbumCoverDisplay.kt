@@ -31,7 +31,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.mz.mzdkplayer.tool.ColorExtractor
+import org.mz.mzdkplayer.common.ColorExtractor
 
 @Composable
 fun AlbumCoverDisplay(

@@ -3,6 +3,7 @@ package org.mz.mzdkplayer.tool
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import org.mz.mzdkplayer.tool.logic.PhoneScrapeLogic
 
 /**
  * 手机端刮削的纯逻辑：挑出要刮的条目、跳过已刮的、拼列表标题与副标题、算进度。
@@ -152,6 +153,17 @@ class PhoneScrapeLogicTest {
     fun `进度百分比会夹到零到一百`() {
         assertEquals(100, PhoneScrapeLogic.progressPercent(30, 10))
         assertEquals(0, PhoneScrapeLogic.progressPercent(-3, 10))
+    }
+
+    @Test
+    fun `发布日期取前四位当年份`() {
+        assertEquals("2024", PhoneScrapeLogic.yearOf("2024-05-01"))
+        assertEquals("2024", PhoneScrapeLogic.yearOf("2024"))
+        // 空串、位数不够、非数字都拿不到年份
+        assertNull(PhoneScrapeLogic.yearOf(""))
+        assertNull(PhoneScrapeLogic.yearOf("20-05-01"))
+        assertNull(PhoneScrapeLogic.yearOf("abcd-05-01"))
+        assertNull(PhoneScrapeLogic.yearOf(null))
     }
 
     private fun meta(

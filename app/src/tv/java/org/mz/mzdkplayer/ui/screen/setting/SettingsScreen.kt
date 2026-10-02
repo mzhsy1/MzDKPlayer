@@ -47,12 +47,20 @@ import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.di.RepositoryProvider
 import org.mz.mzdkplayer.data.repository.SettingsRepository
 import org.mz.mzdkplayer.player.core.MzAspectRatio
-import org.mz.mzdkplayer.tool.SubtitleOffsetLogic
-import org.mz.mzdkplayer.tool.viewModelWithFactory
+import org.mz.mzdkplayer.tool.logic.SubtitleOffsetLogic
+import org.mz.mzdkplayer.di.viewModelWithFactory
 import org.mz.mzdkplayer.ui.common.VIDEO_FINISH_ACTION_COUNT
 import org.mz.mzdkplayer.ui.common.aspectRatioFromName
+import org.mz.mzdkplayer.ui.common.formatAppLang
 import org.mz.mzdkplayer.ui.common.formatAspectRatio
+import org.mz.mzdkplayer.ui.common.formatAudioDecodeMode
+import org.mz.mzdkplayer.ui.common.formatIsoPlaybackMode
+import org.mz.mzdkplayer.ui.common.formatLang
+import org.mz.mzdkplayer.ui.common.formatRecursiveScanLevel
+import org.mz.mzdkplayer.ui.common.formatSubFontName
+import org.mz.mzdkplayer.ui.common.formatTmdbLang
 import org.mz.mzdkplayer.ui.common.formatVideoFinishAction
+import org.mz.mzdkplayer.ui.common.parseBgColorName
 import org.mz.mzdkplayer.ui.screen.common.DeleteConfirmDialog
 import org.mz.mzdkplayer.ui.screen.common.FilePermissionScreen
 import org.mz.mzdkplayer.ui.screen.common.MyIconButton
@@ -985,70 +993,10 @@ fun AboutItem(
 }
 
 // --- Helper Functions ---
-@Composable
-fun formatLang(code: String): String = when (code) {
-    "zh" -> stringResource(R.string.ui_label_chinese_language)
-    "en" -> stringResource(R.string.lang_english)
-    else -> stringResource(R.string.lang_auto)
-}
-@Composable
-fun parseBgColorName(color: Long): String = when (color) {
-    0x80000000 -> stringResource(R.string.color_black_50)
-    0x80FFFFFF -> stringResource(R.string.color_white_50)
-    0x80FFFF00 -> stringResource(R.string.color_yellow_50)
-    0x00000000L -> stringResource(R.string.color_transparent)
-    else -> stringResource(R.string.ui_label_custom)
-}
-@Composable
-fun formatSubFontName(path: String): String {
-    if (path.isBlank()) {
-        return stringResource(R.string.font_default)
-    }
-    return path.substringAfterLast('/').ifBlank { path }
-}
-@Composable
-fun formatAppLang(code: String): String = when(code){
-    "" -> stringResource(R.string.lang_auto_system)
-    "zh" -> stringResource(R.string.ui_label_chinese_language)
-    "en" -> stringResource(R.string.lang_english)
-    "ja" -> stringResource(R.string.ui_label_japanese_language)
-    else -> stringResource(R.string.lang_auto)
-}
-@Composable
-fun formatAudioDecodeMode(mode: Int): String = when (mode) {
-    0 -> stringResource(R.string.setting_audio_decode_pure_hw)
-    1 -> stringResource(R.string.setting_audio_decode_hw_priority)
-    2 -> stringResource(R.string.setting_audio_decode_sw_priority)
-    else -> stringResource(R.string.ui_label_unknown)
-}
-@Composable
-fun formatRecursiveScanLevel(level: Int): String = when (level) {
-    0 -> stringResource(R.string.recursive_scan_level_0)
-    1 -> stringResource(R.string.recursive_scan_level_1)
-    2 -> stringResource(R.string.recursive_scan_level_2)
-    3 -> stringResource(R.string.recursive_scan_level_3)
-    4 -> stringResource(R.string.recursive_scan_level_4)
-    5 -> stringResource(R.string.recursive_scan_level_5)
-    else -> "Level $level"
-}
-
-@Composable
-fun formatTmdbLang(code: String): String = when (code) {
-    "" -> stringResource(R.string.lang_auto_system)
-    "zh-CN" -> "简体中文"
-    "zh-TW" -> "繁體中文"
-    "en-US" -> "English"
-    "ja-JP" -> "日本語"
-    "ko-KR" -> "한국어"
-    else -> code
-}
-
-@Composable
-fun formatIsoPlaybackMode(mode: Int): String = when (mode) {
-    0 -> stringResource(R.string.iso_playback_mode_default)
-    1 -> stringResource(R.string.iso_playback_mode_main_movie)
-    else -> stringResource(R.string.ui_label_unknown)
-}
+// 「设置里存的原始值 → 界面文案」的映射（formatLang / parseBgColorName / formatSubFontName /
+// formatAppLang / formatAudioDecodeMode / formatRecursiveScanLevel / formatTmdbLang /
+// formatIsoPlaybackMode）第八阶段搬到了 main 的 `ui/common/SettingValueText.kt`：
+// 手机端设置页要用同一批文案，两端各写一份迟早会漂移。
 
 // 遥控器上下键可选功能列表
 private val DPAD_ACTION_ORDER = listOf("A", "S", "D", "V", "SPEED", "R")

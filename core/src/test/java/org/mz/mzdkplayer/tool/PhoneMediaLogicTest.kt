@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.mz.mzdkplayer.tool.logic.PhoneMediaLogic
 
 /**
  * 手机端「点击条目该开哪个页面」的纯逻辑：类型判定、音频播放列表、图片序列。
@@ -213,5 +214,13 @@ class PhoneMediaLogicTest {
         // 空内容
         assertNull(PhoneMediaLogic.decodeLyricText(ByteArray(0)))
         assertNull(PhoneMediaLogic.decodeLyricText("   \r\n".toByteArray()))
+    }
+
+    @Test
+    fun `歌词伴生文件只认 lrc`() {
+        assertTrue(PhoneMediaLogic.isLyricSidecar("歌曲.lrc"))
+        assertTrue(PhoneMediaLogic.isLyricSidecar("歌曲.LRC"))
+        assertTrue(!PhoneMediaLogic.isLyricSidecar("歌曲.flac"))
+        assertTrue(!PhoneMediaLogic.isLyricSidecar("歌曲"))
     }
 }

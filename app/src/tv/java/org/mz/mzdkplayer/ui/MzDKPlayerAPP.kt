@@ -49,6 +49,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.navOptions
 import androidx.tv.material3.DrawerState
 import androidx.tv.material3.DrawerValue
@@ -67,16 +69,17 @@ import org.mz.mzdkplayer.data.model.FTPConnection
 import org.mz.mzdkplayer.data.model.NFSConnection
 import org.mz.mzdkplayer.data.model.WebDavConnection
 import org.mz.mzdkplayer.di.RepositoryProvider
+import org.mz.mzdkplayer.tool.logic.PhonePlayerLogic
 import org.mz.mzdkplayer.tool.Tools.fromBase64
 import org.mz.mzdkplayer.tool.Tools.toBase64
 import org.mz.mzdkplayer.tool.Tools.toSafeInt
-import org.mz.mzdkplayer.tool.viewModelWithFactory
+import org.mz.mzdkplayer.di.viewModelWithFactory
 import org.mz.mzdkplayer.ui.audioplayer.AudioPlayerScreen
 
 import org.mz.mzdkplayer.ui.picviewer.PicViewerScreen
 import org.mz.mzdkplayer.ui.screen.common.EditTMDBInfoScreen
 import org.mz.mzdkplayer.ui.screen.common.MzToast
-import org.mz.mzdkplayer.tool.MzToastManager
+import org.mz.mzdkplayer.common.MzToastManager
 import org.mz.mzdkplayer.ui.screen.common.rememberMzToastState
 import org.mz.mzdkplayer.ui.screen.movie.MovieDetailsScreen
 import org.mz.mzdkplayer.ui.screen.history.MediaHistoryScreen
@@ -439,8 +442,8 @@ fun MzDKPlayerAPP(
                 //Log.d("sourceUri", sourceUri)
                 //Log.d("dataSourceType", dataSourceType)
                 val decodedUri = sourceUri.fromBase64()
-                val extension = decodedUri.substringAfterLast('.').lowercase()
-                val forceVlcByExtension = extension in listOf("m2ts", "iso", "m2t", "mts","ts")
+                // 传输流与蓝光原盘强制走 VLC：判定口径与手机端共用 `PhonePlayerLogic`
+                val forceVlcByExtension = PhonePlayerLogic.forceVlcByExtension(decodedUri)
                 Log.d("VideoPlayer", "✅ Decoded MRL（传给 VLC）: $decodedUri")   // ← 关键！
                 val shouldUseVlc = forceVlcByExtension || (settingsState.defaultPlayer == "vlc")
                 VideoPlayerScreen(
@@ -664,29 +667,79 @@ fun MzDKPlayerAPP(
         composable("SMBListScreen") {
             SMBConListScreen(mainNavController, smbListViewModel)
         }
-        composable("SMBConScreen") {
-            SMBConScreen(smbListViewModel)
+        composable(
+            route = "SMBConScreen?connId={connId}",
+            arguments = listOf(navArgument("connId") {
+                type = NavType.StringType
+                defaultValue = ""
+            })
+        ) { backStackEntry ->
+            SMBConScreen(
+                mainNavController = mainNavController,
+                connectionId = backStackEntry.arguments?.getString("connId")?.ifBlank { null },
+                smbListViewModel = smbListViewModel
+            )
         }
-        composable("WebDavConScreen") {
-            WebDavConScreen(webDavListViewModel)
+        composable(
+            route = "WebDavConScreen?connId={connId}",
+            arguments = listOf(navArgument("connId") {
+                type = NavType.StringType
+                defaultValue = ""
+            })
+        ) { backStackEntry ->
+            WebDavConScreen(
+                mainNavController = mainNavController,
+                connectionId = backStackEntry.arguments?.getString("connId")?.ifBlank { null },
+                webDavListViewModel = webDavListViewModel
+            )
         }
         composable("WebDavListScreen") {
             WebDavConListScreen(mainNavController,webDavListViewModel)
         }
-        composable("FTPConScreen") {
-            FTPConScreen(ftpListViewModel)
+        composable(
+            route = "FTPConScreen?connId={connId}",
+            arguments = listOf(navArgument("connId") {
+                type = NavType.StringType
+                defaultValue = ""
+            })
+        ) { backStackEntry ->
+            FTPConScreen(
+                mainNavController = mainNavController,
+                connectionId = backStackEntry.arguments?.getString("connId")?.ifBlank { null },
+                ftpListViewModel = ftpListViewModel
+            )
         }
         composable("FTPConListScreen") {
             FTPConListScreen(mainNavController,ftpListViewModel)
         }
-        composable("NFSConScreen") {
-            NFSConScreen(nfsListViewModel)
+        composable(
+            route = "NFSConScreen?connId={connId}",
+            arguments = listOf(navArgument("connId") {
+                type = NavType.StringType
+                defaultValue = ""
+            })
+        ) { backStackEntry ->
+            NFSConScreen(
+                mainNavController = mainNavController,
+                connectionId = backStackEntry.arguments?.getString("connId")?.ifBlank { null },
+                nfsListViewModel = nfsListViewModel
+            )
         }
         composable("NFSConListScreen") {
             NFSConListScreen(mainNavController,nfsListViewModel)
         }
-        composable("HTTPLinkConScreen") {
-            HTTPLinkConScreen(httpLinkListViewModel)
+        composable(
+            route = "HTTPLinkConScreen?connId={connId}",
+            arguments = listOf(navArgument("connId") {
+                type = NavType.StringType
+                defaultValue = ""
+            })
+        ) { backStackEntry ->
+            HTTPLinkConScreen(
+                mainNavController = mainNavController,
+                connectionId = backStackEntry.arguments?.getString("connId")?.ifBlank { null },
+                httpLinkListViewModel = httpLinkListViewModel
+            )
         }
         composable("HTTPLinkConListScreen") {
             HTTPLinkConListScreen(mainNavController,httpLinkListViewModel)

@@ -141,11 +141,14 @@
     <string name="ui_label_saved_connections">Saved Connections: %1$d </string>
     <string name="ui_label_no_pool_connections">No %1$s Connections Yet</string>
     <string name="ui_label_add_first_pool_connection">Click the button in the upper right corner to add your first %1$s connection</string>
+    <string name="ui_label_con_list_remote_hint">Press OK to open · Press Menu for actions</string>
+    <string name="ui_label_press_back_to_close">Press Back to close</string>
     <string name="ui_label_server">Server</string>
     <string name="ui_label_shared_directory">Shared Directory</string>
     <string name="ui_label_username">Username</string>
     <string name="ui_label_connection_operations">Connection Operations</string>
     <string name="ui_label_delete_connection">Delete Connection</string>
+    <string name="ui_label_connection_operation">Connection Actions</string>
     <string name="ui_label_edit_information">Edit Information</string>
     <string name="ui_label_cancel">Cancel</string>
     <string name="ui_label_none">None</string>
@@ -517,9 +520,48 @@
     <string name="phone_setting_auto_scrape_sub">Off by default. When on, opening a folder that contains videos fetches posters and overviews online; you can always scrape manually from the button in the top right.</string>
     <string name="phone_setting_scrape_sources">Scraping sources</string>
     <string name="phone_setting_scrape_sources_sub">Disabled sources are skipped by automatic scraping (manual scraping still works)</string>
-    <string name="phone_setting_about">About</string>
     <string name="phone_setting_version">Version</string>
-    <string name="phone_setting_more_coming">The remaining settings will be ported to the phone in a later phase.</string>
+    <string name="phone_settings_section_more">More settings</string>
+    <string name="phone_settings_cat_interface">Interface and home</string>
+    <!-- Setting group titles -->
+    <string name="phone_settings_group_playback_core">Playback engine and formats</string>
+    <string name="phone_settings_group_display">Picture</string>
+    <string name="phone_settings_group_behavior">Playback behaviour</string>
+    <string name="phone_settings_group_gesture">Touch gestures</string>
+    <string name="phone_settings_group_home">Home screen</string>
+    <!-- Phone-only: touch gestures -->
+    <string name="phone_setting_gesture_brightness">Swipe up/down on the left to adjust brightness</string>
+    <string name="phone_setting_gesture_volume">Swipe up/down on the right to adjust volume</string>
+    <string name="phone_gesture_brightness">Brightness</string>
+    <string name="phone_gesture_volume">Volume</string>
+    <string name="phone_setting_long_press_speed">Long-press to play at high speed</string>
+    <string name="phone_setting_long_press_speed_sub">While holding the screen the speed switches to the selected value and returns on release; double-tap to seek still works on the left and right thirds.</string>
+    <string name="phone_setting_long_press_speed_value">Speed while holding</string>
+    <string name="phone_setting_controls_hide_delay">Auto-hide controls</string>
+    <string name="phone_setting_controls_hide_delay_sub">Hide the controls after a period of inactivity while playing (they stay visible when paused)</string>
+    <string name="phone_setting_seconds_format">%1$d s</string>
+    <!-- Phone-only: home sections -->
+    <string name="phone_setting_home_recently_watched">Show “Recently watched”</string>
+    <string name="phone_setting_home_recently_added">Show “Recently added”</string>
+    <string name="phone_setting_home_recently_visited">Show “Recently visited”</string>
+    <string name="phone_setting_home_sections_sub">Turned off sections are hidden from the home screen; the file and settings entries are unaffected</string>
+    <!-- Phone-only: tools -->
+    <string name="phone_setting_clear_history">Clear playback history</string>
+    <string name="phone_setting_clear_history_confirm">Clear all playback records and resume positions? This cannot be undone.</string>
+    <string name="phone_action_clear">Clear</string>
+    <string name="phone_action_save">Save</string>
+    <!-- Phone-only: third-party subtitle font (system file picker) -->
+    <string name="phone_setting_sub_font_pick">Choose a font file</string>
+    <string name="phone_setting_sub_font_reset">Use the default font</string>
+    <string name="phone_setting_sub_font_failed">Could not read the selected file — please try another font file</string>
+    <!-- Phone-only: TMDB base URL (keyboard input + connection test) -->
+    <string name="phone_setting_tmdb_official">Official</string>
+    <string name="phone_setting_tmdb_url_hint">https://api.themoviedb.org/3/</string>
+    <string name="phone_setting_tmdb_test">Test connection</string>
+    <string name="phone_setting_tmdb_testing">Testing…</string>
+    <string name="phone_setting_tmdb_test_ok">Connected successfully</string>
+    <string name="phone_setting_tmdb_test_failed">Connection failed: %1$s</string>
+    <string name="phone_setting_tmdb_reset">Use official URL</string>
     <string name="phone_files_empty_title">No %1$s connection yet</string>
     <string name="phone_files_empty_sub">Tap “+” in the top right to add a connection, then you can browse its files</string>
     <string name="phone_files_add_connection_title">New %1$s connection</string>
@@ -588,4 +630,19 @@
     <string name="phone_audio_unknown_title">Unknown title</string>
     <string name="phone_audio_unknown_artist">Unknown artist</string>
     <string name="phone_image_counter">%1$d / %2$d</string>
+
+    <!-- 第七阶段：视频播放页，电视端与手机端共用 -->
+    <string name="ui_label_playlist">Playlist</string>
+    <string name="ui_label_last_video">Already the last video</string>
+    <string name="ui_label_speed_passthrough_locked">Playback speed cannot be changed while audio passthrough is on</string>
+
+    <!-- 第七阶段：手机端视频播放页 -->
+    <string name="phone_player_play_pause">Play / Pause</string>
+    <string name="phone_player_long_press_speed">Playing at %1$s</string>
+    <string name="phone_player_fullscreen">Fullscreen</string>
+    <string name="phone_player_exit_fullscreen">Exit fullscreen</string>
+    <string name="phone_player_rewind">Rewind %1$d s</string>
+    <string name="phone_player_forward">Forward %1$d s</string>
+    <string name="phone_player_previous_video">Previous video</string>
+    <string name="phone_player_next_video">Next video</string>
 </resources>

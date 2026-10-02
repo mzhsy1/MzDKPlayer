@@ -41,7 +41,7 @@ import org.mz.mzdkplayer.player.core.MzAspectRatio
 import org.mz.mzdkplayer.data.model.VideoItem
 import org.mz.mzdkplayer.data.repository.VideoPlaylistRepository
 import org.mz.mzdkplayer.tool.Tools
-import org.mz.mzdkplayer.tool.handleDPadKeyEvents
+import org.mz.mzdkplayer.common.handleDPadKeyEvents
 import org.mz.mzdkplayer.viewmodel.SettingsViewModel
 import org.mz.mzdkplayer.viewmodel.VideoPlayerViewModel
 import androidx.compose.ui.unit.dp
@@ -135,7 +135,7 @@ fun RootSettingsPanel(
             }
             item {
                 SettingItem(
-                    title = "播放列表",
+                    title = stringResource(R.string.ui_label_playlist),
                     icon = R.drawable.playlistplay24dp,
                     onClick = { videoPlayerViewModel.selectedAorVorS = "L" }
                 )

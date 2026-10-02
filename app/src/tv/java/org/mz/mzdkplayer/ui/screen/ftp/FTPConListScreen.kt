@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
@@ -37,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.ui.screen.common.ConListAccent
 import org.mz.mzdkplayer.ui.screen.common.ConOpPanel
 // --- 导入 FTP 相关的模型和 ViewModel ---
 import org.mz.mzdkplayer.ui.screen.common.ConnectionCard
@@ -100,10 +102,21 @@ fun FTPConListScreen(mainNavController: NavHostController, ftpListViewModel: FTP
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
-                .padding().background(Color(0xFF121212)) // 深黑背景
+                .padding()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color(0xFF141419), Color(0xFF0E0E12))
+                    )
+                )
         ) {
             // 标题
-            FCLMainTitle(mainNavController = mainNavController, stringResource(R.string.ui_label_ftp_file_sharing), "FTPConScreen")
+            FCLMainTitle(
+                mainNavController = mainNavController,
+                titleText = stringResource(R.string.ui_label_ftp_file_sharing),
+                addTargetRouter = "FTPConScreen",
+                protocolIconRes = R.drawable.ftp,
+                accentColor = ConListAccent.ftp
+            )
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -111,10 +124,15 @@ fun FTPConListScreen(mainNavController: NavHostController, ftpListViewModel: FTP
             ) {
                 if (connections.isEmpty()) {
                     // 空状态
-                    ConnectionListEmpty("FTP")
+                    ConnectionListEmpty(
+                        poolText = "FTP",
+                        protocolIconRes = R.drawable.ftp,
+                        accentColor = ConListAccent.ftp,
+                        onAddClick = { mainNavController.navigate("FTPConScreen") }
+                    )
                 } else {
                     // 连接列表标题
-                    ConnectionListTitle(connections.size)
+                    ConnectionListTitle(connections.size, ConListAccent.ftp)
                     // 连接卡片列表
                     LazyColumn(
                         state = listState,
@@ -200,7 +218,9 @@ fun FTPConListScreen(mainNavController: NavHostController, ftpListViewModel: FTP
                                 isSelected = ftpListViewModel.selectedIndex.value == index && !isOPanelShow,
                                 isOPanelShow = isOPanelShow,
                                 selectedIndex = ftpListViewModel.selectedIndex.value,
-
+                                accentColor = ConListAccent.ftp,
+                                protocolIconRes = R.drawable.ftp,
+                                protocolLabel = "FTP"
                                 )
                         }
                     }
@@ -231,9 +251,15 @@ fun FTPConListScreen(mainNavController: NavHostController, ftpListViewModel: FTP
 
                 ftpListViewModel.closeOPanel()
             },
+            onClickForEdit = {
+                ftpListViewModel.closeOPanel()
+                mainNavController.navigate("FTPConScreen?connId=$selectedId")
+            },
             onClickForCancel = {
                 ftpListViewModel.closeOPanel()
-            })
+            },
+            accentColor = ConListAccent.ftp,
+            protocolLabel = "FTP")
 
         // 把弹窗挂载在最外层，保证它不会随着面板的消失而消失
         if (showDeleteDialog) {

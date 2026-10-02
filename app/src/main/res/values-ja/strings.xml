@@ -120,11 +120,14 @@
     <string name="ui_label_saved_connections">保存済みの接続数: %1$d</string>
     <string name="ui_label_no_pool_connections">%1$s 接続はまだありません</string>
     <string name="ui_label_add_first_pool_connection">右上のボタンをクリックして最初の %1$s 接続を追加してください</string>
+    <string name="ui_label_con_list_remote_hint">「決定」で開く · 「メニュー」で操作</string>
+    <string name="ui_label_press_back_to_close">「戻る」で閉じる</string>
     <string name="ui_label_server">サーバー</string>
     <string name="ui_label_shared_directory">共有ディレクトリ</string>
     <string name="ui_label_username">ユーザー名</string>
     <string name="ui_label_connection_operations">接続操作</string>
     <string name="ui_label_delete_connection">接続を削除</string>
+    <string name="ui_label_connection_operation">接続の操作</string>
     <string name="ui_label_edit_information">情報を編集</string>
     <string name="ui_label_cancel">キャンセル</string>
     <string name="ui_label_none">なし</string>
@@ -519,9 +522,48 @@
     <string name="phone_setting_auto_scrape_sub">既定はオフです。オンにすると、動画のあるフォルダーを開いたときにポスターとあらすじを自動取得します。右上のボタンからいつでも手動取得できます。</string>
     <string name="phone_setting_scrape_sources">取得元</string>
     <string name="phone_setting_scrape_sources_sub">オフにした取得元は自動取得の対象外になります（手動取得は可能）</string>
-    <string name="phone_setting_about">このアプリについて</string>
     <string name="phone_setting_version">バージョン</string>
-    <string name="phone_setting_more_coming">その他の設定項目は今後の段階で移植します。</string>
+    <string name="phone_settings_section_more">その他の設定</string>
+    <string name="phone_settings_cat_interface">画面とホーム</string>
+    <!-- 設定グループの見出し -->
+    <string name="phone_settings_group_playback_core">再生エンジンと形式</string>
+    <string name="phone_settings_group_display">映像</string>
+    <string name="phone_settings_group_behavior">再生動作</string>
+    <string name="phone_settings_group_gesture">タッチ操作</string>
+    <string name="phone_settings_group_home">ホーム画面</string>
+    <!-- スマホ独自：タッチ操作 -->
+    <string name="phone_setting_gesture_brightness">左側を上下にスワイプして明るさを調整</string>
+    <string name="phone_setting_gesture_volume">右側を上下にスワイプして音量を調整</string>
+    <string name="phone_gesture_brightness">明るさ</string>
+    <string name="phone_gesture_volume">音量</string>
+    <string name="phone_setting_long_press_speed">長押しで倍速再生</string>
+    <string name="phone_setting_long_press_speed_sub">画面を長押ししている間だけ選択した倍速になり、離すと元に戻ります。ダブルタップの早送り／巻き戻しは画面左右で引き続き使えます。</string>
+    <string name="phone_setting_long_press_speed_value">長押し時の倍速</string>
+    <string name="phone_setting_controls_hide_delay">コントロールを自動的に隠す</string>
+    <string name="phone_setting_controls_hide_delay_sub">再生中に操作がないとコントロールを自動的に隠します（一時停止中は表示したまま）</string>
+    <string name="phone_setting_seconds_format">%1$d 秒</string>
+    <!-- スマホ独自：ホーム画面のセクション -->
+    <string name="phone_setting_home_recently_watched">「最近見た」を表示</string>
+    <string name="phone_setting_home_recently_added">「最近追加」を表示</string>
+    <string name="phone_setting_home_recently_visited">「最近アクセス」を表示</string>
+    <string name="phone_setting_home_sections_sub">オフにしたセクションはホーム画面に表示されません。ファイルと設定の入口には影響しません。</string>
+    <!-- スマホ独自：ツール -->
+    <string name="phone_setting_clear_history">再生履歴を消去</string>
+    <string name="phone_setting_clear_history_confirm">すべての再生履歴と再生位置を消去しますか？この操作は取り消せません。</string>
+    <string name="phone_action_clear">消去</string>
+    <string name="phone_action_save">保存</string>
+    <!-- スマホ独自：第三者字幕フォント（システムのファイル選択） -->
+    <string name="phone_setting_sub_font_pick">フォントファイルを選択</string>
+    <string name="phone_setting_sub_font_reset">既定のフォントに戻す</string>
+    <string name="phone_setting_sub_font_failed">選択したファイルを読み込めません。別のフォントファイルをお試しください</string>
+    <!-- スマホ独自：TMDB アドレス（キーボード入力＋接続テスト） -->
+    <string name="phone_setting_tmdb_official">公式アドレス</string>
+    <string name="phone_setting_tmdb_url_hint">https://api.themoviedb.org/3/</string>
+    <string name="phone_setting_tmdb_test">接続テスト</string>
+    <string name="phone_setting_tmdb_testing">テスト中…</string>
+    <string name="phone_setting_tmdb_test_ok">接続に成功しました</string>
+    <string name="phone_setting_tmdb_test_failed">接続に失敗しました：%1$s</string>
+    <string name="phone_setting_tmdb_reset">公式アドレスに戻す</string>
     <string name="phone_files_empty_title">%1$s 接続がありません</string>
     <string name="phone_files_empty_sub">右上の「+」から接続を追加すると、ファイルを閲覧できます</string>
     <string name="phone_files_add_connection_title">%1$s 接続を追加</string>
@@ -590,4 +632,19 @@
     <string name="phone_audio_unknown_title">不明なタイトル</string>
     <string name="phone_audio_unknown_artist">不明なアーティスト</string>
     <string name="phone_image_counter">%1$d / %2$d</string>
+
+    <!-- 第七段階：動画再生ページ、テレビ側とスマホ側で共用 -->
+    <string name="ui_label_playlist">プレイリスト</string>
+    <string name="ui_label_last_video">最後の動画です</string>
+    <string name="ui_label_speed_passthrough_locked">音声パススルー中は倍速を変更できません</string>
+
+    <!-- 第七段階：スマホ側の動画再生ページ -->
+    <string name="phone_player_play_pause">再生 / 一時停止</string>
+    <string name="phone_player_long_press_speed">%1$s 倍速再生中</string>
+    <string name="phone_player_fullscreen">全画面</string>
+    <string name="phone_player_exit_fullscreen">全画面を終了</string>
+    <string name="phone_player_rewind">%1$d 秒戻る</string>
+    <string name="phone_player_forward">%1$d 秒進む</string>
+    <string name="phone_player_previous_video">前の動画</string>
+    <string name="phone_player_next_video">次の動画</string>
 </resources>

@@ -74,7 +74,6 @@ import androidx.tv.material3.ButtonDefaults
 
 import androidx.tv.material3.Text
 import com.kuaishou.akdanmaku.DanmakuConfig
-import com.kuaishou.akdanmaku.data.DanmakuItemData
 import com.kuaishou.akdanmaku.ext.RETAINER_BILIBILI
 import com.kuaishou.akdanmaku.render.SimpleRenderer
 import com.kuaishou.akdanmaku.ui.DanmakuPlayer
@@ -82,7 +81,9 @@ import kotlinx.coroutines.delay
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.danmaku.DanmakuData
 import org.mz.mzdkplayer.danmaku.DanmakuResponse
+import org.mz.mzdkplayer.danmaku.danmakuConfigFor
 import org.mz.mzdkplayer.danmaku.getDanmakuXmlFromFile
+import org.mz.mzdkplayer.danmaku.toDanmakuItems
 import org.mz.mzdkplayer.data.model.DanmakuScreenRatio
 import org.mz.mzdkplayer.data.model.MediaHistoryRecord
 import org.mz.mzdkplayer.di.RepositoryProvider
@@ -93,22 +94,22 @@ import org.mz.mzdkplayer.player.core.MzIsoTitle
 import org.mz.mzdkplayer.player.core.autoLoadSameNameSubtitles
 import org.mz.mzdkplayer.player.exo.MzExoPlayer
 import org.mz.mzdkplayer.player.vlc.MzVlcPlayer
-import org.mz.mzdkplayer.tool.FtpDataSource
+import org.mz.mzdkplayer.data.datasource.FtpDataSource
 import org.mz.mzdkplayer.tool.FileTimeResolver
-import org.mz.mzdkplayer.tool.KeepScreenOnManager
-import org.mz.mzdkplayer.tool.PlayerMediaText
-import org.mz.mzdkplayer.tool.SmbDataSource
-import org.mz.mzdkplayer.tool.SmbUtils
-import org.mz.mzdkplayer.tool.SubtitleView
+import org.mz.mzdkplayer.common.KeepScreenOnManager
+import org.mz.mzdkplayer.tool.logic.PlayerMediaText
+import org.mz.mzdkplayer.data.datasource.SmbDataSource
+import org.mz.mzdkplayer.data.datasource.SmbUtils
+import org.mz.mzdkplayer.common.SubtitleView
 import org.mz.mzdkplayer.tool.Tools
-import org.mz.mzdkplayer.tool.findActivity
+import org.mz.mzdkplayer.common.findActivity
 import org.mz.mzdkplayer.tool.Tools.toSafeInt
 import org.mz.mzdkplayer.tool.Tools.toBase64
 import org.mz.mzdkplayer.data.repository.VideoPlaylistRepository
 import org.mz.mzdkplayer.data.model.VideoItem
 import androidx.navigation.NavHostController
-import org.mz.mzdkplayer.tool.WebDavDataSource
-import org.mz.mzdkplayer.tool.handleDPadKeyEvents
+import org.mz.mzdkplayer.data.datasource.WebDavDataSource
+import org.mz.mzdkplayer.common.handleDPadKeyEvents
 
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.common.VAErrorScreen
@@ -119,7 +120,7 @@ import org.mz.mzdkplayer.viewmodel.SettingsViewModel
 import org.mz.mzdkplayer.viewmodel.VideoPlayerStatus
 import org.mz.mzdkplayer.viewmodel.VideoPlayerViewModel
 import org.mz.mzdkplayer.ui.common.asDisplayString
-import org.mz.mzdkplayer.tool.viewModelWithFactory
+import org.mz.mzdkplayer.di.viewModelWithFactory
 import org.mz.mzdkplayer.ui.theme.myIconButtonColor
 import org.mz.mzdkplayer.ui.videoplayer.components.AkDanmakuPlayer
 import org.mz.mzdkplayer.ui.videoplayer.components.AudioTrackPanel
@@ -229,8 +230,6 @@ fun VideoPlayerScreen(
         PlayerMediaText.buildFileDateText(fileTimeMillis)
     }
 
-    // 状态：是否显示 Toast 提示
-    var showToast by remember { mutableStateOf(false) }
     // 状态：返回按钮按压状态，用于双击退出逻辑
     var backPressState by remember { mutableStateOf<BackPress>(BackPress.Idle) }
     // 状态：当前媒体播放位置
@@ -376,21 +375,9 @@ fun VideoPlayerScreen(
         }
     }
 
-    // 辅助方法：获取当前弹幕配置
-    fun getDanmakuConfig(): DanmakuConfig {
-        val currentSettings = settingsManager.loadSettings()
-        val screenPartValue =
-            DanmakuScreenRatio.fromDisplayName(currentSettings.selectedRatio).ratioValue
-
-        return videoPlayerViewModel.danmakuConfig.copy(
-            retainerPolicy = RETAINER_BILIBILI,
-            visibility = videoPlayerViewModel.danmakuVisibility,
-            screenPart = screenPartValue,
-            textSizeScale = currentSettings.fontSize.toFloat() / 100,
-            alpha = currentSettings.transparency.toFloat() / 100,
-            dataFilter = listOf(videoPlayerViewModel.createDanmakuTypeFilter(currentSettings.selectedTypes)) // 添加弹幕过滤器
-        )
-    }
+    // 辅助方法：获取当前弹幕配置（拼装逻辑与手机端共用 `danmakuConfigFor`）
+    fun getDanmakuConfig(): DanmakuConfig =
+        videoPlayerViewModel.danmakuConfigFor(settingsManager.loadSettings())
 
     // 在初始化时从本地加载弹幕设置，如果没有则使用默认值
     LaunchedEffect(Unit) {
@@ -482,28 +469,12 @@ fun VideoPlayerScreen(
     // 监听播放器状态变化来启动/暂停弹幕
     var hasSentDanmaku by remember { mutableStateOf(false) }
     LaunchedEffect(isDanmakuLoaded, danmakuDataList) {
+        val loadedDanmaku = danmakuDataList
         // 如果弹幕已加载且尚未发送给播放器
-        if (isDanmakuLoaded && !hasSentDanmaku && danmakuDataList != null) {
+        if (isDanmakuLoaded && !hasSentDanmaku && loadedDanmaku != null) {
             Log.d("danmakuData", "状态弹幕")
-            // 将 DanmakuData 转换为 DanmakuItemData
-            val danmakuItemDataList = danmakuDataList?.map { danmakuData ->
-                DanmakuItemData(
-                    danmakuId = if (danmakuData.rowId != 0L) danmakuData.rowId else (Math.random() * 100000000).toLong(), // 使用解析的ID或生成随机ID
-                    position = (danmakuData.time * 1000).toLong(), // 时间戳转换为毫秒
-                    content = danmakuData.content, // 弹幕内容
-                    mode = when (danmakuData.mode) { // 映射弹幕模式
-                        4 -> DanmakuItemData.DANMAKU_MODE_CENTER_TOP
-                        5 -> DanmakuItemData.DANMAKU_MODE_CENTER_BOTTOM
-                        else -> DanmakuItemData.DANMAKU_MODE_ROLLING
-                    },
-                    textSize = danmakuData.size, // 字体大小
-                    textColor = danmakuData.color, // 颜色
-                )
-            }
-            // 更新弹幕播放器的数据
-            if (danmakuItemDataList != null) {
-                mDanmakuPlayer.updateData(danmakuItemDataList)
-            }
+            // 解析结果 → 渲染数据的映射与手机端共用 `toDanmakuItems`，避免两端口径漂移
+            mDanmakuPlayer.updateData(loadedDanmaku.toDanmakuItems())
 
             hasSentDanmaku = true
             Log.i(
@@ -660,7 +631,7 @@ fun VideoPlayerScreen(
                                 popUpTo("VideoPlayer/{sourceUri}/{dataSourceType}/{fileName}/{connectionName}") { inclusive = true }
                             }
                         } else {
-                            showToast(context, "已是最后一个视频")
+                            showToast(context, context.getString(R.string.ui_label_last_video))
                         }
                     }
                 }
@@ -811,13 +782,6 @@ fun VideoPlayerScreen(
                 )
             }
         }
-        // 显示 "再按一次退出" Toast
-        if (showToast) {
-            val pressAgainText = stringResource(R.string.ui_label_press_again_to_exit)
-            showToast(context, pressAgainText)
-            showToast = false
-        }
-
         // 处理双击返回退出逻辑
         LaunchedEffect(key1 = backPressState) {
             if (backPressState == BackPress.InitialTouch) {
@@ -832,10 +796,12 @@ fun VideoPlayerScreen(
         BackHandler(backPressState == BackPress.Idle) {
             if (backPressState == BackPress.Idle && !videoPlayerState.controlsVisible) {
                 backPressState = BackPress.InitialTouch
-                showToast = true
+                // 提示必须在按键回调里发。原来写成「组合里的 if (showToast) 发提示 → 复位」，
+                // 属于组合期副作用：播放页每帧都在重组（进度 / 网速 / 弹幕），只要复位那一次写没落住，
+                // 之后每次重组都会重新 show 一遍，把 3 秒的自动消失计时一路重置 ——
+                // 表现就是提示有时正常消失、有时一直挂在画面上
+                showToast(context, context.getString(R.string.ui_label_press_again_to_exit))
             }
-
-
         }
         BackHandler(videoPlayerState.controlsVisible) {
             if (!videoPlayerViewModel.conFocus) {

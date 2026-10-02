@@ -25,10 +25,10 @@ import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 import androidx.core.net.toUri
 import okhttp3.Dns
-import org.mz.mzdkplayer.tool.FileBrowserLogic
+import org.mz.mzdkplayer.tool.logic.FileBrowserLogic
 import org.mz.mzdkplayer.tool.Tools
-import org.mz.mzdkplayer.tool.WebDavHttpClient
-import org.mz.mzdkplayer.tool.WebDavHttpClient.Companion.restrictedTrustOkHttpClient
+import org.mz.mzdkplayer.data.datasource.WebDavHttpClient
+import org.mz.mzdkplayer.data.datasource.WebDavHttpClient.Companion.restrictedTrustOkHttpClient
 import java.net.Inet4Address
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit

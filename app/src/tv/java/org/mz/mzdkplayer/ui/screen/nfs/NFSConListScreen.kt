@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import org.mz.mzdkplayer.tool.Tools.toBase64
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.ui.screen.common.ConListAccent
 import org.mz.mzdkplayer.ui.screen.common.ConOpPanel
 // --- 导入 NFS 相关的模型和 ViewModel ---
 import org.mz.mzdkplayer.ui.screen.common.ConnectionCard
@@ -95,9 +97,20 @@ fun NFSConListScreen(mainNavController: NavHostController, nfsListViewModel: NFS
         Column(
             modifier = Modifier
                 .padding()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color(0xFF141419), Color(0xFF0E0E12))
+                    )
+                )
         ) {
             // 标题
-            FCLMainTitle(mainNavController = mainNavController, stringResource(R.string.ui_label_nfs_file_sharing), "NFSConScreen")
+            FCLMainTitle(
+                mainNavController = mainNavController,
+                titleText = stringResource(R.string.ui_label_nfs_file_sharing),
+                addTargetRouter = "NFSConScreen",
+                protocolIconRes = R.drawable.svgnfs,
+                accentColor = ConListAccent.nfs
+            )
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -105,10 +118,15 @@ fun NFSConListScreen(mainNavController: NavHostController, nfsListViewModel: NFS
             ) {
                 if (connections.isEmpty()) {
                     // 空状态
-                    ConnectionListEmpty("NFS")
+                    ConnectionListEmpty(
+                        poolText = "NFS",
+                        protocolIconRes = R.drawable.svgnfs,
+                        accentColor = ConListAccent.nfs,
+                        onAddClick = { mainNavController.navigate("NFSConScreen") }
+                    )
                 } else {
                     // 连接列表标题
-                    ConnectionListTitle(connections.size)
+                    ConnectionListTitle(connections.size, ConListAccent.nfs)
                     // 连接卡片列表
                     LazyColumn(
                         state = listState,
@@ -191,7 +209,10 @@ fun NFSConListScreen(mainNavController: NavHostController, nfsListViewModel: NFS
                                 },
                                 isSelected = nfsListViewModel.selectedIndex.value == index && !isOPanelShow,
                                 isOPanelShow = isOPanelShow,
-                                selectedIndex = nfsListViewModel.selectedIndex.value
+                                selectedIndex = nfsListViewModel.selectedIndex.value,
+                                accentColor = ConListAccent.nfs,
+                                protocolIconRes = R.drawable.svgnfs,
+                                protocolLabel = "NFS"
                             )
                         }
                     }
@@ -220,9 +241,15 @@ fun NFSConListScreen(mainNavController: NavHostController, nfsListViewModel: NFS
                 showDeleteDialog = true
                 nfsListViewModel.closeOPanel()
             },
+            onClickForEdit = {
+                nfsListViewModel.closeOPanel()
+                mainNavController.navigate("NFSConScreen?connId=$selectedId")
+            },
             onClickForCancel = {
                 nfsListViewModel.closeOPanel()
-            })
+            },
+            accentColor = ConListAccent.nfs,
+            protocolLabel = "NFS")
         // 把弹窗挂载在最外层，保证它不会随着面板的消失而消失
         if (showDeleteDialog) {
             DeleteConfirmDialog(

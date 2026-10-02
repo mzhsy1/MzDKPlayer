@@ -5,6 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mz.mzdkplayer.data.local.MediaCacheEntity
 import java.util.Calendar
+import org.mz.mzdkplayer.tool.logic.PlayerMediaText
 
 /**
  * [PlayerMediaText] 的 JVM 单元测试。

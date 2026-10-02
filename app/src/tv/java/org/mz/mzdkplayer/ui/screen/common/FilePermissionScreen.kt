@@ -1,6 +1,6 @@
 package org.mz.mzdkplayer.ui.screen.common
 
-import org.mz.mzdkplayer.tool.MzToastManager
+import org.mz.mzdkplayer.common.MzToastManager
 import android.Manifest
 import android.content.Context
 import android.content.Intent

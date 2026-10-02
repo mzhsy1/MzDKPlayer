@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.ExoPlayer
 import org.mz.mzdkplayer.data.model.AudioItem
-import org.mz.mzdkplayer.tool.handleDPadKeyEvents
+import org.mz.mzdkplayer.common.handleDPadKeyEvents
 import org.mz.mzdkplayer.viewmodel.AudioPlayerViewModel
 
 @Composable

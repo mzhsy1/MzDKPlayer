@@ -8,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.nio.charset.Charset
+import org.mz.mzdkplayer.tool.metadata.Id3TagReader
 
 /**
  * 自研 ID3v2 读取器的用例。

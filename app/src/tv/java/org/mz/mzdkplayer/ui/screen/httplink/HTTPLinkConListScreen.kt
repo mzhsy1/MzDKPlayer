@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import org.mz.mzdkplayer.tool.Tools.toBase64
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.ui.screen.common.ConListAccent
 import org.mz.mzdkplayer.ui.screen.common.ConOpPanel
 // --- 导入 HTTP 相关的模型和 ViewModel ---
 import org.mz.mzdkplayer.ui.screen.common.ConnectionCard
@@ -103,9 +105,20 @@ fun HTTPLinkConListScreen(
         Column(
             modifier = Modifier
                 .padding()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color(0xFF141419), Color(0xFF0E0E12))
+                    )
+                )
         ) {
             // 标题
-            FCLMainTitle(mainNavController = mainNavController, stringResource(R.string.ui_label_nginx_file_sharing), "HTTPLinkConScreen")
+            FCLMainTitle(
+                mainNavController = mainNavController,
+                titleText = stringResource(R.string.ui_label_nginx_file_sharing),
+                addTargetRouter = "HTTPLinkConScreen",
+                protocolIconRes = R.drawable.svghttp,
+                accentColor = ConListAccent.http
+            )
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -113,10 +126,15 @@ fun HTTPLinkConListScreen(
             ) {
                 if (connections.isEmpty()) {
                     // 空状态
-                    ConnectionListEmpty("NGINX")
+                    ConnectionListEmpty(
+                        poolText = "NGINX",
+                        protocolIconRes = R.drawable.svghttp,
+                        accentColor = ConListAccent.http,
+                        onAddClick = { mainNavController.navigate("HTTPLinkConScreen") }
+                    )
                 } else {
                     // 连接列表标题
-                    ConnectionListTitle(connections.size)
+                    ConnectionListTitle(connections.size, ConListAccent.http)
                     // 链接卡片列表
                     LazyColumn(
                         state = listState,
@@ -201,23 +219,28 @@ fun HTTPLinkConListScreen(
                                 isSelected = httpLinkListViewModel.selectedIndex.value == index && !isOPanelShow,
                                 isOPanelShow = isOPanelShow,
                                 selectedIndex = httpLinkListViewModel.selectedIndex.value,
-
+                                accentColor = ConListAccent.http,
+                                protocolIconRes = R.drawable.svghttp,
+                                protocolLabel = "HTTP"
                                 )
                         }
                     }
                 }
             }
 
-            // 半透明背景遮罩层，当操作面板显示时出现
-            if (isOPanelShow) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(color = Color.Black.copy(alpha = 0.35f))
-                        .clickable(enabled = false) {} // 拦截背景点击
-                )
-            }
         }
+
+        // 半透明背景遮罩层，当操作面板显示时出现
+        // （挪到外层 Box：原来嵌在内容 Column 里，一屏只盖得住标题栏以下的区域）
+        if (isOPanelShow) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(color = Color.Black.copy(alpha = 0.35f))
+                    .clickable(enabled = false) {} // 拦截背景点击
+            )
+        }
+
         // 操作面板（右侧弹出）
         ConOpPanel(
             modifier = Modifier
@@ -230,9 +253,15 @@ fun HTTPLinkConListScreen(
                 Log.d("selectedId",selectedId)
                 httpLinkListViewModel.closeOPanel()
             },
+            onClickForEdit = {
+                httpLinkListViewModel.closeOPanel()
+                mainNavController.navigate("HTTPLinkConScreen?connId=$selectedId")
+            },
             onClickForCancel = {
                 httpLinkListViewModel.closeOPanel()
-            })
+            },
+            accentColor = ConListAccent.http,
+            protocolLabel = "HTTP")
 
         // 把弹窗挂载在最外层，保证它不会随着面板的消失而消失
         if (showDeleteDialog) {

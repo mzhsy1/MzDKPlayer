@@ -14,7 +14,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import org.mz.mzdkplayer.data.model.FileConnectionStatus
-import org.mz.mzdkplayer.tool.FileBrowserLogic
+import org.mz.mzdkplayer.tool.logic.FileBrowserLogic
 import java.io.IOException
 
 class HTTPLinkConViewModel : ViewModel() {

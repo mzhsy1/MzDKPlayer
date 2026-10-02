@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Locale
+import org.mz.mzdkplayer.tool.logic.SubtitleOffsetLogic
 
 /**
  * 字幕时间轴偏移的纯逻辑测试。

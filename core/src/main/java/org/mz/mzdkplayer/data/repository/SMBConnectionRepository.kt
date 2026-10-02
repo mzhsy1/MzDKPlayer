@@ -63,4 +63,29 @@ class SMBConnectionRepository(private val context: Context) {
     fun deleteConnection(id: String) {
         saveConnections(getConnections().filter { it.id != id })
     }
+
+    // 根据 ID 查找连接
+    fun getConnectionById(id: String): SMBConnection? {
+        return getConnections().find { it.id == id }
+    }
+
+    // 更新已存在的连接
+    fun updateConnection(connection: SMBConnection) {
+        val current = getConnections().toMutableList()
+        val safeConnection = SMBConnection(
+            id = connection.id,
+            name = connection.name ?: "未命名连接",
+            ip = connection.ip ?: "未知IP",
+            username = connection.username ?: "未知用户",
+            password = connection.password ?: "",
+            shareName = connection.shareName ?: "未知路径"
+        )
+        val index = current.indexOfFirst { it.id == safeConnection.id }
+        if (index >= 0) {
+            current[index] = safeConnection
+            saveConnections(current)
+        } else {
+            Log.w("SMBConnectionRepository", "尝试更新一个不存在的连接 ID: ${safeConnection.id}")
+        }
+    }
 }

@@ -14,7 +14,7 @@ import org.mz.mzdkplayer.data.repository.PlaybackPreferenceRepository
 import org.mz.mzdkplayer.data.repository.VideoPlaylistRepository
 import org.mz.mzdkplayer.data.repository.SettingsRepository
 import org.mz.mzdkplayer.di.RepositoryProvider
-import org.mz.mzdkplayer.tool.LanguageManager
+import org.mz.mzdkplayer.common.LanguageManager
 import java.io.File
 
 @UnstableApi

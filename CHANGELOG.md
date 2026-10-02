@@ -2,6 +2,188 @@
 
 ## [未发布]
 
+### 修复（电视端：播放页「再按一次退出」提示有时一直不消失）
+
+视频播放页（`VideoPlayerScreen`）与音频播放页（`AudioPlayerScreen`）的返回提示会偶发地挂在画面上收不掉，电视端 `MzToast` 又没有「手动关闭」入口，只能等它自己走。两个成因都修掉了。
+
+- **提示原本是在「组合期」发出的**：写法是 `if (showToast) { showToast(context, 文案); showToast = false }` —— 组合期副作用，`showToast()` 不是幂等的。播放页每帧都在重组（进度 / 网速 / 弹幕 / 字幕），只要复位那一次状态写没落住（组合被丢弃时写会被一并丢弃），之后每次重组都会重新 `show` 一遍；而 `MzToastState.show()` 内部是「取消上一个倒计时任务 + 重新起一个」，于是 3 秒的自动消失计时被一路重置 —— 表现为提示有时正常消失、有时一直挂着。现在改成在 `BackHandler` 的按键回调里发提示（用 `context.getString` 取文案），并按此删掉 `showToast` 这个只为副作用存在的状态
+- **`MzToastState` 在作用域死亡时会卡住**：倒计时任务跑在 `MzDKPlayerAPP` 的 `rememberCoroutineScope()` 上，`MainActivity` 没有配 `android:configChanges`（任何配置变化都会重建 Activity），作用域一旦被取消，那个「等 3 秒把 `isVisible` 置 false」的协程就再也不会回来，`isVisible` 永远停在 true，新界面一进来就顶着一个消不掉的提示框。现在：① 作用域已取消时直接不弹（弹了就没人负责收）；② 倒计时的 `finally` 里兜底把自己收掉，并用一个自增 token 保证「被新提示顶掉的旧提示」不会在收尾时把新提示一起抹掉
+- 新增 `core/src/test/java/org/mz/mzdkplayer/common/MzToastStateTest.kt`（5 例）：正常弹出、倒计时自动收、作用域已死时不弹、显示期间作用域被取消要收掉、新提示顶掉旧提示不被误杀。`:core` JVM 单测合计 **25 类 438 例**
+- 电视模拟器实测：播放页按一次返回，提示出现在画面上；3 秒后自行消失，播放与字幕不受影响（改前该场景下提示会一直停在画面上）
+
+### 变更（电视端：各协议连接列表界面美化）
+
+五个协议连接列表页（`FTP` / `SMB` / `NFS` / `WebDav` / `HTTPLinkConListScreen`）连同它们共用的 `ui/screen/common/FileConListCompent.kt` 一起重做视觉。改动只在 `app/src/tv` 与四套 `strings.xml`，手机端与 `:core` 一行未动。
+
+- **协议强调色**：新增 `ConListAccent`（SMB 天蓝 / FTP 橙 / NFS 绿 / WebDAV 紫 / HTTP 蓝）。五个协议原来共用一套灰蓝配色（图标底 `#37474F`、状态点绿色），切协议时界面长得一模一样，只有标题文字不同。强调色用在标题栏图标底、标题栏底部的渐变分隔线、列表标题左侧竖条、卡片图标底与聚焦描边 / 光晕
+- **卡片会翻色了**：`myCardColor()` 的聚焦底色是米白、按下底色是深灰，而卡片里详情标签的文字色（`#B0B0B0`）与图标色是写死的浅色 → 聚焦后是白底白字，地址 / 共享目录几乎看不清。现在由 `interactionSource` 的聚焦与按下状态统一决定「深底浅字 / 浅底深字」两套配色
+- **卡片**：圆角 16dp + 1dp 描边，聚焦换成 2dp 协议色描边 + 协议色光晕（原来无描边、聚焦只轻微放大）；图标底 50 → 56dp 并套上协议色；标题右侧新增协议徽标（`SMB` / `FTP` / `NFS` / `WebDAV` / `HTTP`）；详情之间补竖分隔线；高度 110 → 112dp
+- **标题栏**：底色从纯 `#1E1E1E` 改为纵向渐变（`#202027 → #16161B`）并加一条协议色渐变分隔线；图标从「所有协议都用 `storage24dp`」改为各协议自己的图标，图标底是一格协议色。新增 `protocolIconRes` / `accentColor` 两个可选参数，默认值保持旧观感，本地文件页（`LocalFileTypeScreen`）不受影响
+- **列表标题**：左侧加协议色竖条；右侧加一行遥控器提示「按「确定」打开 · 按「菜单」操作」—— 菜单键开操作面板这件事此前界面上没有任何提示
+- **空态**：大图标 + 文案层级重做，并新增可聚焦的「添加连接」按钮（`ConnectionListEmpty` 新增 `onAddClick`）。列表为空时 LazyColumn 里没有可聚焦项，焦点只能靠方向键一路够到右上角；空态自带入口省掉这一步
+- **操作面板**：圆角 18dp、面板内加分隔线、标题左侧协议色竖条 + 协议名、右侧滑入 / 滑出动画；三个条目补图标（删除 / 信息 / 关闭）。顺手修掉一个老问题：「编辑信息」的文字色写死暖白，而聚焦底色是米白 → 白底白字，聚焦到哪一项都看不见，现在按聚焦状态翻色
+- **HTTP 页遮罩层位置修正**：遮罩层原本嵌在内容 `Column` 里，只能盖住标题栏以下的区域，现在提到最外层 `Box`，与其余四个页面一致
+- **背景**：五页从纯 `#121212` 改为 `#141419 → #0E0E12` 纵向渐变；NFS 页此前根本没有背景色，一直浮在透明底上
+- 新增文案 `ui_label_con_list_remote_hint`、`ui_label_press_back_to_close`，中 / 英 / 日 / 繁四套齐全
+
+### 变更（电视端：输入框重做与各协议连接表单界面）
+
+`androidx.tv.material3` 至今没有 TextField，项目里一直是自己拼的 `TvTextField`。这一轮把它按 tv-material3 的设计口径重做，并让五个协议表单页（`*ConScreen`）统一到「状态胶囊 + 表单卡片」的结构。改动全在 `app/src/tv`，手机端与 `:core` 一行未动。
+
+**`TvTextField`（`ui/screen/common/Custom.kt`）**
+
+- **焦点只由输入框自己持有**：外层从可聚焦的 `ClickableSurface` 换成不可聚焦的 `Surface`。旧实现外层本身是个焦点目标，于是「聚焦外框 → 按确定键 → 才进输入」要按两次，而且外层边框的高亮与内层输入框的焦点是两套状态，经常对不上
+- 聚焦态：描边换成主题色并从 1dp 动画到 2dp、整体 1.02 倍缩放、底色提亮一档；未聚焦是低调的深灰底
+- 新增参数：`label`（常驻字段名，输入后不消失）、`leadingIcon`、`isPassword`（密码掩码）、`isError`（红框红字）、`enabled`、`keyboardOptions`
+- placeholder 与输入文字改成同层同缩进，修掉旧版 placeholder 缩进 15dp、输入文字却是 15dp + 上下 16dp 的错位
+- **按键不再全吞**：只接管上下键（移动焦点）与返回键，其余一律放行。旧实现在所有按键上都返回 `true`，连外接键盘的字符键都会被吃掉
+- 字号走 tv-material3 的 `bodyLarge` 兜底，调用方传来的 `textStyle` 依然优先（`merge`），不再把颜色硬编码成白色
+- 删掉 `colors: ClickableSurfaceColors` 参数（它只用于旧外层的配色）——13 个文件、26 处调用点同步更新；`myTTFColor()` / `myTTFBorder()` 因此不再有调用者（文件保留未删）
+
+**新增 `ui/screen/common/ConFormCompent.kt`**
+
+- `ConnectionStatusPill`：色点 + 状态文字的状态胶囊，底色取状态色的 16% 透明度
+- `ConnectionFormCard`：把一组输入框收进一张卡片，标题贴在卡片内顶部
+- `connectionStatusColor(status)`：连接状态 → 指示色。五个表单页原本各抄了一份同样的 `when`，改口径要改五处
+
+**五个协议表单页**
+
+- 状态行从「一行粗体文字 + 一颗悬空色点」改成状态胶囊 —— 旧写法里状态色只体现在那颗点上，得读文字才知道是「连接中」还是「已连接」
+- 输入框收进表单卡片，字段名用 `label` 常驻，字段与按钮有了分组边界
+- 密码框改为掩码显示
+- 左栏留白 16 → 24dp、字段间距 8 → 16dp；SMB 页三个按钮宽度统一（原先用 `fillMaxWidth(1f)`）
+- **左栏加 `verticalScroll`**：TV 模拟器（1920×1080 @320dpi = 960×540dp）上跑出来才发现，加高后的表单会把底部三个按钮整个挤出屏幕，且 Column 不可滚动。真机 1080p @ xhdpi 同样是 960×540dp，一样会踩到
+- 操作面板的三条文案（`连接操作` / `删除连接` / `取消`）从硬编码中文改成 `stringResource`：英文界面下原来会「Connection Actions 里的 Delete Connection 与 Edit Information 是英文、标题和取消是中文」混着显示。新增文案 `ui_label_connection_operation`，四套语言文件齐全
+- **聚焦色改为白色**：描边与字段名原本取 `MaterialTheme.colorScheme.primary`，在电视深色底上偏紫；现在统一纯白（1.02 倍缩放与提亮底色保留）。错误态仍是红色
+- **整体压紧一档**（960×540dp 上一屏放得下，不必再滚动，`verticalScroll` 只作兜底）：表单字段的垂直内边距 12 → 7dp、字段名与正文间距 4 → 2dp、表单卡片内边距 16 → 12dp 且字段间距 12 → 7dp、状态胶囊内边距 14/8 → 12/6dp、左栏留白 24 → 16dp 且块间距 16 → 8dp
+- `TvTextField` 新增 `compact` 参数，默认值取 `label != null` —— **紧凑尺寸只作用于带字段名的表单字段**。各文件列表页与搜索页的搜索框没有 label，因此维持 16dp 的宽松高度（与重做前的观感一致）；否则这一轮的表单紧凑口径会把全 App 的输入框一起带矮
+- SMB 与 WebDAV 的「测试连接 / 保存连接」由竖排两个全宽按钮改为**并排一行**（`weight(1f)` ×2），与 FTP / NFS / HTTP 三个页面原有布局对齐 —— 一个页面少占一行高度
+
+### 新增（电视端：各协议连接列表的编辑功能）
+
+五种协议（SMB / FTP / NFS / HTTP / WebDAV）连接列表的操作面板里，「编辑信息」此前只是个 `TODO`，现在能用了。改动只在 `app/src/tv` 与 `:core` 的连接存储层，手机端一行未动。
+
+- **入口与流程**：卡片上按菜单键（或长按卡片）弹出操作面板 →「编辑信息」→ 跳到该协议原本的连接表单页（`*ConScreen`），字段按已有连接回填（含密码，与新增时一样明文显示）→ 改完点「保存连接」，保存成功后自动返回列表页，列表即时刷新
+- **路由**：五个 `*ConScreen` 的注册从固定字符串改为可选参数 `?connId={connId}`（默认空串即新增模式），因此标题栏「添加连接」原有的 `navigate("SMBConScreen")` 一跳不用改；编辑走 `navigate("SMBConScreen?connId=$selectedId")`
+- **保存前置条件**：编辑模式下只有「连接信息」（地址 / 端口 / 共享目录 / 账号 / 密码）真的变了才要求先「测试连接」成功；只改别名可直接保存 —— 否则改个名字也得重连一次。新增模式保持原样：必须先连上
+- **`:core` 补齐更新能力**：`SMBConnectionRepository` 新增 `getConnectionById` / `updateConnection`，`SMBListViewModel` 与 `FTPListViewModel` 补同名方法（NFS / HTTP / WebDAV 的仓库与 ViewModel 本就已有，未动）。更新是**按 id 原地替换**并沿用仓库既有的空值兜底，因此不走 `hasDuplicateConnection`（新连接带着原 id，做重复校验只会命中它自己）
+- `ConOpPanel` 新增 `onClickForEdit` 参数（原先这个字符串是写死的 TODO），「编辑信息」文案改走已有的 `ui_label_edit_information`，四个语言文件里本来就有
+
+### 变更（手机端视频播放页交互修正）
+
+真机回归第九阶段改动时顺手修掉的三个体验问题，只动手机端 UI（`app/src/phone`），`:`core`` 一行未改：
+
+- **移除画面正中的播放 / 暂停按钮**：它与底部那一个完全重复，还浮在画面正中挡住内容。现在中央只留白（`Spacer`），点击会落到手势层，于是「点画面任意处收起控制栏」不受影响
+- **长按倍速给出提示**：新增 `PhoneLongPressSpeedOverlay`，长按画面期间在中央浮出「2.0x 快进中」（档位取设置里的长按倍速，走现成的 `PhoneSettingsLogic.formatLongPressSpeed`），松手立刻收起 —— 2x 只靠「画面变快」根本看不出来
+- **底部新增全屏按钮**：手机端播放页本身已经是沉浸全屏（无状态栏），但竖屏下 16:9 画面只占中间一条，所以这个按钮做的是**转屏**而不是隐藏系统栏 —— 点一下转横屏（`SENSOR_LANDSCAPE`，允许左右翻转），再点回到竖屏（`PORTRAIT`），离开播放页时把方向还给系统（`UNSPECIFIED`）。`PhoneMainActivity` 已带 `configChanges="orientation|screenSize|..."`，转屏不重建 Activity，播放不会被从头加载，Compose 状态也不会丢
+- **竖屏改成 B 站式布局**：未全屏时画面只占顶部一块（`statusBarsPadding` 避开挖孔、高度按视频比例），下方是 `PhonePlayerVideoInfo` 信息区（海报 / 年份 / 评分 / 类型 / 连接与文件日期 / 可折叠简介）；全屏（横屏）时画面区恢复整屏、信息区不显示。所有播放器图层（画面 / 手势 / 字幕 / 弹幕 / 控制栏 / 提示条）都收进「画面区」这一个 `Box`，于是**在信息区上下滑不会再被当成调亮度 / 音量**；画面区还 `consumeWindowInsets(navigationBars)`，否则控制栏会白抬一条导航栏的高度、贴不到画面下沿
+- **竖屏的控制栏精简成一行**：未全屏时只留「播放暂停 · 时间 · 全屏」，进度条与上一首 / 下一首 / 快退 / 快进只在横屏出现 —— 竖屏画面区只有约 245dp 高，原来那套（顶部栏 + 提示条 + 进度条 + 时间 + 六个按钮）几乎把画面盖满。双击左右 1/3 快进 / 快退的手势不受影响，那是手势层的事
+- 信息区的配色写死不跟随主题（`Color(0xFF121214)` 一整套）：播放页是沉浸式黑底，浅色主题下若用 `MaterialTheme.colorScheme` 会变成浅底深字，与上面的画面直接撕裂
+- 新增的图标 `Fullscreen` / `FullscreenExit` 按 Material 官方 24dp 路径补进 `PhoneIcons`（`material-icons-core` 里没有，为一个按钮拖进 `material-icons-extended` 不划算）；新增文案补齐了中 / 英 / 日 / 繁四套
+
+### 变更（第九阶段：协议层单元测试，第一层）
+
+本阶段只做「把纯逻辑从协议 IO 里抽出来 + 加测试」，不引入任何新测试依赖（没有 mockito / robolectric），也不改任何行为。
+
+- 新增 `tool/logic/StreamSizePolicy`：`sampleMimeType` → 读取策略（音频 / 视频 / 图片放开，其余限 5MB）。这段判断原本在 `SmbUtils` 的五个 `openXxxFileInputStream` 里各抄了一份（五个方法共 20 行 if-else），现在五处都委托到这里。`UNLIMITED_RAW`（图片）之所以单独一项，是为了如实记录「FTP / HTTP 里图片是提前 return 原始流、不套关闭包装」这个历史差异，真要统一只需删掉这一项
+- 新增 `tool/logic/ProtocolUriParser`：SMB 路径拆分（共享名 / 共享内路径）与 FTP 默认端口。前者原本内联在 `openSmbFileInputStream` 里，只有连上真服务器才会执行到，写错的表现是**拿着错误的 share 去连接**，而报错只有一句 `Failed to open SMB file`
+- `SmbUtils.openNfsFileInputStream` 与 `NFSDataSource` 的 NFS 路径拆分改用已有的 `SidecarPathLogic.splitNfsRaw`，与 `getDanmakuNfsUri` 收敛到同一份实现
+- 新增三个测试类共 36 例：`StreamSizePolicyTest`、`ProtocolUriParserTest`、`LimitedInputStreamTest`。`LimitedInputStreamTest` 顺带钉住两处与 `InputStream` 契约的既有偏差：`read(b, off, 0)` 返回 `-1` 而不是 `0`（断在测试里是为了「改口径时必须被看见」，不是认可这个行为）
+- JVM 单元测试合计 **24 类 433 例**
+
+### 已知缺口（第九阶段记录）
+
+- **协议 IO 本身仍未覆盖**：`SmbUtils` 的五个 `openXxxFileInputStream` 与 `FTPDataSource` / `SMBDataSource` / `NFSDataSource` / `WebDavDataSource` 都要连上真服务器才跑得起来，且都被 `android.net.Uri` / `SharedPreferences` 挡住，纯 JVM 测试跑不了。下一层要么引 `MockWebServer`（HTTP / WebDAV）与 `ftpserver-core`（FTP 起本地回环），要么先给 `SMBClient` 之类的硬编码 `new` 做依赖注入再 mock
+- `userInfo` → 账号密码的解析在项目里**至少 9 处**各自实现（`FileTimeParse.credentials`、`SmbUtils` 三处、`FtpDataSource`、`SubtitleScanner`、`LocalProxyServer`、`FileTimeResolver`、`WebDavDataSource`），口径互不相同 —— `FileTimeParse` 保留含冒号的密码（`a:b:c` → `a` / `b:c`），`SmbUtils` 丢掉第三段，`FtpDataSource` 只认恰好两段。收敛它必然改变某个协议的行为，故本轮未动
+
+### 新增（第八阶段：手机端设置页与手机特色设置）
+
+手机端设置从第一阶段那三组（外观 / 刮削 / 版本）补齐到**与电视端同一口径**，并加了一批**只有手机才有**的设置项；设置页本身也从「一页铺到底」改成手机通用的两层结构。
+
+- **设置页改成「首页 + 二级分类」**：首页只有「外观」（主题 / 动态取色，手机上改得最勤，多一层跳转纯属添堵）与七个分类入口，点进去是独立一页（播放 / 音频 / 字幕 / 界面与首页 / 刮削与媒体库 / 工具与权限 / 关于软件），分类页里底部标签栏收起、返回箭头回到设置首页。路由是 `phone/settings/{category}`，与作为标签页的 `phone/settings` 按路径段数区分
+- **补齐电视端已有的设置**（两端写的是同一份 `SettingsRepository`，所以永远是同一个值）：
+  - 播放：默认播放内核（Exo / VLC）、ISO 蓝光播放行为、全局画面比例、锁定视频比例、播放完成动作、快进 / 快退时长、记住播放偏好
+  - 音频：音频首选语言、音频直通、Exo 音频解码模式
+  - 字幕：字幕首选语言、字幕时间轴、字号、字体颜色、背景颜色、距底部位置、强制 PGS 居中、自动加载同名字幕、第三方字体
+  - 刮削与媒体库：「进目录自动刮」总开关、六个来源开关、优先加载本地 NFO、TMDB 搜索 / 详情语言、TMDB API 地址、批量扫描递归层级、移除 WebDAV 列表首项
+  - 工具与权限：存储权限状态与跳转、清理影视资料库、清理音乐资料库、清空播放历史（三项都带二次确认）
+  - 关于软件：版本、作者、官方网站、GitHub、Gitee、版权与免责声明（点开用系统浏览器）
+- **手机特色设置（都是真的生效，不是摆设）**：
+  - **左右半屏上下滑调亮度 / 音量**：左半边亮度、右半边音量，两个开关可分别关掉；滑动时中央给一个「亮度 60%」的小提示，松手 900ms 后消失
+  - **长按画面临时倍速**（2x / 3x 可选）：按住时切到所选倍速，松手还原；**不会**改动浮层里那个「整段视频倍速」的值，所以长按前后倍速显示是一致的
+  - **控制栏自动隐藏时长**可调（3 / 5 / 8 / 10 秒）：第七阶段这个值是写死的 5 秒，默认值仍然是 5 秒，老用户观感不变
+  - **首页三个区块可分别关掉**（最近观看 / 最近添加 / 最近访问）：全部关掉时首页只剩文件与设置两张快捷卡，不会再弹「还没有内容」的引导卡（那是给真的没有数据的人看的）
+- **交互按手机重做**：枚举型设置（内核、语言、画面比例、完成动作、解码模式、背景色……）改成底部弹出的单选列表，电视端那套「确定键循环切换」在手机上要按五六次才能选中最后一个；数值型设置用 ± 按钮，步进按「手指点得动」来定（快进时长 5 秒、字号 2sp、底距 10dp、字幕时间轴 0.5 秒）；TMDB 地址用系统输入法输入 + 「测试连接」并当场显示结果，保存时自动补结尾的 `/`（Retrofit 的 `baseUrl` 要求）
+- **第三方字幕字体改用系统文件选择器（SAF）**：挑中的文件会**复制进应用私有目录**再存绝对路径 —— 播放页的 `Font(File)` 只认真实文件路径，而 `content://` 的读取授权出了本次会话就失效；同时提供「恢复默认字体」
+
+### 优化
+
+- 设置值 → 界面文案的映射（`formatLang` / `parseBgColorName` / `formatSubFontName` / `formatAppLang` / `formatAudioDecodeMode` / `formatRecursiveScanLevel` / `formatTmdbLang` / `formatIsoPlaybackMode`）从 tv 源集搬到 main 的 `ui/common/SettingValueText.kt`：手机端设置页要用同一批文案，两端各写一份迟早会漂移（与第七阶段搬 `SettingOptionText.kt` 同一个理由）
+- `:core` 新增手机端设置的纯逻辑 `PhoneSettingsLogic`：档位收敛（控制栏隐藏秒数、长按倍速 —— 手改 prefs 或历史脏数据落到档位之外时回退默认）与上下滑百分比换算（按屏幕高度折算，结果收敛在 0..100；用四舍五入而非截断，否则浮点误差会把 50−30 算成 19）。补 12 个 JVM 用例，单测合计 **21 类 / 395 例**
+- `SettingsRepository` 新增 8 个手机端键（左滑调亮度、右滑调音量、长按倍速开关与倍速值、控制栏隐藏秒数、首页三个区块），默认值都等于第七阶段的既有行为
+- 手机端设置页去掉「其余设置项将在后续阶段迁移到手机端」的占位文案
+
+### 已知缺口（第八阶段记录）
+
+- **App 语言仍未开放给手机端**：电视端那套走 `LanguageManager` → `AppCompatDelegate.setApplicationLocales`，而手机端入口 `PhoneMainActivity` 是 `ComponentActivity`（不是 `AppCompatActivity`），在 Android 13 以下不会生效。要么把入口换成 AppCompat 并改用 AppCompat 主题（影响面较大），要么沿用系统设置里的「按应用设置语言」，留给后续阶段
+- **视频隧道模式（`setting_tunneling`）没有搬到手机端**：它是给 HDMI 直通 / 大屏 Exo 播放器用的，手机上开着只可能出问题，没有收益
+- 电视端的「遥控器上下键功能」与「隐藏详情页」不搬：手机没有遥控器；手机端的详情页也只在用户主动点「媒体信息」时才打开，不存在「点一下会不会先去详情页」这个问题
+
+### 新增（第七阶段：手机端视频播放页）
+
+手机端视频播放页从「只验证能不能播」补齐到**功能与电视端一致**：同一个 `IMzPlayer` 内核、同一套业务层能力，只把 UI 布局与操作逻辑按触屏重做。
+
+- **播放内核与电视端同一口径**：TS / M2TS / MTS / M2T / ISO 强制走 VLC（Exo 处理不了传输流与蓝光原盘），其余按设置里的默认内核；`KeepScreenOnManager`（引用计数式常亮）、播放偏好记忆（音轨 / 字幕轨 / 倍速 / 比例）都直接复用电视端那套
+- **画面与字幕**：视频层 + 自定义字幕层（共用 `:core` 的 `SubtitleView`，支持自定义字号 / 颜色 / 字体文件 / 底部距离 / PGS 居中，可一键显示或隐藏）+ 弹幕层
+- **弹幕**：进页面读同目录同名 `.xml` 自动加载，设置面板里可调开关、显示区域（1/2～1/12 / 全屏）、按类型过滤（滚动 / 底部 / 顶部 / 彩色）、字号与透明度，改完当场生效并写回本地；配置拼装与推送走 `:core` 里与电视端共用的实现
+- **轨道与字幕**：视频轨（清晰度 / 码率 / 编码）、音轨（语言 / 码率 / 声道 / 格式 / 采样率）、字幕轨（内嵌 / 外挂标记、关闭字幕）、VLC 下的 ISO 标题；「加载外部字幕」按同名 `.ass/.srt/.ssa/.vtt` 四个候选批量加
+- **其余面板**：字幕时间轴偏移（±0.5 秒步进，与「设置 → 字幕设置」共用一个值）、播放倍速（音频直通时提示不可改）、画面比例 + 锁定全局比例、播放列表、播放完成动作（循环 / 暂停 / 播放下一个）
+- **播放进度落盘**：播放中每 10 秒 + 退出播放页时各写一次 `media_history`（`mediaType = VIDEO`，带上连接名），首页「最近观看」对视频不再是空的；进入时若上次看到 5 秒以上，先跳到那个位置并给一条「您上次看到 xx:xx，点击此处从头播放」
+- **触屏交互**（电视端那套 KeyEvent + 焦点体系在手机上不成立，全部重做）：
+  - 单击画面显隐控制栏，播放中 5 秒无操作自动收起（暂停时不收起）；
+  - 进度条换成可拖动的 `Slider`（电视端是左右键累计 + 落定回调），拖拽时时间跟着手指走；
+  - 双击屏幕左右各 1/3 快退 / 快进，中央给一个 700ms 的箭头提示（中间 1/3 不响应，避免误触跳进度）；
+  - 所有面板收进底部弹出的 `ModalBottomSheet`，子面板的返回键回到根面板（对应电视端的抽屉层级）；
+  - 全屏沉浸：进页面隐藏状态栏与导航栏（从边缘滑动可临时唤出），退出时还给系统；
+  - 返回键交给导航默认行为 —— 电视端「按两次退出」是为了防遥控器误触，手机不需要。
+- 手机端六个来源的目录浏览页在点视频时会把「同目录的视频」写进 `VideoPlaylistRepository`（与音频播放列表、图片序列同一口径），播放页据此显示播放列表、上一集 / 下一集与「播放下一个」
+- 播放路由补上 `connectionName`，并把 `title` 参数改成**原始文件名**（此前有的入口塞的是刮削后的展示标题，写进播放历史会变成片名）；展示标题统一由播放页按 `media_cache` 拼
+
+### 优化
+
+- `:core` 新增手机端播放页的纯逻辑 `PhonePlayerLogic`（强制 VLC 判定、连播下标、快进快退收敛、进度换算、继续播放阈值、倍速档位），补 11 个 JVM 用例；单测合计 **20 类 / 383 例**
+- 弹幕那一段「设置 → 渲染器配置」下沉到 `:core` 的 `danmaku/DanmakuRendering.kt`（`danmakuConfigFor` / `pushDanmakuConfig` / `toDanmakuItems`）：电视端播放页与弹幕面板、手机端播放页与弹幕面板现在共用同一份拼装、推送与 XML 映射，避免两头各写一遍后「手机上改字号没反应」这类漂移
+- `SettingOptionText.kt`（画面比例与播放完成动作的文案）从 tv 源集移到 `main`：手机端播放页的面板复用同一批字串，不再各写一份
+- 手机端播放页的自定义字幕样式、弹幕加载、网速统计都收在播放页自己身上，不额外引入 ViewModel；弹幕 XML 的读取放到 IO 线程（电视端是在主线程直接开流）
+
+### 修复
+
+- **手机端播放页现在会写 `media_history`**，修掉第六阶段记录的那个缺口（首页「最近观看」对视频恒为空）
+- 手机端路由的空值占位符 `~` 此前从未生效：它是**先被 Base64 编码**再和 `~` 比较的，所以解出来仍是 `~`，本机文件的连接名会一路带着 `~` 写进 `media_cache` 与播放历史；现在先解码再比，空连接名还原成空串
+- 电视端几处硬编码中文改用多语言字串：播放列表 / 无内容 / 已是最后一个视频 / 「音频直通模式下不可更改倍速」
+
+### 已知缺口（第七阶段记录）
+
+- 手机端「设置」页仍是第一阶段那几项，**没有**内核选择（Exo / VLC）、音频直通、字幕外观等条目；因此手机端只有在遇到 TS / ISO 这类强制格式时才会用上 VLC。这些设置项与「设置页迁移」一起留给后续阶段。
+
+### 变更（工程结构，第六阶段：代码整理）
+
+本阶段只做「搬家与合并」，不改任何行为（编译通过 + 372 个单元测试全绿）。
+
+- **`:core` 的 `tool/` 按职责拆包**（41 个文件，只改包名与 import）：
+  - `data/datasource/`：四种协议的 `DataSource` + `WebDavHttpClient` + `SmbUtils` + `IOTools` —— 协议 IO 不再和纯逻辑混在一个目录
+  - `tool/logic/`：`FileBrowserLogic`、`SidecarPathLogic`、`SubtitleMatchLogic`、`SubtitleOffsetLogic`、`PlaybackPreferenceLogic`、`FileTimeParse`、`PlayerMediaText` 与手机端的四个 `Phone*Logic` —— 都是「只依赖 JDK、可单测」的纯逻辑
+  - `tool/metadata/`：音频/视频元数据与文件名解析（`AudioFileInfo`、`Id3TagReader`、`LrcParser`、`MediaInfoExtractorFormFileName`、`NfoReader` 等）
+  - `tool/server/`：内置 NanoHTTPD 那几个服务（本地代理、手机扫码遥控）
+  - `common/`（新包）：原先混在工具包里的 UI / 平台工具（Compose 的 `Modifier` 扩展、自定义字幕 View、封面色提取、Toast、屏幕常亮、应用语言）；`viewModelWithFactory` 归入 `di/`
+  - `player/exo/PlayerMediaSources.kt`：原 `player/core/BuilderMzPlayer.kt`（内容是「按协议选数据源工厂 + 推同名字幕 + 规范化播放地址」，与 ExoPlayer 强相关），归入 Exo 包并清掉一批误导性的未使用 import
+- **手机端浏览页抽公共骨架**：新增 `ui/phone/component/PhoneBrowserPage.kt`，六个来源（本机 / SMB / FTP / NFS / WebDAV / HTTP）的目录浏览现在都只写「差异声明 + 一个加载实现 + 条目映射」，重复的加载流程、状态机、失败重试、刮削会话与渲染全部共用；SMB 的「本地网络权限」与 本机的「所有文件访问」仍各有自己的引导按钮
+- 手机端 UI 组件收拢到 `ui/phone/component/`：统一了「加载中 / 空 / 失败 / 缺权限」四套提示块（此前每个页面各写一遍）、海报缩略图；共享模型（`PhoneBrowserEntry` / `PhoneBrowserState` / `PhoneFileProtocol`）独立到 `ui/phone/model/`
+- **`PhoneApp.kt` 从 617 行拆成四个文件**：`PhoneApp.kt`（主题 / 系统栏 / 底部标签栏）、`PhoneViewModels.kt`（16 个 ViewModel 的装配）、`PhoneNavGraph.kt`（导航图与路由参数解码）、`PhoneScrapeSources.kt`（「哪个来源参与刮削」的映射口径）。行为不变：ViewModel 仍全部挂在 Activity 作用域，路由与参数编码规则一字未改
+- 手机端几处纯逻辑（SMB 上一级目录、HTTP 起始目录 URL、歌词伴生文件判定、发布日期取年份）下沉到 `:core` 并补了 6 个单元测试，单测合计 **19 类 / 372 例**；UI 里的媒体类型判定改为直接复用 `PhoneMediaLogic`，消掉了两套并行口径
+- 清掉一批确认无人引用的死代码：`:core` 的 `FileMediaInfo.kt`（`setupPlayer` / `builderPlayer` 全库无调用）、`SmbMediaInfoExtractor.kt`、整文件早已被注释掉的 `ReadFlacHeader.kt`，以及 `MzTrackModels` 里没人使用的 `MzTrackType`；电视端删掉无人引用的 `AudioPlayerMainFrame` / `AudioPlayerMediaTitle` / `AudioPlayerOverlay` 三个组件，与从未被调用的 `MzDKPlayerTheme`（连带只服务于它的 `Type.kt` 与 `Color.kt` 里 6 个 Material 示例色）
+- 记录（本次整理未改动行为）：手机端视频播放页不写 `media_history`，因此首页「最近观看」对视频恒为空 —— 音频播放页是写的，代码里已留 TODO 说明接法
+
 ### 变更（工程结构，第二阶段：tv / phone 彻底分离）
 - **新增 `:core` module**：`danmaku / data / di / player / tool / viewmodel` 全部下沉为共享业务层，里面**不含任何设计系统依赖**（既没有 `androidx.tv.material3` 也没有 `androidx.compose.material3`），也**没有 android 资源目录**。`:app` 只剩「壳 + 两套 UI」
 - **`:app` 加 product flavor `tv` / `phone`**：源码分别在 `app/src/tv/`、`app/src/phone/`，清单（Activity / banner / theme）与资源各自独立；依赖按 variant 解析，因此**电视端回到 compose `1.12.1`**（不再是 1.13.0-alpha01），手机端才是 `material3 1.5.0-alpha29 + compose 1.13.0-alpha01`

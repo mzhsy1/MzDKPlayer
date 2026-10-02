@@ -39,7 +39,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.mz.mzdkplayer.viewmodel.SettingsViewModel
-import org.mz.mzdkplayer.player.core.selectedDataSourceFactory
+import org.mz.mzdkplayer.player.exo.selectedDataSourceFactory
 
 import org.mz.mzdkplayer.player.core.IMzPlayer
 import org.mz.mzdkplayer.player.core.MzAspectRatio
@@ -48,13 +48,13 @@ import org.mz.mzdkplayer.player.core.MzIsoTitle
 import org.mz.mzdkplayer.player.core.MzVideoTrack
 import org.mz.mzdkplayer.data.repository.PlaybackPreferenceRepository
 import org.mz.mzdkplayer.data.repository.SettingsRepository
-import org.mz.mzdkplayer.tool.FtpDataSource
-import org.mz.mzdkplayer.tool.PlaybackPreference
-import org.mz.mzdkplayer.tool.PlaybackPreferenceLogic
-import org.mz.mzdkplayer.tool.PlaybackTrackRef
-import org.mz.mzdkplayer.tool.SmbDataSource
-import org.mz.mzdkplayer.tool.SubtitleOffsetLogic
-import org.mz.mzdkplayer.tool.WebDavDataSource
+import org.mz.mzdkplayer.data.datasource.FtpDataSource
+import org.mz.mzdkplayer.tool.logic.PlaybackPreference
+import org.mz.mzdkplayer.tool.logic.PlaybackPreferenceLogic
+import org.mz.mzdkplayer.tool.logic.PlaybackTrackRef
+import org.mz.mzdkplayer.data.datasource.SmbDataSource
+import org.mz.mzdkplayer.tool.logic.SubtitleOffsetLogic
+import org.mz.mzdkplayer.data.datasource.WebDavDataSource
 import org.mz.mzdkplayer.viewmodel.VideoPlayerStatus
 import androidx.core.net.toUri
 

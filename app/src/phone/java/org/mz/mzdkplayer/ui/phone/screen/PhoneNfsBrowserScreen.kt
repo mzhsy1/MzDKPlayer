@@ -1,32 +1,32 @@
 package org.mz.mzdkplayer.ui.phone.screen
 
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.emc.ecs.nfsclient.nfs.io.Nfs3File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.model.FileConnectionStatus
 import org.mz.mzdkplayer.data.model.NFSConnection
-import org.mz.mzdkplayer.tool.FileBrowserLogic
-import org.mz.mzdkplayer.tool.PhoneFileBrowserLogic
-import org.mz.mzdkplayer.tool.PhoneMediaLogic
+import org.mz.mzdkplayer.tool.logic.FileBrowserLogic
+import org.mz.mzdkplayer.tool.logic.PhoneFileBrowserLogic
+import org.mz.mzdkplayer.tool.logic.PhoneMediaLogic
+import org.mz.mzdkplayer.ui.phone.component.PhoneBrowserPage
+import org.mz.mzdkplayer.ui.phone.component.PhoneBrowserSpec
+import org.mz.mzdkplayer.ui.phone.model.PhoneBrowserEntry
+import org.mz.mzdkplayer.ui.phone.model.PhoneBrowserState
+import org.mz.mzdkplayer.ui.phone.model.isPlayableMediaFileName
+import org.mz.mzdkplayer.ui.phone.model.sortedForBrowser
 import org.mz.mzdkplayer.viewmodel.MediaMetaViewModel
 import org.mz.mzdkplayer.viewmodel.MovieViewModel
 import org.mz.mzdkplayer.viewmodel.NFSConViewModel
 import org.mz.mzdkplayer.viewmodel.NFSListViewModel
+import org.mz.mzdkplayer.ui.phone.model.PhoneFileProtocol
 
 /** 连接 / 列目录等待上限（NFS 走 RPC，超时统一放宽到 30 秒） */
 private const val NFS_LOAD_TIMEOUT_MS = 30_000L
@@ -52,7 +52,7 @@ fun PhoneNfsBrowserScreen(
     autoScrape: Boolean,
     onBack: () -> Unit,
     onOpenDirectory: (String) -> Unit,
-    onPlayVideo: (sourceUri: String, name: String) -> Unit,
+    onPlayVideo: (sourceUri: String, name: String, connectionName: String) -> Unit,
     onOpenMedia: (PhoneMediaLogic.MediaOpen) -> Unit,
     onOpenDetail: (sourceUri: String, fileName: String, connectionName: String) -> Unit,
 ) {
@@ -61,110 +61,85 @@ fun PhoneNfsBrowserScreen(
         connections.firstOrNull { it.id == connectionId }
     }
 
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    var retryToken by remember { mutableIntStateOf(0) }
-    var uiState by remember(path) { mutableStateOf<PhoneBrowserState>(PhoneBrowserState.Loading) }
-
     val loadFailedText = stringResource(R.string.phone_files_load_failed)
-    val unsupportedText = stringResource(R.string.phone_player_unsupported)
+    // NFS 路径一律绝对路径；路由里 "" 表示挂载根
+    val requested = path.trim().ifEmpty { "/" }
+        .let { if (it.startsWith("/")) it.trimEnd('/') else "/$it" }
+        .ifEmpty { "/" }
 
-    LaunchedEffect(connection, path, retryToken) {
-        uiState = PhoneBrowserState.Loading
+    PhoneBrowserPage(
+        spec = PhoneBrowserSpec(
+            dataSourceType = PhoneFileProtocol.NFS.routeValue,
+            title = connection?.name?.takeIf { it.isNotBlank() }
+                ?: connection?.serverAddress.orEmpty(),
+            connectionName = connection?.name.orEmpty(),
+            subtitleOf = { it.ifEmpty { "/" } },
+            // 挂载根（"" 或 "/"）返回 ""，表示没有上一级
+            parentPathOf = { FileBrowserLogic.nfsParentPath(it) },
+            showParentOf = { _, parentPath -> parentPath.isNotEmpty() },
+            directoryTargetOf = { entry, loadedPath ->
+                FileBrowserLogic.nfsChildPath(loadedPath, entry.name)
+            },
+        ),
+        connectionKey = connection,
+        requestPath = path,
+        movieViewModel = movieViewModel,
+        mediaMetaViewModel = mediaMetaViewModel,
+        autoScrape = autoScrape,
+        onBack = onBack,
+        onOpenDirectory = onOpenDirectory,
+        onPlayVideo = onPlayVideo,
+        onOpenMedia = onOpenMedia,
+        onOpenDetail = onOpenDetail,
+        load = { loadNfsDirectory(connection, requested, nfsConViewModel, loadFailedText) },
+    )
+}
 
-        val target = connection
-        val server = target?.serverAddress.orEmpty()
-        if (target == null || server.isBlank()) {
-            uiState = PhoneBrowserState.Failed(loadFailedText)
-            return@LaunchedEffect
-        }
+/** 必要时先连上，再列 [requested] 目录；两种失败都收成 `Failed` 返回给骨架 */
+private suspend fun loadNfsDirectory(
+    connection: NFSConnection?,
+    requested: String,
+    viewModel: NFSConViewModel,
+    loadFailedText: String,
+): PhoneBrowserState {
+    val server = connection?.serverAddress.orEmpty()
+    if (connection == null || server.isBlank()) return PhoneBrowserState.Failed(loadFailedText)
 
-        // NFS 路径一律绝对路径；路由里 "" 表示挂载根
-        val requested = path.trim().ifEmpty { "/" }.let { if (it.startsWith("/")) it.trimEnd('/') else "/$it" }
-            .ifEmpty { "/" }
-
-        if (!nfsConViewModel.isConnected()) {
-            nfsConViewModel.connectToNFS(target, isTest = false)
-            val connected = withTimeoutOrNull(NFS_LOAD_TIMEOUT_MS) {
-                nfsConViewModel.connectionStatus.first {
-                    it is FileConnectionStatus.Connected || it is FileConnectionStatus.Error
-                }
+    if (!viewModel.isConnected()) {
+        viewModel.connectToNFS(connection, isTest = false)
+        val connected = withTimeoutOrNull(NFS_LOAD_TIMEOUT_MS) {
+            viewModel.connectionStatus.first {
+                it is FileConnectionStatus.Connected || it is FileConnectionStatus.Error
             }
-            if (connected !is FileConnectionStatus.Connected) {
-                uiState = PhoneBrowserState.Failed(
-                    (connected as? FileConnectionStatus.Error)?.message ?: loadFailedText
-                )
-                return@LaunchedEffect
-            }
         }
-
-        nfsConViewModel.listFiles(requested)
-        val listed = withTimeoutOrNull(NFS_LOAD_TIMEOUT_MS) {
-            nfsConViewModel.connectionStatus.first {
-                it is FileConnectionStatus.FilesLoaded || it is FileConnectionStatus.Error
-            }
-        }
-
-        uiState = when (listed) {
-            is FileConnectionStatus.FilesLoaded -> PhoneBrowserState.Ready(
-                path = requested,
-                // isDirectory / length 会走 RPC 且会抛 IOException，放到 IO 线程并逐个兜底
-                entries = withContext(Dispatchers.IO) {
-                    nfsConViewModel.fileList.value
-                        .mapNotNull { file -> runCatching { file.toBrowserEntry(target, requested) }.getOrNull() }
-                        .sortedForBrowser()
-                },
+        if (connected !is FileConnectionStatus.Connected) {
+            return PhoneBrowserState.Failed(
+                (connected as? FileConnectionStatus.Error)?.message ?: loadFailedText
             )
-
-            is FileConnectionStatus.Error -> PhoneBrowserState.Failed(listed.message)
-            else -> PhoneBrowserState.Failed(loadFailedText)
         }
     }
 
-    val ready = uiState as? PhoneBrowserState.Ready
-    val loadedPath = ready?.path.orEmpty()
-    val entries = ready?.entries.orEmpty()
-    // 挂载根（"" 或 "/"）返回 ""，表示没有上一级
-    val parentPath = FileBrowserLogic.nfsParentPath(loadedPath)
+    viewModel.listFiles(requested)
+    val listed = withTimeoutOrNull(NFS_LOAD_TIMEOUT_MS) {
+        viewModel.connectionStatus.first {
+            it is FileConnectionStatus.FilesLoaded || it is FileConnectionStatus.Error
+        }
+    }
 
-    val scrape = rememberPhoneScrapeUi(
-        movieViewModel = movieViewModel,
-        mediaMetaViewModel = mediaMetaViewModel,
-        dataSourceType = PhoneFileProtocol.NFS.routeValue,
-        connectionName = connection?.name.orEmpty(),
-        autoScrape = autoScrape,
-        entries = entries,
-        snackbarHostState = snackbarHostState,
-    )
+    return when (listed) {
+        is FileConnectionStatus.FilesLoaded -> PhoneBrowserState.Ready(
+            path = requested,
+            // isDirectory / length 会走 RPC 且会抛 IOException，放到 IO 线程并逐个兜底
+            entries = withContext(Dispatchers.IO) {
+                viewModel.fileList.value
+                    .mapNotNull { file -> runCatching { file.toBrowserEntry(connection, requested) }.getOrNull() }
+                    .sortedForBrowser()
+            },
+        )
 
-    PhoneBrowserScaffold(
-        title = connection?.name?.takeIf { it.isNotBlank() }
-            ?: connection?.serverAddress.orEmpty(),
-        subtitle = loadedPath.ifEmpty { "/" },
-        snackbarHostState = snackbarHostState,
-        onBack = onBack,
-        state = uiState,
-        showParent = parentPath.isNotEmpty(),
-        onOpenParent = { onOpenDirectory(parentPath) },
-        onRetry = { retryToken++ },
-        onOpenEntry = { entry ->
-            dispatchEntryClick(
-                entry = entry,
-                siblings = entries,
-                dataSourceType = PhoneFileProtocol.NFS.routeValue,
-                connectionName = connection?.name.orEmpty(),
-                directoryTarget = FileBrowserLogic.nfsChildPath(loadedPath, entry.name),
-                onOpenDirectory = onOpenDirectory,
-                onPlayVideo = onPlayVideo,
-                onOpenMedia = onOpenMedia,
-                onUnsupported = { scope.launch { snackbarHostState.showSnackbar(unsupportedText) } },
-            )
-        },
-        scrape = scrape,
-        onOpenDetailEntry = { entry ->
-            entry.playbackUri?.let { onOpenDetail(it, entry.name, connection?.name.orEmpty()) }
-        },
-    )
+        is FileConnectionStatus.Error -> PhoneBrowserState.Failed(listed.message)
+        else -> PhoneBrowserState.Failed(loadFailedText)
+    }
 }
 
 private fun Nfs3File.toBrowserEntry(

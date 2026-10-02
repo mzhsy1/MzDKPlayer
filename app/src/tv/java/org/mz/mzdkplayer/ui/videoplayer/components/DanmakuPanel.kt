@@ -1,7 +1,6 @@
 package org.mz.mzdkplayer.ui.videoplayer.components
 
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,13 +53,15 @@ import androidx.tv.material3.Switch
 import androidx.tv.material3.SwitchDefaults
 import androidx.tv.material3.Text
 
-import com.kuaishou.akdanmaku.ext.RETAINER_BILIBILI
 import com.kuaishou.akdanmaku.ui.DanmakuPlayer
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.model.DanmakuScreenRatio
 
 import org.mz.mzdkplayer.data.repository.DanmakuSettingsManager
+import org.mz.mzdkplayer.data.model.DanmakuSettings
 import org.mz.mzdkplayer.data.model.DanmakuType
+import org.mz.mzdkplayer.danmaku.danmakuConfigFor
+import org.mz.mzdkplayer.danmaku.pushDanmakuConfig
 import org.mz.mzdkplayer.viewmodel.VideoPlayerViewModel
 
 // 公共圆形按钮组件
@@ -317,36 +318,22 @@ fun DanmakuPanel(
         focusRequester.requestFocus()
     }
 
-    // 处理配置更新，对selectedRatio变化添加延迟以确保生效
+    // 面板里这几个开关就是「内存里的那一份设置」，拼装与推送走两端共用的实现
+    // （`danmakuConfigFor` / `pushDanmakuConfig`），手机端弹幕面板用的是同一份。
     LaunchedEffect(isSwitch, selectedRatio, fontSize, transparency, selectedTypes, updateTrigger) {
-        // 从枚举获取比例值
-        val screenPartValue = DanmakuScreenRatio.fromDisplayName(selectedRatio).ratioValue
-
-        videoPlayerViewModel.danmakuConfig = videoPlayerViewModel.danmakuConfig.copy(
-            retainerPolicy = RETAINER_BILIBILI,
-            visibility = isSwitch,
-            screenPart = screenPartValue,
-            textSizeScale = fontSize.toFloat() / 100,
-            alpha = transparency.toFloat() / 100,
-            dataFilter = listOf(videoPlayerViewModel.createDanmakuTypeFilter(selectedTypes)) // 添加弹幕过滤器
+        val settings = DanmakuSettings(
+            isSwitchEnabled = isSwitch,
+            selectedRatio = selectedRatio,
+            fontSize = fontSize,
+            transparency = transparency,
+            selectedTypes = selectedTypes,
         )
-
-        Log.d("DanmakuPanel", "Updating config: visibility=$isSwitch, screenPart=$screenPartValue, fontSize=$fontSize, transparency=$transparency, selectedRatio=$selectedRatio, updateTrigger=$updateTrigger")
-        videoPlayerViewModel.danmakuConfig.updateFilter()
-        // 先更新配置
-        danmakuPlayer.updateConfig(videoPlayerViewModel.danmakuConfig)
-
-        // 强制更新过滤器以立即生效
-
-        videoPlayerViewModel.danmakuConfig.updateVisibility()
-        //danmakuPlayer.seekTo(exoPlayer.currentPosition)
+        videoPlayerViewModel.danmakuConfig =
+            videoPlayerViewModel.danmakuConfigFor(settings, visibility = isSwitch)
         videoPlayerViewModel.danmakuVisibility = isSwitch
         // 关键修复：当screenPart变化时，需要更新layoutGeneration和retainerGeneration来触发重新布局和排布
-        if (previousScreenPart != screenPartValue) {
-            videoPlayerViewModel.danmakuConfig.updateLayout()
-            videoPlayerViewModel.danmakuConfig.updateRetainer()
-            previousScreenPart = screenPartValue
-        }
+        previousScreenPart =
+            danmakuPlayer.pushDanmakuConfig(videoPlayerViewModel.danmakuConfig, previousScreenPart)
     }
 
     // 当selectedRatio变化时，滚动到对应项

@@ -20,7 +20,7 @@ import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.model.AudioInfo
-import org.mz.mzdkplayer.tool.parseLrc
+import org.mz.mzdkplayer.tool.metadata.parseLrc
 import org.mz.mzdkplayer.viewmodel.AudioPlayerViewModel
 import java.util.Locale
 import kotlin.time.Duration

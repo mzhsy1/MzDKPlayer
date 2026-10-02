@@ -10,8 +10,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.data.repository.SettingsRepository
-import org.mz.mzdkplayer.tool.LanguageManager
-import org.mz.mzdkplayer.tool.SubtitleOffsetLogic
+import org.mz.mzdkplayer.common.LanguageManager
+import org.mz.mzdkplayer.tool.logic.PhoneSettingsLogic
+import org.mz.mzdkplayer.tool.logic.SubtitleOffsetLogic
 
 // 简单的数据类用于 UI 状态
 data class SettingsUiState(
@@ -58,7 +59,23 @@ data class SettingsUiState(
     val tmdbResultLang: String = "",
     val removeWebDavFirstItem: Boolean = false,
     /** 手机端：打开目录时是否自动刮削（默认关；电视端没有这个开关） */
-    val phoneAutoScrape: Boolean = false
+    val phoneAutoScrape: Boolean = false,
+    /** 手机端播放页：左侧上下滑调亮度 */
+    val phoneGestureBrightness: Boolean = true,
+    /** 手机端播放页：右侧上下滑调音量 */
+    val phoneGestureVolume: Boolean = true,
+    /** 手机端播放页：长按画面切到长按倍速 */
+    val phoneLongPressSpeed: Boolean = true,
+    /** 手机端播放页：长按倍速的档位（2x / 3x） */
+    val phoneLongPressSpeedValue: Float = 2f,
+    /** 手机端播放页：控制栏自动隐藏的秒数（3/5/8/10） */
+    val phoneControlsHideSeconds: Int = 5,
+    /** 手机端首页：是否显示「最近观看」 */
+    val phoneHomeRecentlyWatched: Boolean = true,
+    /** 手机端首页：是否显示「最近添加」 */
+    val phoneHomeRecentlyAdded: Boolean = true,
+    /** 手机端首页：是否显示「最近访问」 */
+    val phoneHomeRecentlyVisited: Boolean = true
 )
 
 class SettingsViewModel : ViewModel() {
@@ -111,7 +128,15 @@ class SettingsViewModel : ViewModel() {
                 tmdbSearchLang = repo.tmdbSearchLang,
                 tmdbResultLang = repo.tmdbResultLang,
                 removeWebDavFirstItem = repo.removeWebDavFirstItem,
-                phoneAutoScrape = repo.phoneAutoScrape
+                phoneAutoScrape = repo.phoneAutoScrape,
+                phoneGestureBrightness = repo.phoneGestureBrightness,
+                phoneGestureVolume = repo.phoneGestureVolume,
+                phoneLongPressSpeed = repo.phoneLongPressSpeed,
+                phoneLongPressSpeedValue = repo.phoneLongPressSpeedValue,
+                phoneControlsHideSeconds = repo.phoneControlsHideSeconds,
+                phoneHomeRecentlyWatched = repo.phoneHomeRecentlyWatched,
+                phoneHomeRecentlyAdded = repo.phoneHomeRecentlyAdded,
+                phoneHomeRecentlyVisited = repo.phoneHomeRecentlyVisited
             )
         }
     }
@@ -174,6 +199,50 @@ class SettingsViewModel : ViewModel() {
     /** 手机端：打开目录时是否自动刮削（与 [toggleSource] 的「来源开关」是两件事） */
     fun togglePhoneAutoScrape(v: Boolean) {
         repo.phoneAutoScrape = v
+        refreshState()
+    }
+
+    // ---- 手机端播放页手势与首页区块（第八阶段）----
+
+    fun togglePhoneGestureBrightness(v: Boolean) {
+        repo.phoneGestureBrightness = v
+        refreshState()
+    }
+
+    fun togglePhoneGestureVolume(v: Boolean) {
+        repo.phoneGestureVolume = v
+        refreshState()
+    }
+
+    fun togglePhoneLongPressSpeed(v: Boolean) {
+        repo.phoneLongPressSpeed = v
+        refreshState()
+    }
+
+    /** 长按倍速档位：只接受 `PhoneSettingsLogic.LONG_PRESS_SPEED_OPTIONS` 里的值 */
+    fun setPhoneLongPressSpeedValue(v: Float) {
+        repo.phoneLongPressSpeedValue = PhoneSettingsLogic.normalizeLongPressSpeed(v)
+        refreshState()
+    }
+
+    /** 控制栏自动隐藏秒数：只接受 `PhoneSettingsLogic.CONTROLS_HIDE_OPTIONS` 里的值 */
+    fun setPhoneControlsHideSeconds(v: Int) {
+        repo.phoneControlsHideSeconds = PhoneSettingsLogic.normalizeControlsHideSeconds(v)
+        refreshState()
+    }
+
+    fun togglePhoneHomeRecentlyWatched(v: Boolean) {
+        repo.phoneHomeRecentlyWatched = v
+        refreshState()
+    }
+
+    fun togglePhoneHomeRecentlyAdded(v: Boolean) {
+        repo.phoneHomeRecentlyAdded = v
+        refreshState()
+    }
+
+    fun togglePhoneHomeRecentlyVisited(v: Boolean) {
+        repo.phoneHomeRecentlyVisited = v
         refreshState()
     }
 

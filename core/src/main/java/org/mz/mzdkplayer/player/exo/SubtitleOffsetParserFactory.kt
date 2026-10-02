@@ -7,7 +7,7 @@ import androidx.media3.common.util.Consumer
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.extractor.text.CuesWithTiming
 import androidx.media3.extractor.text.SubtitleParser
-import org.mz.mzdkplayer.tool.SubtitleOffsetLogic
+import org.mz.mzdkplayer.tool.logic.SubtitleOffsetLogic
 
 /**
  * 给字幕整体加时间偏移的 [SubtitleParser.Factory] 包装。

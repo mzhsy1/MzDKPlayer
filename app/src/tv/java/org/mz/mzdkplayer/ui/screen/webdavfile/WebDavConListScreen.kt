@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import org.mz.mzdkplayer.tool.Tools.toBase64
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.ui.screen.common.ConListAccent
 import org.mz.mzdkplayer.ui.screen.common.ConOpPanel
 import org.mz.mzdkplayer.ui.screen.common.ConnectionCard
 import org.mz.mzdkplayer.ui.screen.common.ConnectionCardInfo
@@ -92,9 +94,20 @@ fun WebDavConListScreen(
         Column(
             modifier = Modifier
                 .padding()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color(0xFF141419), Color(0xFF0E0E12))
+                    )
+                )
         ) {
             // 标题
-            FCLMainTitle(mainNavController = mainNavController, stringResource(R.string.ui_label_webdav_file_sharing), "WebDavConScreen")
+            FCLMainTitle(
+                mainNavController = mainNavController,
+                titleText = stringResource(R.string.ui_label_webdav_file_sharing),
+                addTargetRouter = "WebDavConScreen",
+                protocolIconRes = R.drawable.svgwebdavsvg,
+                accentColor = ConListAccent.webDav
+            )
             // ====== 内容区域m ======
             Column(
                 modifier = Modifier
@@ -103,10 +116,15 @@ fun WebDavConListScreen(
             ) {
                 if (connections.isEmpty()) {
                     // 空状态
-                    ConnectionListEmpty("WebDav")
+                    ConnectionListEmpty(
+                        poolText = "WebDav",
+                        protocolIconRes = R.drawable.svgwebdavsvg,
+                        accentColor = ConListAccent.webDav,
+                        onAddClick = { mainNavController.navigate("WebDavConScreen") }
+                    )
                 } else {
                     // 连接列表标题
-                    ConnectionListTitle(connections.size)
+                    ConnectionListTitle(connections.size, ConListAccent.webDav)
                     // 连接卡片列表
                     LazyColumn(
                         state = listState,
@@ -196,6 +214,9 @@ fun WebDavConListScreen(
                                 isSelected = webDavListViewModel.selectedIndex.value == index && !isOPanelShow,
                                 isOPanelShow = isOPanelShow,
                                 selectedIndex = webDavListViewModel.selectedIndex.value,
+                                accentColor = ConListAccent.webDav,
+                                protocolIconRes = R.drawable.svgwebdavsvg,
+                                protocolLabel = "WebDAV"
                             )
                         }
                     }
@@ -223,9 +244,15 @@ fun WebDavConListScreen(
                 showDeleteDialog = true
                 webDavListViewModel.closeOPanel()
             },
+            onClickForEdit = {
+                webDavListViewModel.closeOPanel()
+                mainNavController.navigate("WebDavConScreen?connId=$selectedId")
+            },
             onClickForCancel = {
                 webDavListViewModel.closeOPanel()
-            })
+            },
+            accentColor = ConListAccent.webDav,
+            protocolLabel = "WebDAV")
 
         // 把弹窗挂载在最外层，保证它不会随着面板的消失而消失
         if (showDeleteDialog) {

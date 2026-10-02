@@ -18,6 +18,8 @@ import org.apache.commons.net.ftp.FTPClient
 import org.apache.commons.net.ftp.FTPReply
 import java.util.concurrent.TimeUnit
 import androidx.core.net.toUri
+import org.mz.mzdkplayer.tool.logic.FileBrowserLogic
+import org.mz.mzdkplayer.tool.logic.SubtitleMatchLogic
 
 /**
  * 同名字幕扫描器：根据视频 URI 扫描其所在目录，找出与视频同名的字幕文件。

@@ -137,11 +137,14 @@
     <string name="ui_label_saved_connections">已儲存的連線 %1$d 個</string>
     <string name="ui_label_no_pool_connections">暫無 %1$s 連線</string>
     <string name="ui_label_add_first_pool_connection">點擊右上角按鈕添加您的第一個 %1$s 連線</string>
+    <string name="ui_label_con_list_remote_hint">按「確定」開啟 · 按「選單」操作</string>
+    <string name="ui_label_press_back_to_close">按「返回」關閉面板</string>
     <string name="ui_label_server">伺服器</string>
     <string name="ui_label_shared_directory">共享目錄</string>
     <string name="ui_label_username">使用者名稱</string>
     <string name="ui_label_connection_operations">連線操作</string>
     <string name="ui_label_delete_connection">刪除連線</string>
+    <string name="ui_label_connection_operation">連接操作</string>
     <string name="ui_label_edit_information">編輯資訊</string>
     <string name="ui_label_cancel">取消</string>
     <string name="ui_label_none">無</string>
@@ -498,9 +501,48 @@
     <string name="phone_setting_auto_scrape_sub">預設關閉。開啟後，進入含影片的目錄會自動連網取得海報與簡介；也可以隨時點目錄右上角按鈕手動刮削。</string>
     <string name="phone_setting_scrape_sources">刮削來源</string>
     <string name="phone_setting_scrape_sources_sub">關閉的來源不參與自動刮削（仍可手動刮削）</string>
-    <string name="phone_setting_about">關於</string>
     <string name="phone_setting_version">版本</string>
-    <string name="phone_setting_more_coming">其餘設定項目將於後續階段移植到手機版。</string>
+    <string name="phone_settings_section_more">更多設定</string>
+    <string name="phone_settings_cat_interface">介面與首頁</string>
+    <!-- 設定分組標題 -->
+    <string name="phone_settings_group_playback_core">播放核心與格式</string>
+    <string name="phone_settings_group_display">畫面</string>
+    <string name="phone_settings_group_behavior">播放行為</string>
+    <string name="phone_settings_group_gesture">觸控手勢</string>
+    <string name="phone_settings_group_home">首頁顯示</string>
+    <!-- 手機版特色：觸控手勢 -->
+    <string name="phone_setting_gesture_brightness">左側上下滑動調整亮度</string>
+    <string name="phone_setting_gesture_volume">右側上下滑動調整音量</string>
+    <string name="phone_gesture_brightness">亮度</string>
+    <string name="phone_gesture_volume">音量</string>
+    <string name="phone_setting_long_press_speed">長按畫面倍速播放</string>
+    <string name="phone_setting_long_press_speed_sub">長按螢幕時暫時切到所選倍速，放開後恢復；雙擊快進／快退仍在畫面左右兩側生效</string>
+    <string name="phone_setting_long_press_speed_value">長按時的倍速</string>
+    <string name="phone_setting_controls_hide_delay">控制列自動隱藏</string>
+    <string name="phone_setting_controls_hide_delay_sub">播放中無操作後自動收起控制列（暫停時不收起）</string>
+    <string name="phone_setting_seconds_format">%1$d 秒</string>
+    <!-- 手機版特色：首頁區塊 -->
+    <string name="phone_setting_home_recently_watched">顯示「最近觀看」</string>
+    <string name="phone_setting_home_recently_added">顯示「最近新增」</string>
+    <string name="phone_setting_home_recently_visited">顯示「最近瀏覽」</string>
+    <string name="phone_setting_home_sections_sub">關閉後首頁不再顯示對應區塊；檔案與設定入口不受影響</string>
+    <!-- 手機版特色：工具 -->
+    <string name="phone_setting_clear_history">清空播放記錄</string>
+    <string name="phone_setting_clear_history_confirm">確定要清空全部播放記錄與播放進度嗎？此操作無法復原。</string>
+    <string name="phone_action_clear">清空</string>
+    <string name="phone_action_save">儲存</string>
+    <!-- 手機版特色：第三方字幕字型（系統檔案選擇器） -->
+    <string name="phone_setting_sub_font_pick">選擇字型檔案</string>
+    <string name="phone_setting_sub_font_reset">恢復預設字型</string>
+    <string name="phone_setting_sub_font_failed">無法讀取所選檔案，請換一個字型檔案</string>
+    <!-- 手機版特色：TMDB 位址（輸入法 + 測試連線） -->
+    <string name="phone_setting_tmdb_official">官方位址</string>
+    <string name="phone_setting_tmdb_url_hint">https://api.themoviedb.org/3/</string>
+    <string name="phone_setting_tmdb_test">測試連線</string>
+    <string name="phone_setting_tmdb_testing">正在測試…</string>
+    <string name="phone_setting_tmdb_test_ok">連線成功</string>
+    <string name="phone_setting_tmdb_test_failed">連線失敗：%1$s</string>
+    <string name="phone_setting_tmdb_reset">恢復官方位址</string>
     <string name="phone_files_empty_title">還沒有 %1$s 連線</string>
     <string name="phone_files_empty_sub">點右上角「+」新增一個連線後即可瀏覽檔案</string>
     <string name="phone_files_add_connection_title">新增 %1$s 連線</string>
@@ -569,4 +611,19 @@
     <string name="phone_audio_unknown_title">未知標題</string>
     <string name="phone_audio_unknown_artist">未知演出者</string>
     <string name="phone_image_counter">%1$d / %2$d</string>
+
+    <!-- 第七階段：影片播放頁，電視端與手機端共用 -->
+    <string name="ui_label_playlist">播放清單</string>
+    <string name="ui_label_last_video">已是最後一部影片</string>
+    <string name="ui_label_speed_passthrough_locked">音訊直通模式下無法變更播放速度</string>
+
+    <!-- 第七階段：手機端影片播放頁 -->
+    <string name="phone_player_play_pause">播放 / 暫停</string>
+    <string name="phone_player_long_press_speed">%1$s 快轉中</string>
+    <string name="phone_player_fullscreen">全螢幕</string>
+    <string name="phone_player_exit_fullscreen">結束全螢幕</string>
+    <string name="phone_player_rewind">倒轉 %1$d 秒</string>
+    <string name="phone_player_forward">快轉 %1$d 秒</string>
+    <string name="phone_player_previous_video">上一部影片</string>
+    <string name="phone_player_next_video">下一部影片</string>
 </resources>

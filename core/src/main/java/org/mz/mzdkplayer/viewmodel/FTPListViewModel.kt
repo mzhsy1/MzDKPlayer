@@ -66,6 +66,22 @@ class FTPListViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
+     * 更新一个已存在的 FTP 连接
+     * @param connection 更新后的连接对象 (必须包含有效的 ID)
+     */
+    fun updateConnection(connection: FTPConnection) {
+        repository.updateConnection(connection)
+        loadConnections()
+    }
+
+    /**
+     * 根据 ID 查找连接
+     */
+    fun getConnectionById(id: String): FTPConnection? {
+        return repository.getConnectionById(id)
+    }
+
+    /**
      * 根据 ID 删除一个 FTP 连接
      * @param id 要删除的连接的 ID
      */

@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.mz.mzdkplayer.tool.logic.SubtitleMatchLogic
 
 /**
  * [SubtitleMatchLogic] 的 JVM 单元测试 —— 即「哪些文件算视频的同名字幕」这条规则。

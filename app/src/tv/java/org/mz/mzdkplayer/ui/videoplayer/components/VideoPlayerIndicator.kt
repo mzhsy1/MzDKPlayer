@@ -40,8 +40,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import kotlinx.coroutines.delay
-import org.mz.mzdkplayer.tool.handleDPadKeyEvents
-import org.mz.mzdkplayer.tool.ifElse
+import org.mz.mzdkplayer.common.handleDPadKeyEvents
+import org.mz.mzdkplayer.common.ifElse
 
 @Composable
 fun RowScope.VideoPlayerControllerIndicator(

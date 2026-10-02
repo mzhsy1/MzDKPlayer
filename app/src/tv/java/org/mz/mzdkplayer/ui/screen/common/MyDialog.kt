@@ -1,6 +1,6 @@
 package org.mz.mzdkplayer.ui.screen.common
 
-import org.mz.mzdkplayer.tool.MzToastManager
+import org.mz.mzdkplayer.common.MzToastManager
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box

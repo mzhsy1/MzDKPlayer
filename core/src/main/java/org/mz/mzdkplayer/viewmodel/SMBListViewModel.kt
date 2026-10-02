@@ -51,6 +51,21 @@ class SMBListViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
+     * update
+     */
+    fun updateConnection(connection: SMBConnection) {
+        repository.updateConnection(connection)
+        loadConnections()
+    }
+
+    /**
+     * 根据 ID 查找连接（编辑时用于回填表单）
+     */
+    fun getConnectionById(id: String): SMBConnection? {
+        return repository.getConnectionById(id)
+    }
+
+    /**
      * delete
      */
     fun deleteConnection(id: String) {

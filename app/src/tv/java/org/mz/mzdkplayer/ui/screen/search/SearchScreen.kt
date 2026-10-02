@@ -3,7 +3,7 @@ package org.mz.mzdkplayer.ui.screen.search
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import org.mz.mzdkplayer.di.RepositoryProvider.createSearchViewModel
-import org.mz.mzdkplayer.tool.viewModelWithFactory
+import org.mz.mzdkplayer.di.viewModelWithFactory
 import org.mz.mzdkplayer.viewmodel.SearchViewModel
 
 
@@ -44,7 +44,6 @@ import org.mz.mzdkplayer.ui.screen.common.MediaCard
 import org.mz.mzdkplayer.ui.screen.common.MyIconButton
 import org.mz.mzdkplayer.ui.screen.common.TvTextField
 import org.mz.mzdkplayer.ui.screen.library.EpisodeSelectionDialog // 假设你已将其提取或放在同一包下
-import org.mz.mzdkplayer.ui.theme.myTTFColor
 import org.mz.mzdkplayer.tool.Tools.toBase64
 import java.net.URLEncoder
 
@@ -84,7 +83,6 @@ fun SearchScreen(
                 onValueChange = { viewModel.onSearchQueryChanged(it) },
                 placeholder = stringResource(R.string.ui_label_search_movies_shows),
                 modifier = Modifier.weight(1f).focusRequester(buttonFocusRequester),
-                colors = myTTFColor(),
                 textStyle = TextStyle(color = Color.White),
             )
             Spacer(modifier = Modifier.width(16.dp))

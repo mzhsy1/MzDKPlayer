@@ -17,17 +17,17 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import org.mz.mzdkplayer.tool.SmbDataSourceFactory
+import org.mz.mzdkplayer.data.datasource.SmbDataSourceFactory
 import androidx.core.net.toUri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
 import androidx.media3.extractor.DefaultExtractorsFactory
 import org.mz.mzdkplayer.data.model.AudioItem
-import org.mz.mzdkplayer.tool.FtpDataSourceFactory
-import org.mz.mzdkplayer.tool.NFSDataSourceFactory
-import org.mz.mzdkplayer.tool.SmbDataSourceConfig
-import org.mz.mzdkplayer.tool.WebDavDataSourceFactory
+import org.mz.mzdkplayer.data.datasource.FtpDataSourceFactory
+import org.mz.mzdkplayer.data.datasource.NFSDataSourceFactory
+import org.mz.mzdkplayer.data.datasource.SmbDataSourceConfig
+import org.mz.mzdkplayer.data.datasource.WebDavDataSourceFactory
 import org.mz.mzdkplayer.viewmodel.AudioPlayerViewModel
 
 @OptIn(UnstableApi::class)

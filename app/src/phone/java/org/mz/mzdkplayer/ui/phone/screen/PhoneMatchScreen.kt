@@ -52,10 +52,11 @@ import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.model.MediaItem
 import org.mz.mzdkplayer.data.repository.Resource
-import org.mz.mzdkplayer.tool.MediaInfoExtractorFormFileName
-import org.mz.mzdkplayer.tool.PhoneScrapeLogic
+import org.mz.mzdkplayer.tool.metadata.MediaInfoExtractorFormFileName
+import org.mz.mzdkplayer.tool.logic.PhoneScrapeLogic
 import org.mz.mzdkplayer.viewmodel.MediaMetaViewModel
 import org.mz.mzdkplayer.viewmodel.MovieViewModel
+import org.mz.mzdkplayer.ui.phone.component.PosterThumb
 
 /** 写库是异步的，返回上一页前留一点时间，免得列表还读到旧记录 */
 private const val AFTER_MATCH_DELAY_MS = 800L

@@ -8,7 +8,7 @@ import android.net.Uri
 
 import android.util.Log
 
-import org.mz.mzdkplayer.tool.MzToastManager
+import org.mz.mzdkplayer.common.MzToastManager
 
 import androidx.compose.foundation.layout.fillMaxSize
 
@@ -48,21 +48,21 @@ import org.mz.mzdkplayer.data.repository.PlaybackPreferenceRepository
 
 import org.mz.mzdkplayer.data.repository.SettingsRepository
 
-import org.mz.mzdkplayer.tool.FtpDataSource
+import org.mz.mzdkplayer.data.datasource.FtpDataSource
 
-import org.mz.mzdkplayer.tool.PlaybackPreference
+import org.mz.mzdkplayer.tool.logic.PlaybackPreference
 
-import org.mz.mzdkplayer.tool.PlaybackPreferenceLogic
+import org.mz.mzdkplayer.tool.logic.PlaybackPreferenceLogic
 
-import org.mz.mzdkplayer.tool.PlaybackTrackRef
+import org.mz.mzdkplayer.tool.logic.PlaybackTrackRef
 
-import org.mz.mzdkplayer.tool.SmbDataSource
+import org.mz.mzdkplayer.data.datasource.SmbDataSource
 
-import org.mz.mzdkplayer.tool.SubtitleOffsetLogic
+import org.mz.mzdkplayer.tool.logic.SubtitleOffsetLogic
 
 import org.mz.mzdkplayer.tool.Tools
 
-import org.mz.mzdkplayer.tool.WebDavDataSource
+import org.mz.mzdkplayer.data.datasource.WebDavDataSource
 
 import org.mz.mzdkplayer.viewmodel.SettingsViewModel
 
@@ -297,8 +297,8 @@ class MzVlcPlayer(
 
 
 // 🟢 针对 ISO 文件，如果是网络流且协议不支持，则使用本地 HTTP 代理
-        val finalUrl = if (org.mz.mzdkplayer.tool.ProxyManager.shouldProxy(mediaUri, dataSourceType)) {
-            val proxyUrl = org.mz.mzdkplayer.tool.ProxyManager.getProxyUrl(mediaUri)
+        val finalUrl = if (org.mz.mzdkplayer.tool.server.ProxyManager.shouldProxy(mediaUri, dataSourceType)) {
+            val proxyUrl = org.mz.mzdkplayer.tool.server.ProxyManager.getProxyUrl(mediaUri)
             Log.d("MzVlcPlayer", "Using Proxy URL for ISO: $proxyUrl")
             proxyUrl
         } else {

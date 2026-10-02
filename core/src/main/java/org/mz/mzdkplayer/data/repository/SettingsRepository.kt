@@ -113,6 +113,35 @@ object SettingsRepository {
      */
     private const val KEY_PHONE_AUTO_SCRAPE = "phone_auto_scrape"
 
+    // --- 手机端（Phone）播放页与首页 Keys（第八阶段）---
+
+    /**
+     * 播放页：左侧上下滑调亮度（电视端没有触摸屏，因此是手机端独有）。
+     * 与 [KEY_PHONE_GESTURE_VOLUME] 分开两个开关，用户可以只留其中一个。
+     */
+    private const val KEY_PHONE_GESTURE_BRIGHTNESS = "phone_gesture_brightness"
+
+    /** 播放页：右侧上下滑调音量 */
+    private const val KEY_PHONE_GESTURE_VOLUME = "phone_gesture_volume"
+
+    /** 播放页：长按画面临时切到 [KEY_PHONE_LONG_PRESS_SPEED_VALUE] 倍速 */
+    private const val KEY_PHONE_LONG_PRESS_SPEED = "phone_long_press_speed"
+
+    /** 长按倍速的档位（2 或 3，收敛规则见 `PhoneSettingsLogic.normalizeLongPressSpeed`） */
+    private const val KEY_PHONE_LONG_PRESS_SPEED_VALUE = "phone_long_press_speed_value"
+
+    /** 播放页控制栏自动隐藏的秒数（3/5/8/10，收敛规则见 `PhoneSettingsLogic`） */
+    private const val KEY_PHONE_CONTROLS_HIDE_SECONDS = "phone_controls_hide_seconds"
+
+    /** 首页「最近观看」区块是否显示 */
+    private const val KEY_PHONE_HOME_RECENTLY_WATCHED = "phone_home_recently_watched"
+
+    /** 首页「最近添加」区块是否显示 */
+    private const val KEY_PHONE_HOME_RECENTLY_ADDED = "phone_home_recently_added"
+
+    /** 首页「最近访问」区块是否显示 */
+    private const val KEY_PHONE_HOME_RECENTLY_VISITED = "phone_home_recently_visited"
+
     // --- Getters & Setters ---
 
     // 常规
@@ -305,4 +334,49 @@ object SettingsRepository {
     var phoneAutoScrape: Boolean
         get() = prefs.getBoolean(KEY_PHONE_AUTO_SCRAPE, false)
         set(value) = prefs.edit { putBoolean(KEY_PHONE_AUTO_SCRAPE, value) }
+
+    /** 播放页：左侧上下滑调亮度（默认开） */
+    var phoneGestureBrightness: Boolean
+        get() = prefs.getBoolean(KEY_PHONE_GESTURE_BRIGHTNESS, true)
+        set(value) = prefs.edit { putBoolean(KEY_PHONE_GESTURE_BRIGHTNESS, value) }
+
+    /** 播放页：右侧上下滑调音量（默认开） */
+    var phoneGestureVolume: Boolean
+        get() = prefs.getBoolean(KEY_PHONE_GESTURE_VOLUME, true)
+        set(value) = prefs.edit { putBoolean(KEY_PHONE_GESTURE_VOLUME, value) }
+
+    /** 播放页：长按画面切到长按倍速（默认开） */
+    var phoneLongPressSpeed: Boolean
+        get() = prefs.getBoolean(KEY_PHONE_LONG_PRESS_SPEED, true)
+        set(value) = prefs.edit { putBoolean(KEY_PHONE_LONG_PRESS_SPEED, value) }
+
+    /**
+     * 长按倍速的档位。
+     *
+     * 这里**只做存储**，不在这里收敛：收敛口径统一由 `PhoneSettingsLogic` 提供，
+     * 免得出现「设置页显示 2x、播放页读到 3x」这种两处各判一次的分叉。
+     */
+    var phoneLongPressSpeedValue: Float
+        get() = prefs.getFloat(KEY_PHONE_LONG_PRESS_SPEED_VALUE, 2f)
+        set(value) = prefs.edit { putFloat(KEY_PHONE_LONG_PRESS_SPEED_VALUE, value) }
+
+    /** 播放页控制栏自动隐藏的秒数（默认 5，与第七阶段写死的值一致） */
+    var phoneControlsHideSeconds: Int
+        get() = prefs.getInt(KEY_PHONE_CONTROLS_HIDE_SECONDS, 5)
+        set(value) = prefs.edit { putInt(KEY_PHONE_CONTROLS_HIDE_SECONDS, value) }
+
+    /** 首页「最近观看」区块是否显示（默认显示） */
+    var phoneHomeRecentlyWatched: Boolean
+        get() = prefs.getBoolean(KEY_PHONE_HOME_RECENTLY_WATCHED, true)
+        set(value) = prefs.edit { putBoolean(KEY_PHONE_HOME_RECENTLY_WATCHED, value) }
+
+    /** 首页「最近添加」区块是否显示（默认显示） */
+    var phoneHomeRecentlyAdded: Boolean
+        get() = prefs.getBoolean(KEY_PHONE_HOME_RECENTLY_ADDED, true)
+        set(value) = prefs.edit { putBoolean(KEY_PHONE_HOME_RECENTLY_ADDED, value) }
+
+    /** 首页「最近访问」区块是否显示（默认显示） */
+    var phoneHomeRecentlyVisited: Boolean
+        get() = prefs.getBoolean(KEY_PHONE_HOME_RECENTLY_VISITED, true)
+        set(value) = prefs.edit { putBoolean(KEY_PHONE_HOME_RECENTLY_VISITED, value) }
 }
