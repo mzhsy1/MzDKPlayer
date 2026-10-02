@@ -1,4 +1,4 @@
-# MzDKPlayer - 安卓TV本地弹幕音视频播放器
+# MzDKPlayer - 安卓 TV / 手机双端本地弹幕音视频播放器
 
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/mzhsy1/MzDKPlayer/total)
 ![License](https://img.shields.io/badge/license-GPL--3.0-blue)
@@ -7,7 +7,7 @@
 
 > GitHub https://github.com/mzhsy1/MzDKPlayer ｜ Gitee 镜像 https://gitee.com/mzhsy/MzDKPlayer ｜ 官网 https://mzdkplayer.pages.dev/
 
-> MzDKPlayer 是一款专为安卓电视（Android TV）设计的本地音乐与视频播放器，支持弹幕功能、多种网络协议播放及音频视频格式播放。
+> MzDKPlayer 是一款本地音乐与视频播放器，分为**电视端**与**手机端**两个版本：电视端（Android TV）面向遥控器与大屏，手机端为触屏重做了整套交互。两者共用同一套业务层，支持弹幕功能、多种网络协议播放、音频视频格式播放与影视刮削。
 
 ---
 
@@ -39,7 +39,7 @@
 - 🎬 **视频播放** - 支持多种视频格式的本地与网络协议播放
 - 🎵 **音频播放** - 支持多种音频格式的本地与网络协议播放，歌词专辑封面显示与音乐信息，播放列表等常见功能
 - 🖼️ **图片查看** - 支持多种图片格式的本地与网络协议查看
-- 🏡 **媒体库** - 包含电影/电视剧/音乐库，从 TMDB 获取电影电视剧信息，支持批量添加
+- 🏡 **媒体库** - 包含电影/电视剧/音乐库，从 TMDB 或豆瓣获取电影电视剧信息，支持批量添加
 - 🕛 **历史记录** - 播放历史记录，包含音视频
 - 🔍 **搜索功能** - 搜索电影/电视剧
 - 💬 **弹幕功能** - 支持 B 站风格弹幕显示与自定义
@@ -56,6 +56,16 @@
 - 🧠 **记住播放偏好** - 按文件记住音轨、字幕轨、倍速与画面比例，再次播放同一个文件时自动恢复
 - 📱 **手机扫码遥控** - 应用内可开启局域网遥控页，手机扫码即可当遥控器用
 - 🌏 **多语言界面** - 简体中文 / English / 日本語 / 繁體中文
+
+### 📱 手机端（Android 手机）
+
+同一套业务层，另外做了一个独立的手机 App（`applicationId = org.mz.mzdkplayer.phone`，**可与电视端装在同一台设备上**）：
+
+- **六种来源的文件浏览**：本机 / SMB / FTP / NFS / WebDAV / HTTP，与电视端共用同一个业务层与刮削缓存
+- **触屏播放页**：拖动进度条定位、双击左右两侧快进 / 快退、底部面板切换音视频字幕轨与倍速、沉浸式全屏
+- **触屏手势**：左侧上下滑调亮度、右侧上下滑调音量、长按画面临时倍速（开关与档位都在手机端设置页里）
+- **音乐与图片**：内嵌 / 外挂 `.lrc` 歌词、封面与播放列表；图片查看支持同目录左右滑动切换、双指缩放旋转
+- **首页与设置**：最近观看 / 最近添加 / 最近访问 + 顶栏「刮削本目录」入口；设置页覆盖电视端全部设置，另有手机专属项
 
 ### 🔊 播放进阶：音频直通 (Passthrough) 说明
 
@@ -98,7 +108,7 @@ MzDKPlayer 支持音频直通功能，可以将原始音频信号（源码）直
 
 ---
 
-> ⚠️ **注意**：TMDB 在国内可能需要代理或修改 Hosts 才能稳定访问，也可在 `设置 -> 刮削与媒体库 -> TMDB API 地址 (镜像)` 中填写镜像地址。
+> ⚠️ **注意**：TMDB 在国内可能需要代理或修改 Hosts 才能稳定访问，也可在 `设置 -> 刮削与媒体库 -> TMDB API 地址 (镜像)` 中填写镜像地址；或把 `设置 -> 刮削与媒体库 -> 首选数据源` 改成「豆瓣优先」（豆瓣是默认首选源，走公开接口、不需要 API Key）。
 
 > 💡 小提示1：如果经常使用，建议在电视系统里把本播放器设为默认视频播放器，体验更顺滑。
 
@@ -140,6 +150,8 @@ MzDKPlayer 支持音频直通功能，可以将原始音频信号（源码）直
 ### 方式一：下载安装 APK
 
 > 适合只想在电视上使用的用户，不需要任何开发环境。
+>
+> 📱 **Releases 目前只提供电视端安装包**（`app-tv-*-release.apk`）。手机端尚未发版，需要按 [方式二](#方式二从源码构建) 自行构建；两端 `applicationId` 不同，可以同机安装。
 
 1. 打开 [Releases](https://github.com/mzhsy1/MzDKPlayer/releases) 页面，下载最新版本的 APK（由 GitHub Actions 自动构建）。
 2. 根据电视芯片架构选择安装包（**不确定就先用通用包**）：
@@ -190,6 +202,7 @@ TMDB_API_KEY=你的TMDB_API_KEY
 
 > ⚠️ **`TMDB_API_KEY` 是必填项**。它会被写进 `BuildConfig.TMDB_API_KEY`，缺失时项目仍能编译，但媒体库的 TMDB 刮削功能会失效。
 > API Key 可在 [TMDB 开发者设置](https://www.themoviedb.org/settings/api) 免费申请，并在设置页将 API 地址指向可访问的镜像。
+> 只想用豆瓣刮削的话，也可以在 `设置 -> 刮削与媒体库 -> 首选数据源` 里选「豆瓣优先」，它不需要任何 Key。
 
 #### 4. 构建
 
@@ -202,6 +215,7 @@ TMDB_API_KEY=你的TMDB_API_KEY
 
 # 发布包（开启混淆与资源压缩，产物未签名）
 ./gradlew :app:assembleTvRelease
+./gradlew :app:assemblePhoneRelease
 
 # 只做编译校验，速度最快
 ./gradlew :app:compileTvDebugKotlin   # 电视端；手机端把 Tv 换成 Phone
@@ -217,9 +231,11 @@ TMDB_API_KEY=你的TMDB_API_KEY
 | --- | --- |
 | `assembleTvDebug` / `assemblePhoneDebug` | `app/build/outputs/apk/tv/debug/app-tv-debug.apk`、`app/build/outputs/apk/phone/debug/app-phone-debug.apk` |
 | `assembleTvRelease` | `app/build/outputs/apk/tv/release/app-tv-<abi>-release.apk`、`app-tv-universal-release.apk` |
+| `assemblePhoneRelease` | `app/build/outputs/apk/phone/release/app-phone-<abi>-release.apk`、`app-phone-universal-release.apk` |
 
 > 发布包默认**不签名**，上架或分发前需要用 `apksigner` / Android Studio 的 *Generate Signed Bundle or APK* 补上签名。
 > 项目开启了 ABI 拆分（`armeabi-v7a`、`arm64-v8a` + 通用包），所以 release 目录下会有多个 APK。
+> 用向导签名时产物默认落在 `app/<flavor>/release/`（已在 `.gitignore` 中忽略），别误提交进仓库。
 
 #### 5. 安装到电视
 
@@ -241,11 +257,12 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 | 现象 | 原因与解决办法 |
 | --- | --- |
 | `Unable to delete directory ... a process has files open` | Android Studio 正开着并占用了 `app/build` 产物。关掉 Studio 再跑命令行，**不要手动删 `app/build`** |
-| 找不到 `TMDB_API_KEY` / 刮削无效 | `local.properties` 缺失或键名写错，注意不要写成 `TMDB_KEY` |
+| 找不到 `TMDB_API_KEY` / 刮削无效 | `local.properties` 缺失或键名写错，注意不要写成 `TMDB_KEY`；或者把首选数据源切成「豆瓣优先」，豆瓣不需要 Key |
 | `SDK location not found` | `local.properties` 中的 `sdk.dir` 没配，或在 Android Studio 里设置 SDK 路径 |
 | Kotlin 工具链下载失败 | `jvmToolchain(21)` 需要联网下载 JDK 21；可先在本机安装 JDK 21 让 Gradle 直接复用 |
 | 依赖拉取超时 | `settings.gradle.kts` 已配置阿里云/腾讯云镜像，可自行调整仓库顺序 |
 | `fileHashes.lock 拒绝访问` | 先 `./gradlew --stop` 确认守护进程已退出，再删除 `.gradle/9.7.1/fileHashes/fileHashes.lock` |
+| Android 视图里看不到 `app/src/tv`（或 `phone`） | Android 视图只显示**当前选中的构建变体**的源集。到 `View -> Tool Windows -> Build Variants` 把 `app` 切成 `tvDebug` / `phoneDebug` 即可，切变体只影响 IDE 索引，不影响编译 |
 
 ---
 
@@ -280,9 +297,13 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 - 弹幕文件为 B 站格式的 `.xml`，与视频放在同一目录、**文件名相同**即可自动加载。
 - 播放时按遥控器 **上键** 打开弹幕设置，可调整字号、速度、透明度、显示区域等。
 
-### 示例 4：TMDB 刮削与本地 NFO
+### 示例 4：刮削（TMDB / 豆瓣）与本地 NFO
 
-- 电影 / 电视剧详情页的信息来自 TMDB，需要可用的网络与 API Key。
+- 电影 / 电视剧信息有两个数据源：**TMDB** 与 **豆瓣**，在 `设置 -> 刮削与媒体库 -> 首选数据源` 里切换（豆瓣优先 / TMDB 优先），**默认豆瓣优先**。两个源都会参与刮削，只是顺序不同：首选源搜不到时自动用另一个源兜底。
+- **豆瓣不需要 API Key**（走公开接口）；**TMDB 需要可用的网络与 API Key**。
+- **豆瓣没有分集信息**：选「豆瓣优先」时，剧集只会拿到剧集级信息（单集标题 / 简介 / 剧照为空，详情页会隐藏「当前单集详情」卡片）。更在意分集信息就把首选源切成 TMDB。
+- 豆瓣接口不可达时会**自动短路一段时间**（连续失败即熔断），期间直接把活儿交给另一个源，不会让每个文件都白等一次超时。
+- 两个源的编号不是同一套，刮削记录会带上来源标记：媒体库按来源分别分组，豆瓣条目与 TMDB 条目不会互相串。
 - 若媒体目录下存在同名 `.nfo` 文件，可在 `设置 -> 刮削与媒体库 -> 优先加载本地 NFO 文件` 打开优先读取，避免联网。
 - 刮削结果会缓存到本地数据库，播放页标题会优先显示刮削片名（剧集自动追加 `SxxExx` 与年份），无刮削记录时回退文件名。
 - 批量扫描的递归层级可在 `设置 -> 刮削与媒体库 -> 批量扫描子文件夹层级` 调整。
@@ -319,6 +340,20 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 
 > 上键与下键的行为可以在 `设置 -> 遥控器与交互 -> 遥控器上键功能 / 遥控器下键功能` 中自定义。
 
+### 手机端手势
+
+手机端没有遥控器，播放页全部为触屏操作：
+
+| 手势 | 作用 |
+| --- | --- |
+| 左侧上下滑 | 调节亮度 |
+| 右侧上下滑 | 调节音量 |
+| 长按画面 | 临时倍速播放（档位可在设置里调） |
+| 双击左侧 / 右侧 | 快退 / 快进 |
+| 拖动进度条 | 定位播放位置 |
+
+> 手势开关、长按倍速档位、控制栏自动隐藏秒数等都在手机端设置页里。
+
 ---
 
 ## 技术架构
@@ -329,7 +364,7 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 | --- | --- | --- |
 | 语言 | Kotlin | 2.4.20 |
 | 构建 | Gradle / AGP / KSP | 9.7.1 / 9.4.0 / 2.3.9 |
-| 界面 | Jetpack Compose for TV（`tv-foundation` / `tv-material`）+ Navigation Compose | Compose BOM 2026.09.00 / Navigation 2.9.8 |
+| 界面 | Jetpack Compose：电视端用 Compose for TV（`tv-foundation` / `tv-material`），手机端用 Material 3 + Navigation Compose | Compose BOM 2026.09.00 / Navigation 2.9.8 |
 | 播放内核 | Media3 ExoPlayer + libVLC（双引擎，统一抽象层） | 1.11.1 / 3.7.6 |
 | 弹幕 | AKDanmaku + libGDX / Ashley | — |
 | 数据库 | Room | 2.8.5 |
@@ -337,7 +372,7 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 | 网络 | smbj (SMB) / commons-net (FTP) / sardine (WebDAV) / nfs-client (NFS) / OkHttp | — |
 | 图片加载 | Coil 3 | 3.6.2 |
 | 内置服务 | NanoHTTPD（本地代理 + 手机遥控页）、ZXing（二维码） | — |
-| 元数据 | Retrofit + Gson（TMDB）、jaudiotagger（音频标签） | — |
+| 元数据 | Retrofit + Gson（TMDB）、OkHttp + Gson（豆瓣）、jaudiotagger（音频标签） | — |
 
 ### 模块结构
 
@@ -348,6 +383,7 @@ core/src/main/java/org/mz/mzdkplayer/     # :core —— 业务层，tv / phone 
 ├── danmaku/          # 弹幕解析
 ├── data/
 │   ├── api/          # TMDB 接口（Retrofit）
+│   ├── douban/       # 豆瓣接口（OkHttp）：搜索、详情、剧照，含失败熔断
 │   ├── local/        # Room：AppDatabase、MediaCacheEntity、AudioCacheEntity、MediaHistoryEntity
 │   ├── model/        # 数据模型
 │   └── repository/   # 仓库层，屏蔽数据来源
@@ -357,10 +393,11 @@ core/src/main/java/org/mz/mzdkplayer/     # :core —— 业务层，tv / phone 
 │   ├── exo/          # MzExoPlayer 实现
 │   └── vlc/          # MzVlcPlayer 实现
 ├── tool/             # 工具层：协议 DataSource、字幕扫描、时间解析、局域网代理与遥控服务
+│   └── logic/        # 纯逻辑（可 JVM 单测）：文件名解析、协议 URI、刮削来源顺序与熔断等
 └── viewmodel/        # 各页面的 ViewModel
 
 app/src/main/java/org/mz/mzdkplayer/
-└── MzDkPlayerApplication.kt              # 两个 flavor 共用的 Application
+└── MzDkPlayerApplication.kt              # 两个 flavor 共用的 Application（含豆瓣图床的 Coil 配置）
 
 app/src/tv/java/org/mz/mzdkplayer/        # 电视端 flavor（只用 androidx.tv.material3）
 ├── MainActivity.kt / LaunchScreen.kt     # LEANBACK_LAUNCHER 入口
@@ -377,7 +414,7 @@ app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # 手机端 flavor（只用 and
 ├── PhoneMainActivity.kt    # LAUNCHER 入口（applicationId = org.mz.mzdkplayer.phone）
 ├── PhoneApp.kt             # 底部导航 + 导航图
 ├── PhoneTheme.kt / PhoneIcons.kt / PhoneRoutes.kt
-└── screen/                 # 首页 / 文件 / SMB 浏览 / 播放 / 设置
+└── screen/                 # 首页 / 文件 / 各协议浏览 / 播放 / 设置
 ```
 
 两套设计系统**零交叉**：`:core` 不依赖任何 Material 库，电视端只引 `androidx.tv.material3`（compose 1.12.x），
@@ -404,6 +441,7 @@ app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # 手机端 flavor（只用 and
 - Room 数据库 `AppDatabase` 包含三张表：`media_cache`（影视刮削缓存，主键为 `videoUri`）、音频缓存、播放历史。
 - 列表页传给播放页的 URI 与 `media_cache.videoUri` 保持一致，播放页可直接按 URI 命中刮削缓存，无需重复联网。
 - 导航参数（URI、文件名、连接名等）统一走 Base64 编码，避免路径中的特殊字符破坏路由。
+- 刮削记录带**来源**列（`tmdb` / `douban`）：豆瓣条目编号与 TMDB 编号的数值区间是重叠的，来源标记用于媒体库分组与详情页判断，避免两部不相干的片子被并成一张卡片、或拿豆瓣编号去查 TMDB。
 
 ---
 
@@ -415,6 +453,7 @@ app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # 手机端 flavor（只用 and
 ./gradlew :app:compileTvDebugKotlin          # 只编译，最快的语法校验
 ./gradlew :app:assembleTvDebug               # 打调试包
 ./gradlew :app:assembleTvRelease             # 打发布包（未签名）
+./gradlew :app:compilePhoneDebugKotlin       # 手机端只编译
 ./gradlew :core:testDebugUnitTest           # 跑全部 JVM 单元测试
 ./gradlew :core:testDebugUnitTest --tests "org.mz.mzdkplayer.tool.PlayerMediaTextTest"   # 跑单个测试类
 ./gradlew clean                            # 清理构建产物
@@ -427,7 +466,7 @@ app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # 手机端 flavor（只用 and
   因此测试必须写成纯 JVM 测试：`android.net.Uri`、`android.util.Log`、`android.util.Base64`、`Context` 等 Android 类型一旦调用就会抛 `RuntimeException("Stub!")`。
 - 需要测试的纯逻辑请抽到不依赖 Android 的 `object` / `internal object` 中；测试与被测代码同在 `:core`（`internal` 对 app 不可见，这条边界是有意保留的）。
 - 命名约定：类名 `XxxTest`，测试函数用反引号中文描述，例如 `` `剧集 - 标题加季集加年份` ``。
-- 现有测试：`MediaInfoExtractorFormFileNameTest`（文件名解析）、`PlayerMediaTextTest`（播放页标题与日期）、`FileTimeParseTest`（HTTP 日期 / 协议推断 / 账号密码 / NFS 路径拆分）。
+- 现有 **28 个测试类、475 个用例**，全部集中在 `:core`。较有代表性的：`MediaInfoExtractorFormFileNameTest`（文件名解析）、`PlayerMediaTextTest`（播放页标题与日期）、`HttpDirectoryListingTest` / `FileTimeParseTest`（HTTP 目录页与日期解析）、`ProtocolUriParserTest` / `SidecarPathTest`（协议 URI 与伴生文件路径）、`StreamSizePolicyTest`（各协议的流读取策略）、`Phone*Test`（手机端纯逻辑）、`DoubanLogicTest` / `ScrapeSourcePolicyTest` / `ScrapeCircuitBreakerTest`（豆瓣字段归一化、首选源顺序与接口熔断）。完整清单见 `core/src/test/`。
 
 ### 日志
 
@@ -453,7 +492,9 @@ app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # 手机端 flavor（只用 and
 
 - **芯片组**：晶晨S905L或同等性能芯片
 - **内存**：1GB RAM
-- **系统**：Android 6.0 (API 23) 及以上（`minSdk = 23`），遥控操作体验需要电视 / 盒子的方向键支持
+- **系统**：Android 8.0 (API 26) 及以上（`minSdk = 26`），遥控操作体验需要电视 / 盒子的方向键支持
+
+> 📱 **手机端**：同为 `minSdk = 26`（Android 8.0 及以上），全部为触屏操作、不需要遥控器；`applicationId` 与电视端不同，两者可以同时安装。
 
 > ⚠️ **注意**：代码写的烂，不会优化，能跑就成功，都是bug，设备性能不足可能导致视频与弹幕播放卡顿，或无法正常播放高码率视频
 
@@ -471,6 +512,9 @@ app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # 手机端 flavor（只用 and
 - [x] 音频文件，图片文件支持
 - [x] 播放列表管理
 - [x] 电影/电视剧详情页面
+- [x] 电视端 / 手机端拆分（`:core` 业务层 + `tv` / `phone` 两个 flavor，共用一套业务逻辑）
+- [x] 手机端：文件浏览 / 刮削与详情页 / 视频播放页（手势与轨道面板）/ 设置页 / 音乐 / 图片
+- [x] 豆瓣刮削数据源与「首选数据源」切换（含接口连续失败自动熔断）
 - [ ] 网络弹幕加载功能
 - [ ] 设置界面优化
 
@@ -485,6 +529,8 @@ app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # 手机端 flavor（只用 and
 ### 报告问题
 
 提交 Issue 时请尽量包含：设备型号与芯片、系统版本、应用版本（`设置 -> 关于软件`）、使用的协议类型（SMB / FTP / WebDAV / NFS / HTTP 或本地）、复现步骤，以及一段 `adb logcat` 抓取的日志。带日志的 Issue 通常能很快定位。
+
+> 刮削相关的问题请一并说明**数据源**：`设置 -> 刮削与媒体库 -> 首选数据源` 选的是豆瓣还是 TMDB，以及该文件最终落到哪个来源。
 
 ### 提交代码流程
 
@@ -501,6 +547,7 @@ app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # 手机端 flavor（只用 and
 
    ```bash
    ./gradlew :app:compileTvDebugKotlin
+   ./gradlew :app:compilePhoneDebugKotlin
    ./gradlew :core:testDebugUnitTest
    ```
 
@@ -527,9 +574,9 @@ app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # 手机端 flavor（只用 and
 
 ### Pull Request 检查清单
 
-- [ ] `./gradlew :app:compileTvDebugKotlin` 通过
+- [ ] `./gradlew :app:compileTvDebugKotlin` / `./gradlew :app:compilePhoneDebugKotlin` 通过（两个 flavor 都要能编）
 - [ ] `./gradlew :core:testDebugUnitTest` 通过（有新增纯逻辑时补测试）
-- [ ] 没有提交 `local.properties`、`app/build/`、`.gradle/`、`.idea/` 等本地文件
+- [ ] 没有提交 `local.properties`、`app/build/`、`.gradle/`、`.idea/`、`app/<flavor>/release/`（「生成签名 APK」向导的输出目录）等本地文件
 - [ ] 新增文案已加入各语言 `strings.xml`
 - [ ] 用户可见的改动已更新 `CHANGELOG.md`（必要时更新 `versionName`）
 - [ ] 在真机 / 电视上实际验证过（说明设备与系统版本）
@@ -544,8 +591,8 @@ app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # 手机端 flavor（只用 and
 
 | 工作流 | 触发时机 | 做什么 |
 | --- | --- | --- |
-| `ci.yml` | 推送到 `main`、每个 PR | 编译 + 跑 JVM 单元测试，测试报告作为 artifact 上传 |
-| `release.yml` | 推送到 `main`（版本号是新的）、推送 `V*` tag、手动触发 | 跑测试 → 构建签名 APK → 创建 Release 并上传三个 APK |
+| `ci.yml` | 推送到 `main`、每个 PR | 编译两个 flavor + 跑 JVM 单元测试，测试报告作为 artifact 上传 |
+| `release.yml` | 推送到 `main`（版本号是新的）、推送 `V*` tag、手动触发 | 跑测试 → 构建**电视端**签名 APK → 创建 Release 并上传三个 APK（目前只发电视端，手机端需自行构建） |
 
 **发布是版本号驱动的**：`release.yml` 会读取 `app/build.gradle.kts` 里的 `versionName`，如果还没有对应的 `V<版本号>` Release，就自动构建并发布。也就是说，按约定 bump 完 `versionName` 并推送，Release 就自动出来了，不需要手动打 tag（tag 会由工作流创建，沿用历史的 `V1.17.4` 这种大写 `V` 前缀）。
 
@@ -555,7 +602,7 @@ Release 正文取自 [CHANGELOG.md](CHANGELOG.md) 的「未发布」段落，所
 
 | Secret | 用途 |
 | --- | --- |
-| `TMDB_API_KEY` | 打包时写入 `BuildConfig.TMDB_API_KEY`，空值会让 TMDB 刮削静默失效 |
+| `TMDB_API_KEY` | 打包时写入 `BuildConfig.TMDB_API_KEY`，空值会让 TMDB 刮削静默失效（豆瓣刮削不依赖它） |
 | `RELEASE_KEYSTORE_BASE64` | 签名密钥库的 base64：`base64 -w0 release.jks` |
 | `RELEASE_KEYSTORE_PASSWORD` | 密钥库口令 |
 | `RELEASE_KEY_ALIAS` | 密钥别名 |

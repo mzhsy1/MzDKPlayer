@@ -1,4 +1,4 @@
-# MzDKPlayer - Android TV Local Danmaku Media Player
+# MzDKPlayer - Local Danmaku Media Player for Android TV & Phone
 
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/mzhsy1/MzDKPlayer/total)
 ![License](https://img.shields.io/badge/license-GPL--3.0-blue)
@@ -7,7 +7,7 @@
 
 > GitHub https://github.com/mzhsy1/MzDKPlayer | Gitee Mirror https://gitee.com/mzhsy/MzDKPlayer | Website https://mzdkplayer.pages.dev/
 
-> MzDKPlayer is a local music and video player specifically designed for Android TV, supporting danmaku (bullet comments), multiple network protocols, and various audio/video formats.
+> MzDKPlayer is a local music and video player shipped in two builds: an **Android TV** app designed around the remote and the big screen, and an **Android phone** app whose whole interaction model was rebuilt for touch. Both share the same business layer and support danmaku (bullet comments), multiple network protocols, a wide range of audio/video formats, and scraping for movies and TV shows.
 
 ---
 
@@ -39,7 +39,7 @@
 - 🎬 **Video Playback** - Supports various video formats for local and network protocol playback.
 - 🎵 **Audio Playback** - Supports various audio formats for local and network protocol playback. Includes lyrics, album cover display, music information, playlists, and other common features.
 - 🖼️ **Image Viewer** - Supports various image formats for local and network protocol viewing.
-- 🏡 **Media Library** - Includes Movie/TV/Music libraries, fetching information from TMDB, supporting batch addition.
+- 🏡 **Media Library** - Includes Movie/TV/Music libraries, fetching information from TMDB or Douban, supporting batch addition.
 - 🕛 **History** - Playback history for both audio and video.
 - 🔍 **Search Function** - Search for movies and TV shows.
 - 💬 **Danmaku Function** - Supports Bilibili-style danmaku display and customization.
@@ -56,6 +56,16 @@
 - 🧠 **Playback Preference Memory** - Remember the audio track, subtitle track, playback speed and aspect ratio per file, and restore them the next time it is played.
 - 📱 **Phone Remote Control** - The app can start a LAN remote page; scan the QR code with your phone to use it as a remote.
 - 🌏 **Multi-language UI** - Simplified Chinese / English / Japanese / Traditional Chinese
+
+### 📱 Phone App (Android)
+
+The same business layer, plus a separate phone app (`applicationId = org.mz.mzdkplayer.phone`, **installable alongside the TV app**):
+
+- **File browsing for six sources**: local / SMB / FTP / NFS / WebDAV / HTTP, sharing the same business layer and scrape cache with the TV app
+- **Touch player**: drag the progress bar to seek, double-tap the left / right side to rewind / fast forward, bottom sheets for audio, video and subtitle tracks plus playback speed, immersive full screen
+- **Touch gestures**: swipe up/down on the left half to set brightness, on the right half to set volume, long-press the screen for temporary speed-up (toggles and steps live in the phone settings page)
+- **Music and images**: embedded / external `.lrc` lyrics, covers and playlists; the image viewer supports swiping between images in the same folder and pinch-to-zoom / rotate
+- **Home and settings**: Recently watched / Recently added / Recently visited plus a "Scrape this folder" entry in the top bar; the settings page covers every TV setting and adds phone-only ones
 
 ### 🔊 Advanced Playback: Audio Passthrough
 
@@ -98,7 +108,7 @@ MzDKPlayer supports audio passthrough, allowing raw audio signals (source) to be
 
 ---
 
-> ⚠️ **Note**: TMDB may require a proxy or Host modification for stable access in some regions. You can also set a mirror under `Settings -> Scraping & Library -> TMDB API Address (Mirror)`.
+> ⚠️ **Note**: TMDB may require a proxy or Host modification for stable access in some regions. You can also set a mirror under `Settings -> Scraping & Library -> TMDB API Address (Mirror)`, or switch `Settings -> Scraping & Library -> Preferred Scraping Source` to "Douban first" (Douban is the default source, uses public endpoints and needs no API key).
 
 > 💡 Tip 1: If used frequently, it's recommended to set this player as the default video player in your TV system for a smoother experience.
 
@@ -140,6 +150,8 @@ MzDKPlayer supports audio passthrough, allowing raw audio signals (source) to be
 ### Option 1: Download the APK
 
 > For users who just want to use the app on their TV — no development environment needed.
+>
+> 📱 **Releases currently ship the TV build only** (`app-tv-*-release.apk`). The phone app has not been released yet — build it yourself with `assemblePhoneDebug` as described in [Option 2](#option-2-build-from-source). The two use different `applicationId`s, so both can be installed on one device.
 
 1. Open the [Releases](https://github.com/mzhsy1/MzDKPlayer/releases) page and download the latest APK (built automatically by GitHub Actions).
 2. Pick the package matching your TV's chipset (**use the universal package if unsure**):
@@ -190,6 +202,7 @@ TMDB_API_KEY=your_tmdb_api_key
 
 > ⚠️ **`TMDB_API_KEY` is required.** It is injected as `BuildConfig.TMDB_API_KEY`. The project still compiles without it, but TMDB scraping in the media library will not work.
 > You can request a free API key at [TMDB developer settings](https://www.themoviedb.org/settings/api), then point the API address at a reachable mirror in the settings page.
+> If you only want Douban scraping, pick "Douban first" under `Settings -> Scraping & Library -> Preferred Scraping Source` — it needs no key at all.
 
 #### 4. Build
 
@@ -202,6 +215,7 @@ TMDB_API_KEY=your_tmdb_api_key
 
 # Release build (minification and resource shrinking enabled, unsigned)
 ./gradlew :app:assembleTvRelease
+./gradlew :app:assemblePhoneRelease
 
 # Compile-only check, the fastest option
 ./gradlew :app:compileTvDebugKotlin   # TV; swap Tv for Phone for the phone build
@@ -217,9 +231,11 @@ Output locations:
 | --- | --- |
 | `assembleTvDebug` / `assemblePhoneDebug` | `app/build/outputs/apk/tv/debug/app-tv-debug.apk`, `app/build/outputs/apk/phone/debug/app-phone-debug.apk` |
 | `assembleTvRelease` | `app/build/outputs/apk/tv/release/app-tv-<abi>-release.apk`, `app-tv-universal-release.apk` |
+| `assemblePhoneRelease` | `app/build/outputs/apk/phone/release/app-phone-<abi>-release.apk`, `app-phone-universal-release.apk` |
 
 > Release builds are **not signed** by default. Sign them with `apksigner` or Android Studio's *Generate Signed Bundle or APK* before distributing.
 > ABI splits are enabled (`armeabi-v7a`, `arm64-v8a`, plus a universal APK), so the release directory contains several APKs.
+> The signing wizard writes its output to `app/<flavor>/release/` (already covered by `.gitignore`) — do not commit those APKs.
 
 #### 5. Install on your TV
 
@@ -241,11 +257,12 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 | Symptom | Cause and fix |
 | --- | --- |
 | `Unable to delete directory ... a process has files open` | Android Studio is running and holding `app/build`. Close Studio and retry from the command line — **do not delete `app/build` manually** |
-| `TMDB_API_KEY` missing / scraping does not work | `local.properties` is missing or the key name is wrong (do not write `TMDB_KEY`) |
+| `TMDB_API_KEY` missing / scraping does not work | `local.properties` is missing or the key name is wrong (do not write `TMDB_KEY`); or switch the preferred scraping source to "Douban first", which needs no key |
 | `SDK location not found` | `sdk.dir` is missing in `local.properties`, or set the SDK path in Android Studio |
 | Kotlin toolchain download fails | `jvmToolchain(21)` downloads JDK 21; installing JDK 21 locally lets Gradle reuse it |
 | Dependency downloads time out | `settings.gradle.kts` already configures Aliyun/Tencent Cloud mirrors; adjust repository order as needed |
 | `fileHashes.lock access denied` | Run `./gradlew --stop` to confirm the daemon exited, then delete `.gradle/9.7.1/fileHashes/fileHashes.lock` |
+| `app/src/tv` (or `phone`) is missing from the Android view | The Android view only lists source sets of the **currently selected build variant**. Open `View -> Tool Windows -> Build Variants` and set `app` to `tvDebug` / `phoneDebug`. Switching variants only affects IDE indexing, not the build |
 
 ---
 
@@ -280,9 +297,13 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 - Danmaku files are Bilibili-style `.xml`, placed in the same directory as the video with the **same file name** to be loaded automatically.
 - Press the **Up** key on the remote during playback to open danmaku settings and adjust font size, speed, opacity, and display area.
 
-### Example 4: TMDB scraping and local NFO
+### Example 4: Scraping (TMDB / Douban) and local NFO
 
-- Movie / TV detail pages pull data from TMDB and need working network access plus an API key.
+- Movie / TV information comes from two sources: **TMDB** and **Douban**. Switch between them under `Settings -> Scraping & Library -> Preferred Scraping Source` (**Douban first** is the default). Both sources are always used — only the order changes: if the preferred one finds nothing, the other is used as a fallback.
+- **Douban needs no API key** (public endpoints); **TMDB needs working network access and an API key**.
+- **Douban has no per-episode data**: with "Douban first" a series only gets series-level information (episode titles, overviews and stills are empty, and the "current episode" card is hidden on the details page). Switch the preferred source to TMDB if you care more about episode metadata.
+- When the Douban endpoints are unreachable, that source is **short-circuited for a while** (the circuit breaker trips after consecutive failures) and the other source takes over immediately, instead of every file paying another timeout first.
+- The two sources do not share one ID space, so scraped records carry their source: the library groups by source and Douban entries never mix with TMDB entries.
 - If a same-named `.nfo` file exists in the media directory, enable `Settings -> Scraping & Library -> Prefer local NFO files` to read it offline instead.
 - Scraping results are cached in the local database. The player title prefers the scraped name (episodes automatically get `SxxExx` and the year) and falls back to the file name when no scraped record exists.
 - Adjust the recursion depth for batch scanning under `Settings -> Scraping & Library -> Batch scan subfolder depth`.
@@ -319,6 +340,20 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 
 > The Up and Down key behaviors can be customized under `Settings -> Remote & Input -> Remote Up Key / Remote Down Key`.
 
+### Phone Gestures
+
+The phone app has no remote — the player screen is entirely touch-driven:
+
+| Gesture | Action |
+| --- | --- |
+| Swipe up/down on the left half | Adjust brightness |
+| Swipe up/down on the right half | Adjust volume |
+| Long-press the screen | Temporary speed-up (steps are configurable) |
+| Double-tap the left / right side | Rewind / fast forward |
+| Drag the progress bar | Seek |
+
+> Gesture toggles, the long-press speed steps and the control-bar auto-hide delay all live in the phone settings page.
+
 ---
 
 ## Technical Architecture
@@ -329,7 +364,7 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 | --- | --- | --- |
 | Language | Kotlin | 2.4.20 |
 | Build | Gradle / AGP / KSP | 9.7.1 / 9.4.0 / 2.3.9 |
-| UI | Jetpack Compose for TV (`tv-foundation` / `tv-material`) + Navigation Compose | Compose BOM 2026.09.00 / Navigation 2.9.8 |
+| UI | Jetpack Compose: Compose for TV (`tv-foundation` / `tv-material`) on the TV side, Material 3 on the phone side; Navigation Compose | Compose BOM 2026.09.00 / Navigation 2.9.8 |
 | Playback engines | Media3 ExoPlayer + libVLC (dual engine behind a shared abstraction) | 1.11.1 / 3.7.6 |
 | Danmaku | AKDanmaku + libGDX / Ashley | — |
 | Database | Room | 2.8.5 |
@@ -337,7 +372,7 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 | Networking | smbj (SMB) / commons-net (FTP) / sardine (WebDAV) / nfs-client (NFS) / OkHttp | — |
 | Image loading | Coil 3 | 3.6.2 |
 | Built-in services | NanoHTTPD (local proxy + phone remote page), ZXing (QR code) | — |
-| Metadata | Retrofit + Gson (TMDB), jaudiotagger (audio tags) | — |
+| Metadata | Retrofit + Gson (TMDB), OkHttp + Gson (Douban), jaudiotagger (audio tags) | — |
 
 ### Module Structure
 
@@ -348,6 +383,7 @@ core/src/main/java/org/mz/mzdkplayer/     # :core — business layer, shared by 
 ├── danmaku/          # Danmaku parsing
 ├── data/
 │   ├── api/          # TMDB API (Retrofit)
+│   ├── douban/       # Douban API (OkHttp): search, details, stills, with a failure circuit breaker
 │   ├── local/        # Room: AppDatabase, MediaCacheEntity, AudioCacheEntity, MediaHistoryEntity
 │   ├── model/        # Data models
 │   └── repository/   # Repository layer hiding data sources
@@ -357,10 +393,11 @@ core/src/main/java/org/mz/mzdkplayer/     # :core — business layer, shared by 
 │   ├── exo/          # MzExoPlayer implementation
 │   └── vlc/          # MzVlcPlayer implementation
 ├── tool/             # Utilities: protocol data sources, subtitle scanning, time parsing, LAN proxy and remote services
+│   └── logic/        # Pure logic (JVM-testable): file name parsing, protocol URIs, scrape source order and breaker
 └── viewmodel/        # ViewModels for every screen
 
 app/src/main/java/org/mz/mzdkplayer/
-└── MzDkPlayerApplication.kt              # Application shared by both flavors
+└── MzDkPlayerApplication.kt              # Application shared by both flavors (incl. the Coil setup for Douban images)
 
 app/src/tv/java/org/mz/mzdkplayer/        # TV flavor (androidx.tv.material3 only)
 ├── MainActivity.kt / LaunchScreen.kt     # LEANBACK_LAUNCHER entry point
@@ -377,7 +414,7 @@ app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # Phone flavor (androidx.compos
 ├── PhoneMainActivity.kt    # LAUNCHER entry point (applicationId = org.mz.mzdkplayer.phone)
 ├── PhoneApp.kt             # Bottom navigation + navigation graph
 ├── PhoneTheme.kt / PhoneIcons.kt / PhoneRoutes.kt
-└── screen/                 # Home / Files / SMB browser / Player / Settings
+└── screen/                 # Home / Files / protocol browsers / Player / Settings
 ```
 
 The two design systems never cross: `:core` depends on no Material library at all, the TV flavor pulls only
@@ -405,6 +442,7 @@ Playback is abstracted behind `player/core/IMzPlayer.kt`, implemented by `MzExoP
 - The Room database `AppDatabase` holds three tables: `media_cache` (scraped media cache keyed by `videoUri`), an audio cache, and playback history.
 - The URI passed from list screens to the player matches `media_cache.videoUri`, so the player can hit the scraped cache directly without re-fetching.
 - Navigation arguments (URI, file name, connection name, etc.) are Base64-encoded to keep special characters from breaking the routes.
+- Scraped records carry a **source** column (`tmdb` / `douban`): Douban subject IDs and TMDB IDs live in overlapping numeric ranges, so the source is used for library grouping and for the details screen, keeping two unrelated titles from being merged into one card — or a Douban ID from being looked up on TMDB.
 
 ---
 
@@ -416,6 +454,7 @@ Playback is abstracted behind `player/core/IMzPlayer.kt`, implemented by `MzExoP
 ./gradlew :app:compileTvDebugKotlin          # Compile only — fastest syntax check
 ./gradlew :app:assembleTvDebug               # Build a debug APK
 ./gradlew :app:assembleTvRelease             # Build a release APK (unsigned)
+./gradlew :app:compilePhoneDebugKotlin       # Compile-only for the phone flavor
 ./gradlew :core:testDebugUnitTest           # Run all JVM unit tests
 ./gradlew :core:testDebugUnitTest --tests "org.mz.mzdkplayer.tool.PlayerMediaTextTest"   # Run one test class
 ./gradlew clean                            # Clean build outputs
@@ -428,7 +467,7 @@ Playback is abstracted behind `player/core/IMzPlayer.kt`, implemented by `MzExoP
   Tests must therefore be pure JVM tests: calling Android types such as `android.net.Uri`, `android.util.Log`, `android.util.Base64`, or `Context` throws `RuntimeException("Stub!")`.
 - Extract testable pure logic into `object` / `internal object` declarations that do not depend on Android; tests and the code under test both live in `:core` (`internal` is deliberately invisible to the app module).
 - Naming convention: class names end with `Test`, and test functions use backtick-quoted descriptions, e.g. `` `Series - title with season/episode/year` ``.
-- Existing tests: `MediaInfoExtractorFormFileNameTest` (file name parsing), `PlayerMediaTextTest` (player title and date), `FileTimeParseTest` (HTTP date / protocol inference / credentials / NFS path splitting).
+- There are currently **28 test classes with 475 cases**, all of them in `:core`. Representative ones: `MediaInfoExtractorFormFileNameTest` (file name parsing), `PlayerMediaTextTest` (player title and date), `HttpDirectoryListingTest` / `FileTimeParseTest` (HTTP date parsing), `ProtocolUriParserTest` / `SidecarPathTest` (protocol URIs and sidecar paths), `StreamSizePolicyTest` (per-protocol stream read policy), `Phone*Test` (phone-side pure logic), and `DoubanLogicTest` / `ScrapeSourcePolicyTest` / `ScrapeCircuitBreakerTest` (Douban field normalisation, scraping source order, and the circuit breaker). See `core/src/test/` for the full list.
 
 ### Logging
 
@@ -454,7 +493,9 @@ The project uses logback-android. All network protocol implementations (SMB / FT
 
 - **Chipset**: Amlogic S905L or equivalent performance chipset
 - **RAM**: 1GB RAM
-- **System**: Android 6.0 (API 23) and above (`minSdk = 23`); remote operation requires D-pad support on the TV or box
+- **System**: Android 8.0 (API 26) and above (`minSdk = 26`); remote operation requires D-pad support on the TV or box
+
+> 📱 **Phone app**: also `minSdk = 26` (Android 8.0 and above), entirely touch-driven with no remote required; it uses a different `applicationId`, so both apps can be installed side by side.
 
 > ⚠️ **Note**: The code is not well-optimized; it's a success if it runs. There are bugs. Insufficient device performance may cause video and danmaku playback lag, or failure to play high-bitrate videos.
 
@@ -472,6 +513,9 @@ The project uses logback-android. All network protocol implementations (SMB / FT
 - [x] Audio file and image file support
 - [x] Playlist management
 - [x] Movie/TV series details page
+- [x] TV / phone split (`:core` business layer + `tv` / `phone` flavors sharing one implementation)
+- [x] Phone app: file browsing / scraping and details / player (gestures and track sheets) / settings / music / images
+- [x] Douban scraping source and a "preferred scraping source" switch (with an automatic circuit breaker on repeated failures)
 - [ ] Online danmaku loading function
 - [ ] Settings interface optimization
 
@@ -486,6 +530,8 @@ Contributions of any kind are welcome — contributions to **player stability** 
 ### Reporting Issues
 
 When filing an issue, please include: device model and chipset, system version, app version (`Settings -> About`), the protocol in use (SMB / FTP / WebDAV / NFS / HTTP or local), reproduction steps, and a captured `adb logcat` snippet. Issues with logs are usually resolved much faster.
+
+> For scraping-related issues, please also state the **data source**: whether `Settings -> Scraping & Library -> Preferred Scraping Source` is set to Douban or TMDB, and which source the file ended up using.
 
 ### Code Contribution Workflow
 
@@ -502,6 +548,7 @@ When filing an issue, please include: device model and chipset, system version, 
 
    ```bash
    ./gradlew :app:compileTvDebugKotlin
+   ./gradlew :app:compilePhoneDebugKotlin
    ./gradlew :core:testDebugUnitTest
    ```
 
@@ -528,9 +575,9 @@ Show scraped title and file date on the player screen, flush playback progress p
 
 ### Pull Request Checklist
 
-- [ ] `./gradlew :app:compileTvDebugKotlin` passes
+- [ ] `./gradlew :app:compileTvDebugKotlin` / `./gradlew :app:compilePhoneDebugKotlin` passes (both flavors must compile)
 - [ ] `./gradlew :core:testDebugUnitTest` passes (add tests for new pure logic)
-- [ ] No local files committed (`local.properties`, `app/build/`, `.gradle/`, `.idea/`, etc.)
+- [ ] No local files committed (`local.properties`, `app/build/`, `.gradle/`, `.idea/`, `app/<flavor>/release/` written by the signing wizard, etc.)
 - [ ] New strings added to every language's `strings.xml`
 - [ ] User-visible changes reflected in `CHANGELOG.md` (and `versionName` when appropriate)
 - [ ] Verified on a real device / TV (state the device and system version)
@@ -545,8 +592,8 @@ Two workflows ship with the repository, so you never have to package a build by 
 
 | Workflow | Trigger | What it does |
 | --- | --- | --- |
-| `ci.yml` | Push to `main`, every PR | Compiles and runs the JVM unit tests, uploads the test report as an artifact |
-| `release.yml` | Push to `main` (when the version is new), `V*` tag push, manual run | Runs the tests → builds signed APKs → creates the Release with all three APKs attached |
+| `ci.yml` | Push to `main`, every PR | Compiles both flavors and runs the JVM unit tests, uploads the test report as an artifact |
+| `release.yml` | Push to `main` (when the version is new), `V*` tag push, manual run | Runs the tests → builds the **TV** signed APKs → creates the Release with all three APKs attached (the TV build only for now — build the phone app yourself) |
 
 **Releases are version-driven**: `release.yml` reads `versionName` from `app/build.gradle.kts` and, if there is no `V<version>` Release yet, builds and publishes automatically. In other words, bump `versionName` as usual, push, and the Release appears — no manual tagging needed (the workflow creates the tag, keeping the historical uppercase `V` prefix such as `V1.17.4`).
 
@@ -556,7 +603,7 @@ Publishing needs these Secrets (`Settings → Secrets and variables → Actions`
 
 | Secret | Purpose |
 | --- | --- |
-| `TMDB_API_KEY` | Written into `BuildConfig.TMDB_API_KEY` at build time; an empty value silently breaks TMDB scraping |
+| `TMDB_API_KEY` | Written into `BuildConfig.TMDB_API_KEY` at build time; an empty value silently breaks TMDB scraping (Douban scraping does not depend on it) |
 | `RELEASE_KEYSTORE_BASE64` | base64 of the signing keystore: `base64 -w0 release.jks` |
 | `RELEASE_KEYSTORE_PASSWORD` | Keystore password |
 | `RELEASE_KEY_ALIAS` | Key alias |
