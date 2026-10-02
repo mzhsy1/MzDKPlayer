@@ -314,14 +314,14 @@ fun MovieLibraryScreen(
                                 onClick = {
                                     selectedMovieTitle = movie.title
                                     viewModel.clearSelectedMovieVersions()
-                                    viewModel.loadMovieVersions(movie.tmdbId)
+                                    viewModel.loadMovieVersions(movie.tmdbId, movie.source)
                                     checkVersionsAfterLoad = true
                                 },
                                 // 直接在这里使用官方提供的 onLongClick
                                 onLongClick = {
                                     selectedMovieTitle = movie.title
                                     focusedMovie = movie
-                                    viewModel.loadMovieVersions(movie.tmdbId)
+                                    viewModel.loadMovieVersions(movie.tmdbId, movie.source)
                                     isLongClickAction = true
                                     checkVersionsAfterLoad = true
                                 },

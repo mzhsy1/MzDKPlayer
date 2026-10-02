@@ -42,10 +42,10 @@ class MediaLibraryViewModel(
     ) {
         mediaDao.getMoviesPaged()
     }.flow.cachedIn(viewModelScope)
-    // 加载特定电影的所有版本
-    fun loadMovieVersions(tmdbId: Int) {
+    // 加载特定电影的所有版本（同一 id 在不同来源下不是同一部片子，所以必须带上 source）
+    fun loadMovieVersions(tmdbId: Int, source: String = MediaCacheEntity.SOURCE_TMDB) {
         viewModelScope.launch {
-            _selectedMovieVersions.value = mediaDao.getMovieVersions(tmdbId)
+            _selectedMovieVersions.value = mediaDao.getMovieVersions(tmdbId, source)
         }
     }
 
@@ -71,10 +71,10 @@ class MediaLibraryViewModel(
     private val _selectedSeriesEpisodes = MutableStateFlow<List<MediaCacheEntity>>(emptyList())
     val selectedSeriesEpisodes = _selectedSeriesEpisodes.asStateFlow()
 
-    // 加载特定剧集的集数列表
-    fun loadEpisodes(tmdbId: Int) {
+    // 加载特定剧集的集数列表（同样按来源隔离，避免和同号的 TMDB 剧集串在一起）
+    fun loadEpisodes(tmdbId: Int, source: String = MediaCacheEntity.SOURCE_TMDB) {
         viewModelScope.launch {
-            _selectedSeriesEpisodes.value = mediaDao.getEpisodesForSeries(tmdbId)
+            _selectedSeriesEpisodes.value = mediaDao.getEpisodesForSeries(tmdbId, source)
         }
     }
 

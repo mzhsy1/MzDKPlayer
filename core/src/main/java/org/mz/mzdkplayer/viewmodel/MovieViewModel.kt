@@ -12,8 +12,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.mz.mzdkplayer.data.douban.DoubanScraper
 import org.mz.mzdkplayer.data.local.MediaCacheEntity
 import org.mz.mzdkplayer.data.local.MediaDao
+import org.mz.mzdkplayer.data.model.Genre
 import org.mz.mzdkplayer.data.model.MediaItem
 import org.mz.mzdkplayer.data.model.Movie
 import org.mz.mzdkplayer.data.model.MovieDetails
@@ -23,6 +25,7 @@ import org.mz.mzdkplayer.data.model.TVSeriesDetails
 import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.data.repository.TmdbRepository
 import org.mz.mzdkplayer.data.repository.SettingsRepository
+import org.mz.mzdkplayer.tool.logic.ScrapeSourcePolicy
 import org.mz.mzdkplayer.tool.metadata.NfoReader
 import org.mz.mzdkplayer.tool.metadata.NfoTool
 import org.mz.mzdkplayer.tool.metadata.MediaInfo
@@ -32,6 +35,9 @@ import androidx.media3.common.util.UnstableApi
 
 class MovieViewModel(private val repository: TmdbRepository,private val mediaDao: MediaDao) : ViewModel() {
     private val settingsRepo = SettingsRepository
+
+    /** 豆瓣兜底数据源（TMDB 搜不到时才用），内部自带 OkHttp 客户端，做成单例字段复用 */
+    private val doubanScraper = DoubanScraper()
 
     private val _popularMovies = MutableStateFlow<Resource<List<Movie>>>(Resource.Loading)
     val popularMovies: StateFlow<Resource<List<Movie>>> = _popularMovies
@@ -204,7 +210,11 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
         viewModelScope.launch(Dispatchers.IO) {
             // 1. 检查缓存是否包含详情
             val cached = mediaDao.getMediaByUri(videoUri)
-            if (cached != null && cached.isDetailsLoaded && cached.mediaType == "movie") {
+            // 【注意】非 TMDB 来源（豆瓣兜底）记录里的 tmdbId 列存的是**豆瓣条目 id**，
+            // 数值空间和 TMDB id 重叠，拿去查 TMDB 会查到另一部片子，所以只要本地有这条记录就直接收尾
+            if (cached != null && cached.mediaType == "movie" &&
+                (cached.isDetailsLoaded || cached.source != MediaCacheEntity.SOURCE_TMDB)
+            ) {
                 Log.d("MovieViewModel", "Hit Details Cache for Movie")
                 // 构造 MovieDetails 对象返回给 UI
                 val details = MovieDetails(
@@ -331,6 +341,15 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
                     )
                     _tvEpisodeResults.value = Resource.Success(episodeDetails)
                     return@launch // ✪ 命中缓存，直接结束，无需联网
+                }
+
+                // 【关键】非 TMDB 来源（豆瓣兜底）走到这里说明：剧集信息已从本地拿到了，但没有分集信息。
+                // 它的 tmdbId 列存的是**豆瓣条目 id**（数值空间和 TMDB 重叠），继续往下联网会查到另一部剧，
+                // 所以这里必须收尾：分集状态用 Error 收口，UI 会隐藏「当前单集详情」卡片、背景图退回剧集背景。
+                if (cached.source != MediaCacheEntity.SOURCE_TMDB) {
+                    Log.d("MovieViewModel", "非 TMDB 来源，跳过联网补分集: ${cached.source}")
+                    _tvEpisodeResults.value = Resource.Error("该数据源没有单集信息")
+                    return@launch
                 }
             }
 
@@ -652,123 +671,232 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
                 }
             }
 
-            if (mediaInfo.mediaType == "movie") {
-                // 1. 搜索电影
-                var searchResult = repository.searchMovies(mediaInfo.title, year = mediaInfo.year)
-                
-                // [优化] 如果带年份搜索不到结果，且年份不为空，则尝试不带年份重新搜索
-                if (searchResult is Resource.Success && searchResult.data.results.isEmpty() && mediaInfo.year.isNotEmpty()) {
-                    Log.d("MovieViewModel", "Search with year failed, retrying without year: ${mediaInfo.title}")
-                    searchResult = repository.searchMovies(mediaInfo.title, year = "")
+            // 1. 按设置里的首选数据源依次尝试（默认豆瓣优先），首选搜不到就用另一个兜底。
+            //    顺序只在 ScrapeSourcePolicy 里定义，这里不写 if-else 判断谁先谁后。
+            for (source in ScrapeSourcePolicy.order(settingsRepo.scrapeSourcePriority)) {
+                Log.d("MovieViewModel", "尝试数据源[$source]: $fileName")
+                val entity = if (source == ScrapeSourcePolicy.DOUBAN) {
+                    fetchFromDouban(mediaInfo, videoUri, dataSourceType, fileName, connectionName)
+                } else {
+                    fetchFromTmdb(mediaInfo, videoUri, dataSourceType, fileName, connectionName)
                 }
-
-                if (searchResult is Resource.Success) {
-                    val basicMovie = searchResult.data.results.firstOrNull() ?: return null
-
-                    // 2. 立即获取详细信息
-                    val detailResult = repository.getMovieDetails(basicMovie.id)
-                    val finalDetails = if (detailResult is Resource.Success) detailResult.data else null
-
-                    // 3. 构建包含详情的实体
-                    val entity = MediaCacheEntity(
-                        videoUri = videoUri,
-                        dataSourceType = dataSourceType,
-                        fileName = fileName,
-                        connectionName = connectionName,
-                        tmdbId = basicMovie.id,
-                        mediaType = "movie",
-                        // 优先使用详情里的数据
-                        title = finalDetails?.title ?: basicMovie.title ?: "",
-                        overview = finalDetails?.overview ?: basicMovie.overview,
-                        posterPath = finalDetails?.posterPath ?: basicMovie.posterPath,
-                        backdropPath = finalDetails?.backdropPath ?: basicMovie.backdropPath,
-                        releaseDate = finalDetails?.releaseDate ?: basicMovie.releaseDate,
-                        voteAverage = finalDetails?.voteAverage ?: basicMovie.voteAverage,
-                        // 详情特有字段
-                        status = finalDetails?.status ?: "未知状态",
-                        genres = finalDetails?.genreList ?: emptyList(),
-                        originCountry = finalDetails?.originCountry ?: emptyList(),
-                        // 标记为详情已加载
-                        isDetailsLoaded = finalDetails != null,
-                        groupKey = "movie_${videoUri}"
-                    )
-                    mediaDao.insertMedia(entity)
-                    return entity
-                }
-            } else {
-                // 1. 搜索 TV
-                var searchResult = repository.searchTV(mediaInfo.title, year = mediaInfo.year)
-
-                // [优化] 如果带年份搜索不到结果，且年份不为空，则尝试不带年份重新搜索
-                if (searchResult is Resource.Success && searchResult.data.results.isEmpty() && mediaInfo.year.isNotEmpty()) {
-                    Log.d("MovieViewModel", "Search TV with year failed, retrying without year: ${mediaInfo.title}")
-                    searchResult = repository.searchTV(mediaInfo.title, year = "")
-                }
-
-                if (searchResult is Resource.Success) {
-                    val basicTV = searchResult.data.results.firstOrNull() ?: return null
-
-                    // 2. 并行获取 Series详情 和 Episode详情
-                    val seriesDeferred = viewModelScope.async(Dispatchers.IO) {
-                        repository.getTVSeriesDetails(basicTV.id)
-                    }
-
-                    // 如果文件名里解析出了季和集，就去查分集详情，否则只查剧集详情
-                    val seasonNum = mediaInfo.season.toIntOrNull() ?: 1
-                    val episodeNum = mediaInfo.episode.toIntOrNull() ?: 1
-
-                    val episodeDeferred = viewModelScope.async(Dispatchers.IO) {
-                        repository.getTVEpisodeDetails(basicTV.id, seasonNum, episodeNum)
-                    }
-
-                    val seriesResult = seriesDeferred.await()
-                    val episodeResult = episodeDeferred.await()
-
-                    val sData = if (seriesResult is Resource.Success) seriesResult.data else null
-                    val eData = if (episodeResult is Resource.Success) episodeResult.data else null
-
-                    // 3. 构建包含详情的实体
-                    val entity = MediaCacheEntity(
-                        videoUri = videoUri,
-                        dataSourceType = dataSourceType,
-                        fileName = fileName,
-                        connectionName = connectionName,
-                        tmdbId = basicTV.id,
-                        mediaType = "tv",
-                        title = sData?.name ?: basicTV.name ?: "",
-                        overview = sData?.overview ?: basicTV.overview, // 系列简介
-                        posterPath = sData?.posterPath ?: basicTV.posterPath,
-                        backdropPath = sData?.backdropPath ?: basicTV.backdropPath,
-                        releaseDate = sData?.firstAirDate ?: basicTV.firstAirDate,
-                        voteAverage = sData?.voteAverage ?: basicTV.voteAverage,
-                        seasonNumber = seasonNum,
-                        episodeNumber = episodeNum,
-                        // 详情特有字段
-                        status = sData?.status ?:"未知状态",
-                        genres = sData?.genreList ?: emptyList(),
-                        originCountry = sData?.originCountry ?: emptyList(),
-                        numberOfSeasons = sData?.numberOfSeasons,
-                        numberOfEpisodes = sData?.numberOfEpisodes,
-                        // 分集特有字段
-                        episodeName = eData?.name,
-                        episodeOverview = eData?.overview, // 分集简介
-                        episodeStillPath = eData?.stillPath,
-                        episodeAirDate = eData?.airDate,
-                        episodeRuntime = eData?.runtime,
-
-                        // 只要获取到了 Series 详情就算详情已加载
-                        isDetailsLoaded = sData != null,
-                        groupKey = "tv_${basicTV.id}"
-                    )
-                    mediaDao.insertMedia(entity)
-                    return entity
-                }
+                if (entity != null) return entity
             }
         } catch (e: Exception) {
             Log.e("MovieViewModel", "Fetch full details failed: $fileName", e)
         }
         return null
     }
+
+    /**
+     * TMDB 主流程：搜索 + 取详情 + 入库。返回 null 表示 TMDB 没搜到（交由上层去兜底）。
+     *
+     * 入库记录一律带 [MediaCacheEntity.SOURCE_TMDB]，这样库里同号但不同来源的条目不会互相串。
+     */
+    @OptIn(UnstableApi::class)
+    private suspend fun fetchFromTmdb(
+        mediaInfo: MediaInfo,
+        videoUri: String,
+        dataSourceType: String,
+        fileName: String,
+        connectionName: String
+    ): MediaCacheEntity? {
+        if (mediaInfo.mediaType == "movie") {
+            // 1. 搜索电影
+            var searchResult = repository.searchMovies(mediaInfo.title, year = mediaInfo.year)
+
+            // [优化] 如果带年份搜索不到结果，且年份不为空，则尝试不带年份重新搜索
+            if (searchResult is Resource.Success && searchResult.data.results.isEmpty() && mediaInfo.year.isNotEmpty()) {
+                Log.d("MovieViewModel", "Search with year failed, retrying without year: ${mediaInfo.title}")
+                searchResult = repository.searchMovies(mediaInfo.title, year = "")
+            }
+
+            if (searchResult is Resource.Success) {
+                val basicMovie = searchResult.data.results.firstOrNull() ?: return null
+
+                // 2. 立即获取详细信息
+                val detailResult = repository.getMovieDetails(basicMovie.id)
+                val finalDetails = if (detailResult is Resource.Success) detailResult.data else null
+
+                // 3. 构建包含详情的实体
+                val entity = MediaCacheEntity(
+                    videoUri = videoUri,
+                    dataSourceType = dataSourceType,
+                    fileName = fileName,
+                    connectionName = connectionName,
+                    tmdbId = basicMovie.id,
+                    mediaType = "movie",
+                    // 优先使用详情里的数据
+                    title = finalDetails?.title ?: basicMovie.title ?: "",
+                    overview = finalDetails?.overview ?: basicMovie.overview,
+                    posterPath = finalDetails?.posterPath ?: basicMovie.posterPath,
+                    backdropPath = finalDetails?.backdropPath ?: basicMovie.backdropPath,
+                    releaseDate = finalDetails?.releaseDate ?: basicMovie.releaseDate,
+                    voteAverage = finalDetails?.voteAverage ?: basicMovie.voteAverage,
+                    // 详情特有字段
+                    status = finalDetails?.status ?: "未知状态",
+                    genres = finalDetails?.genreList ?: emptyList(),
+                    originCountry = finalDetails?.originCountry ?: emptyList(),
+                    // 标记为详情已加载
+                    isDetailsLoaded = finalDetails != null,
+                    groupKey = "movie_${videoUri}",
+                    // 显式标注来源：媒体库分组与详情页都靠它区分「这是 TMDB id 还是豆瓣 id」
+                    source = MediaCacheEntity.SOURCE_TMDB
+                )
+                mediaDao.insertMedia(entity)
+                return entity
+            }
+        } else {
+            // 1. 搜索 TV
+            var searchResult = repository.searchTV(mediaInfo.title, year = mediaInfo.year)
+
+            // [优化] 如果带年份搜索不到结果，且年份不为空，则尝试不带年份重新搜索
+            if (searchResult is Resource.Success && searchResult.data.results.isEmpty() && mediaInfo.year.isNotEmpty()) {
+                Log.d("MovieViewModel", "Search TV with year failed, retrying without year: ${mediaInfo.title}")
+                searchResult = repository.searchTV(mediaInfo.title, year = "")
+            }
+
+            if (searchResult is Resource.Success) {
+                val basicTV = searchResult.data.results.firstOrNull() ?: return null
+
+                // 2. 并行获取 Series详情 和 Episode详情
+                val seriesDeferred = viewModelScope.async(Dispatchers.IO) {
+                    repository.getTVSeriesDetails(basicTV.id)
+                }
+
+                // 如果文件名里解析出了季和集，就去查分集详情，否则只查剧集详情
+                val seasonNum = mediaInfo.season.toIntOrNull() ?: 1
+                val episodeNum = mediaInfo.episode.toIntOrNull() ?: 1
+
+                val episodeDeferred = viewModelScope.async(Dispatchers.IO) {
+                    repository.getTVEpisodeDetails(basicTV.id, seasonNum, episodeNum)
+                }
+
+                val seriesResult = seriesDeferred.await()
+                val episodeResult = episodeDeferred.await()
+
+                val sData = if (seriesResult is Resource.Success) seriesResult.data else null
+                val eData = if (episodeResult is Resource.Success) episodeResult.data else null
+
+                // 3. 构建包含详情的实体
+                val entity = MediaCacheEntity(
+                    videoUri = videoUri,
+                    dataSourceType = dataSourceType,
+                    fileName = fileName,
+                    connectionName = connectionName,
+                    tmdbId = basicTV.id,
+                    mediaType = "tv",
+                    title = sData?.name ?: basicTV.name ?: "",
+                    overview = sData?.overview ?: basicTV.overview, // 系列简介
+                    posterPath = sData?.posterPath ?: basicTV.posterPath,
+                    backdropPath = sData?.backdropPath ?: basicTV.backdropPath,
+                    releaseDate = sData?.firstAirDate ?: basicTV.firstAirDate,
+                    voteAverage = sData?.voteAverage ?: basicTV.voteAverage,
+                    seasonNumber = seasonNum,
+                    episodeNumber = episodeNum,
+                    // 详情特有字段
+                    status = sData?.status ?:"未知状态",
+                    genres = sData?.genreList ?: emptyList(),
+                    originCountry = sData?.originCountry ?: emptyList(),
+                    numberOfSeasons = sData?.numberOfSeasons,
+                    numberOfEpisodes = sData?.numberOfEpisodes,
+                    // 分集特有字段
+                    episodeName = eData?.name,
+                    episodeOverview = eData?.overview, // 分集简介
+                    episodeStillPath = eData?.stillPath,
+                    episodeAirDate = eData?.airDate,
+                    episodeRuntime = eData?.runtime,
+
+                    // 只要获取到了 Series 详情就算详情已加载
+                    isDetailsLoaded = sData != null,
+                    groupKey = "tv_${basicTV.id}",
+                    source = MediaCacheEntity.SOURCE_TMDB
+                )
+                mediaDao.insertMedia(entity)
+                return entity
+            }
+        }
+        return null
+    }
+    /**
+     * 豆瓣兜底：用中文名搜索 + 取详情 + 入库。
+     *
+     * 与 TMDB 流程的两个关键差别：
+     * 1. 豆瓣没有分集接口，所以剧集只落「剧集级」信息（`episodeName` 等分集字段留空）；
+     * 2. 来源必须写成 [MediaCacheEntity.SOURCE_DOUBAN]：豆瓣条目 id 和 TMDB id 的数值区间是重叠的，
+     *    来源标记既用于媒体库分组，也用于详情页判断「这个 id 到底能不能拿去查 TMDB」。
+     */
+    private suspend fun fetchFromDouban(
+        mediaInfo: MediaInfo,
+        videoUri: String,
+        dataSourceType: String,
+        fileName: String,
+        connectionName: String
+    ): MediaCacheEntity? {
+        return try {
+            val isTv = mediaInfo.mediaType == "tv"
+            val subject = doubanScraper.scrape(
+                keyword = mediaInfo.title,
+                year = mediaInfo.year.toIntOrNull(),
+                preferTv = isTv,
+            ) ?: return null
+
+            // 类型仍以文件名结构为准（而不是豆瓣的 subtype）：一份文件不该因为换了数据源就在
+            // 「电影库 / 剧集库」之间跳来跳去。不一致时只记日志，便于排查匹配错误。
+            if (subject.isTv != isTv) {
+                Log.d("MovieViewModel", "豆瓣类型(${subject.isTv})与文件名结构($isTv)不一致: $fileName")
+            }
+
+            val subjectId = subject.id.toIntOrNull()
+            if (subjectId == null) {
+                Log.w("MovieViewModel", "豆瓣 id 不是数字，跳过入库: ${subject.id}")
+                return null
+            }
+
+            val seasonNum = mediaInfo.season.toIntOrNull() ?: 1
+            val episodeNum = mediaInfo.episode.toIntOrNull() ?: 1
+
+            val entity = MediaCacheEntity(
+                videoUri = videoUri,
+                dataSourceType = dataSourceType,
+                fileName = fileName,
+                connectionName = connectionName,
+                // 豆瓣条目 id 借存在 tmdbId 列里，靠 source 区分是两个不同的 id 空间
+                tmdbId = subjectId,
+                mediaType = if (isTv) "tv" else "movie",
+                title = subject.title,
+                overview = subject.overview,
+                posterPath = subject.posterUrl,
+                backdropPath = subject.backdropUrl,
+                releaseDate = subject.releaseDate,
+                voteAverage = subject.rating,
+                seasonNumber = if (isTv) seasonNum else 0,
+                episodeNumber = if (isTv) episodeNum else 0,
+                // 豆瓣接口没有“上映状态”这个字段，别编，沿用和 TMDB 失败时相同的兜底文案
+                status = "未知状态",
+                genres = subject.genres.mapIndexed { index, name -> Genre(id = index, name = name) },
+                originCountry = subject.countries,
+                numberOfEpisodes = subject.episodesCount,
+                // 豆瓣没有分集信息，这五项留空 —— 详情页正是靠 source 判断「别再拿这个 id 去查 TMDB」
+                episodeName = null,
+                episodeOverview = null,
+                episodeStillPath = null,
+                episodeAirDate = null,
+                episodeRuntime = null,
+                // 标题/简介/海报/评分/类型都拿到了，按“详情已加载”处理
+                isDetailsLoaded = true,
+                source = MediaCacheEntity.SOURCE_DOUBAN,
+                groupKey = if (isTv) "douban_tv_$subjectId" else "douban_movie_$videoUri"
+            )
+            mediaDao.insertMedia(entity)
+            Log.d("MovieViewModel", "豆瓣兜底入库成功: ${subject.title} (id=${subject.id})")
+            entity
+        } catch (e: Exception) {
+            Log.e("MovieViewModel", "豆瓣兜底失败: $fileName", e)
+            null
+        }
+    }
+
     // 扩展函数：把 Movie/TvData 转成通用的 MediaItem
 //    private fun Movie.toMediaItem() = MediaItem(
 //        id = id,

@@ -129,7 +129,7 @@ fun SearchScreen(
                                 if (media.mediaType == "tv") {
                                     // 1. 如果是电视剧，设置名称，加载集数，显示弹窗
                                     selectedSeriesName = media.title
-                                    viewModel.loadEpisodes(media.tmdbId)
+                                    viewModel.loadEpisodes(media.tmdbId, media.source)
                                     showEpisodeDialog = true
                                 } else {
                                     // 2. 如果是电影，直接跳转到详情页或播放页

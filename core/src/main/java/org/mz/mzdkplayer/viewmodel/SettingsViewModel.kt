@@ -12,6 +12,7 @@ import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.data.repository.SettingsRepository
 import org.mz.mzdkplayer.common.LanguageManager
 import org.mz.mzdkplayer.tool.logic.PhoneSettingsLogic
+import org.mz.mzdkplayer.tool.logic.ScrapeSourcePolicy
 import org.mz.mzdkplayer.tool.logic.SubtitleOffsetLogic
 
 // 简单的数据类用于 UI 状态
@@ -53,6 +54,8 @@ data class SettingsUiState(
     val http: Boolean = false,
     val appLang: String = "",
     val prioritizeLocalNfo: Boolean = false,
+    /** 刮削首选数据源：`douban` / `tmdb`，见 [ScrapeSourcePolicy] */
+    val scrapeSourcePriority: String = ScrapeSourcePolicy.DEFAULT,
     val tmdbBaseUrl: String = SettingsRepository.DEFAULT_TMDB_URL,
     val recursiveScanLevel: Int = 1,
     val tmdbSearchLang: String = "",
@@ -123,6 +126,7 @@ class SettingsViewModel : ViewModel() {
                 http = repo.enableHttp,
                 appLang = repo.appLanguage,
                 prioritizeLocalNfo = repo.prioritizeLocalNfo,
+                scrapeSourcePriority = repo.scrapeSourcePriority,
                 tmdbBaseUrl = repo.tmdbBaseUrl,
                 recursiveScanLevel = repo.recursiveScanLevel,
                 tmdbSearchLang = repo.tmdbSearchLang,
@@ -253,6 +257,23 @@ class SettingsViewModel : ViewModel() {
     fun togglePrioritizeLocalNfo(v: Boolean) {
         repo.prioritizeLocalNfo = v
         refreshState()
+    }
+
+    /** 切换刮削首选数据源（豆瓣 / TMDB）；两个源都在用，只是顺序不同 */
+    fun setScrapeSourcePriority(value: String) {
+        repo.scrapeSourcePriority = value
+        refreshState()
+    }
+
+    /** 在「豆瓣优先 / TMDB 优先」之间来回切（电视端设置项是「按一次换一个」的交互） */
+    fun toggleScrapeSourcePriority() {
+        setScrapeSourcePriority(
+            if (repo.scrapeSourcePriority == ScrapeSourcePolicy.TMDB) {
+                ScrapeSourcePolicy.DOUBAN
+            } else {
+                ScrapeSourcePolicy.TMDB
+            }
+        )
     }
 
     private val _tmdbTestResult = MutableStateFlow<Resource<String>?>(null)

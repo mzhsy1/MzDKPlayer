@@ -15,6 +15,10 @@
 
     <string name="setting_prioritize_nfo">ローカル NFO ファイルを優先</string>
     <string name="setting_prioritize_nfo_sub">メディアディレクトリに同名の .nfo ファイルが存在する場合、オンラインでのスクレイピングではなく、そこから情報を優先的に抽出します</string>
+    <string name="setting_scrape_source">優先スクレイピング元</string>
+    <string name="setting_scrape_source_sub">優先元で見つからない場合は、もう一方のソースでフォールバックします。注意：豆瓣にはエピソード単位の情報がないため、「豆瓣優先」では各話のタイトル・あらすじ・スチルが空になります。また豆瓣は公開インターフェースのため、連続で失敗すると自動的にスキップされます</string>
+    <string name="setting_scrape_source_douban">豆瓣（Douban）優先</string>
+    <string name="setting_scrape_source_tmdb">TMDB 優先</string>
 
     <string name="setting_recursive_scan_level">一括スキャンのサブフォルダ階層</string>
     <string name="setting_recursive_scan_level_sub">ビデオを一括スキャンする際にサブディレクトリを再帰的に検索する深さ</string>

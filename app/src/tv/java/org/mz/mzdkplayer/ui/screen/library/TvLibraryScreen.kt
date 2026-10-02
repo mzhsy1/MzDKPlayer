@@ -218,7 +218,7 @@ fun TvLibraryScreen(
                                 onClick = {
                                     // 点击时，加载该剧集下的所有文件，并显示弹窗
                                     selectedSeriesName = tvShow.title
-                                    viewModel.loadEpisodes(tvShow.tmdbId)
+                                    viewModel.loadEpisodes(tvShow.tmdbId, tvShow.source)
                                     showEpisodeDialog = true
                                 },
                                 onLongClick = {}

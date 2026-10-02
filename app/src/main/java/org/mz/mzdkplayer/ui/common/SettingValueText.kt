@@ -3,6 +3,7 @@ package org.mz.mzdkplayer.ui.common
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.tool.logic.ScrapeSourcePolicy
 
 /**
  * 「设置里存的原始值 → 界面文案」的统一映射。
@@ -81,6 +82,13 @@ fun formatTmdbLang(code: String): String = when (code) {
     "ja-JP" -> "日本語"
     "ko-KR" -> "한국어"
     else -> code
+}
+
+/** 刮削首选数据源：`douban` / `tmdb`（两个源都在用，只是谁先谁后），见 `ScrapeSourcePolicy` */
+@Composable
+fun formatScrapeSource(code: String): String = when (code) {
+    ScrapeSourcePolicy.TMDB -> stringResource(R.string.setting_scrape_source_tmdb)
+    else -> stringResource(R.string.setting_scrape_source_douban)
 }
 
 /** App 语言：`""` = 跟随系统 */

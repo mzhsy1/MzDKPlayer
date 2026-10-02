@@ -15,6 +15,10 @@
 
     <string name="setting_prioritize_nfo">Prioritize Local NFO Files</string>
     <string name="setting_prioritize_nfo_sub">If a .nfo file with the same name exists in the media directory, information will be extracted from it first instead of scraping online</string>
+    <string name="setting_scrape_source">Preferred Scraping Source</string>
+    <string name="setting_scrape_source_sub">If the preferred source finds nothing, the other source is used as a fallback. Note: Douban has no per-episode data, so with "Douban first" episode titles, overviews and stills will be missing; it also relies on public endpoints and is skipped automatically after repeated failures</string>
+    <string name="setting_scrape_source_douban">Douban first</string>
+    <string name="setting_scrape_source_tmdb">TMDB first</string>
 
     <string name="setting_webdav_remove_first_item">Remove first item from WebDAV list</string>
     <string name="setting_webdav_remove_first_item_sub">Some WebDAV services return the current directory as the first item; enable this to avoid duplicates</string>

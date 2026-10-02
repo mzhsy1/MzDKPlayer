@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
+import org.mz.mzdkplayer.tool.logic.ScrapeSourcePolicy
 
 // 定义一个单例或者通过 Hilt 注入，这里用简单的单例模式
 object SettingsRepository {
@@ -76,6 +77,13 @@ object SettingsRepository {
 
     // 🔥 新增：优先选择本地 nfo
     private const val KEY_PRIORITIZE_LOCAL_NFO = "prioritize_local_nfo"
+
+    /**
+     * 刮削首选数据源（`douban` / `tmdb`，见 [ScrapeSourcePolicy]）。
+     *
+     * 两个源都在用，这个值只决定谁先谁后：首选搜不到就用另一个兜底。默认豆瓣。
+     */
+    private const val KEY_SCRAPE_SOURCE_PRIORITY = "scrape_source_priority"
 
     // 🔥 新增：TMDB API Base URL
     private const val KEY_TMDB_BASE_URL = "tmdb_base_url"
@@ -295,6 +303,15 @@ object SettingsRepository {
     var prioritizeLocalNfo: Boolean
         get() = prefs.getBoolean(KEY_PRIORITIZE_LOCAL_NFO, false)
         set(value) = prefs.edit { putBoolean(KEY_PRIORITIZE_LOCAL_NFO, value) }
+
+    /**
+     * 刮削首选数据源：`douban`（默认）或 `tmdb`。
+     *
+     * 读的时候就走一次 [ScrapeSourcePolicy.normalize]，把脏数据 / 旧版本残留收敛掉。
+     */
+    var scrapeSourcePriority: String
+        get() = ScrapeSourcePolicy.normalize(prefs.getString(KEY_SCRAPE_SOURCE_PRIORITY, ScrapeSourcePolicy.DEFAULT))
+        set(value) = prefs.edit { putString(KEY_SCRAPE_SOURCE_PRIORITY, ScrapeSourcePolicy.normalize(value)) }
 
     var tmdbBaseUrl: String
         get() = prefs.getString(KEY_TMDB_BASE_URL, DEFAULT_TMDB_URL) ?: DEFAULT_TMDB_URL

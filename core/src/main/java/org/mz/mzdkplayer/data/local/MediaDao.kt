@@ -32,17 +32,19 @@ interface MediaDao {
 
     // 1. 分页获取电影 (修改：增加 GROUP BY tmdbId)
     // 原来：@Query("SELECT * FROM media_cache WHERE mediaType = 'movie' ORDER BY title ASC")
-    @Query("SELECT * FROM media_cache WHERE mediaType = 'movie' GROUP BY tmdbId ORDER BY title ASC")
+    // 【修改】分组键补上 source：不同来源的 id 不是同一个 id 空间，只按 tmdbId 分组会把
+    // 「豆瓣刮到的片子」和「TMDB 刮到的片子」在数字撞车时合并成一张卡片
+    @Query("SELECT * FROM media_cache WHERE mediaType = 'movie' GROUP BY source, tmdbId ORDER BY title ASC")
     fun getMoviesPaged(): androidx.paging.PagingSource<Int, MediaCacheEntity>
 
     // ... (其他代码保持不变)
 
     // 【新增】获取某部电影的所有版本 (用于弹窗选择不同画质/来源)
-    @Query("SELECT * FROM media_cache WHERE mediaType = 'movie' AND tmdbId = :tmdbId")
-    suspend fun getMovieVersions(tmdbId: Int): List<MediaCacheEntity>
+    @Query("SELECT * FROM media_cache WHERE mediaType = 'movie' AND tmdbId = :tmdbId AND source = :source")
+    suspend fun getMovieVersions(tmdbId: Int, source: String): List<MediaCacheEntity>
 
     // 2. 分页获取电视剧（按 tmdbId 分组，确保一部剧只显示一张卡片）
-    @Query("SELECT * FROM media_cache WHERE mediaType = 'tv' GROUP BY tmdbId ORDER BY title ASC")
+    @Query("SELECT * FROM media_cache WHERE mediaType = 'tv' GROUP BY source, tmdbId ORDER BY title ASC")
     fun getTVSeriesPaged(): androidx.paging.PagingSource<Int, MediaCacheEntity>
 
     // 【新增】获取最近添加的媒体 (不区分电影电视，按 tmdbId 分组)
@@ -50,8 +52,11 @@ interface MediaDao {
     fun getRecentlyAddedPaged(): androidx.paging.PagingSource<Int, MediaCacheEntity>
 
     // 3. 获取某部剧集下的所有本地集数 (用于弹窗选集)
-    @Query("SELECT * FROM media_cache WHERE mediaType = 'tv' AND tmdbId = :tmdbId ORDER BY seasonNumber ASC, episodeNumber ASC")
-    suspend fun getEpisodesForSeries(tmdbId: Int): List<MediaCacheEntity>
+    @Query(
+        "SELECT * FROM media_cache WHERE mediaType = 'tv' AND tmdbId = :tmdbId AND source = :source " +
+            "ORDER BY seasonNumber ASC, episodeNumber ASC"
+    )
+    suspend fun getEpisodesForSeries(tmdbId: Int, source: String): List<MediaCacheEntity>
 
     /**
      * 【新增】清理资料库功能：删除 media_cache 表中所有记录

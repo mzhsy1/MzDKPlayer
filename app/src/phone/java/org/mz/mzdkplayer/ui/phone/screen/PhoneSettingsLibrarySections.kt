@@ -35,7 +35,9 @@ import org.mz.mzdkplayer.BuildConfig
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.data.repository.SettingsRepository
+import org.mz.mzdkplayer.tool.logic.ScrapeSourcePolicy
 import org.mz.mzdkplayer.ui.common.formatRecursiveScanLevel
+import org.mz.mzdkplayer.ui.common.formatScrapeSource
 import org.mz.mzdkplayer.ui.common.formatTmdbLang
 import org.mz.mzdkplayer.ui.phone.PhoneStoragePermission
 import org.mz.mzdkplayer.ui.phone.model.PhoneFileProtocol
@@ -100,6 +102,15 @@ internal fun PhoneLibrarySettingsPage(
                 subtitle = stringResource(R.string.setting_prioritize_nfo_sub),
                 checked = state.prioritizeLocalNfo,
                 onCheckedChange = settingsViewModel::togglePrioritizeLocalNfo,
+            )
+            SettingsDivider()
+            SettingsOptionsRow(
+                title = stringResource(R.string.setting_scrape_source),
+                subtitle = stringResource(R.string.setting_scrape_source_sub),
+                value = formatScrapeSource(state.scrapeSourcePriority),
+                selected = state.scrapeSourcePriority,
+                options = scrapeSourceOptions(),
+                onSelect = settingsViewModel::setScrapeSourcePriority,
             )
             SettingsDivider()
             SettingsOptionsRow(
@@ -436,6 +447,13 @@ private fun tmdbLangOptions(): List<SettingsOption<String>> = listOf(
     "en-US" to "English",
     "ja-JP" to "日本語",
     "ko-KR" to "한국어",
+).map { (value, label) -> SettingsOption(value, label) }
+
+/** 刮削首选数据源：两个源都在用，这里只选谁先谁后 */
+@Composable
+private fun scrapeSourceOptions(): List<SettingsOption<String>> = listOf(
+    ScrapeSourcePolicy.DOUBAN to stringResource(R.string.setting_scrape_source_douban),
+    ScrapeSourcePolicy.TMDB to stringResource(R.string.setting_scrape_source_tmdb),
 ).map { (value, label) -> SettingsOption(value, label) }
 
 private const val OFFICIAL_WEBSITE = "https://mzdkplayer.pages.dev/"
