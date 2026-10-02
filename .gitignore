@@ -11,6 +11,10 @@ build/
 .artifacts
 local.properties
 /app/release/
+# 「生成签名 APK」向导的输出目录：带 flavor 时写到 app/<flavor>/<buildType>/（如 app/tv/release/），
+# 只写 /app/release/ 会漏掉这些路径 —— 几十 MB 的 APK 和 mapping.txt 就会以未跟踪文件出现在 git 里
+/app/*/release/
+/app/*/debug/
 gradle/gradle-daemon-jvm.properties
 .workbuddy/
 
