@@ -49,6 +49,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.tv.material3.Icon
 import org.mz.mzdkplayer.di.RepositoryProvider
 import org.mz.mzdkplayer.di.viewModelWithFactory
+import org.mz.mzdkplayer.tool.logic.ScrapeSourcePolicy
+import org.mz.mzdkplayer.ui.common.formatSearchSource
 import org.mz.mzdkplayer.ui.theme.myListItemCoverColor
 import org.mz.mzdkplayer.ui.theme.mySideFilterChipColor
 
@@ -77,6 +79,8 @@ fun EditTMDBInfoScreen(
     // UI 状态
     var searchKeyword by remember { mutableStateOf(initialInfo.title) }
     var isSearchMovie by remember { mutableStateOf(initialInfo.mediaType == "movie") }
+    // 搜索源默认跟随设置里的「刮削首选数据源」，用户可以单独切成另一个源
+    var searchSource by remember { mutableStateOf(movieViewModel.defaultSearchSource()) }
 
     // TV 专属状态：季号和集号
     // 如果提取结果为空，默认给 "1"
@@ -84,9 +88,10 @@ fun EditTMDBInfoScreen(
     var episodeText by remember { mutableStateOf(initialInfo.episode.ifEmpty { "1" }) }
 
     // 自动触发一次搜索（可选，如果不想一进来就搜索可以注释掉）
-    LaunchedEffect(Unit) {
+    // 换搜索源也重搜一次：结果列表必须对应当前选中的源，否则点选会用错 id 空间
+    LaunchedEffect(searchSource) {
         if (searchKeyword.isNotEmpty()) {
-            movieViewModel.searchMediaManual(searchKeyword, isSearchMovie)
+            movieViewModel.searchMediaManual(searchKeyword, isSearchMovie, searchSource)
         }
     }
 
@@ -149,6 +154,28 @@ fun EditTMDBInfoScreen(
                 }
             }
 
+            // 2.1 搜索源 (TMDB / 豆瓣)：豆瓣的候选不分电影剧集，类型由上面的芯片决定
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(R.string.ui_label_search_source),
+                    color = Color.LightGray,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                for (source in listOf(ScrapeSourcePolicy.TMDB, ScrapeSourcePolicy.DOUBAN)) {
+                    val selected = searchSource == source
+                    FilterChip(
+                        selected = selected,
+                        onClick = { searchSource = source },
+                        colors = mySideFilterChipColor(),
+                        leadingIcon = { if (selected) Icon(painterResource(R.drawable.check24dp), contentDescription = null) },
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Text(formatSearchSource(source))
+                    }
+                }
+            }
+
             // 3. 剧集专属设置 (如果是剧集模式)
             if (!isSearchMovie) {
                 Row(
@@ -182,14 +209,14 @@ fun EditTMDBInfoScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // 4. 搜索按钮
+            // 4. 搜索按钮（按上面选中的数据源搜）
             MyIconButton(
-                text = stringResource(R.string.ui_label_search_tmdb),
+                text = stringResource(R.string.ui_label_search),
                 icon = R.drawable.baseline_search_24, // 假设你有这个图标，如果没有可以用默认的
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
                     if (searchKeyword.isNotBlank()) {
-                        movieViewModel.searchMediaManual(searchKeyword, isSearchMovie)
+                        movieViewModel.searchMediaManual(searchKeyword, isSearchMovie, searchSource)
                     } else {
                         showToast(context, context.getString(R.string.ui_label_please_enter_keyword))
                     }

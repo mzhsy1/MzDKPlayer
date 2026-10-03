@@ -91,6 +91,18 @@ fun formatScrapeSource(code: String): String = when (code) {
     else -> stringResource(R.string.setting_scrape_source_douban)
 }
 
+/**
+ * 「修改文件对应影视信息」里的搜索来源：`douban` / `tmdb`。
+ *
+ * 与 [formatScrapeSource] 分开两套文案：那边是设置里的「谁先谁后」，写作「豆瓣优先」；
+ * 这里是一个单选开关，只需要源的名字。
+ */
+@Composable
+fun formatSearchSource(code: String): String = when (code) {
+    ScrapeSourcePolicy.DOUBAN -> stringResource(R.string.ui_label_source_douban)
+    else -> stringResource(R.string.ui_label_source_tmdb)
+}
+
 /** App 语言：`""` = 跟随系统 */
 @Composable
 fun formatAppLang(code: String): String = when (code) {

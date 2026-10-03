@@ -114,14 +114,6 @@ internal fun PhoneLibrarySettingsPage(
             )
             SettingsDivider()
             SettingsOptionsRow(
-                title = stringResource(R.string.setting_tmdb_search_lang),
-                value = formatTmdbLang(state.tmdbSearchLang),
-                selected = state.tmdbSearchLang,
-                options = tmdbLangOptions(),
-                onSelect = settingsViewModel::setTmdbSearchLang,
-            )
-            SettingsDivider()
-            SettingsOptionsRow(
                 title = stringResource(R.string.setting_tmdb_result_lang),
                 value = formatTmdbLang(state.tmdbResultLang),
                 selected = state.tmdbResultLang,

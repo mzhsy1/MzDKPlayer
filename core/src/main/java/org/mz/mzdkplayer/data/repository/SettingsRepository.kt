@@ -99,7 +99,14 @@ object SettingsRepository {
     // 🔥 新增：递归扫描层级 (0=当前文件夹, 1=当前+1层子文件夹, ...)
     private const val KEY_RECURSIVE_SCAN_LEVEL = "recursive_scan_level"
 
-    private const val KEY_TMDB_SEARCH_LANG = "tmdb_search_lang"
+    /**
+     * TMDB 语言（搜索与详情共用）。
+     *
+     * 原来还有一条独立的「搜索语言」`tmdb_search_lang`：它只影响搜索结果的标题字段，
+     * 而「修改文件对应影视信息」这类页面真正要的是详情语言，两个开关并存时用户只会
+     * 觉得「设了没用」。现在删掉它，搜索与详情统一走这一条 —— 改一处即全生效。
+     * 老设备上残留的 `tmdb_search_lang` 值是死数据，不需要迁移（不再有人读）。
+     */
     private const val KEY_TMDB_RESULT_LANG = "tmdb_result_lang"
 
     // 🔥 新增：是否移除 WebDAV 列表的首个元素
@@ -320,10 +327,6 @@ object SettingsRepository {
     var recursiveScanLevel: Int
         get() = prefs.getInt(KEY_RECURSIVE_SCAN_LEVEL, 1)
         set(value) = prefs.edit { putInt(KEY_RECURSIVE_SCAN_LEVEL, value) }
-
-    var tmdbSearchLang: String
-        get() = prefs.getString(KEY_TMDB_SEARCH_LANG, "") ?: ""
-        set(value) = prefs.edit { putString(KEY_TMDB_SEARCH_LANG, value) }
 
     var tmdbResultLang: String
         get() = prefs.getString(KEY_TMDB_RESULT_LANG, "") ?: ""

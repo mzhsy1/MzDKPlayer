@@ -2,6 +2,51 @@
 
 ## [未发布]
 
+### 1.18.5（versionCode 116）发布说明
+
+> 本段会被 `.github/workflows/release.yml` 取作 Release 说明，所以只放摘要；逐条细节见下方 `## [1.18.5]`。
+> 本次 Release 只附带电视端 APK（`app-tv-*`）。
+
+**新增**
+
+- 手机端功能补齐：文件浏览、刮削、详情页、音乐与图片、视频播放页、设置页
+- 刮削新增**豆瓣**数据源，与 TMDB 并存：设置里选「豆瓣优先 / TMDB 优先」（**默认豆瓣**），首选源搜不到自动用另一个兜底；豆瓣连续失败会自动短路一段时间，不影响 TMDB 兜底
+- 「修改文件对应影视信息」（电视端）/「重新匹配」（手机端）现在可以选 TMDB 或豆瓣搜索，点选即按该来源写库
+- 电视端五个协议连接列表视觉重做，连接表单重做，并支持编辑已有连接
+
+**修复**
+
+- 豆瓣海报 / 背景图「有的能加载、有的不能」：豆瓣图床按 CDN 节点分别校验 `Referer` 与 `User-Agent`，现在两者都补齐
+- 电视端播放页「再按一次退出」提示有时一直不消失
+
+**变更**
+
+- 系统下限下调并用 flavor 分开：电视端 `minSdk` 26 → **23**（Android 6.0），手机端 26 → **24**
+- TMDB 语言由「搜索语言 + 详情语言」两个设置项合成一个（搜索与详情共用，空值跟随系统）
+- 手机端视频播放页交互修正：去掉与底部重复的居中按钮、长按倍速给出提示、竖屏改用 B 站式布局并精简控制栏、补上全屏按钮
+
+---
+
+## [1.18.5] - 2026-10-03（versionCode 116）
+
+### 变更（TMDB 语言：两个设置项合成一个）
+
+- 删掉「TMDB 搜索语言」，只留「TMDB 详情语言」（`SettingsRepository.tmdbSearchLang`、`SettingsViewModel.setTmdbSearchLang`、两端设置页里的那一行、四套 `strings.xml` 里的文案一并移除）。原来搜索走一条 key、详情走另一条：同一个语言要在两个地方各设一次，而在「修改文件对应影视信息」这种页面上，用户真正在意的只有点选之后抓到的详情语言 —— 只有搜索那条变了时，看起来就是「设了没用」
+- 现在 `TmdbRepository` 只有一个语言入口（搜索、详情、分集、热门榜全都共用），空值仍跟随系统。老设备上残留的 `tmdb_search_lang` 是死数据，不需要迁移
+- 顺带修掉「详情语言在修改文件对应影视信息里不生效」：那一页的候选列表与点选后落库的详情现在用同一套语言，不会再出现「列表中文、详情英文」这种错位
+
+### 修复（豆瓣图床：有的图能加载、有的不能）
+
+- 根因是**图床按 CDN 节点分别校验 `Referer` 与 `User-Agent`**：只补 `Referer` 时，OkHttp 默认的 `okhttp/x.y.z` UA 会让 `img3.doubanio.com` 这类节点直接回 403（311 字节错误页），而 `img2` / `img9` 反过来只认这种 UA。于是同一批刮削结果里「海报能出、背景图空一片」，换台设备（节点不同）表现还不一样
+- 实测（同一张图，三种请求头）：不带 `Referer` → 418（14 字节占位图）；`Referer` + OkHttp UA → `img3` 403；`Referer` + 桌面 Chrome UA → 各节点均 200。所以 `MzDkPlayerApplication` 的图片拦截器现在对豆瓣域名**同时**补 `Referer` 与 `DoubanLogic.BROWSER_UA`，其它图床不受影响
+
+### 新增（手动匹配页支持豆瓣候选）
+
+- 电视端「纠正匹配信息」（`EditTMDBInfoScreen`）与手机端「手动匹配」（`PhoneMatchScreen`）都加了「搜索来源」开关（TMDB / 豆瓣），默认跟随设置里的「刮削首选数据源」；切开关会立刻按新来源重搜，结果列表与选中的来源永远对应
+- 来源透传到 `MediaItem.source`（默认 `tmdb`），`updateMediaMapping` 据此分流：TMDB 走原来的 `TmdbRepository`，豆瓣走新增的 `DoubanScraper.fetchById()` + `MovieViewModel.updateFromDouban()`。搜索复用 `DoubanScraper.search()` —— 同一个 OkHttp 客户端、同一套请求头与同一份熔断器，只是不做「自动挑最匹配的一条」那步
+- 入库口径与自动兜底一致（`source = douban`、id 借存在 `tmdbId`、`douban_tv_{id}` 分组），只有一处差异：**手动匹配时类型以详情接口的 subtype 为准**（自动流程信文件名结构，免得换个源就在电影库 / 剧集库之间跳；手动匹配是用户主动挑的条目，挑成剧集就该进剧集库并记下季集）。取详情失败时保留原记录不动，不写半条数据
+- 电视端搜索按钮文案由「搜索TMDB」改为「搜索」；新增 `ui_label_search_source` / `ui_label_source_tmdb` / `ui_label_source_douban`，中 / 英 / 日 / 繁四套齐全
+
 ### 变更（minSdk：电视端 26 → 23，手机端 26 → 24）
 
 系统下限往下放了一档，两端不再同为一个值 —— 限制来自手机端独有的依赖，电视端没有被它连累。
@@ -31,7 +76,7 @@
 - **UA 用桌面 Chrome**（两个接口共用一套）：它同时能过搜索与详情；不用 `api-client/1 com.douban.frodo/...` 那种伪装官方客户端的写法
 - 搜索结果的 `type` 字段**不可信**（实测电视剧《三体》也返回 `type=movie`），只有 `episode` 非空能暗示「有集数」—— 所以类型只作为候选打分权重，**不做过滤**（按它过滤会把剧集全滤掉）
 - 豆瓣详情没有背景图字段：**背景取 `type=W` 宽幅剧照的第一张**；海报把图床尺寸段从 `s_/m_ratio_poster` 升到 `l_ratio_poster`
-- **豆瓣图床有防盗链**：不带 `Referer` 一律返回 HTTP 418（14 字节占位图）。给 Coil 配了全局 ImageLoader（`MzDkPlayerApplication : SingletonImageLoader.Factory`），只对豆瓣域名补 `Referer`，TMDB 等图床不受影响
+- **豆瓣图床有防盗链**：不带 `Referer` 一律返回 HTTP 418（14 字节占位图）。给 Coil 配了全局 ImageLoader（`MzDkPlayerApplication : SingletonImageLoader.Factory`），只对豆瓣域名补请求头（`Referer` + 浏览器 UA，补 UA 的原因见上方「修复」一节），TMDB 等图床不受影响
 
 **数据落库与「id 空间」隔离（本次唯一动到库结构的地方）**
 - `MediaCacheEntity` 新增 `source` 列（`tmdb` / `douban`），DB 版本 8 → 9（`MIGRATION_8_9`，老数据统一回填 `tmdb`）。原因：**豆瓣条目 id 与 TMDB id 的数值区间是重叠的**，两者都写在 `tmdbId` 一列里，没有来源标记就会出现「豆瓣刮到的片子」和「TMDB 刮到的片子」被 `GROUP BY tmdbId` 并成一张卡片、选集 / 多版本串号
@@ -41,7 +86,7 @@
 
 **测试**：新增 `core/src/test/java/org/mz/mzdkplayer/tool/DoubanLogicTest.kt`（27 例）、`ScrapeSourcePolicyTest.kt`（4 例）、`ScrapeCircuitBreakerTest.kt`（6 例）。豆瓣的样例数据全部取自实测响应，顺带把「接口字段名没变」这件事钉住；覆盖 URL 构造 / 图床尺寸升档 / 标题与年份归一化 / 候选打分（含上面那条「`type` 不可信」的回归）/ DTO 映射 / 404 错误体 / 剧照取图；另外覆盖首选源顺序（默认豆瓣、脏数据不会算出「一个源都不查」）与熔断（没到阈值不短路、短路期内一律跳过、冷却后放行一次探测、探测失败继续短路、成功立刻恢复）。熔断器的用例把时间当参数传，不依赖真实时钟。`:core` JVM 单测合计 **28 类 475 例**（`.\gradlew.bat :core:testDebugUnitTest`）
 
-**未做**：手动匹配页（`EditTMDBInfoScreen` / `PhoneMatchScreen`）目前仍只列 TMDB 候选 —— 自动刮削能吃豆瓣，手动纠错时却选不到豆瓣条目。要让豆瓣候选进手动匹配，得把「来源」透传到 `MediaItem` 并在 `updateMediaMapping` 里分流，留作下一步。
+**手动匹配（本轮已补上）**：手动匹配页原本只列 TMDB 候选 —— 自动刮削能吃豆瓣，手动纠错时却选不到豆瓣条目。现在把「来源」透传到 `MediaItem`、并在 `updateMediaMapping` 里按来源分流，两个源都能搜能选，详见上方「新增（手动匹配页支持豆瓣候选）」。
 
 ### 修复（电视端：播放页「再按一次退出」提示有时一直不消失）
 

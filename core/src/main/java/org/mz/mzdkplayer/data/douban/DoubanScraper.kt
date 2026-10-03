@@ -24,6 +24,9 @@ import java.util.concurrent.TimeUnit
  * **故障处理**：网络层失败会抛 [DoubanNetworkException]，由 [scrape] 统一计数给 [ScrapeCircuitBreaker]；
  * 连续失败若干次后本数据源被短路一段时间，期间 [scrape] 直接返回 null，调用方立刻走另一个数据源。
  * 「搜不到结果」不算失败 —— 那说明接口是通的，反而会让熔断计数清零。
+ *
+ * 「修改文件对应影视信息」这类**手动匹配**走 [search] + [fetchById]：同一个 OkHttp 客户端、
+ * 同一套请求头与同一份熔断器，只是不做「自动挑最匹配的一条」那步。
  */
 class DoubanScraper(
     private val client: OkHttpClient = defaultClient(),
@@ -73,21 +76,79 @@ class DoubanScraper(
                 ?: return@withContext null
             Log.d(TAG, "选中候选 id=${best.id} title=${best.title} year=${best.year}")
 
-            val subject = fetchSubject(best.id, preferTv) ?: return@withContext null
-
-            // 背景图要单独问一次剧照接口（详情接口只给竖版海报）。
-            // 这一步是可选的：失败就只丢背景图 —— 既不连累已经刮到的信息，也不拿它去判「源挂了」。
-            val withBackdrop = subject.copy(
-                backdropUrl = subject.backdropUrl ?: try {
-                    fetchBackdrop(best.id, subject.isTv)
-                } catch (e: DoubanNetworkException) {
-                    Log.d(TAG, "背景图获取失败，忽略: ${e.message}")
-                    null
-                }
-            )
-            Log.d(TAG, "豆瓣刮削成功: ${withBackdrop.title}(${withBackdrop.year}) isTv=${withBackdrop.isTv}")
-            withBackdrop
+            fetchSubjectWithBackdrop(best.id, preferTv)
         }
+
+    /**
+     * 「修改文件对应影视信息」用的候选列表：按关键词搜一次。
+     *
+     * 与 [scrape] 的差别是**不做**打分挑选、也不取详情 —— 挑哪条由用户在界面上点。
+     * 故障口径和 [scrape] 一致：网络层失败照旧喂给熔断器，只是这里没有「调用方去试另一个源」
+     * 这一层，所以失败/短路都返回空列表，由界面自己提示「没搜到」。
+     */
+    suspend fun search(keyword: String): List<DoubanLogic.Candidate> =
+        withContext(Dispatchers.IO) {
+            if (keyword.isBlank()) return@withContext emptyList()
+            if (circuitBreaker.shouldSkip(System.currentTimeMillis())) {
+                Log.d(TAG, "豆瓣处于短路期，本次搜索直接返回空: $keyword")
+                return@withContext emptyList()
+            }
+            try {
+                searchCandidates(keyword).also { circuitBreaker.onReachable(System.currentTimeMillis()) }
+            } catch (e: DoubanNetworkException) {
+                circuitBreaker.onNetworkFailure(System.currentTimeMillis())
+                Log.w(TAG, "豆瓣搜索失败（已计入熔断）: ${e.message}")
+                emptyList()
+            } catch (e: Exception) {
+                Log.w(TAG, "豆瓣搜索失败: $keyword", e)
+                emptyList()
+            }
+        }
+
+    /**
+     * 按条目 id 直接取详情（含背景图），供手动匹配「点选某条候选」使用。
+     *
+     * 拿不到返回 null，由调用方保留原记录 / 提示失败；与 [scrape] 一样不向上抛异常。
+     */
+    suspend fun fetchById(subjectId: String, preferTv: Boolean): DoubanSubject? =
+        withContext(Dispatchers.IO) {
+            if (subjectId.isBlank()) return@withContext null
+            if (circuitBreaker.shouldSkip(System.currentTimeMillis())) {
+                Log.d(TAG, "豆瓣处于短路期，本次取详情直接返回空: $subjectId")
+                return@withContext null
+            }
+            try {
+                fetchSubjectWithBackdrop(subjectId, preferTv)
+                    ?.also { circuitBreaker.onReachable(System.currentTimeMillis()) }
+            } catch (e: DoubanNetworkException) {
+                circuitBreaker.onNetworkFailure(System.currentTimeMillis())
+                Log.w(TAG, "豆瓣取详情失败（已计入熔断）: ${e.message}")
+                null
+            } catch (e: Exception) {
+                Log.w(TAG, "豆瓣取详情失败: $subjectId", e)
+                null
+            }
+        }
+
+    /**
+     * 取详情 + 尽力补背景图（两条人工/自动路径共用，见 [scrapeOnce] 与 [fetchById]）。
+     *
+     * 背景图要单独问一次剧照接口（详情接口只给竖版海报），且这一步是**可选**的：失败就只丢背景图
+     * —— 既不连累已经刮到的信息，也不拿它去判「源挂了」。
+     */
+    private suspend fun fetchSubjectWithBackdrop(subjectId: String, preferTv: Boolean): DoubanSubject? {
+        val subject = fetchSubject(subjectId, preferTv) ?: return null
+        val withBackdrop = subject.copy(
+            backdropUrl = subject.backdropUrl ?: try {
+                fetchBackdrop(subjectId, subject.isTv)
+            } catch (e: DoubanNetworkException) {
+                Log.d(TAG, "背景图获取失败，忽略: ${e.message}")
+                null
+            }
+        )
+        Log.d(TAG, "豆瓣详情成功: ${withBackdrop.title}(${withBackdrop.year}) isTv=${withBackdrop.isTv}")
+        return withBackdrop
+    }
 
     /** 搜索候选。响应不是 JSON（反爬空壳页）时抛 [DoubanNetworkException] */
     private suspend fun searchCandidates(keyword: String): List<DoubanLogic.Candidate> =

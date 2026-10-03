@@ -54,8 +54,10 @@ import org.mz.mzdkplayer.data.model.MediaItem
 import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.tool.metadata.MediaInfoExtractorFormFileName
 import org.mz.mzdkplayer.tool.logic.PhoneScrapeLogic
+import org.mz.mzdkplayer.tool.logic.ScrapeSourcePolicy
 import org.mz.mzdkplayer.viewmodel.MediaMetaViewModel
 import org.mz.mzdkplayer.viewmodel.MovieViewModel
+import org.mz.mzdkplayer.ui.common.formatSearchSource
 import org.mz.mzdkplayer.ui.phone.component.PosterThumb
 
 /** 写库是异步的，返回上一页前留一点时间，免得列表还读到旧记录 */
@@ -88,6 +90,8 @@ fun PhoneMatchScreen(
 
     var keyword by remember { mutableStateOf(initialInfo.title) }
     var isMovie by remember { mutableStateOf(initialInfo.mediaType != "tv") }
+    // 搜索源默认跟随设置里的「刮削首选数据源」，用户可以单独切成另一个源
+    var searchSource by remember { mutableStateOf(movieViewModel.defaultSearchSource()) }
     var seasonText by remember { mutableStateOf(initialInfo.season.ifEmpty { "1" }) }
     var episodeText by remember { mutableStateOf(initialInfo.episode.ifEmpty { "1" }) }
 
@@ -97,15 +101,16 @@ fun PhoneMatchScreen(
 
     // 一进来先查一次当前匹配，再按解析出的关键词自动搜一次
     LaunchedEffect(videoUri) { mediaMetaViewModel.load(videoUri) }
-    LaunchedEffect(Unit) {
+    // 换搜索源也重搜一次：结果列表必须对应当前选中的源，否则点选会用错 id 空间
+    LaunchedEffect(searchSource) {
         if (keyword.isNotBlank()) {
-            movieViewModel.searchMediaManual(keyword, isMovie)
+            movieViewModel.searchMediaManual(keyword, isMovie, searchSource)
         }
     }
 
     val search: () -> Unit = {
         if (keyword.isNotBlank()) {
-            movieViewModel.searchMediaManual(keyword, isMovie)
+            movieViewModel.searchMediaManual(keyword, isMovie, searchSource)
         }
     }
 
@@ -176,6 +181,25 @@ fun PhoneMatchScreen(
                     icon = {},
                     label = { Text(stringResource(R.string.ui_label_series)) },
                 )
+            }
+
+            // 搜索源：TMDB / 豆瓣（豆瓣的候选不分电影剧集，类型由上面的按钮决定）
+            Text(
+                text = stringResource(R.string.ui_label_search_source),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                val sources = listOf(ScrapeSourcePolicy.TMDB, ScrapeSourcePolicy.DOUBAN)
+                sources.forEachIndexed { index, source ->
+                    SegmentedButton(
+                        selected = searchSource == source,
+                        onClick = { searchSource = source },
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = sources.size),
+                        icon = {},
+                        label = { Text(formatSearchSource(source)) },
+                    )
+                }
             }
 
             if (!isMovie) {

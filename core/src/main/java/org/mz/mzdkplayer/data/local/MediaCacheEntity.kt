@@ -79,11 +79,9 @@ data class MediaCacheEntity(
             releaseDate = releaseDate,
             isMovie = mediaType == "movie",
             seasonNumber = seasonNumber,
-            episodeNumber = episodeNumber
-            // 如果 MediaItem 也添加了这些字段，请在这里赋值
-            // dataSourceType = dataSourceType,
-            // fileName = fileName,
-            // connectionName = connectionName
+            episodeNumber = episodeNumber,
+            // 来源必须带上：手动匹配页要靠它判断这一条该去哪个源取详情
+            source = source
         )
     }
 

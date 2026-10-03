@@ -38,8 +38,7 @@
     <string name="setting_app_lang">App Language</string>
     <string name="setting_tmdb_api_mirror">TMDB API URL (Mirror)</string>
     <string name="setting_tmdb_api_mirror_sub">Useful if TMDB is blocked in your region. Example: https://api.tmdb.org/3/</string>
-    <string name="setting_tmdb_search_lang">TMDB Search Language</string>
-    <string name="setting_tmdb_result_lang">TMDB Details Language</string>
+    <string name="setting_tmdb_result_lang">TMDB Language</string>
     <string name="ui_label_custom_tmdb_url">Custom TMDB API URL</string>
     <string name="ui_label_enter_tmdb_url">Enter TMDB API URL (must end with /3/)</string>
     <string name="ui_label_test_tmdb_connection">Test TMDB Connection</string>
@@ -127,7 +126,9 @@
     <string name="ui_label_season">Season</string>
     <string name="ui_label_episode">Episode</string>
     <string name="ui_label_specify_season_episode_note">* Please manually specify the season and episode corresponding to this file. Search results are only used to confirm the series.</string>
-    <string name="ui_label_search_tmdb">Search TMDB</string>
+    <string name="ui_label_search_source">Search Source</string>
+    <string name="ui_label_source_tmdb">TMDB</string>
+    <string name="ui_label_source_douban">Douban</string>
     <string name="ui_label_please_enter_keyword">Please Enter Keyword</string>
     <string name="ui_label_searching">Searching...</string>
     <string name="ui_label_search_failed">Search Failed: %s</string>

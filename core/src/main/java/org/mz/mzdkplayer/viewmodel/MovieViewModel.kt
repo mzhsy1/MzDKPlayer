@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.data.douban.DoubanScraper
+import org.mz.mzdkplayer.data.douban.DoubanSubject
+import org.mz.mzdkplayer.data.douban.toMediaItem
 import org.mz.mzdkplayer.data.local.MediaCacheEntity
 import org.mz.mzdkplayer.data.local.MediaDao
 import org.mz.mzdkplayer.data.model.Genre
@@ -78,6 +80,9 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
     val totalScanCount: StateFlow<Int> = _totalScanCount.asStateFlow()
     // 搜索任务 Job
     private var currentSearchJob: Job? = null
+
+    // 手动匹配页的搜索任务（换关键词 / 换数据源时取消上一次）
+    private var manualSearchJob: Job? = null
 
     /**
      * [修改] 搜索焦点电影/剧集 (一步到位获取详情)
@@ -486,13 +491,31 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
         }
     }
     /**
-     * [新增] 手动搜索电影或剧集
+     * [新增] 手动搜索电影或剧集（TMDB / 豆瓣两个源，见 `EditTMDBInfoScreen` / `PhoneMatchScreen`）。
+     *
+     * @param source 搜索源，取值见 [ScrapeSourcePolicy]（`tmdb` / `douban`）。结果行的
+     *   [MediaItem.source] 会带上它，点选之后取详情与入库都按这个来源走。
      */
-    fun searchMediaManual(query: String, isMovie: Boolean) {
-        viewModelScope.launch(Dispatchers.IO) {
+    fun searchMediaManual(
+        query: String,
+        isMovie: Boolean,
+        source: String = ScrapeSourcePolicy.TMDB
+    ) {
+        // 换关键词 / 换数据源时用户会连点，先把上一次取消：慢的那次结果后到会把「TMDB 的列表」
+        // 顶到「豆瓣」开关下面，点选就用错了 id 空间（两个源的 id 数值区间是重叠的）
+        manualSearchJob?.cancel()
+        manualSearchJob = viewModelScope.launch(Dispatchers.IO) {
             _manualSearchResults.value = Resource.Loading
             try {
-                if (isMovie) {
+                if (source == ScrapeSourcePolicy.DOUBAN) {
+                    // 豆瓣的搜索建议接口不分电影/剧集（`type` 字段不可信），要的就是整份候选；
+                    // 类型在点选之后由详情接口的 subtype 定，见 updateFromDouban。
+                    // distinctBy：手机端的结果列表用 id 当 LazyColumn 的 key，重复 id 会直接崩
+                    val items = doubanScraper.search(query)
+                        .mapNotNull { it.toMediaItem() }
+                        .distinctBy { it.id }
+                    _manualSearchResults.value = Resource.Success(items)
+                } else if (isMovie) {
                     val result = repository.searchMovies(query, year = "") // 手动搜索通常不强制年份
                     if (result is Resource.Success) {
                         // 转换 Movie -> MediaItem
@@ -518,6 +541,14 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
     }
 
     /**
+     * 手动匹配页默认选中的搜索源：跟随设置里的「刮削首选数据源」。
+     *
+     * 复用 [ScrapeSourcePolicy.order] 而不是再判断一次谁先谁后 —— 顺序的定义只有那一处。
+     */
+    fun defaultSearchSource(): String =
+        ScrapeSourcePolicy.order(settingsRepo.scrapeSourcePriority).first()
+
+    /**
      * 【新增】清理媒体缓存数据库 (相当于 Kodi 的清理资料库)
      * 在设置页面调用此方法
      */
@@ -539,10 +570,13 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
     }
     /**
      * [修改] 手动保存/修正文件映射 (修正后立即获取完整详情)
+     *
+     * 取哪边的详情由 [MediaItem.source] 决定：TMDB 走 `repository`，豆瓣走 [updateFromDouban]，
+     * 两条路径用的是同一个视频地址，所以入库后是「覆盖」而不是新增一条。
      */
     fun updateMediaMapping(
         videoUri: String,
-        selectedMedia: MediaItem, // 用户选中的 TMDB 条目 (只包含基础信息)
+        selectedMedia: MediaItem, // 用户选中的条目 (只包含基础信息)，自带数据来源
         seasonNumber: Int,        // 用户输入的季 (仅TV有效)
         episodeNumber: Int,       // 用户输入的集 (仅TV有效)
         originalFileName: String,
@@ -556,7 +590,17 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
             val finalConnection = oldRecord?.connectionName ?: connectionName
 
             try {
-                if (selectedMedia.isMovie) {
+                if (selectedMedia.source == MediaCacheEntity.SOURCE_DOUBAN) {
+                    updateFromDouban(
+                        videoUri = videoUri,
+                        selectedMedia = selectedMedia,
+                        seasonNumber = seasonNumber,
+                        episodeNumber = episodeNumber,
+                        originalFileName = originalFileName,
+                        dataSourceType = finalDataSource,
+                        connectionName = finalConnection
+                    )
+                } else if (selectedMedia.isMovie) {
                     // === 电影逻辑：立即获取详情 ===
                     val detailResult = repository.getMovieDetails(selectedMedia.id)
                     // 如果获取成功用详情，失败用基础信息
@@ -646,6 +690,52 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
                 // 这里可以写一个降级逻辑，或者直接提示失败
             }
         }
+    }
+
+    /**
+     * 手动匹配到豆瓣条目：按用户点选的条目 id 直接取详情，覆盖该文件的记录。
+     *
+     * 与自动兜底 [fetchFromDouban] 只有一处差异：**入库类型以详情接口的 subtype 为准**。
+     * 自动流程拿不到用户意图，只能信文件名结构（免得换个数据源就在电影库/剧集库之间跳）；
+     * 而手动匹配是用户主动挑了一个条目，此时条目自己的类型更权威 —— 挑成剧集就该进剧集库、
+     * 记下季集，否则「选集」和剧集库分组都会错。
+     *
+     * 取详情失败时**不动原记录**（不写半条数据），由界面自己提示。
+     */
+    private suspend fun updateFromDouban(
+        videoUri: String,
+        selectedMedia: MediaItem,
+        seasonNumber: Int,
+        episodeNumber: Int,
+        originalFileName: String,
+        dataSourceType: String,
+        connectionName: String
+    ) {
+        val requestedTv = !selectedMedia.isMovie
+        val subject = doubanScraper.fetchById(selectedMedia.id.toString(), requestedTv)
+        if (subject == null) {
+            Log.w("MovieViewModel", "豆瓣取详情失败，保留原记录: $originalFileName")
+            return
+        }
+        if (subject.isTv != requestedTv) {
+            Log.d(
+                "MovieViewModel",
+                "豆瓣条目类型(${subject.isTv})与界面选择($requestedTv)不一致，按条目类型入库"
+            )
+        }
+
+        val entity = buildDoubanEntity(
+            subject = subject,
+            videoUri = videoUri,
+            dataSourceType = dataSourceType,
+            fileName = originalFileName,
+            connectionName = connectionName,
+            isTv = subject.isTv,
+            seasonNumber = seasonNumber,
+            episodeNumber = episodeNumber
+        ) ?: return
+        mediaDao.insertMedia(entity)
+        Log.d("MovieViewModel", "手动匹配豆瓣成功: ${subject.title} (id=${subject.id})")
     }
 
     // [新增] 核心通用方法：搜索并获取完整详情，然后入库
@@ -847,47 +937,16 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
                 Log.d("MovieViewModel", "豆瓣类型(${subject.isTv})与文件名结构($isTv)不一致: $fileName")
             }
 
-            val subjectId = subject.id.toIntOrNull()
-            if (subjectId == null) {
-                Log.w("MovieViewModel", "豆瓣 id 不是数字，跳过入库: ${subject.id}")
-                return null
-            }
-
-            val seasonNum = mediaInfo.season.toIntOrNull() ?: 1
-            val episodeNum = mediaInfo.episode.toIntOrNull() ?: 1
-
-            val entity = MediaCacheEntity(
+            val entity = buildDoubanEntity(
+                subject = subject,
                 videoUri = videoUri,
                 dataSourceType = dataSourceType,
                 fileName = fileName,
                 connectionName = connectionName,
-                // 豆瓣条目 id 借存在 tmdbId 列里，靠 source 区分是两个不同的 id 空间
-                tmdbId = subjectId,
-                mediaType = if (isTv) "tv" else "movie",
-                title = subject.title,
-                overview = subject.overview,
-                posterPath = subject.posterUrl,
-                backdropPath = subject.backdropUrl,
-                releaseDate = subject.releaseDate,
-                voteAverage = subject.rating,
-                seasonNumber = if (isTv) seasonNum else 0,
-                episodeNumber = if (isTv) episodeNum else 0,
-                // 豆瓣接口没有“上映状态”这个字段，别编，沿用和 TMDB 失败时相同的兜底文案
-                status = "未知状态",
-                genres = subject.genres.mapIndexed { index, name -> Genre(id = index, name = name) },
-                originCountry = subject.countries,
-                numberOfEpisodes = subject.episodesCount,
-                // 豆瓣没有分集信息，这五项留空 —— 详情页正是靠 source 判断「别再拿这个 id 去查 TMDB」
-                episodeName = null,
-                episodeOverview = null,
-                episodeStillPath = null,
-                episodeAirDate = null,
-                episodeRuntime = null,
-                // 标题/简介/海报/评分/类型都拿到了，按“详情已加载”处理
-                isDetailsLoaded = true,
-                source = MediaCacheEntity.SOURCE_DOUBAN,
-                groupKey = if (isTv) "douban_tv_$subjectId" else "douban_movie_$videoUri"
-            )
+                isTv = isTv,
+                seasonNumber = mediaInfo.season.toIntOrNull() ?: 1,
+                episodeNumber = mediaInfo.episode.toIntOrNull() ?: 1
+            ) ?: return null
             mediaDao.insertMedia(entity)
             Log.d("MovieViewModel", "豆瓣兜底入库成功: ${subject.title} (id=${subject.id})")
             entity
@@ -895,6 +954,61 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
             Log.e("MovieViewModel", "豆瓣兜底失败: $fileName", e)
             null
         }
+    }
+
+    /**
+     * 豆瓣条目 → 入库实体（自动兜底 [fetchFromDouban] 与手动匹配 [updateFromDouban] 共用）。
+     *
+     * 返回 null 说明豆瓣 id 不是数字串（接口变了）：[MediaCacheEntity.tmdbId] 是 Int，
+     * 借存不了这种 id，只能放弃这一条。
+     */
+    private fun buildDoubanEntity(
+        subject: DoubanSubject,
+        videoUri: String,
+        dataSourceType: String,
+        fileName: String,
+        connectionName: String,
+        isTv: Boolean,
+        seasonNumber: Int,
+        episodeNumber: Int
+    ): MediaCacheEntity? {
+        val subjectId = subject.id.toIntOrNull()
+        if (subjectId == null) {
+            Log.w("MovieViewModel", "豆瓣 id 不是数字，跳过入库: ${subject.id}")
+            return null
+        }
+        return MediaCacheEntity(
+            videoUri = videoUri,
+            dataSourceType = dataSourceType,
+            fileName = fileName,
+            connectionName = connectionName,
+            // 豆瓣条目 id 借存在 tmdbId 列里，靠 source 区分是两个不同的 id 空间
+            tmdbId = subjectId,
+            mediaType = if (isTv) "tv" else "movie",
+            title = subject.title,
+            overview = subject.overview,
+            posterPath = subject.posterUrl,
+            backdropPath = subject.backdropUrl,
+            releaseDate = subject.releaseDate,
+            voteAverage = subject.rating,
+            seasonNumber = if (isTv) seasonNumber else 0,
+            episodeNumber = if (isTv) episodeNumber else 0,
+            // 豆瓣接口没有“上映状态”这个字段，别编，沿用和 TMDB 失败时相同的兜底文案
+            status = "未知状态",
+            genres = subject.genres.mapIndexed { index, name -> Genre(id = index, name = name) },
+            originCountry = subject.countries,
+            numberOfEpisodes = subject.episodesCount,
+            // 豆瓣没有分集信息，这五项留空 —— 详情页正是靠 source 判断「别再拿这个 id 去查 TMDB」
+            episodeName = null,
+            episodeOverview = null,
+            episodeStillPath = null,
+            episodeAirDate = null,
+            episodeRuntime = null,
+            // 标题/简介/海报/评分/类型都拿到了，按“详情已加载”处理
+            isDetailsLoaded = true,
+            source = MediaCacheEntity.SOURCE_DOUBAN,
+            groupKey = if (isTv) "douban_tv_$subjectId" else "douban_movie_$videoUri"
+        )
     }
 
     // 扩展函数：把 Movie/TvData 转成通用的 MediaItem

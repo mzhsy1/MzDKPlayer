@@ -38,8 +38,7 @@
     <string name="setting_app_lang">App语言</string>
     <string name="setting_tmdb_api_mirror">TMDB API 地址 (镜像)</string>
     <string name="setting_tmdb_api_mirror_sub">在某些地区可能无法直接访问 TMDB，建议使用镜像地址</string>
-    <string name="setting_tmdb_search_lang">TMDB 搜索语言</string>
-    <string name="setting_tmdb_result_lang">TMDB 详情语言</string>
+    <string name="setting_tmdb_result_lang">TMDB 语言</string>
     <string name="ui_label_custom_tmdb_url">自定义 TMDB API 地址</string>
     <string name="ui_label_enter_tmdb_url">请输入 TMDB API 地址 (以 /3/ 结尾)</string>
     <string name="ui_label_test_tmdb_connection">测试 TMDB 连接</string>
@@ -134,7 +133,9 @@
     <string name="ui_label_season">季 (Season)</string>
     <string name="ui_label_episode">集 (Episode)</string>
     <string name="ui_label_specify_season_episode_note">* 请手动指定该文件对应的季数和集数，搜索结果仅用于确认剧集系列。</string>
-    <string name="ui_label_search_tmdb">搜索TMDB</string>
+    <string name="ui_label_search_source">搜索来源</string>
+    <string name="ui_label_source_tmdb">TMDB</string>
+    <string name="ui_label_source_douban">豆瓣</string>
     <string name="ui_label_please_enter_keyword">请输入关键词</string>
     <string name="ui_label_searching">正在搜索…</string>
     <string name="ui_label_search_failed">搜索失败: %s</string>

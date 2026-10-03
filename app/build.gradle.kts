@@ -20,8 +20,8 @@ android {
         // 手机端由 `phone` flavor 覆盖成 24（material3-ripple 的硬性要求），见下方 flavor 里的说明。
         minSdk = 23
         targetSdk = 37
-        versionCode = 114
-        versionName = "1.18.0"
+        versionCode = 116
+        versionName = "1.18.5"
         ndk {
             //noinspection ChromeOsAbiSupport
             abiFilters += listOf("armeabi-v7a", "arm64-v8a","x86")

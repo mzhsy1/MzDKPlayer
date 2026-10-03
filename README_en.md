@@ -304,6 +304,8 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 - **Douban has no per-episode data**: with "Douban first" a series only gets series-level information (episode titles, overviews and stills are empty, and the "current episode" card is hidden on the details page). Switch the preferred source to TMDB if you care more about episode metadata.
 - When the Douban endpoints are unreachable, that source is **short-circuited for a while** (the circuit breaker trips after consecutive failures) and the other source takes over immediately, instead of every file paying another timeout first.
 - The two sources do not share one ID space, so scraped records carry their source: the library groups by source and Douban entries never mix with TMDB entries.
+- **The manual match screen (TV "Correct matching info" / phone "Re-match") can search both sources**: it has a "Search Source" switch (TMDB / Douban, defaulting to the Preferred Scraping Source), and the entry you pick is stored under its own source, so a Douban entry never lands on a TMDB movie that happens to share a numeric ID.
+- TMDB has a single language setting (**TMDB Language**): search and details share the same value, and an empty value follows the system language.
 - If a same-named `.nfo` file exists in the media directory, enable `Settings -> Scraping & Library -> Prefer local NFO files` to read it offline instead.
 - Scraping results are cached in the local database. The player title prefers the scraped name (episodes automatically get `SxxExx` and the year) and falls back to the file name when no scraped record exists.
 - Adjust the recursion depth for batch scanning under `Settings -> Scraping & Library -> Batch scan subfolder depth`.

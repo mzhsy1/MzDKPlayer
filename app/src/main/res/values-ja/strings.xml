@@ -35,8 +35,7 @@
     <string name="setting_app_lang">アプリの言語</string>
     <string name="setting_tmdb_api_mirror">TMDB API アドレス (ミラー)</string>
     <string name="setting_tmdb_api_mirror_sub">一部の地域で TMDB に直接アクセスできない場合、ミラーアドレスの使用をお勧めします</string>
-    <string name="setting_tmdb_search_lang">TMDB 検索言語</string>
-    <string name="setting_tmdb_result_lang">TMDB 詳細言語</string>
+    <string name="setting_tmdb_result_lang">TMDB 言語</string>
     <string name="ui_label_custom_tmdb_url">カスタム TMDB API アドレス</string>
     <string name="ui_label_enter_tmdb_url">TMDB API アドレスを入力してください (/3/ で終わる必要があります)</string>
     <string name="ui_label_test_tmdb_connection">TMDB 接続テスト</string>
@@ -106,7 +105,9 @@
     <string name="ui_label_season">シーズン</string>
     <string name="ui_label_episode">エピソード</string>
     <string name="ui_label_specify_season_episode_note">* このファイルに対応するシーズン数とエピソード数を手動で指定してください。検索結果はシリーズの確認にのみ使用されます。</string>
-    <string name="ui_label_search_tmdb">TMDBを検索</string>
+    <string name="ui_label_search_source">検索ソース</string>
+    <string name="ui_label_source_tmdb">TMDB</string>
+    <string name="ui_label_source_douban">豆瓣（Douban）</string>
     <string name="ui_label_please_enter_keyword">キーワードを入力してください</string>
     <string name="ui_label_searching">検索中…</string>
     <string name="ui_label_search_failed">検索に失敗しました: %s</string>

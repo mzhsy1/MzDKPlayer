@@ -35,8 +35,8 @@ class MzDkPlayerApplication: Application(), SingletonImageLoader.Factory {
     /**
      * 全局 Coil ImageLoader。
      *
-     * 唯一的定制目的：**豆瓣图床的防盗链**。豆瓣图片在不带 `Referer` 时一律返回 HTTP 418
-     * （14 字节占位图），海报/背景会全白，所以这里给豆瓣域名的图片请求补一个 Referer。
+     * 唯一的定制目的：**豆瓣图床的防盗链**。豆瓣图片要同时带对 `Referer` 和 `User-Agent` 才给图，
+     * 缺一样就会「有的图能出来、有的出不来」（下面 [imageHttpClient] 有实测结论）。
      * 只有豆瓣域名会被加头，TMDB 等其它图床走原样请求。
      *
      * 注册方式是 `components {}` 而不是给 Coil 传 HTTP 客户端（Coil3 没有这个入口）：
@@ -51,7 +51,16 @@ class MzDkPlayerApplication: Application(), SingletonImageLoader.Factory {
             }
             .build()
 
-    /** 图片专用 OkHttp：只比默认多一个「豆瓣域名补 Referer」的拦截器 */
+    /**
+     * 图片专用 OkHttp：只比默认多一个「豆瓣域名补请求头」的拦截器。
+     *
+     * **必须同时补 Referer 和 User-Agent，缺一样都会有一批图挂掉**（实测，别再只留 Referer）：
+     * - 不带 `Referer`：豆瓣图床一律 418，返回 14 字节占位图；
+     * - 带 `Referer` 但 UA 是 OkHttp 默认的 `okhttp/x.y.z`：`img3.doubanio.com` 这类节点直接 403
+     *   （311 字节的错误页），而 `img2` / `img9` 又反过来只认这种 UA —— 于是同一批刮削结果里
+     *   海报能显示、背景图空一片（或反之），这正是「有的图能加载、有的不能」的根因；
+     * - 补上桌面 Chrome UA（[DoubanLogic.BROWSER_UA]）+ Referer 后，各节点实测均 200。
+     */
     private val imageHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
@@ -61,6 +70,7 @@ class MzDkPlayerApplication: Application(), SingletonImageLoader.Factory {
                 if (DoubanLogic.isDoubanHost(request.url.host)) {
                     chain.proceed(
                         request.newBuilder()
+                            .header("User-Agent", DoubanLogic.BROWSER_UA)
                             .header("Referer", DoubanLogic.SEARCH_REFERER)
                             .build()
                     )

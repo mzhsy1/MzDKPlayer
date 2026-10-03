@@ -10,38 +10,39 @@ import retrofit2.http.Path
 
 class TmdbRepository(private val apiService: TmdbApiService) {
 
-    private fun getSearchLanguage(): String {
-        val pref = SettingsRepository.tmdbSearchLang
-        return if (pref.isEmpty()) java.util.Locale.getDefault().toLanguageTag() else pref
-    }
-
-    private fun getResultLanguage(): String {
+    /**
+     * 统一语言：搜索与详情都用设置里的「TMDB 详情语言」，空值跟随系统。
+     *
+     * 原来搜索走的是另一条 `tmdbSearchLang`，导致「修改文件对应影视信息」里搜出来的行
+     * 和点进去抓到的详情语言不一致，看起来就是「详情语言没生效」。现在只有一个入口。
+     */
+    private fun getLanguage(): String {
         val pref = SettingsRepository.tmdbResultLang
         return if (pref.isEmpty()) java.util.Locale.getDefault().toLanguageTag() else pref
     }
 
     suspend fun getPopularMovies(page: Int = 1) = safeApiCall {
-        apiService.getPopularMovies(page = page, language = getResultLanguage())
+        apiService.getPopularMovies(page = page, language = getLanguage())
     }
 
     suspend fun getTopRatedMovies(page: Int = 1) = safeApiCall {
-        apiService.getTopRatedMovies(page = page, language = getResultLanguage())
+        apiService.getTopRatedMovies(page = page, language = getLanguage())
     }
 
     suspend fun searchMovies(query: String, page: Int = 1, year: String) = safeApiCall {
-        apiService.searchMovies(query = query, page = page, year = year, language = getSearchLanguage())
+        apiService.searchMovies(query = query, page = page, year = year, language = getLanguage())
     }
 
     suspend fun searchTV(query: String, page: Int = 1, year: String) = safeApiCall {
-        apiService.searchTV(query = query, page = page, year = year, language = getSearchLanguage())
+        apiService.searchTV(query = query, page = page, year = year, language = getLanguage())
     }
 
     suspend fun getMovieDetails(movieId: Int) = safeApiCall {
-        apiService.getMovieDetails(movieId = movieId, language = getResultLanguage())
+        apiService.getMovieDetails(movieId = movieId, language = getLanguage())
     }
 
     suspend fun getTVSeriesDetails(seriesId: Int) = safeApiCall {
-        apiService.getTVSeriesDetails(seriesId = seriesId, language = getResultLanguage())
+        apiService.getTVSeriesDetails(seriesId = seriesId, language = getLanguage())
     }
 
     suspend fun getTVEpisodeDetails(
@@ -53,7 +54,7 @@ class TmdbRepository(private val apiService: TmdbApiService) {
             seriesId = seriesId,
             seasonNumber = seasonNumber,
             episodeNumber = episodeNumber,
-            language = getResultLanguage()
+            language = getLanguage()
         )
     }
 

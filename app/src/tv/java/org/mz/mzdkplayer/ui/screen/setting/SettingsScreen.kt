@@ -561,21 +561,6 @@ fun MetadataSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
             onClick = { showTmdbConfig = true }
         )
         ActionSettingItem(
-            title = stringResource(R.string.setting_tmdb_search_lang),
-            value = formatTmdbLang(state.tmdbSearchLang),
-            onClick = {
-                val next = when (state.tmdbSearchLang) {
-                    "" -> "zh-CN"
-                    "zh-CN" -> "zh-TW"
-                    "zh-TW" -> "en-US"
-                    "en-US" -> "ja-JP"
-                    "ja-JP" -> "ko-KR"
-                    else -> ""
-                }
-                settingsVM.setTmdbSearchLang(next)
-            }
-        )
-        ActionSettingItem(
             title = stringResource(R.string.setting_tmdb_result_lang),
             value = formatTmdbLang(state.tmdbResultLang),
             onClick = {

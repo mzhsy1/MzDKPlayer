@@ -58,7 +58,7 @@ data class SettingsUiState(
     val scrapeSourcePriority: String = ScrapeSourcePolicy.DEFAULT,
     val tmdbBaseUrl: String = SettingsRepository.DEFAULT_TMDB_URL,
     val recursiveScanLevel: Int = 1,
-    val tmdbSearchLang: String = "",
+    /** TMDB 语言：搜索与详情共用（原「搜索语言」已删除，见 [SettingsRepository.tmdbResultLang]） */
     val tmdbResultLang: String = "",
     val removeWebDavFirstItem: Boolean = false,
     /** 手机端：打开目录时是否自动刮削（默认关；电视端没有这个开关） */
@@ -129,7 +129,6 @@ class SettingsViewModel : ViewModel() {
                 scrapeSourcePriority = repo.scrapeSourcePriority,
                 tmdbBaseUrl = repo.tmdbBaseUrl,
                 recursiveScanLevel = repo.recursiveScanLevel,
-                tmdbSearchLang = repo.tmdbSearchLang,
                 tmdbResultLang = repo.tmdbResultLang,
                 removeWebDavFirstItem = repo.removeWebDavFirstItem,
                 phoneAutoScrape = repo.phoneAutoScrape,
@@ -319,11 +318,6 @@ class SettingsViewModel : ViewModel() {
 
     fun setRecursiveScanLevel(v: Int) {
         repo.recursiveScanLevel = v
-        refreshState()
-    }
-
-    fun setTmdbSearchLang(v: String) {
-        repo.tmdbSearchLang = v
         refreshState()
     }
 

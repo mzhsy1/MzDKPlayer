@@ -1,5 +1,7 @@
 package org.mz.mzdkplayer.data.douban
 
+import org.mz.mzdkplayer.data.local.MediaCacheEntity
+import org.mz.mzdkplayer.data.model.MediaItem
 import org.mz.mzdkplayer.tool.logic.DoubanLogic
 
 /**
@@ -20,6 +22,28 @@ internal fun DoubanSuggestDto.toCandidate(): DoubanLogic.Candidate? {
         // `episode` 非空 = 有集数，是搜索结果里唯一能暗示“剧集”的信号（`type` 字段不可信）
         hasEpisode = !episode.isNullOrBlank(),
         posterUrl = DoubanLogic.largePosterUrl(img),
+    )
+}
+
+/**
+ * 手动匹配页（`EditTMDBInfoScreen` / `PhoneMatchScreen`）里的一行搜索结果。
+ *
+ * 两个约定与入库时保持同一口径：
+ * 1. 豆瓣条目 id 借存在 [MediaItem.id] 里，靠 [MediaItem.source] 与 TMDB 的 id 区分（两边的
+ *    数值区间是重叠的）；id 不是数字串说明接口变了，这一条直接丢掉。
+ * 2. 类型只能先按 `episode` 猜（`type` 字段不可信，见 [DoubanLogic] 的说明）：有集数当剧集，
+ *    没有当电影。点选之后还会用详情接口的 subtype 再核对一次，猜错不会落库落错库。
+ */
+internal fun DoubanLogic.Candidate.toMediaItem(): MediaItem? {
+    val subjectId = id.toIntOrNull() ?: return null
+    return MediaItem(
+        id = subjectId,
+        title = title,
+        overview = "",
+        posterPath = posterUrl,
+        releaseDate = year?.toString(),
+        isMovie = !hasEpisode,
+        source = MediaCacheEntity.SOURCE_DOUBAN,
     )
 }
 
