@@ -71,11 +71,11 @@ fun SMBConScreen(
         connectionId?.let { smbListViewModel.getConnectionById(it) }
     }
     val isEditing = editingConnection != null
-    var ip by remember { mutableStateOf(editingConnection?.ip ?: "192.168.1.106") }
-    var username by remember { mutableStateOf(editingConnection?.username ?: "wang1") }
-    var password by remember { mutableStateOf(editingConnection?.password ?: "138138") }
-    var shareName by remember { mutableStateOf(editingConnection?.shareName ?: "mv") }
-    var aliasName by remember { mutableStateOf(editingConnection?.name ?: "as") }
+    var ip by remember { mutableStateOf(editingConnection?.ip ?: "192.168.1.2") }
+    var username by remember { mutableStateOf(editingConnection?.username ?: "") }
+    var password by remember { mutableStateOf(editingConnection?.password ?: "") }
+    var shareName by remember { mutableStateOf(editingConnection?.shareName ?: "") }
+    var aliasName by remember { mutableStateOf(editingConnection?.name ?: "电影") }
     val keyboardController = LocalSoftwareKeyboardController.current
     // 全局跟踪当前活跃的输入框ID（初始为null）
     //val activeFieldId = remember { mutableStateOf<String?>(null) }
