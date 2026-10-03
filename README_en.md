@@ -493,9 +493,9 @@ The project uses logback-android. All network protocol implementations (SMB / FT
 
 - **Chipset**: Amlogic S905L or equivalent performance chipset
 - **RAM**: 1GB RAM
-- **System**: Android 8.0 (API 26) and above (`minSdk = 26`); remote operation requires D-pad support on the TV or box
+- **System**: Android 6.0 (API 23) and above (`minSdk = 23`); remote operation requires D-pad support on the TV or box
 
-> 📱 **Phone app**: also `minSdk = 26` (Android 8.0 and above), entirely touch-driven with no remote required; it uses a different `applicationId`, so both apps can be installed side by side.
+> 📱 **Phone app**: `minSdk = 24` (Android 7.0 and above) — one level above the TV app, because the phone side's Material 3 Expressive dependency `material3-ripple` requires 24 itself. It is entirely touch-driven with no remote required; it uses a different `applicationId`, so both apps can be installed side by side.
 
 > ⚠️ **Note**: The code is not well-optimized; it's a success if it runs. There are bugs. Insufficient device performance may cause video and danmaku playback lag, or failure to play high-bitrate videos.
 

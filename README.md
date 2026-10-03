@@ -492,9 +492,9 @@ app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # 手机端 flavor（只用 and
 
 - **芯片组**：晶晨S905L或同等性能芯片
 - **内存**：1GB RAM
-- **系统**：Android 8.0 (API 26) 及以上（`minSdk = 26`），遥控操作体验需要电视 / 盒子的方向键支持
+- **系统**：Android 6.0 (API 23) 及以上（`minSdk = 23`），遥控操作体验需要电视 / 盒子的方向键支持
 
-> 📱 **手机端**：同为 `minSdk = 26`（Android 8.0 及以上），全部为触屏操作、不需要遥控器；`applicationId` 与电视端不同，两者可以同时安装。
+> 📱 **手机端**：`minSdk = 24`（Android 7.0 及以上）—— 比电视端高一级，因为手机端的 Material 3 Expressive 依赖里 `material3-ripple` 自身要求 24；全部为触屏操作、不需要遥控器；`applicationId` 与电视端不同，两者可以同时安装。
 
 > ⚠️ **注意**：代码写的烂，不会优化，能跑就成功，都是bug，设备性能不足可能导致视频与弹幕播放卡顿，或无法正常播放高码率视频
 

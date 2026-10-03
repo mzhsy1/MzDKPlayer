@@ -18,7 +18,9 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        minSdk = 26
+        // 共享库取两端里更低的那个：电视端 23（`app` 的 defaultConfig）、手机端 24（`phone` flavor），
+        // 依赖方的下限高于被依赖方即可，所以这里保持 23，不跟着手机端一起抬高。
+        minSdk = 23
 
         val localProperties = rootProject.file("local.properties")
         val properties = Properties().apply {

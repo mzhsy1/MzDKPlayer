@@ -14,9 +14,11 @@ android {
     compileSdk = 37
     defaultConfig {
         applicationId = "org.mz.mzdkplayer"
-        // 手机端分支：抬到 Android 8.0（自适应图标 / 通知渠道 / 更少的兼容分支），
-        // 电视端 D-pad 与 Media3 内核在 26+ 上行为不变。
-        minSdk = 26
+        // 这里是**电视端**的下限：Android 6.0（API 23）。依据：图标是纯 PNG（没用自适应图标），
+        // 代码里没有通知渠道等 26+ 专属分支，本地 aar 的下限正好也卡在 23（ffmpeg 解码器 minSdk 23）。
+        // 存储权限在 23 走运行时申请，电视端已有的权限页覆盖了这条路径。
+        // 手机端由 `phone` flavor 覆盖成 24（material3-ripple 的硬性要求），见下方 flavor 里的说明。
+        minSdk = 23
         targetSdk = 37
         versionCode = 114
         versionName = "1.18.0"
@@ -50,6 +52,11 @@ android {
             dimension = "form"
             // 与电视端不同包名 → 两个 App 可以同时安装，不存在桌面图标冲突
             applicationId = "org.mz.mzdkplayer.phone"
+            // 手机端下不到 23：Material 3 Expressive（1.5.0-alpha29）拆出的
+            // `material3-ripple-android` 自己声明了 minSdk 24，清单合并会硬性拒绝 23。
+            // ripple 是基础组件、必然被走到，所以不能用 tools:overrideLibrary 硬闯（会在 23 设备上 NoSuchMethodError）。
+            // 电视端不引 material3，因此仍是 defaultConfig 的 23。
+            minSdk = 24
         }
     }
 

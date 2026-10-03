@@ -2,6 +2,16 @@
 
 ## [未发布]
 
+### 变更（minSdk：电视端 26 → 23，手机端 26 → 24）
+
+系统下限往下放了一档，两端不再同为一个值 —— 限制来自手机端独有的依赖，电视端没有被它连累。
+
+- **电视端 `minSdk` 由 26 降到 23**（Android 6.0）。依据是通读下来没有 26+ 的硬依赖：图标本来就是纯 PNG（`mipmap-*dpi/ic_launcher.png`，没用 `anydpi-v26` 自适应图标），代码里也没有 `NotificationChannel` 之类的 26 专属分支（`Build.VERSION_CODES` 的分支全是 `R` / `S` / `P` / `TIRAMISU`，低版本走各自 `else` 路径），本地 AAR 的下限恰好也卡在 23（`lib-decoder-ffmpeg-release.aar` 的 `minSdkVersion=23`，`akdanmaku.aar` 是 21）
+- **手机端只能到 24**：Material 3 Expressive（`material3:1.5.0-alpha29`）拆分出的 `material3-ripple-android` 自己声明了 `minSdk 24`，清单合并会硬性拒绝 23。ripple 是基础组件、必然被走到，所以没有用 `tools:overrideLibrary` 硬闯（那会在 23 设备上直接 `NoSuchMethodError`）
+- **落地方式是用 flavor 分开**：`app` 的 `defaultConfig` 给到 23（电视端），`phone` flavor 里覆盖成 24；`:core` 是共享库，保持 23（依赖方的下限高于被依赖方即可）。这样手机端依赖的这条限制不会把电视端一起抬上去
+- 已在 23 路径上复核的兼容点：存储权限在 23 走运行时申请（电视端 `FilePermissionScreen` 与手机端 `PhoneStoragePermission` 都有 `else` 分支落到 `READ_EXTERNAL_STORAGE`）；`java.time` / `java.util.stream` 等 API 由两端都已开启的 `coreLibraryDesugaring`（`desugar_jdk_libs 2.1.5`）兜住
+- 验证：`:app:assembleTvDebug` 与 `:app:assemblePhoneDebug` 均构建通过
+
 ### 新增（刮削：豆瓣数据源 + 首选源可在设置里切换）
 
 刮削现在有两个数据源：**豆瓣**（新增）与 **TMDB**。两者始终都在用，设置里只决定**谁先谁后** —— 首选那个搜不到时，自动用另一个兜底。电视端「刮削与媒体库」与手机端同一分组各有一个「首选数据源」项（**豆瓣优先 / TMDB 优先，默认豆瓣优先**；电视端按一次换一个，手机端弹单选面板）。中 / 英 / 日 / 繁四套文案齐全。
