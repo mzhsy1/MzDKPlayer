@@ -79,7 +79,7 @@ fun EditTMDBInfoScreen(
     // UI 状态
     var searchKeyword by remember { mutableStateOf(initialInfo.title) }
     var isSearchMovie by remember { mutableStateOf(initialInfo.mediaType == "movie") }
-    // 搜索源默认跟随设置里的「刮削首选数据源」，用户可以单独切成另一个源
+    // 搜索源默认跟随设置里选的刮削数据源，用户可以单独切成另一个源
     var searchSource by remember { mutableStateOf(movieViewModel.defaultSearchSource()) }
 
     // TV 专属状态：季号和集号

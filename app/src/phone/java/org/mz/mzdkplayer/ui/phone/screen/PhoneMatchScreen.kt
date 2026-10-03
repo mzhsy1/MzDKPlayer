@@ -90,7 +90,7 @@ fun PhoneMatchScreen(
 
     var keyword by remember { mutableStateOf(initialInfo.title) }
     var isMovie by remember { mutableStateOf(initialInfo.mediaType != "tv") }
-    // 搜索源默认跟随设置里的「刮削首选数据源」，用户可以单独切成另一个源
+    // 搜索源默认跟随设置里选的刮削数据源，用户可以单独切成另一个源
     var searchSource by remember { mutableStateOf(movieViewModel.defaultSearchSource()) }
     var seasonText by remember { mutableStateOf(initialInfo.season.ifEmpty { "1" }) }
     var episodeText by remember { mutableStateOf(initialInfo.episode.ifEmpty { "1" }) }

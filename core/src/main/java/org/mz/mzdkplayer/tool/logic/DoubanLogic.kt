@@ -154,10 +154,25 @@ object DoubanLogic {
         expectedTitle: String,
         expectedYear: Int?,
         preferTv: Boolean?,
+        /** 每条候选的打分回传（`候选 → 分数`），仅用于日志排查，默认不启用 */
+        onScored: ((Candidate, Int) -> Unit)? = null,
     ): Candidate? {
         if (candidates.isEmpty()) return null
         val want = normalizeTitle(expectedTitle)
-        return candidates.maxByOrNull { score(it, want, expectedYear, preferTv) }
+        // 刻意手写循环而不是 maxByOrNull：标准库的 maxByOrNull 对**单元素**集合会直接返回该元素、
+        // 不调用 selector，打分日志就会漏记（实测候选恰好只有一条时日志为空）。
+        // 语义与 maxByOrNull 保持一致：同分保留先出现的那条（豆瓣自己的相关度顺序）。
+        var best: Candidate? = null
+        var bestScore = 0
+        for (candidate in candidates) {
+            val score = score(candidate, want, expectedYear, preferTv)
+            onScored?.invoke(candidate, score)
+            if (best == null || score > bestScore) {
+                best = candidate
+                bestScore = score
+            }
+        }
+        return best
     }
 
     private fun score(candidate: Candidate, want: String, year: Int?, preferTv: Boolean?): Int {

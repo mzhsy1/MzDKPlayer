@@ -59,7 +59,7 @@ class SearchViewModel (
     private val _selectedSeriesEpisodes = MutableStateFlow<List<MediaCacheEntity>>(emptyList())
     val selectedSeriesEpisodes = _selectedSeriesEpisodes.asStateFlow()
 
-    // 点击搜索结果中的 TV 时调用（带上 source：库里可能有豆瓣兜底刮出来的同号剧集）
+    // 点击搜索结果中的 TV 时调用（带上 source：库里可能有豆瓣刮出来的同号剧集）
     fun loadEpisodes(tmdbId: Int, source: String = MediaCacheEntity.SOURCE_TMDB) {
         viewModelScope.launch {
             // 从数据库获取该剧的所有集数

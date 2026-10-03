@@ -15,10 +15,13 @@
 
     <string name="setting_prioritize_nfo">优先加载本地 NFO 文件</string>
     <string name="setting_prioritize_nfo_sub">如果媒体目录下存在同名 .nfo 文件，将优先从中提取信息而非联网刮削</string>
-    <string name="setting_scrape_source">首选数据源</string>
-    <string name="setting_scrape_source_sub">首选源搜不到时，自动用另一个源兜底。注意：豆瓣没有单集信息，选「豆瓣优先」时分集标题／简介／剧照会缺失；豆瓣走的是公开接口，连续失败会自动跳过</string>
-    <string name="setting_scrape_source_douban">豆瓣优先</string>
-    <string name="setting_scrape_source_tmdb">TMDB 优先</string>
+    <string name="setting_scrape_source">刮削数据源</string>
+    <string name="setting_scrape_source_sub">选哪个源就只刮哪个源，搜不到时不会用另一个源兜底。豆瓣没有分集标题／简介／剧照，且走公开接口、可能被限流；TMDB 信息最全（含分集与上映状态），但需要能访问 api.themoviedb.org</string>
+    <string name="setting_scrape_source_douban">豆瓣</string>
+    <string name="setting_scrape_source_tmdb">TMDB</string>
+    <string name="setting_scrape_timeout">刮削超时时间</string>
+    <string name="setting_scrape_timeout_sub">单次请求最长等多久，豆瓣与 TMDB 共用。默认 5 秒：两个源正常时都是亚秒级响应，调小能让断网时的批量刮削快很多；网络慢或走镜像时可以调大</string>
+    <string name="setting_scrape_timeout_value">%1$d 秒</string>
 
     <string name="setting_webdav_remove_first_item">移除 WebDAV 列表首个元素</string>
     <string name="setting_webdav_remove_first_item_sub">部分 WebDAV 服务返回的列表首项为当前目录，开启此项可避免重复显示</string>

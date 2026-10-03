@@ -81,7 +81,8 @@ internal class PhoneBrowserScrapeUi(
  * 三件事：
  * 1. 目录变化时批量读一次库里已有的刮削记录（[MediaMetaViewModel.loadMany]）；
  * 2. 开了自动刮削（手机端设置里的开关，默认关）、且本目录还有没刮过的视频时，
- *    交给 [MovieViewModel.batchScrapeVideoInfo] 串行去刮（它自带 1.5 秒间隔，避免打爆 TMDB）；
+ *    交给 [MovieViewModel.batchScrapeVideoInfo] 串行去刮（它自带 1.5 秒间隔，别把请求打得太密：
+ *    豆瓣的公开接口会被限流，TMDB 也有速率限制）；
  * 3. 扫描期间每 1.5 秒回读一次数据库，刮到一条列表里就出现一条。
  *
  * [dataSourceType] / [connectionName] 会写进 `media_cache`，口径与播放页一致。

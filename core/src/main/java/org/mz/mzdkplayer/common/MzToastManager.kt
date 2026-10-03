@@ -51,12 +51,16 @@ class MzToastState {
         isVisible = true
         val currentToken = ++token
         job?.cancel()
+        // 收尾放在 invokeOnCompletion 而不是协程体的 finally 里：协程可能**在跑起来之前**就被取消
+        // （刚 launch 就被 cancel，协程体一行都不执行，finally 自然也不会跑），那样 isVisible 会
+        // 永远停在 true —— 界面上的提示框就再也消不掉了。invokeOnCompletion 无论协程有没有真正
+        // 开始执行都一定会触发。
         job = scope.launch {
-            try {
-                delay(duration.milliseconds)
-            } finally {
-                // 倒计时被掐断（作用域被取消）时也要收掉自己 —— 只有仍是「当前这一次」提示才有权收，
-                // 否则被新提示取消的旧 job 会在收尾时把新提示一起抹掉
+            delay(duration.milliseconds)
+        }.also { newJob ->
+            newJob.invokeOnCompletion {
+                // 只有仍是「当前这一次」提示才有权收自己，否则被新提示取消的旧 job
+                // 会在收尾时把新提示一起抹掉
                 if (currentToken == token) {
                     isVisible = false
                 }

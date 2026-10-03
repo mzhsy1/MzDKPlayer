@@ -211,16 +211,31 @@ object MediaInfoExtractorFormFileName {
      *
      * 传入纯文件名或完整路径/URL 都可以；空串不会抛异常，只是字段全为空。
      */
-    fun extract(movieName: String): MediaInfo {
+    fun extract(movieName: String): MediaInfo = extractInternal(movieName, trace = null)
+
+    /**
+     * 带调试轨迹的解析：返回 [MediaInfo] 与**逐步清洗记录**。
+     *
+     * 仅用于排查「文件名清洗」问题（打日志 / 单测断言）：每一步的中间值都留在轨迹里，
+     * 能直接看出是哪条规则把片名砍错了。生产路径用 [extract]，不付这份拼接开销。
+     */
+    fun extractWithTrace(movieName: String): Pair<MediaInfo, List<String>> {
+        val trace = mutableListOf<String>()
+        return extractInternal(movieName, trace) to trace
+    }
+
+    private fun extractInternal(movieName: String, trace: MutableList<String>?): MediaInfo {
         val stem = removeExtension(baseNameOf(movieName))
+        trace?.add("去目录/扩展名后 stem=<$stem>")
         if (stem.isEmpty()) return MediaInfo(title = "", year = "")
 
         // 1. 先摘掉「【xxx发布】」整段噪音
         val name = BRACKET_SEGMENT.replace(stem, " ").trim()
+        trace?.add("去【xxx发布】后=<$name>")
 
         // 2. 年份 / 季集 / 分辨率
-        val yearMatch = extractYearWithPos(name)
-        val episodeMatch = extractSeasonEpisodeWithPos(name)
+        val yearMatch = extractYearWithPos(name, trace)
+        val episodeMatch = extractSeasonEpisodeWithPos(name, trace)
         val year = yearMatch?.value
         val season = episodeMatch?.value?.first
         val episode = episodeMatch?.value?.second
@@ -239,19 +254,23 @@ object MediaInfoExtractorFormFileName {
                 if (cut != null) name.substring(0, cut) else name
             }
         }
+        trace?.add("标题候选=<$titleSource>")
 
         // 4. 清洗标题
         var title = cleanTitle(titleSource)
+        trace?.add("噪音词/分隔符清洗后=<$title>")
         year?.let { title = title.replace(it.toString(), " ") }
         title = finalClean(removeEpisodeInfo(title))
+        trace?.add("去残留季集并收尾后=<$title>")
         if (title.isEmpty()) {
             // 兜底：整串都被判成噪音时至少保留原始文件名，避免出现空标题
             title = finalClean(cleanTitle(stem))
+            trace?.add("整串被判成噪音 → 回退原始文件名=<$title>")
         }
 
         // 5. 输出：只要识别出季或集就算剧集，并补齐缺失的一方
         val isTv = season != null || episode != null
-        return MediaInfo(
+        val info = MediaInfo(
             title = title,
             year = year?.toString().orEmpty(),
             season = if (isTv) formatNumber(season ?: 1) else "",
@@ -259,6 +278,11 @@ object MediaInfoExtractorFormFileName {
             mediaType = if (isTv) "tv" else "movie",
             resolution = extractResolution(baseNameOf(movieName))
         )
+        trace?.add(
+            "结果 title=<$title> year=${info.year} season=${info.season} " +
+                "episode=${info.episode} type=${info.mediaType} resolution=${info.resolution}"
+        )
+        return info
     }
 
     // ────────────────────────────── 提取 ──────────────────────────────
@@ -287,17 +311,26 @@ object MediaInfoExtractorFormFileName {
      * 发布名里的年份一般紧挨画质标记，而片名本身可能带年份感的数字
      * （`Blade.Runner.2049.2017`、`1917.2019`），取第一个会误判。
      */
-    private fun extractYearWithPos(name: String): MatchWithPos<Int>? {
+    private fun extractYearWithPos(name: String, trace: MutableList<String>? = null): MatchWithPos<Int>? {
         var result: MatchWithPos<Int>? = null
         for (match in YEAR_PATTERN.findAll(name)) {
             val year = match.groupValues[1].toIntOrNull() ?: continue
             result = MatchWithPos(year, match.range.first)
         }
-        return result
+        val found = result
+        if (found != null) {
+            trace?.add("年份命中=${found.value}@${found.start}（取最后一个）")
+        } else {
+            trace?.add("年份=未识别")
+        }
+        return found
     }
 
-    private fun extractSeasonEpisodeWithPos(name: String): MatchWithPos<Pair<Int?, Int?>>? {
-        for (rule in EPISODE_RULES) {
+    private fun extractSeasonEpisodeWithPos(
+        name: String,
+        trace: MutableList<String>? = null
+    ): MatchWithPos<Pair<Int?, Int?>>? {
+        for ((index, rule) in EPISODE_RULES.withIndex()) {
             val match = rule.regex.find(name) ?: continue
             val groups = match.groupValues
             val start = match.range.first
@@ -305,21 +338,25 @@ object MediaInfoExtractorFormFileName {
 
             if (rule.seasonOnly) {
                 val season = parseNumber(groups[1]) ?: continue
+                trace?.add("季集命中规则#${index + 1}（只判季）: 匹配=<${match.value}> season=$season")
                 return MatchWithPos(Pair(season, null), start, end, rule.titleAfterMatch)
             }
             if (groups.size >= 3) {
                 val season = parseNumber(groups[1])
                 val episode = parseNumber(groups[2])
                 if (season == null && episode == null) continue
+                trace?.add("季集命中规则#${index + 1}: 匹配=<${match.value}> season=$season episode=$episode")
                 return MatchWithPos(Pair(season, episode), start, end, rule.titleAfterMatch)
             }
             val episode = parseNumber(groups.getOrNull(1).orEmpty()) ?: continue
+            trace?.add("季集命中规则#${index + 1}: 匹配=<${match.value}> episode=$episode")
             return MatchWithPos(Pair(null, episode), start, end, rule.titleAfterMatch)
         }
 
         // 合集「01-04」：取起始集号
         EPISODE_RANGE_PATTERN.find(name)?.let { match ->
             parseNumber(match.groupValues[1])?.let {
+                trace?.add("合集区间命中: 匹配=<${match.value}> 起始集=$it")
                 return MatchWithPos(Pair(null, it), match.range.first, match.range.last + 1)
             }
         }
@@ -327,9 +364,11 @@ object MediaInfoExtractorFormFileName {
         // 行首「01 4K.国&粤」
         PREFIX_EPISODE_PATTERN.find(name)?.let { match ->
             parseNumber(match.groupValues[1])?.let {
+                trace?.add("行首编号+画质命中: 匹配=<${match.value}> 集=$it")
                 return MatchWithPos(Pair(null, it), match.range.first, match.range.last + 1)
             }
         }
+        trace?.add("季集=未识别（按电影处理）")
         return null
     }
 

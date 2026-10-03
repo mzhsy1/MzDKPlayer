@@ -4,6 +4,7 @@ import org.mz.mzdkplayer.tool.metadata.MediaInfoExtractorFormFileName
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -38,7 +39,7 @@ import androidx.media3.common.util.UnstableApi
 class MovieViewModel(private val repository: TmdbRepository,private val mediaDao: MediaDao) : ViewModel() {
     private val settingsRepo = SettingsRepository
 
-    /** 豆瓣兜底数据源（TMDB 搜不到时才用），内部自带 OkHttp 客户端，做成单例字段复用 */
+    /** 豆瓣数据源（设置里选豆瓣时的唯一来源），内部自带 OkHttp 客户端，做成单例字段复用 */
     private val doubanScraper = DoubanScraper()
 
     private val _popularMovies = MutableStateFlow<Resource<List<Movie>>>(Resource.Loading)
@@ -215,7 +216,7 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
         viewModelScope.launch(Dispatchers.IO) {
             // 1. 检查缓存是否包含详情
             val cached = mediaDao.getMediaByUri(videoUri)
-            // 【注意】非 TMDB 来源（豆瓣兜底）记录里的 tmdbId 列存的是**豆瓣条目 id**，
+            // 【注意】非 TMDB 来源（豆瓣）记录里的 tmdbId 列存的是**豆瓣条目 id**，
             // 数值空间和 TMDB id 重叠，拿去查 TMDB 会查到另一部片子，所以只要本地有这条记录就直接收尾
             if (cached != null && cached.mediaType == "movie" &&
                 (cached.isDetailsLoaded || cached.source != MediaCacheEntity.SOURCE_TMDB)
@@ -348,7 +349,7 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
                     return@launch // ✪ 命中缓存，直接结束，无需联网
                 }
 
-                // 【关键】非 TMDB 来源（豆瓣兜底）走到这里说明：剧集信息已从本地拿到了，但没有分集信息。
+                // 【关键】非 TMDB 来源（豆瓣）走到这里说明：剧集信息已从本地拿到了，但没有分集信息。
                 // 它的 tmdbId 列存的是**豆瓣条目 id**（数值空间和 TMDB 重叠），继续往下联网会查到另一部剧，
                 // 所以这里必须收尾：分集状态用 Error 收口，UI 会隐藏「当前单集详情」卡片、背景图退回剧集背景。
                 if (cached.source != MediaCacheEntity.SOURCE_TMDB) {
@@ -456,37 +457,70 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
             _isScanning.value = true
             _totalScanCount.value = videoList.size
             _currentScanIndex.value = 0
-            Log.d("MovieViewModel", "开始批量扫描(含详情)，待处理: ${videoList.size}")
+            val batchStart = System.currentTimeMillis()
+            var successCount = 0
+            var skipCount = 0
+            var failCount = 0
+            Log.d(
+                "MovieViewModel",
+                "[SCRAPE] 批量刮削开始: 共 ${videoList.size} 个文件, " +
+                    "数据源=${ScrapeSourcePolicy.resolve(settingsRepo.scrapeSourcePriority)}, " +
+                    "类型=$dataSourceType, 连接=$connectionName"
+            )
 
             try {
                 videoList.forEachIndexed { index, (fileName, videoUri) ->
                     _currentScanIndex.value = index + 1
+                    val itemStart = System.currentTimeMillis()
+                    Log.d("MovieViewModel", "[SCRAPE] ── [${index + 1}/${videoList.size}] 文件名: $fileName")
 
                     // 1. 检查数据库
                     val cachedMedia = mediaDao.getMediaByUri(videoUri)
                     if (cachedMedia != null) {
                         // 如果已存在且详情已加载，直接跳过
                         if (cachedMedia.isDetailsLoaded) {
-                            Log.d("MovieViewModel", "跳过已存在完整数据: $fileName")
+                            skipCount++
+                            Log.d(
+                                "MovieViewModel",
+                                "[SCRAPE] 跳过（库里已有完整数据，来源=${cachedMedia.source}）: $fileName"
+                            )
                             return@forEachIndexed
                         }
                         // 如果只是基础数据，可以选择继续往下走去更新详情
+                        Log.d("MovieViewModel", "[SCRAPE] 库里有基础数据但详情未加载，继续补全: $fileName")
                     }
 
-                    val mediaInfo = MediaInfoExtractorFormFileName.extract(fileName)
-                    if (mediaInfo.title.isBlank()) return@forEachIndexed
+                    val (mediaInfo, parseTrace) = MediaInfoExtractorFormFileName.extractWithTrace(fileName)
+                    Log.d("MovieViewModel", "[SCRAPE] 文件名清洗轨迹: ${parseTrace.joinToString(" → ")}")
+                    if (mediaInfo.title.isBlank()) {
+                        skipCount++
+                        Log.w("MovieViewModel", "[SCRAPE] 解析不出片名，跳过: $fileName")
+                        return@forEachIndexed
+                    }
 
                     // 2. 延时防封 (因为现在请求多了，稍微保持一点间隔)
                     if (index > 0) delay(1500)
 
-                    Log.d("MovieViewModel", "正在获取完整信息 ($index/${videoList.size}): ${mediaInfo.title}")
+                    Log.d("MovieViewModel", "[SCRAPE] 正在获取完整信息 (${index + 1}/${videoList.size}): ${mediaInfo.title}")
 
                     // [核心修改] 调用通用方法获取完整详情
-                    searchAndFetchFullDetails(mediaInfo, videoUri, dataSourceType, fileName, connectionName)
+                    val entity = searchAndFetchFullDetails(mediaInfo, videoUri, dataSourceType, fileName, connectionName)
+                    val itemCost = System.currentTimeMillis() - itemStart
+                    if (entity != null) {
+                        successCount++
+                        Log.d("MovieViewModel", "[SCRAPE] ✔ 完成 (${itemCost}ms): 「${mediaInfo.title}」 ← $fileName")
+                    } else {
+                        failCount++
+                        Log.w("MovieViewModel", "[SCRAPE] ✘ 两个数据源都没拿到 (${itemCost}ms): $fileName")
+                    }
                 }
             } finally {
                 _isScanning.value = false
-                Log.d("MovieViewModel", "批量扫描结束")
+                Log.d(
+                    "MovieViewModel",
+                    "[SCRAPE] 批量刮削结束: 成功=$successCount 跳过=$skipCount 失败=$failCount " +
+                        "总耗时=${System.currentTimeMillis() - batchStart}ms"
+                )
             }
         }
     }
@@ -541,12 +575,12 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
     }
 
     /**
-     * 手动匹配页默认选中的搜索源：跟随设置里的「刮削首选数据源」。
+     * 手动匹配页默认选中的搜索源：跟随设置里选的数据源。
      *
-     * 复用 [ScrapeSourcePolicy.order] 而不是再判断一次谁先谁后 —— 顺序的定义只有那一处。
+     * 复用 [ScrapeSourcePolicy.resolve] 而不是再判断一次谁先谁后 —— 「用哪个源」的定义只有那一处。
      */
     fun defaultSearchSource(): String =
-        ScrapeSourcePolicy.order(settingsRepo.scrapeSourcePriority).first()
+        ScrapeSourcePolicy.resolve(settingsRepo.scrapeSourcePriority)
 
     /**
      * 【新增】清理媒体缓存数据库 (相当于 Kodi 的清理资料库)
@@ -695,7 +729,7 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
     /**
      * 手动匹配到豆瓣条目：按用户点选的条目 id 直接取详情，覆盖该文件的记录。
      *
-     * 与自动兜底 [fetchFromDouban] 只有一处差异：**入库类型以详情接口的 subtype 为准**。
+     * 与自动刮削 [fetchFromDouban] 只有一处差异：**入库类型以详情接口的 subtype 为准**。
      * 自动流程拿不到用户意图，只能信文件名结构（免得换个数据源就在电影库/剧集库之间跳）；
      * 而手动匹配是用户主动挑了一个条目，此时条目自己的类型更权威 —— 挑成剧集就该进剧集库、
      * 记下季集，否则「选集」和剧集库分组都会错。
@@ -761,17 +795,26 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
                 }
             }
 
-            // 1. 按设置里的首选数据源依次尝试（默认豆瓣优先），首选搜不到就用另一个兜底。
-            //    顺序只在 ScrapeSourcePolicy 里定义，这里不写 if-else 判断谁先谁后。
-            for (source in ScrapeSourcePolicy.order(settingsRepo.scrapeSourcePriority)) {
-                Log.d("MovieViewModel", "尝试数据源[$source]: $fileName")
-                val entity = if (source == ScrapeSourcePolicy.DOUBAN) {
-                    fetchFromDouban(mediaInfo, videoUri, dataSourceType, fileName, connectionName)
-                } else {
-                    fetchFromTmdb(mediaInfo, videoUri, dataSourceType, fileName, connectionName)
-                }
-                if (entity != null) return entity
+            // 1. 只走设置里选的那个数据源，**不做兜底**（理由见 ScrapeSourcePolicy 的类注释）：
+            //    豆瓣没有分集信息、TMDB 在直连环境下不可达，兜底只会把两种口径的数据混进同一个库。
+            //    「用哪个源」的判断只在 ScrapeSourcePolicy.resolve 里定义一次。
+            val source = ScrapeSourcePolicy.resolve(settingsRepo.scrapeSourcePriority)
+            val sourceStart = System.currentTimeMillis()
+            Log.d("MovieViewModel", "[SCRAPE] 使用数据源[$source]: $fileName")
+            val entity = if (source == ScrapeSourcePolicy.DOUBAN) {
+                fetchFromDouban(mediaInfo, videoUri, dataSourceType, fileName, connectionName)
+            } else {
+                fetchFromTmdb(mediaInfo, videoUri, dataSourceType, fileName, connectionName)
             }
+            val sourceCost = System.currentTimeMillis() - sourceStart
+            if (entity != null) {
+                Log.d("MovieViewModel", "[SCRAPE] 数据源[$source]命中 (${sourceCost}ms): $fileName")
+                return entity
+            }
+            Log.w("MovieViewModel", "[SCRAPE] 数据源[$source]未命中 (${sourceCost}ms)，按设置不再兜底: $fileName")
+        } catch (e: CancellationException) {
+            // 取消（退出页面/重启批量）要透传，别当成「刮削失败」
+            throw e
         } catch (e: Exception) {
             Log.e("MovieViewModel", "Fetch full details failed: $fileName", e)
         }
@@ -779,7 +822,7 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
     }
 
     /**
-     * TMDB 主流程：搜索 + 取详情 + 入库。返回 null 表示 TMDB 没搜到（交由上层去兜底）。
+     * TMDB 主流程：搜索 + 取详情 + 入库。返回 null 表示 TMDB 没搜到（上层不会再问另一个源）。
      *
      * 入库记录一律带 [MediaCacheEntity.SOURCE_TMDB]，这样库里同号但不同来源的条目不会互相串。
      */
@@ -802,7 +845,15 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
             }
 
             if (searchResult is Resource.Success) {
-                val basicMovie = searchResult.data.results.firstOrNull() ?: return null
+                Log.d(
+                    "MovieViewModel",
+                    "[SCRAPE] TMDB 搜电影「${mediaInfo.title}」返回 ${searchResult.data.results.size} 条"
+                )
+                val basicMovie = searchResult.data.results.firstOrNull()
+                if (basicMovie == null) {
+                    Log.w("MovieViewModel", "[SCRAPE] TMDB 搜不到电影: ${mediaInfo.title}")
+                    return null
+                }
 
                 // 2. 立即获取详细信息
                 val detailResult = repository.getMovieDetails(basicMovie.id)
@@ -847,7 +898,15 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
             }
 
             if (searchResult is Resource.Success) {
-                val basicTV = searchResult.data.results.firstOrNull() ?: return null
+                Log.d(
+                    "MovieViewModel",
+                    "[SCRAPE] TMDB 搜剧集「${mediaInfo.title}」返回 ${searchResult.data.results.size} 条"
+                )
+                val basicTV = searchResult.data.results.firstOrNull()
+                if (basicTV == null) {
+                    Log.w("MovieViewModel", "[SCRAPE] TMDB 搜不到剧集: ${mediaInfo.title}")
+                    return null
+                }
 
                 // 2. 并行获取 Series详情 和 Episode详情
                 val seriesDeferred = viewModelScope.async(Dispatchers.IO) {
@@ -909,7 +968,7 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
         return null
     }
     /**
-     * 豆瓣兜底：用中文名搜索 + 取详情 + 入库。
+     * 豆瓣主流程：用中文名搜索 + 取详情 + 入库。
      *
      * 与 TMDB 流程的两个关键差别：
      * 1. 豆瓣没有分集接口，所以剧集只落「剧集级」信息（`episodeName` 等分集字段留空）；
@@ -925,11 +984,19 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
     ): MediaCacheEntity? {
         return try {
             val isTv = mediaInfo.mediaType == "tv"
+            Log.d(
+                "MovieViewModel",
+                "[SCRAPE] 豆瓣源查询: 关键词=「${mediaInfo.title}」年份=${mediaInfo.year} 期望剧集=$isTv"
+            )
             val subject = doubanScraper.scrape(
                 keyword = mediaInfo.title,
                 year = mediaInfo.year.toIntOrNull(),
                 preferTv = isTv,
-            ) ?: return null
+            )
+            if (subject == null) {
+                Log.w("MovieViewModel", "[SCRAPE] 豆瓣源没拿到数据（搜不到/请求失败）: $fileName")
+                return null
+            }
 
             // 类型仍以文件名结构为准（而不是豆瓣的 subtype）：一份文件不该因为换了数据源就在
             // 「电影库 / 剧集库」之间跳来跳去。不一致时只记日志，便于排查匹配错误。
@@ -948,16 +1015,18 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
                 episodeNumber = mediaInfo.episode.toIntOrNull() ?: 1
             ) ?: return null
             mediaDao.insertMedia(entity)
-            Log.d("MovieViewModel", "豆瓣兜底入库成功: ${subject.title} (id=${subject.id})")
+            Log.d("MovieViewModel", "豆瓣入库成功: ${subject.title} (id=${subject.id})")
             entity
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Log.e("MovieViewModel", "豆瓣兜底失败: $fileName", e)
+            Log.e("MovieViewModel", "豆瓣刮削失败: $fileName", e)
             null
         }
     }
 
     /**
-     * 豆瓣条目 → 入库实体（自动兜底 [fetchFromDouban] 与手动匹配 [updateFromDouban] 共用）。
+     * 豆瓣条目 → 入库实体（自动刮削 [fetchFromDouban] 与手动匹配 [updateFromDouban] 共用）。
      *
      * 返回 null 说明豆瓣 id 不是数字串（接口变了）：[MediaCacheEntity.tmdbId] 是 Int，
      * 借存不了这种 id，只能放弃这一条。
@@ -993,7 +1062,7 @@ class MovieViewModel(private val repository: TmdbRepository,private val mediaDao
             voteAverage = subject.rating,
             seasonNumber = if (isTv) seasonNumber else 0,
             episodeNumber = if (isTv) episodeNumber else 0,
-            // 豆瓣接口没有“上映状态”这个字段，别编，沿用和 TMDB 失败时相同的兜底文案
+            // 豆瓣接口没有“上映状态”这个字段，别编，沿用和 TMDB 失败时相同的占位文案
             status = "未知状态",
             genres = subject.genres.mapIndexed { index, name -> Genre(id = index, name = name) },
             originCountry = subject.countries,

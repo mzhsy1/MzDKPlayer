@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import org.mz.mzdkplayer.tool.logic.ScrapeSourcePolicy
+import org.mz.mzdkplayer.tool.logic.ScrapeTimeoutPolicy
 
 // 定义一个单例或者通过 Hilt 注入，这里用简单的单例模式
 object SettingsRepository {
@@ -79,11 +80,15 @@ object SettingsRepository {
     private const val KEY_PRIORITIZE_LOCAL_NFO = "prioritize_local_nfo"
 
     /**
-     * 刮削首选数据源（`douban` / `tmdb`，见 [ScrapeSourcePolicy]）。
+     * 刮削数据源（`douban` / `tmdb`，见 [ScrapeSourcePolicy]）。
      *
-     * 两个源都在用，这个值只决定谁先谁后：首选搜不到就用另一个兜底。默认豆瓣。
+     * 单选：选谁就只用谁，搜不到也不会用另一个源兜底。默认豆瓣。
+     * key 里保留 `PRIORITY` 这个名字是为了不动老用户已存的设置值。
      */
     private const val KEY_SCRAPE_SOURCE_PRIORITY = "scrape_source_priority"
+
+    /** 刮削请求超时（秒），豆瓣与 TMDB 共用，档位见 [ScrapeTimeoutPolicy] */
+    private const val KEY_SCRAPE_TIMEOUT_SECONDS = "scrape_timeout_seconds"
 
     // 🔥 新增：TMDB API Base URL
     private const val KEY_TMDB_BASE_URL = "tmdb_base_url"
@@ -312,13 +317,27 @@ object SettingsRepository {
         set(value) = prefs.edit { putBoolean(KEY_PRIORITIZE_LOCAL_NFO, value) }
 
     /**
-     * 刮削首选数据源：`douban`（默认）或 `tmdb`。
+     * 刮削数据源（单选）：`douban`（默认）或 `tmdb`。
+     *
+     * 选谁就只用谁，不再拿去兜底（见 [ScrapeSourcePolicy]）。存储 key 里仍留着 `PRIORITY`
+     * 这个名字是为了不动老用户已存的设置值，语义上它现在只是「用哪个源」。
      *
      * 读的时候就走一次 [ScrapeSourcePolicy.normalize]，把脏数据 / 旧版本残留收敛掉。
      */
     var scrapeSourcePriority: String
         get() = ScrapeSourcePolicy.normalize(prefs.getString(KEY_SCRAPE_SOURCE_PRIORITY, ScrapeSourcePolicy.DEFAULT))
         set(value) = prefs.edit { putString(KEY_SCRAPE_SOURCE_PRIORITY, ScrapeSourcePolicy.normalize(value)) }
+
+    /**
+     * 刮削请求的超时时间（秒），豆瓣与 TMDB 共用，档位见 [ScrapeTimeoutPolicy]。
+     *
+     * 读写都过一次 [ScrapeTimeoutPolicy.normalize]：旧版本残留 / 被手改的存储值收敛到合法档位。
+     */
+    var scrapeTimeoutSeconds: Int
+        get() = ScrapeTimeoutPolicy.normalize(
+            prefs.getInt(KEY_SCRAPE_TIMEOUT_SECONDS, ScrapeTimeoutPolicy.DEFAULT_SECONDS)
+        )
+        set(value) = prefs.edit { putInt(KEY_SCRAPE_TIMEOUT_SECONDS, ScrapeTimeoutPolicy.normalize(value)) }
 
     var tmdbBaseUrl: String
         get() = prefs.getString(KEY_TMDB_BASE_URL, DEFAULT_TMDB_URL) ?: DEFAULT_TMDB_URL

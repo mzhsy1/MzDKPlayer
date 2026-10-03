@@ -58,6 +58,7 @@ import org.mz.mzdkplayer.ui.common.formatIsoPlaybackMode
 import org.mz.mzdkplayer.ui.common.formatLang
 import org.mz.mzdkplayer.ui.common.formatRecursiveScanLevel
 import org.mz.mzdkplayer.ui.common.formatScrapeSource
+import org.mz.mzdkplayer.ui.common.formatScrapeTimeout
 import org.mz.mzdkplayer.ui.common.formatSubFontName
 import org.mz.mzdkplayer.ui.common.formatTmdbLang
 import org.mz.mzdkplayer.ui.common.formatVideoFinishAction
@@ -586,6 +587,12 @@ fun MetadataSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
             subtitle = stringResource(R.string.setting_scrape_source_sub),
             value = formatScrapeSource(state.scrapeSourcePriority),
             onClick = { settingsVM.toggleScrapeSourcePriority() }
+        )
+        ActionSettingItem(
+            title = stringResource(R.string.setting_scrape_timeout),
+            subtitle = stringResource(R.string.setting_scrape_timeout_sub),
+            value = formatScrapeTimeout(state.scrapeTimeoutSeconds),
+            onClick = { settingsVM.nextScrapeTimeout() }
         )
         ActionSettingItem(
             title = stringResource(R.string.setting_recursive_scan_level),

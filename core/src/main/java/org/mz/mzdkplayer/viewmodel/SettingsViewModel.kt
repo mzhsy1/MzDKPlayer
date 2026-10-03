@@ -13,6 +13,7 @@ import org.mz.mzdkplayer.data.repository.SettingsRepository
 import org.mz.mzdkplayer.common.LanguageManager
 import org.mz.mzdkplayer.tool.logic.PhoneSettingsLogic
 import org.mz.mzdkplayer.tool.logic.ScrapeSourcePolicy
+import org.mz.mzdkplayer.tool.logic.ScrapeTimeoutPolicy
 import org.mz.mzdkplayer.tool.logic.SubtitleOffsetLogic
 
 // 简单的数据类用于 UI 状态
@@ -54,8 +55,10 @@ data class SettingsUiState(
     val http: Boolean = false,
     val appLang: String = "",
     val prioritizeLocalNfo: Boolean = false,
-    /** 刮削首选数据源：`douban` / `tmdb`，见 [ScrapeSourcePolicy] */
+    /** 刮削数据源（单选、不做兜底）：`douban` / `tmdb`，见 [ScrapeSourcePolicy] */
     val scrapeSourcePriority: String = ScrapeSourcePolicy.DEFAULT,
+    /** 刮削请求超时（秒），豆瓣与 TMDB 共用，档位见 [ScrapeTimeoutPolicy] */
+    val scrapeTimeoutSeconds: Int = ScrapeTimeoutPolicy.DEFAULT_SECONDS,
     val tmdbBaseUrl: String = SettingsRepository.DEFAULT_TMDB_URL,
     val recursiveScanLevel: Int = 1,
     /** TMDB 语言：搜索与详情共用（原「搜索语言」已删除，见 [SettingsRepository.tmdbResultLang]） */
@@ -127,6 +130,7 @@ class SettingsViewModel : ViewModel() {
                 appLang = repo.appLanguage,
                 prioritizeLocalNfo = repo.prioritizeLocalNfo,
                 scrapeSourcePriority = repo.scrapeSourcePriority,
+                scrapeTimeoutSeconds = repo.scrapeTimeoutSeconds,
                 tmdbBaseUrl = repo.tmdbBaseUrl,
                 recursiveScanLevel = repo.recursiveScanLevel,
                 tmdbResultLang = repo.tmdbResultLang,
@@ -258,13 +262,13 @@ class SettingsViewModel : ViewModel() {
         refreshState()
     }
 
-    /** 切换刮削首选数据源（豆瓣 / TMDB）；两个源都在用，只是顺序不同 */
+    /** 设置刮削数据源（豆瓣 / TMDB）：选谁就只用谁，不做兜底 */
     fun setScrapeSourcePriority(value: String) {
         repo.scrapeSourcePriority = value
         refreshState()
     }
 
-    /** 在「豆瓣优先 / TMDB 优先」之间来回切（电视端设置项是「按一次换一个」的交互） */
+    /** 在「豆瓣 / TMDB」之间来回切（电视端设置项是「按一次换一个」的交互） */
     fun toggleScrapeSourcePriority() {
         setScrapeSourcePriority(
             if (repo.scrapeSourcePriority == ScrapeSourcePolicy.TMDB) {
@@ -273,6 +277,17 @@ class SettingsViewModel : ViewModel() {
                 ScrapeSourcePolicy.TMDB
             }
         )
+    }
+
+    /** 设置刮削请求超时（秒），取值由 [ScrapeTimeoutPolicy] 收敛到合法档位 */
+    fun setScrapeTimeout(seconds: Int) {
+        repo.scrapeTimeoutSeconds = seconds
+        refreshState()
+    }
+
+    /** 在档位之间循环（电视端设置项是「按一次换一个」的交互） */
+    fun nextScrapeTimeout() {
+        setScrapeTimeout(ScrapeTimeoutPolicy.next(repo.scrapeTimeoutSeconds))
     }
 
     private val _tmdbTestResult = MutableStateFlow<Resource<String>?>(null)

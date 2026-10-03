@@ -36,8 +36,10 @@ import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.data.repository.SettingsRepository
 import org.mz.mzdkplayer.tool.logic.ScrapeSourcePolicy
+import org.mz.mzdkplayer.tool.logic.ScrapeTimeoutPolicy
 import org.mz.mzdkplayer.ui.common.formatRecursiveScanLevel
 import org.mz.mzdkplayer.ui.common.formatScrapeSource
+import org.mz.mzdkplayer.ui.common.formatScrapeTimeout
 import org.mz.mzdkplayer.ui.common.formatTmdbLang
 import org.mz.mzdkplayer.ui.phone.PhoneStoragePermission
 import org.mz.mzdkplayer.ui.phone.model.PhoneFileProtocol
@@ -111,6 +113,15 @@ internal fun PhoneLibrarySettingsPage(
                 selected = state.scrapeSourcePriority,
                 options = scrapeSourceOptions(),
                 onSelect = settingsViewModel::setScrapeSourcePriority,
+            )
+            SettingsDivider()
+            SettingsOptionsRow(
+                title = stringResource(R.string.setting_scrape_timeout),
+                subtitle = stringResource(R.string.setting_scrape_timeout_sub),
+                value = formatScrapeTimeout(state.scrapeTimeoutSeconds),
+                selected = state.scrapeTimeoutSeconds,
+                options = ScrapeTimeoutPolicy.OPTIONS.map { SettingsOption(it, formatScrapeTimeout(it)) },
+                onSelect = settingsViewModel::setScrapeTimeout,
             )
             SettingsDivider()
             SettingsOptionsRow(
@@ -441,7 +452,7 @@ private fun tmdbLangOptions(): List<SettingsOption<String>> = listOf(
     "ko-KR" to "한국어",
 ).map { (value, label) -> SettingsOption(value, label) }
 
-/** 刮削首选数据源：两个源都在用，这里只选谁先谁后 */
+/** 刮削数据源：单选，选谁就只用谁（不做兜底） */
 @Composable
 private fun scrapeSourceOptions(): List<SettingsOption<String>> = listOf(
     ScrapeSourcePolicy.DOUBAN to stringResource(R.string.setting_scrape_source_douban),

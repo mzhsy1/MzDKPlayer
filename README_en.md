@@ -39,7 +39,7 @@
 - 🎬 **Video Playback** - Supports various video formats for local and network protocol playback.
 - 🎵 **Audio Playback** - Supports various audio formats for local and network protocol playback. Includes lyrics, album cover display, music information, playlists, and other common features.
 - 🖼️ **Image Viewer** - Supports various image formats for local and network protocol viewing.
-- 🏡 **Media Library** - Includes Movie/TV/Music libraries, fetching information from TMDB or Douban, supporting batch addition.
+- 🏡 **Media Library** - Includes Movie/TV/Music libraries, fetching information from TMDB or a domestic scraping source, supporting batch addition.
 - 🕛 **History** - Playback history for both audio and video.
 - 🔍 **Search Function** - Search for movies and TV shows.
 - 💬 **Danmaku Function** - Supports Bilibili-style danmaku display and customization.
@@ -108,7 +108,7 @@ MzDKPlayer supports audio passthrough, allowing raw audio signals (source) to be
 
 ---
 
-> ⚠️ **Note**: TMDB may require a proxy or Host modification for stable access in some regions. You can also set a mirror under `Settings -> Scraping & Library -> TMDB API Address (Mirror)`, or switch `Settings -> Scraping & Library -> Preferred Scraping Source` to "Douban first" (Douban is the default source, uses public endpoints and needs no API key).
+> ⚠️ **Note**: TMDB may require a proxy or Host modification for stable access in some regions. You can also set a mirror under `Settings -> Scraping & Library -> TMDB API Address (Mirror)`, or switch `Settings -> Scraping & Library -> Scraping Source` to "Domestic scraping source" (it is the default, uses public endpoints and needs no API key).
 
 > 💡 Tip 1: If used frequently, it's recommended to set this player as the default video player in your TV system for a smoother experience.
 
@@ -202,7 +202,7 @@ TMDB_API_KEY=your_tmdb_api_key
 
 > ⚠️ **`TMDB_API_KEY` is required.** It is injected as `BuildConfig.TMDB_API_KEY`. The project still compiles without it, but TMDB scraping in the media library will not work.
 > You can request a free API key at [TMDB developer settings](https://www.themoviedb.org/settings/api), then point the API address at a reachable mirror in the settings page.
-> If you only want Douban scraping, pick "Douban first" under `Settings -> Scraping & Library -> Preferred Scraping Source` — it needs no key at all.
+> If you only want domestic scraping, pick "Domestic scraping source" under `Settings -> Scraping & Library -> Scraping Source` — it needs no key at all.
 
 #### 4. Build
 
@@ -257,7 +257,7 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 | Symptom | Cause and fix |
 | --- | --- |
 | `Unable to delete directory ... a process has files open` | Android Studio is running and holding `app/build`. Close Studio and retry from the command line — **do not delete `app/build` manually** |
-| `TMDB_API_KEY` missing / scraping does not work | `local.properties` is missing or the key name is wrong (do not write `TMDB_KEY`); or switch the preferred scraping source to "Douban first", which needs no key |
+| `TMDB_API_KEY` missing / scraping does not work | `local.properties` is missing or the key name is wrong (do not write `TMDB_KEY`); or switch the scraping source to "Domestic scraping source", which needs no key |
 | `SDK location not found` | `sdk.dir` is missing in `local.properties`, or set the SDK path in Android Studio |
 | Kotlin toolchain download fails | `jvmToolchain(21)` downloads JDK 21; installing JDK 21 locally lets Gradle reuse it |
 | Dependency downloads time out | `settings.gradle.kts` already configures Aliyun/Tencent Cloud mirrors; adjust repository order as needed |
@@ -297,14 +297,14 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 - Danmaku files are Bilibili-style `.xml`, placed in the same directory as the video with the **same file name** to be loaded automatically.
 - Press the **Up** key on the remote during playback to open danmaku settings and adjust font size, speed, opacity, and display area.
 
-### Example 4: Scraping (TMDB / Douban) and local NFO
+### Example 4: Scraping (TMDB / domestic source) and local NFO
 
-- Movie / TV information comes from two sources: **TMDB** and **Douban**. Switch between them under `Settings -> Scraping & Library -> Preferred Scraping Source` (**Douban first** is the default). Both sources are always used — only the order changes: if the preferred one finds nothing, the other is used as a fallback.
-- **Douban needs no API key** (public endpoints); **TMDB needs working network access and an API key**.
-- **Douban has no per-episode data**: with "Douban first" a series only gets series-level information (episode titles, overviews and stills are empty, and the "current episode" card is hidden on the details page). Switch the preferred source to TMDB if you care more about episode metadata.
-- When the Douban endpoints are unreachable, that source is **short-circuited for a while** (the circuit breaker trips after consecutive failures) and the other source takes over immediately, instead of every file paying another timeout first.
-- The two sources do not share one ID space, so scraped records carry their source: the library groups by source and Douban entries never mix with TMDB entries.
-- **The manual match screen (TV "Correct matching info" / phone "Re-match") can search both sources**: it has a "Search Source" switch (TMDB / Douban, defaulting to the Preferred Scraping Source), and the entry you pick is stored under its own source, so a Douban entry never lands on a TMDB movie that happens to share a numeric ID.
+- Movie / TV information comes from two sources: **TMDB** and the **domestic scraping source**. Switch between them under `Settings -> Scraping & Library -> Scraping Source` (the domestic source is the default). **Only the selected source is used — there is no fallback to the other one** — the two report different things (the domestic source has no per-episode data and no release status), so mixing them makes the same folder look inconsistent in the library; and with a direct connection TMDB is unreachable anyway, so a fallback would only add a timeout per file.
+- **The domestic source needs no API key** (public endpoints); **TMDB needs working network access and an API key**.
+- **The domestic source has no per-episode data**: with it a series only gets series-level information (episode titles, overviews and stills are empty, and the "current episode" card is hidden on the details page). Switch the source to TMDB if you care more about episode metadata — TMDB's fields are a **superset** of the domestic source's (episode titles / overviews / stills, season and episode counts, real release status), at the cost of requiring access to `api.themoviedb.org`; conversely the domestic source covers obscure Chinese shows, variety and documentaries better.
+- When a source is unreachable that file is simply left unscraped (no retry). **The per-request timeout is configurable**: `Settings -> Scraping & Library -> Scraping timeout` (shared by both sources, default 5 s, steps 3/5/8/10/15/30) — both sources answer in well under a second when reachable, so a smaller value makes batch scraping much faster while offline, and you can raise it on slow networks or when using a mirror. **There is no circuit breaker**: an earlier version short-circuited a source after consecutive failures, which backfired — a single network hiccup made otherwise successful requests fail for the next few minutes.
+- The two sources do not share one ID space, so scraped records carry their source: the library groups by source and domestic entries never mix with TMDB entries.
+- **The manual match screen (TV "Correct matching info" / phone "Re-match") can search both sources**: it has a "Search Source" switch (TMDB / domestic source, defaulting to the configured scraping source), and the entry you pick is stored under its own source, so a domestic entry never lands on a TMDB movie that happens to share a numeric ID.
 - TMDB has a single language setting (**TMDB Language**): search and details share the same value, and an empty value follows the system language.
 - If a same-named `.nfo` file exists in the media directory, enable `Settings -> Scraping & Library -> Prefer local NFO files` to read it offline instead.
 - Scraping results are cached in the local database. The player title prefers the scraped name (episodes automatically get `SxxExx` and the year) and falls back to the file name when no scraped record exists.
@@ -374,7 +374,7 @@ The phone app has no remote — the player screen is entirely touch-driven:
 | Networking | smbj (SMB) / commons-net (FTP) / sardine (WebDAV) / nfs-client (NFS) / OkHttp | — |
 | Image loading | Coil 3 | 3.6.2 |
 | Built-in services | NanoHTTPD (local proxy + phone remote page), ZXing (QR code) | — |
-| Metadata | Retrofit + Gson (TMDB), OkHttp + Gson (Douban), jaudiotagger (audio tags) | — |
+| Metadata | Retrofit + Gson (TMDB), OkHttp + Gson (domestic source), jaudiotagger (audio tags) | — |
 
 ### Module Structure
 
@@ -385,7 +385,7 @@ core/src/main/java/org/mz/mzdkplayer/     # :core — business layer, shared by 
 ├── danmaku/          # Danmaku parsing
 ├── data/
 │   ├── api/          # TMDB API (Retrofit)
-│   ├── douban/       # Douban API (OkHttp): search, details, stills, with a failure circuit breaker
+│   ├── douban/       # Domestic scraping source API (OkHttp): search, details, stills
 │   ├── local/        # Room: AppDatabase, MediaCacheEntity, AudioCacheEntity, MediaHistoryEntity
 │   ├── model/        # Data models
 │   └── repository/   # Repository layer hiding data sources
@@ -399,7 +399,7 @@ core/src/main/java/org/mz/mzdkplayer/     # :core — business layer, shared by 
 └── viewmodel/        # ViewModels for every screen
 
 app/src/main/java/org/mz/mzdkplayer/
-└── MzDkPlayerApplication.kt              # Application shared by both flavors (incl. the Coil setup for Douban images)
+└── MzDkPlayerApplication.kt              # Application shared by both flavors (incl. the Coil setup for domestic source images)
 
 app/src/tv/java/org/mz/mzdkplayer/        # TV flavor (androidx.tv.material3 only)
 ├── MainActivity.kt / LaunchScreen.kt     # LEANBACK_LAUNCHER entry point
@@ -444,7 +444,7 @@ Playback is abstracted behind `player/core/IMzPlayer.kt`, implemented by `MzExoP
 - The Room database `AppDatabase` holds three tables: `media_cache` (scraped media cache keyed by `videoUri`), an audio cache, and playback history.
 - The URI passed from list screens to the player matches `media_cache.videoUri`, so the player can hit the scraped cache directly without re-fetching.
 - Navigation arguments (URI, file name, connection name, etc.) are Base64-encoded to keep special characters from breaking the routes.
-- Scraped records carry a **source** column (`tmdb` / `douban`): Douban subject IDs and TMDB IDs live in overlapping numeric ranges, so the source is used for library grouping and for the details screen, keeping two unrelated titles from being merged into one card — or a Douban ID from being looked up on TMDB.
+- Scraped records carry a **source** column (`tmdb` / `douban`): domestic subject IDs and TMDB IDs live in overlapping numeric ranges, so the source is used for library grouping and for the details screen, keeping two unrelated titles from being merged into one card — or a domestic ID from being looked up on TMDB.
 
 ---
 
@@ -469,7 +469,7 @@ Playback is abstracted behind `player/core/IMzPlayer.kt`, implemented by `MzExoP
   Tests must therefore be pure JVM tests: calling Android types such as `android.net.Uri`, `android.util.Log`, `android.util.Base64`, or `Context` throws `RuntimeException("Stub!")`.
 - Extract testable pure logic into `object` / `internal object` declarations that do not depend on Android; tests and the code under test both live in `:core` (`internal` is deliberately invisible to the app module).
 - Naming convention: class names end with `Test`, and test functions use backtick-quoted descriptions, e.g. `` `Series - title with season/episode/year` ``.
-- There are currently **28 test classes with 475 cases**, all of them in `:core`. Representative ones: `MediaInfoExtractorFormFileNameTest` (file name parsing), `PlayerMediaTextTest` (player title and date), `HttpDirectoryListingTest` / `FileTimeParseTest` (HTTP date parsing), `ProtocolUriParserTest` / `SidecarPathTest` (protocol URIs and sidecar paths), `StreamSizePolicyTest` (per-protocol stream read policy), `Phone*Test` (phone-side pure logic), and `DoubanLogicTest` / `ScrapeSourcePolicyTest` / `ScrapeCircuitBreakerTest` (Douban field normalisation, scraping source order, and the circuit breaker). See `core/src/test/` for the full list.
+- There are currently **28 test classes with 474 cases**, all of them in `:core`. Representative ones: `MediaInfoExtractorFormFileNameTest` (file name parsing), `PlayerMediaTextTest` (player title and date), `HttpDirectoryListingTest` / `FileTimeParseTest` (HTTP date parsing), `ProtocolUriParserTest` / `SidecarPathTest` (protocol URIs and sidecar paths), `StreamSizePolicyTest` (per-protocol stream read policy), `Phone*Test` (phone-side pure logic), and `DoubanLogicTest` / `ScrapeSourcePolicyTest` / `ScrapeTimeoutPolicyTest` (domestic source field normalisation, the single-choice scraping source, and timeout steps). See `core/src/test/` for the full list.
 
 ### Logging
 
@@ -517,7 +517,7 @@ The project uses logback-android. All network protocol implementations (SMB / FT
 - [x] Movie/TV series details page
 - [x] TV / phone split (`:core` business layer + `tv` / `phone` flavors sharing one implementation)
 - [x] Phone app: file browsing / scraping and details / player (gestures and track sheets) / settings / music / images
-- [x] Douban scraping source and a "preferred scraping source" switch (with an automatic circuit breaker on repeated failures)
+- [x] Domestic scraping source and a single-choice "scraping source" setting (with a configurable timeout)
 - [ ] Online danmaku loading function
 - [ ] Settings interface optimization
 
@@ -533,7 +533,7 @@ Contributions of any kind are welcome — contributions to **player stability** 
 
 When filing an issue, please include: device model and chipset, system version, app version (`Settings -> About`), the protocol in use (SMB / FTP / WebDAV / NFS / HTTP or local), reproduction steps, and a captured `adb logcat` snippet. Issues with logs are usually resolved much faster.
 
-> For scraping-related issues, please also state the **data source**: whether `Settings -> Scraping & Library -> Preferred Scraping Source` is set to Douban or TMDB, and which source the file ended up using.
+> For scraping-related issues, please also state the **data source**: whether `Settings -> Scraping & Library -> Scraping Source` is set to the domestic source or TMDB, and which source the file ended up using.
 
 ### Code Contribution Workflow
 
@@ -605,7 +605,7 @@ Publishing needs these Secrets (`Settings → Secrets and variables → Actions`
 
 | Secret | Purpose |
 | --- | --- |
-| `TMDB_API_KEY` | Written into `BuildConfig.TMDB_API_KEY` at build time; an empty value silently breaks TMDB scraping (Douban scraping does not depend on it) |
+| `TMDB_API_KEY` | Written into `BuildConfig.TMDB_API_KEY` at build time; an empty value silently breaks TMDB scraping (domestic scraping does not depend on it) |
 | `RELEASE_KEYSTORE_BASE64` | base64 of the signing keystore: `base64 -w0 release.jks` |
 | `RELEASE_KEYSTORE_PASSWORD` | Keystore password |
 | `RELEASE_KEY_ALIAS` | Key alias |

@@ -84,18 +84,23 @@ fun formatTmdbLang(code: String): String = when (code) {
     else -> code
 }
 
-/** 刮削首选数据源：`douban` / `tmdb`（两个源都在用，只是谁先谁后），见 `ScrapeSourcePolicy` */
+/** 设置里的刮削数据源：`douban` / `tmdb`（单选，选谁就只用谁），见 `ScrapeSourcePolicy` */
 @Composable
 fun formatScrapeSource(code: String): String = when (code) {
     ScrapeSourcePolicy.TMDB -> stringResource(R.string.setting_scrape_source_tmdb)
     else -> stringResource(R.string.setting_scrape_source_douban)
 }
 
+/** 刮削请求超时：秒数 → 「5 秒」，档位由 `ScrapeTimeoutPolicy` 给出 */
+@Composable
+fun formatScrapeTimeout(seconds: Int): String =
+    stringResource(R.string.setting_scrape_timeout_value, seconds)
+
 /**
  * 「修改文件对应影视信息」里的搜索来源：`douban` / `tmdb`。
  *
- * 与 [formatScrapeSource] 分开两套文案：那边是设置里的「谁先谁后」，写作「豆瓣优先」；
- * 这里是一个单选开关，只需要源的名字。
+ * 与 [formatScrapeSource] 分成两套函数：文案来源不同（这里是手动匹配页的开关），
+ * 将来两处想用不同措辞也不用互相迁就。现在两边都是「源的名字」。
  */
 @Composable
 fun formatSearchSource(code: String): String = when (code) {

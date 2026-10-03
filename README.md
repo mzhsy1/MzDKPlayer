@@ -39,7 +39,7 @@
 - 🎬 **视频播放** - 支持多种视频格式的本地与网络协议播放
 - 🎵 **音频播放** - 支持多种音频格式的本地与网络协议播放，歌词专辑封面显示与音乐信息，播放列表等常见功能
 - 🖼️ **图片查看** - 支持多种图片格式的本地与网络协议查看
-- 🏡 **媒体库** - 包含电影/电视剧/音乐库，从 TMDB 或豆瓣获取电影电视剧信息，支持批量添加
+- 🏡 **媒体库** - 包含电影/电视剧/音乐库，从 TMDB 或国内刮削源获取电影电视剧信息，支持批量添加
 - 🕛 **历史记录** - 播放历史记录，包含音视频
 - 🔍 **搜索功能** - 搜索电影/电视剧
 - 💬 **弹幕功能** - 支持 B 站风格弹幕显示与自定义
@@ -108,7 +108,7 @@ MzDKPlayer 支持音频直通功能，可以将原始音频信号（源码）直
 
 ---
 
-> ⚠️ **注意**：TMDB 在国内可能需要代理或修改 Hosts 才能稳定访问，也可在 `设置 -> 刮削与媒体库 -> TMDB API 地址 (镜像)` 中填写镜像地址；或把 `设置 -> 刮削与媒体库 -> 首选数据源` 改成「豆瓣优先」（豆瓣是默认首选源，走公开接口、不需要 API Key）。
+> ⚠️ **注意**：TMDB 在国内可能需要代理或修改 Hosts 才能稳定访问，也可在 `设置 -> 刮削与媒体库 -> TMDB API 地址 (镜像)` 中填写镜像地址；或把 `设置 -> 刮削与媒体库 -> 刮削数据源` 改成「国内刮削源」（默认就是它，走公开接口、不需要 API Key）。
 
 > 💡 小提示1：如果经常使用，建议在电视系统里把本播放器设为默认视频播放器，体验更顺滑。
 
@@ -202,7 +202,7 @@ TMDB_API_KEY=你的TMDB_API_KEY
 
 > ⚠️ **`TMDB_API_KEY` 是必填项**。它会被写进 `BuildConfig.TMDB_API_KEY`，缺失时项目仍能编译，但媒体库的 TMDB 刮削功能会失效。
 > API Key 可在 [TMDB 开发者设置](https://www.themoviedb.org/settings/api) 免费申请，并在设置页将 API 地址指向可访问的镜像。
-> 只想用豆瓣刮削的话，也可以在 `设置 -> 刮削与媒体库 -> 首选数据源` 里选「豆瓣优先」，它不需要任何 Key。
+> 只想用国内刮削源的话，也可以在 `设置 -> 刮削与媒体库 -> 刮削数据源` 里选「国内刮削源」，它不需要任何 Key。
 
 #### 4. 构建
 
@@ -257,7 +257,7 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 | 现象 | 原因与解决办法 |
 | --- | --- |
 | `Unable to delete directory ... a process has files open` | Android Studio 正开着并占用了 `app/build` 产物。关掉 Studio 再跑命令行，**不要手动删 `app/build`** |
-| 找不到 `TMDB_API_KEY` / 刮削无效 | `local.properties` 缺失或键名写错，注意不要写成 `TMDB_KEY`；或者把首选数据源切成「豆瓣优先」，豆瓣不需要 Key |
+| 找不到 `TMDB_API_KEY` / 刮削无效 | `local.properties` 缺失或键名写错，注意不要写成 `TMDB_KEY`；或者把刮削数据源切成「国内刮削源」，它不需要 Key |
 | `SDK location not found` | `local.properties` 中的 `sdk.dir` 没配，或在 Android Studio 里设置 SDK 路径 |
 | Kotlin 工具链下载失败 | `jvmToolchain(21)` 需要联网下载 JDK 21；可先在本机安装 JDK 21 让 Gradle 直接复用 |
 | 依赖拉取超时 | `settings.gradle.kts` 已配置阿里云/腾讯云镜像，可自行调整仓库顺序 |
@@ -297,14 +297,14 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 - 弹幕文件为 B 站格式的 `.xml`，与视频放在同一目录、**文件名相同**即可自动加载。
 - 播放时按遥控器 **上键** 打开弹幕设置，可调整字号、速度、透明度、显示区域等。
 
-### 示例 4：刮削（TMDB / 豆瓣）与本地 NFO
+### 示例 4：刮削（TMDB / 国内刮削源）与本地 NFO
 
-- 电影 / 电视剧信息有两个数据源：**TMDB** 与 **豆瓣**，在 `设置 -> 刮削与媒体库 -> 首选数据源` 里切换（豆瓣优先 / TMDB 优先），**默认豆瓣优先**。两个源都会参与刮削，只是顺序不同：首选源搜不到时自动用另一个源兜底。
-- **豆瓣不需要 API Key**（走公开接口）；**TMDB 需要可用的网络与 API Key**。
-- **豆瓣没有分集信息**：选「豆瓣优先」时，剧集只会拿到剧集级信息（单集标题 / 简介 / 剧照为空，详情页会隐藏「当前单集详情」卡片）。更在意分集信息就把首选源切成 TMDB。
-- 豆瓣接口不可达时会**自动短路一段时间**（连续失败即熔断），期间直接把活儿交给另一个源，不会让每个文件都白等一次超时。
-- 两个源的编号不是同一套，刮削记录会带上来源标记：媒体库按来源分别分组，豆瓣条目与 TMDB 条目不会互相串。
-- **手动匹配（「修改文件对应影视信息」/ 手机端「重新匹配」）两个源都能搜**：页面上有「搜索来源」开关（TMDB / 豆瓣，默认跟随「首选数据源」），点选的条目按它自己的来源写库；豆瓣条目不会因为编号与某部 TMDB 影片撞车而串到另一部片子上。
+- 电影 / 电视剧信息有两个数据源：**TMDB** 与**国内刮削源**，在 `设置 -> 刮削与媒体库 -> 刮削数据源` 里切换（国内刮削源 / TMDB），**默认国内刮削源**。**选哪个就只刮哪个，不会用另一个源兜底** —— 两个源的信息口径不同（国内刮削源没有分集信息、没有上映状态），混着用会让同一批文件在媒体库里的展示不一致；直连环境下 TMDB 也不可达，兜底只会让每个文件白等一次超时。
+- **国内刮削源不需要 API Key**（走公开接口）；**TMDB 需要可用的网络与 API Key**。
+- **国内刮削源没有分集信息**：选它时，剧集只会拿到剧集级信息（单集标题 / 简介 / 剧照为空，详情页会隐藏「当前单集详情」卡片）。更在意分集信息就把数据源切成 TMDB —— TMDB 的字段是它的**超集**（多出单集标题 / 简介 / 剧照、季数与集数、真实上映状态），代价是需要能访问 `api.themoviedb.org`；反过来它的条目对冷门国产剧 / 综艺 / 纪录片更全。
+- 接口不可达时这一次按「没刮到」处理，不会重试。**单次请求超时可调**：`设置 -> 刮削与媒体库 -> 刮削超时时间`（两个源共用，默认 5 秒，档位 3/5/8/10/15/30）—— 两个源正常时都是亚秒级响应，调小能让断网时的批量刮削快很多，网络慢或走镜像时可以调大。**没有熔断**：早期做过「连续失败就把这个源短路一段时间」，实测会误伤 —— 一次网络抖动就会让随后几分钟内本来能成功的请求直接失败。
+- 两个源的编号不是同一套，刮削记录会带上来源标记：媒体库按来源分别分组，国内源条目与 TMDB 条目不会互相串。
+- **手动匹配（「修改文件对应影视信息」/ 手机端「重新匹配」）两个源都能搜**：页面上有「搜索来源」开关（TMDB / 国内刮削源，默认跟随设置里选的「刮削数据源」），点选的条目按它自己的来源写库；国内源条目不会因为编号与某部 TMDB 影片撞车而串到另一部片子上。
 - TMDB 语言只有一个设置项（**TMDB 语言**）：搜索与详情共用同一个值，留空则跟随系统语言。
 - 若媒体目录下存在同名 `.nfo` 文件，可在 `设置 -> 刮削与媒体库 -> 优先加载本地 NFO 文件` 打开优先读取，避免联网。
 - 刮削结果会缓存到本地数据库，播放页标题会优先显示刮削片名（剧集自动追加 `SxxExx` 与年份），无刮削记录时回退文件名。
@@ -374,7 +374,7 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 | 网络 | smbj (SMB) / commons-net (FTP) / sardine (WebDAV) / nfs-client (NFS) / OkHttp | — |
 | 图片加载 | Coil 3 | 3.6.2 |
 | 内置服务 | NanoHTTPD（本地代理 + 手机遥控页）、ZXing（二维码） | — |
-| 元数据 | Retrofit + Gson（TMDB）、OkHttp + Gson（豆瓣）、jaudiotagger（音频标签） | — |
+| 元数据 | Retrofit + Gson（TMDB）、OkHttp + Gson（国内刮削源）、jaudiotagger（音频标签） | — |
 
 ### 模块结构
 
@@ -385,7 +385,7 @@ core/src/main/java/org/mz/mzdkplayer/     # :core —— 业务层，tv / phone 
 ├── danmaku/          # 弹幕解析
 ├── data/
 │   ├── api/          # TMDB 接口（Retrofit）
-│   ├── douban/       # 豆瓣接口（OkHttp）：搜索、详情、剧照，含失败熔断
+│   ├── douban/       # 国内刮削源接口（OkHttp）：搜索、详情、剧照
 │   ├── local/        # Room：AppDatabase、MediaCacheEntity、AudioCacheEntity、MediaHistoryEntity
 │   ├── model/        # 数据模型
 │   └── repository/   # 仓库层，屏蔽数据来源
@@ -399,7 +399,7 @@ core/src/main/java/org/mz/mzdkplayer/     # :core —— 业务层，tv / phone 
 └── viewmodel/        # 各页面的 ViewModel
 
 app/src/main/java/org/mz/mzdkplayer/
-└── MzDkPlayerApplication.kt              # 两个 flavor 共用的 Application（含豆瓣图床的 Coil 配置）
+└── MzDkPlayerApplication.kt              # 两个 flavor 共用的 Application（含国内源图床的 Coil 配置）
 
 app/src/tv/java/org/mz/mzdkplayer/        # 电视端 flavor（只用 androidx.tv.material3）
 ├── MainActivity.kt / LaunchScreen.kt     # LEANBACK_LAUNCHER 入口
@@ -443,7 +443,7 @@ app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # 手机端 flavor（只用 and
 - Room 数据库 `AppDatabase` 包含三张表：`media_cache`（影视刮削缓存，主键为 `videoUri`）、音频缓存、播放历史。
 - 列表页传给播放页的 URI 与 `media_cache.videoUri` 保持一致，播放页可直接按 URI 命中刮削缓存，无需重复联网。
 - 导航参数（URI、文件名、连接名等）统一走 Base64 编码，避免路径中的特殊字符破坏路由。
-- 刮削记录带**来源**列（`tmdb` / `douban`）：豆瓣条目编号与 TMDB 编号的数值区间是重叠的，来源标记用于媒体库分组与详情页判断，避免两部不相干的片子被并成一张卡片、或拿豆瓣编号去查 TMDB。
+- 刮削记录带**来源**列（`tmdb` / `douban`）：国内源条目编号与 TMDB 编号的数值区间是重叠的，来源标记用于媒体库分组与详情页判断，避免两部不相干的片子被并成一张卡片、或拿国内源编号去查 TMDB。
 
 ---
 
@@ -468,7 +468,7 @@ app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # 手机端 flavor（只用 and
   因此测试必须写成纯 JVM 测试：`android.net.Uri`、`android.util.Log`、`android.util.Base64`、`Context` 等 Android 类型一旦调用就会抛 `RuntimeException("Stub!")`。
 - 需要测试的纯逻辑请抽到不依赖 Android 的 `object` / `internal object` 中；测试与被测代码同在 `:core`（`internal` 对 app 不可见，这条边界是有意保留的）。
 - 命名约定：类名 `XxxTest`，测试函数用反引号中文描述，例如 `` `剧集 - 标题加季集加年份` ``。
-- 现有 **28 个测试类、475 个用例**，全部集中在 `:core`。较有代表性的：`MediaInfoExtractorFormFileNameTest`（文件名解析）、`PlayerMediaTextTest`（播放页标题与日期）、`HttpDirectoryListingTest` / `FileTimeParseTest`（HTTP 目录页与日期解析）、`ProtocolUriParserTest` / `SidecarPathTest`（协议 URI 与伴生文件路径）、`StreamSizePolicyTest`（各协议的流读取策略）、`Phone*Test`（手机端纯逻辑）、`DoubanLogicTest` / `ScrapeSourcePolicyTest` / `ScrapeCircuitBreakerTest`（豆瓣字段归一化、首选源顺序与接口熔断）。完整清单见 `core/src/test/`。
+- 现有 **28 个测试类、474 个用例**，全部集中在 `:core`。较有代表性的：`MediaInfoExtractorFormFileNameTest`（文件名解析）、`PlayerMediaTextTest`（播放页标题与日期）、`HttpDirectoryListingTest` / `FileTimeParseTest`（HTTP 目录页与日期解析）、`ProtocolUriParserTest` / `SidecarPathTest`（协议 URI 与伴生文件路径）、`StreamSizePolicyTest`（各协议的流读取策略）、`Phone*Test`（手机端纯逻辑）、`DoubanLogicTest` / `ScrapeSourcePolicyTest` / `ScrapeTimeoutPolicyTest`（国内源字段归一化、数据源单选、刮削超时档位）。完整清单见 `core/src/test/`。
 
 ### 日志
 
@@ -516,7 +516,7 @@ app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # 手机端 flavor（只用 and
 - [x] 电影/电视剧详情页面
 - [x] 电视端 / 手机端拆分（`:core` 业务层 + `tv` / `phone` 两个 flavor，共用一套业务逻辑）
 - [x] 手机端：文件浏览 / 刮削与详情页 / 视频播放页（手势与轨道面板）/ 设置页 / 音乐 / 图片
-- [x] 豆瓣刮削数据源与「首选数据源」切换（含接口连续失败自动熔断）
+- [x] 国内刮削源与「刮削数据源」单选（含可调超时）
 - [ ] 网络弹幕加载功能
 - [ ] 设置界面优化
 
@@ -532,7 +532,7 @@ app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # 手机端 flavor（只用 and
 
 提交 Issue 时请尽量包含：设备型号与芯片、系统版本、应用版本（`设置 -> 关于软件`）、使用的协议类型（SMB / FTP / WebDAV / NFS / HTTP 或本地）、复现步骤，以及一段 `adb logcat` 抓取的日志。带日志的 Issue 通常能很快定位。
 
-> 刮削相关的问题请一并说明**数据源**：`设置 -> 刮削与媒体库 -> 首选数据源` 选的是豆瓣还是 TMDB，以及该文件最终落到哪个来源。
+> 刮削相关的问题请一并说明**数据源**：`设置 -> 刮削与媒体库 -> 刮削数据源` 选的是国内刮削源还是 TMDB，以及该文件最终落到哪个来源。
 
 ### 提交代码流程
 
@@ -604,7 +604,7 @@ Release 正文取自 [CHANGELOG.md](CHANGELOG.md) 的「未发布」段落，所
 
 | Secret | 用途 |
 | --- | --- |
-| `TMDB_API_KEY` | 打包时写入 `BuildConfig.TMDB_API_KEY`，空值会让 TMDB 刮削静默失效（豆瓣刮削不依赖它） |
+| `TMDB_API_KEY` | 打包时写入 `BuildConfig.TMDB_API_KEY`，空值会让 TMDB 刮削静默失效（国内刮削源不依赖它） |
 | `RELEASE_KEYSTORE_BASE64` | 签名密钥库的 base64：`base64 -w0 release.jks` |
 | `RELEASE_KEYSTORE_PASSWORD` | 密钥库口令 |
 | `RELEASE_KEY_ALIAS` | 密钥别名 |

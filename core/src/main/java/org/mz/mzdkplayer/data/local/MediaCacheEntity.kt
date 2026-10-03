@@ -89,7 +89,7 @@ data class MediaCacheEntity(
         /** 元数据来自 TMDB（或本地 NFO 里写的 TMDB id）。历史数据默认值也是它。 */
         const val SOURCE_TMDB = "tmdb"
 
-        /** 元数据来自豆瓣兜底刮削。[tmdbId] 里存的是豆瓣条目 id。 */
+        /** 元数据来自豆瓣刮削。[tmdbId] 里存的是豆瓣条目 id。 */
         const val SOURCE_DOUBAN = "douban"
     }
 }

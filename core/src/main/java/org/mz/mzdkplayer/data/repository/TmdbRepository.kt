@@ -1,6 +1,7 @@
 package org.mz.mzdkplayer.data.repository
 
 import android.util.Log
+import kotlinx.coroutines.CancellationException
 import org.mz.mzdkplayer.data.api.TmdbApiService
 import org.mz.mzdkplayer.data.api.TmdbServiceCreator
 import org.mz.mzdkplayer.data.model.Movie
@@ -68,6 +69,10 @@ class TmdbRepository(private val apiService: TmdbApiService) {
                 Log.e("TmdbRepository", "Request failed: ${response.code()} ${response.message()} - ${response.errorBody()?.string()}")
                 Resource.Error("Request failed: ${response.code()}")
             }
+        } catch (e: CancellationException) {
+            // 协程被取消（退出页面 / 重启批量）不是「网络错误」：必须透传，
+            // 否则取消之后调用方会继续按「这个源失败了」往下走
+            throw e
         } catch (e: Exception) {
             Log.e("TmdbRepository", "Network error: ${e.message}", e)
             Resource.Error("Network error: ${e.message}", e)
