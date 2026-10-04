@@ -22,9 +22,13 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <!-- 电视端沿用历史的 LEANBACK 入口（电视桌面靠它启动）。
-                     两个 App 已经是不同的 applicationId，这里不再需要「防手机桌面双图标」的妥协。 -->
+                <!-- 电视端沿用历史的 LEANBACK 入口（Android TV 桌面靠它启动）。 -->
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+                <!-- 同时声明普通 LAUNCHER：手机 / 平板 / 不少国产电视盒子与投影仪
+                     用的是普通桌面（只认 `android.intent.category.LAUNCHER`）。
+                     只声明 LEANBACK 会让这些桌面完全看不到图标（不是图标不好看，是根本找不到应用）。
+                     两个 category 落在同一个 Activity 上，Leanback 桌面只会收录一次，不会出现双图标。 -->
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
             <intent-filter>
