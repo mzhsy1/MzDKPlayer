@@ -14,10 +14,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -31,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,21 +43,19 @@ import java.util.Locale
 /** 简介折叠到几行 */
 private const val INFO_OVERVIEW_COLLAPSED_LINES = 4
 
-/**
- * 信息区的配色**写死不跟随主题**：播放页是沉浸式黑底，浅色主题下若用
- * `MaterialTheme.colorScheme` 会变成浅底深字，跟上面的画面直接撕裂。
- * 这几条只在信息区内部用，不外泄给别的组件。
- */
-private val InfoBackground = Color(0xFF121214)
-private val InfoPrimary = Color.White
-private val InfoSecondary = Color.White.copy(alpha = 0.62f)
-private val InfoPillBackground = Color.White.copy(alpha = 0.12f)
-private val InfoAccent = Color(0xFF9ECBFF)
+/** 海报：竖屏信息区里比标题略高一点，圆角取 Expressive 的 `medium` 一档 */
+private val PosterWidth = 92.dp
+private val PosterHeight = 138.dp
 
 /**
- * 竖屏（未全屏）时播放页**下半屏的信息区** —— 布局对齐 B 站竖屏播放页：视频在上、信息在下。
+ * 竖屏（未全屏）时播放页**下半屏的信息区**。
  *
- * 内容全部取自已有的刮削缓存 [MediaCacheEntity]：海报、评分、类型、简介。
+ * **配色跟随 App 主题**（`MaterialTheme.colorScheme`）：信息区在画面下方、属于页面内容，
+ * 跟首页 / 详情页应当是同一套观感（与 `PhonePlayerVideoInfo` 早先写死深色的做法相反）。
+ * 压在画面上的那层控制（`PhonePlayerControls`）才是另一套独立色板 ——
+ * 那层必须自己保证白字在黑画面上可读，这一层则应当跟着主题走。
+ *
+ * 内容全部取自已有的刮削缓存 [MediaCacheEntity]：海报、年份、评分、类型、简介。
  * 没刮削过时只留标题与来源 —— 播放页这里没有刮削入口，摆一句「尚未刮削」也操作不了，
  * 真要继续刮削应该回目录页（那里有整目录刮削按钮）。
  */
@@ -72,11 +70,15 @@ internal fun PhonePlayerVideoInfo(
 ) {
     Column(
         modifier = modifier
-            .background(InfoBackground)
+            .background(MaterialTheme.colorScheme.surface)
             .verticalScroll(rememberScrollState())
             .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp),
     ) {
+        // 画面是黑的、信息区是主题底色，两者糊在一起没有边界，压一条分隔线分开
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Spacer(Modifier.height(14.dp))
+
         Row(verticalAlignment = Alignment.Top) {
             // 没刮到海报时整块不占位（PhonePosterImage 返回 false 表示它什么都没画）
             val posterPath = meta?.posterPath?.takeIf { it.isNotBlank() }
@@ -85,31 +87,31 @@ internal fun PhonePlayerVideoInfo(
                     posterPath = posterPath,
                     size = "w200",
                     modifier = Modifier
-                        .width(96.dp)
-                        .height(144.dp)
-                        .clip(RoundedCornerShape(10.dp)),
+                        .width(PosterWidth)
+                        .height(PosterHeight)
+                        .clip(MaterialTheme.shapes.medium),
                 )
-                if (drawn) Spacer(Modifier.width(12.dp))
+                if (drawn) Spacer(Modifier.width(14.dp))
             }
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    color = InfoPrimary,
-                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleLarge,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
 
                 if (meta != null) {
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(10.dp))
                     MetaPillRow(meta)
                 }
 
                 Spacer(Modifier.height(10.dp))
                 Text(
                     text = "${stringResource(R.string.phone_detail_connection)}：$connectionName · $dataSourceType",
-                    color = InfoSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -117,7 +119,7 @@ internal fun PhonePlayerVideoInfo(
                 if (dateText.isNotBlank()) {
                     Text(
                         text = dateText,
-                        color = InfoSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.labelMedium,
                     )
                 }
@@ -125,9 +127,11 @@ internal fun PhonePlayerVideoInfo(
         }
 
         meta?.overview?.takeIf { it.isNotBlank() }?.let { overview ->
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(18.dp))
             OverviewSection(overview)
         }
+
+        Spacer(Modifier.height(16.dp))
     }
 }
 
@@ -150,15 +154,27 @@ private fun MetaPillRow(meta: MediaCacheEntity) {
     }
 }
 
+/**
+ * 信息胶囊：普通项用中性的 `surfaceContainerHighest`，评分那一颗换 tertiary 容器，
+ * 一排胶囊里唯一需要被先看到的信息就是分数。
+ */
 @Composable
 private fun InfoPill(text: String, withStar: Boolean = false) {
     Surface(
-        shape = RoundedCornerShape(percent = 50),
-        color = InfoPillBackground,
-        contentColor = InfoPrimary,
+        shape = CircleShape,
+        color = if (withStar) {
+            MaterialTheme.colorScheme.tertiaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHighest
+        },
+        contentColor = if (withStar) {
+            MaterialTheme.colorScheme.onTertiaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -183,14 +199,14 @@ private fun OverviewSection(overview: String) {
     Column {
         Text(
             text = stringResource(R.string.phone_detail_overview),
-            color = InfoPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(Modifier.height(6.dp))
         Text(
             text = overview,
-            color = InfoSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = if (expanded) Int.MAX_VALUE else INFO_OVERVIEW_COLLAPSED_LINES,
             overflow = TextOverflow.Ellipsis,
@@ -205,7 +221,7 @@ private fun OverviewSection(overview: String) {
                     text = stringResource(
                         if (expanded) R.string.phone_detail_collapse else R.string.phone_detail_expand
                     ),
-                    color = InfoAccent,
+                    color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelLarge,
                 )
             }

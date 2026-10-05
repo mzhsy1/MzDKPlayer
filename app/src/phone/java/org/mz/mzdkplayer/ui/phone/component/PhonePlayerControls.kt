@@ -4,11 +4,22 @@ import android.content.Context
 import android.media.AudioManager
 import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,42 +27,50 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import org.mz.mzdkplayer.R
@@ -60,7 +79,6 @@ import org.mz.mzdkplayer.tool.Tools
 import org.mz.mzdkplayer.tool.logic.PhoneSettingsLogic
 import org.mz.mzdkplayer.ui.phone.PhoneIcons
 import kotlin.math.roundToInt
-import kotlin.math.roundToLong
 
 /** 双击屏幕左右两侧时的反馈方向 */
 internal enum class PhoneSeekPulse { BACK, FORWARD }
@@ -69,6 +87,28 @@ internal enum class PhoneSeekPulse { BACK, FORWARD }
 private val ControlsScrim = Brush.verticalGradient(
     listOf(Color.Black.copy(alpha = 0.65f), Color.Transparent)
 )
+
+// ────────────────────────── 表达性控制层的设计常量 ──────────────────────────
+//
+// 播放控制压在视频画面上，不能用 `MaterialTheme.colorScheme` 的那套 surface 角色
+// （浅色主题下会变成浅底，跟画面直接撕裂），所以这里固定一组「白描边 + 半透明黑容器」：
+// 单个按钮是一个 tonal 容器、图标是它的内容色 —— 这正是 M3 Expressive 里
+// 「容器化图标按钮」的形态，而不是裸图标浮在画面上。
+
+/**
+ * 控制按钮的容器底色。
+ *
+ * 用浅色半透明而不是黑色半透明：这层下面压着黑色的渐隐 scrim，
+ * 黑色容器在它上面几乎看不出边界，浅色才能把「这是个按钮」画出来。
+ */
+private val ControlContainerColor = Color.White.copy(alpha = 0.16f)
+
+/** 进度条：已播放白色、未播放半透明白（与电视端那套白色调一致，不跟主题走） */
+private val ProgressActiveColor = Color.White
+private val ProgressInactiveColor = Color.White.copy(alpha = 0.3f)
+
+/** 按钮按下时缩到多小：Expressive 的「按下去」靠容器形变表达，而不是只换颜色 */
+private const val CONTROL_PRESSED_SCALE = 0.88f
 
 /**
  * 手机端播放页的**手势层**：单击切换控制栏、双击左右两侧快进 / 快退、
@@ -291,11 +331,27 @@ private fun PhoneGestureHudOverlay(hud: PhoneGestureHud, modifier: Modifier = Mo
 }
 
 /**
- * 手机端播放页的**控制层**：顶部（返回 / 标题 / 网速 / 播放列表 / 设置）、
- * 中央播放暂停、底部（进度条 + 时间 + 快退 / 快进 / 上一个 / 下一个）。
+ * 手机端播放页的**控制层** —— 布局对齐 B 站，横竖两套各按各的排法：
  *
- * 触屏与遥控器的根本差别就在这一层：电视端进度条靠左右键累计 + 落定回调，
- * 这里直接用可拖动的 [Slider]；电视端的「上键唤面板」换成右上角的设置按钮。
+ * ```
+ * 横屏  ← 片名 / 日期                    列表 设置 退出全屏
+ *        00:04/50:39
+ *        ─────────●────────────
+ *        ⏸ ⏭  [ 弹幕设置 ]      播放列表 速度 1080P
+ *
+ * 竖屏  ←                                列表 设置
+ *        ─────────●────────────
+ *        ⏸ 弹          00:57/41:21 ⛶
+ * ```
+ *
+ * 竖屏不摆片名：片名 / 日期在画面下面的信息区里已经有了（B 站竖屏也是这么分的）。
+ *
+ * **没有快退 / 快进按钮**：这两个动作交给双击画面左右 1/3 的手势
+ * （见 `PhonePlayerGestureLayer`），长按还能临时倍速。
+ *
+ * M3 Expressive 的落点保留在交互上：按钮按下有弹簧回弹、进度条手柄抓住时变大、
+ * 控制层整体淡入淡出。配色是压在画面上的一套固定白 + 半透明黑，不跟主题色走
+ * （否则浅色主题下整层会变成浅底，压在画面里看不清）。
  */
 @Composable
 internal fun PhonePlayerControls(
@@ -304,22 +360,22 @@ internal fun PhonePlayerControls(
     isPlaying: Boolean,
     positionMs: Long,
     durationMs: Long,
-    hasPrevious: Boolean,
     hasNext: Boolean,
-    /** 快进 / 快退的秒数（各取设置里的 `ffDuration` / `rwDuration`，与电视端同一份设置） */
-    forwardSeconds: Int,
-    backSeconds: Int,
     networkSpeed: Long?,
-    /** 是否处于全屏（横屏）——只决定右下角那个按钮的图标与语义 */
+    /** 当前视频轨的清晰度文案（横屏右下角那颗「1080P」），取不到时为 null */
+    qualityText: String?,
+    /** 中间那颗胶囊的文案（弹幕开关状态） */
+    danmakuText: String,
+    /** 全屏（横屏）时画面区铺满整屏，顶部栏要自己避一次状态栏；竖屏外侧已经避过 */
     isFullscreen: Boolean,
     onBack: () -> Unit,
     onTogglePlayPause: () -> Unit,
     onSeekTo: (Long) -> Unit,
-    onSeekBack: () -> Unit,
-    onSeekForward: () -> Unit,
-    onPrevious: () -> Unit,
     onNext: () -> Unit,
     onOpenPlaylist: () -> Unit,
+    onOpenSpeed: () -> Unit,
+    onOpenVideoTracks: () -> Unit,
+    onOpenDanmaku: () -> Unit,
     onOpenSettings: () -> Unit,
     onToggleFullscreen: () -> Unit,
     onInteraction: () -> Unit,
@@ -327,21 +383,37 @@ internal fun PhonePlayerControls(
 ) {
     // 拖拽期间进度条跟手，不受播放心跳（每 200ms 一次）影响
     var dragging by remember { mutableStateOf(false) }
-    var dragValue by remember { mutableFloatStateOf(0f) }
-    val shownPosition = if (dragging) dragValue.roundToLong() else positionMs
+    var dragValue by remember { mutableLongStateOf(0L) }
+    val shownPosition = if (dragging) dragValue else positionMs
+
+    val handleDrag: (Long) -> Unit = { target ->
+        dragging = true
+        dragValue = target
+        onInteraction()
+    }
+    val handleDragFinished: () -> Unit = {
+        onSeekTo(dragValue)
+        dragging = false
+        onInteraction()
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
         ControlsTopBar(
             title = title,
             dateText = dateText,
             networkSpeed = networkSpeed,
+            // 竖屏不摆标题：片名、日期这些信息，画面下面的信息区已经有了，
+            // 再压在画面上只会白占一条（B 站竖屏也是这么处理的）
+            showTitle = isFullscreen,
+            applyStatusBarInset = isFullscreen,
+            isFullscreen = isFullscreen,
             onBack = onBack,
             onOpenPlaylist = onOpenPlaylist,
             onOpenSettings = onOpenSettings,
+            onToggleFullscreen = onToggleFullscreen,
         )
 
-        // 中央只留白：播放暂停交给底部那一个按钮，这里不再放第二个浮在画面正中挡住内容。
-        // 留白的点击落到手势层，于是「点画面任意处收起控制栏」这件事不需要额外代码。
+        // 中间留白：点击落到手势层，于是「点画面任意处收起控制栏」不需要额外代码
         Spacer(
             modifier = Modifier
                 .weight(1f)
@@ -354,55 +426,51 @@ internal fun PhonePlayerControls(
                 durationMs = durationMs,
                 isPlaying = isPlaying,
                 dragging = dragging,
-                hasPrevious = hasPrevious,
                 hasNext = hasNext,
-                forwardSeconds = forwardSeconds,
-                backSeconds = backSeconds,
-                isFullscreen = isFullscreen,
-                onDrag = {
-                    dragging = true
-                    dragValue = it
-                    onInteraction()
-                },
-                onDragFinished = {
-                    onSeekTo(dragValue.roundToLong())
-                    dragging = false
-                    onInteraction()
-                },
+                qualityText = qualityText,
+                danmakuText = danmakuText,
+                onDrag = handleDrag,
+                onDragFinished = handleDragFinished,
                 onTogglePlayPause = {
                     onInteraction()
                     onTogglePlayPause()
-                },
-                onSeekBack = {
-                    onInteraction()
-                    onSeekBack()
-                },
-                onSeekForward = {
-                    onInteraction()
-                    onSeekForward()
-                },
-                onPrevious = {
-                    onInteraction()
-                    onPrevious()
                 },
                 onNext = {
                     onInteraction()
                     onNext()
                 },
-                onToggleFullscreen = {
+                onOpenPlaylist = {
                     onInteraction()
-                    onToggleFullscreen()
+                    onOpenPlaylist()
+                },
+                onOpenSpeed = {
+                    onInteraction()
+                    onOpenSpeed()
+                },
+                onOpenVideoTracks = {
+                    onInteraction()
+                    onOpenVideoTracks()
+                },
+                onOpenDanmaku = {
+                    onInteraction()
+                    onOpenDanmaku()
                 },
             )
         } else {
             ControlsCompactBar(
-                positionMs = shownPosition,
+                shownPosition = shownPosition,
                 durationMs = durationMs,
                 isPlaying = isPlaying,
-                isFullscreen = isFullscreen,
+                dragging = dragging,
+                onDrag = handleDrag,
+                onDragFinished = handleDragFinished,
                 onTogglePlayPause = {
                     onInteraction()
                     onTogglePlayPause()
+                },
+                onOpenDanmaku = {
+                    onInteraction()
+                    onOpenDanmaku()
                 },
                 onToggleFullscreen = {
                     onInteraction()
@@ -413,261 +481,493 @@ internal fun PhonePlayerControls(
     }
 }
 
+/**
+ * 顶部控制行 —— 布局对齐 B 站：左侧一个裸返回箭头，紧跟着片名（下面一行小字），
+ * 右侧一排裸图标。
+ *
+ * 竖屏不摆片名：片名、日期在画面下面的信息区里已经有了（B 站竖屏也是这么分的），
+ * 这里只留两侧的图标，中间整条让给画面。
+ */
 @Composable
 private fun ControlsTopBar(
     title: String,
     dateText: String?,
     networkSpeed: Long?,
+    /** 是否摆片名 / 日期：横屏摆（画面下方没有信息区），竖屏留给画面下方的信息区 */
+    showTitle: Boolean,
+    /** 全屏时画面顶到屏幕边缘，这里要自己避一次状态栏 / 挖孔 */
+    applyStatusBarInset: Boolean,
+    isFullscreen: Boolean,
     onBack: () -> Unit,
     onOpenPlaylist: () -> Unit,
     onOpenSettings: () -> Unit,
+    onToggleFullscreen: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(ControlsScrim)
-            .statusBarsPadding()
+            .then(if (applyStatusBarInset) Modifier.statusBarsPadding() else Modifier)
             .padding(horizontal = 4.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onBack) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = stringResource(R.string.phone_action_back),
-                tint = Color.White,
-            )
-        }
+        PlayerIconButton(
+            icon = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = stringResource(R.string.phone_action_back),
+            onClick = onBack,
+            container = false,
+            iconSize = 26.dp,
+        )
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = Color.White,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (!dateText.isNullOrBlank()) {
+        if (showTitle) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 6.dp, end = 8.dp),
+            ) {
                 Text(
-                    text = dateText,
-                    color = Color.White.copy(alpha = 0.7f),
-                    style = MaterialTheme.typography.labelMedium,
+                    text = title,
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (!dateText.isNullOrBlank()) {
+                    Text(
+                        text = dateText,
+                        color = Color.White.copy(alpha = 0.72f),
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
+        } else {
+            // 竖屏：返回靠左，图标靠右，中间整条留给画面
+            Spacer(modifier = Modifier.weight(1f))
         }
 
         if (networkSpeed != null) {
-            Text(
-                text = formatNetworkSpeed(networkSpeed),
-                color = Color.White.copy(alpha = 0.85f),
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(horizontal = 8.dp),
-            )
+            NetworkSpeedPill(text = formatNetworkSpeed(networkSpeed))
         }
 
-        IconButton(onClick = onOpenPlaylist) {
-            Icon(
-                imageVector = PhoneIcons.Playlist,
-                contentDescription = stringResource(R.string.ui_label_playlist),
-                tint = Color.White,
-            )
-        }
-        IconButton(onClick = onOpenSettings) {
-            Icon(
-                imageVector = Icons.Filled.Settings,
-                contentDescription = stringResource(R.string.ui_label_settings),
-                tint = Color.White,
+        PlayerIconButton(
+            icon = PhoneIcons.Playlist,
+            contentDescription = stringResource(R.string.ui_label_playlist),
+            onClick = onOpenPlaylist,
+            container = false,
+            iconSize = 24.dp,
+        )
+        PlayerIconButton(
+            icon = Icons.Filled.Settings,
+            contentDescription = stringResource(R.string.ui_label_settings),
+            onClick = onOpenSettings,
+            modifier = Modifier.padding(start = 2.dp),
+            container = false,
+            iconSize = 24.dp,
+        )
+        if (isFullscreen) {
+            // 横屏没有别的地方能退回竖屏（B 站靠转屏），这颗按钮保留在图标行里
+            PlayerIconButton(
+                icon = PhoneIcons.FullscreenExit,
+                contentDescription = stringResource(R.string.phone_player_exit_fullscreen),
+                onClick = onToggleFullscreen,
+                modifier = Modifier.padding(start = 2.dp),
+                container = false,
+                iconSize = 24.dp,
             )
         }
     }
 }
 
+/** 网速胶囊：控制层里唯一会持续变化的数字，给它一个容器才不会跟着标题飘 */
+@Composable
+private fun NetworkSpeedPill(text: String) {
+    Surface(
+        shape = CircleShape,
+        color = Color.Black.copy(alpha = 0.3f),
+        contentColor = Color.White,
+        modifier = Modifier.padding(end = 2.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+        )
+    }
+}
+
+/**
+ * 控制层的图标按钮：按下时弹簧缩小（Expressive 的「按压有形变」），
+ * 触摸区固定 [containerSize]，图标本身 [iconSize]。
+ *
+ * [container] 决定要不要画那层圆形半透明容器：B 站那套布局（顶部图标行、底部控制行）
+ * 一律是裸图标，容器留白会让整行显得臃肿；只有少数需要强调的按钮才套容器。
+ */
+@Composable
+private fun PlayerIconButton(
+    icon: ImageVector,
+    contentDescription: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    containerSize: Dp = 40.dp,
+    iconSize: Dp = 22.dp,
+    container: Boolean = true,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && enabled) CONTROL_PRESSED_SCALE else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "playerIconButtonScale",
+    )
+
+    Box(
+        modifier = modifier
+            .size(containerSize)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(CircleShape)
+            .then(
+                if (container) {
+                    Modifier.background(
+                        if (enabled) {
+                            ControlContainerColor
+                        } else {
+                            // 不可用时连容器一起淡下去，只剩一个位置感
+                            Color.White.copy(alpha = 0.06f)
+                        }
+                    )
+                } else {
+                    Modifier
+                }
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = ripple(),
+                enabled = enabled,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = iconTint(enabled),
+            modifier = Modifier.size(iconSize),
+        )
+    }
+}
+
+/**
+ * 播放页的进度条：一条**细线 + 小圆点手柄**。
+ *
+ * 刻意不用 M3 的 `Slider`：那颗 Slider 是「粗轨道 + 高竖条手柄」的表达性形态，
+ * 压在竖屏画面区里太重（轨道 16dp、手柄 44dp，几乎和一行按钮一样高）。
+ * 这里跟随主流播放器的形态 —— 一条 3dp 的细线贴着控制行，视觉上不抢画面，
+ * 触摸区仍有 28dp 高；手柄平时是 5dp 小圆点、按住拖时放大到 1.8 倍，
+ * 用尺寸变化表达「抓住了」（这正是 Expressive 的「按压有形变」）。
+ *
+ * 绘制与手势自己做，是因为 `Slider` 的轨道厚度 / 手柄尺寸都是内置常量，
+ * 用 `Modifier.height` 只能把它裁掉一半。
+ */
+@Composable
+private fun PlayerProgressBar(
+    positionMs: Long,
+    durationMs: Long,
+    onDrag: (Long) -> Unit,
+    onDragFinished: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** 正在拖动：手柄放大一圈 */
+    dragging: Boolean = false,
+    trackHeight: Dp = 3.dp,
+    touchHeight: Dp = 28.dp,
+    thumbRadius: Dp = 5.dp,
+) {
+    val enabled = durationMs > 0L
+    val fraction = if (enabled) {
+        (positionMs.toFloat() / durationMs).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+
+    var barWidthPx by remember { mutableStateOf(0) }
+    // 手势 lambda 只装一次，读到的必须是最新的时长（切集后 duration 会变）
+    val latestDuration by rememberUpdatedState(durationMs)
+    val latestEnabled by rememberUpdatedState(enabled)
+
+    fun positionAt(x: Float): Long {
+        if (barWidthPx <= 0 || !latestEnabled) return 0L
+        val ratio = (x / barWidthPx).coerceIn(0f, 1f)
+        return (ratio * latestDuration).toLong()
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(touchHeight)
+            .onSizeChanged { barWidthPx = it.width }
+            .pointerInput(latestEnabled) {
+                if (!latestEnabled) return@pointerInput
+                detectHorizontalDragGestures(
+                    onDragStart = { offset -> onDrag(positionAt(offset.x)) },
+                    onHorizontalDrag = { change, _ ->
+                        change.consume()
+                        onDrag(positionAt(change.position.x))
+                    },
+                    onDragEnd = { onDragFinished() },
+                    onDragCancel = { onDragFinished() },
+                )
+            }
+            .pointerInput(latestEnabled) {
+                if (!latestEnabled) return@pointerInput
+                // 点哪儿跳哪儿：点完立刻落定，与拖动结束走同一条路径
+                detectTapGestures { offset ->
+                    onDrag(positionAt(offset.x))
+                    onDragFinished()
+                }
+            },
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Canvas(modifier = Modifier.fillMaxWidth()) {
+            val centerY = size.height / 2f
+            val lineHeight = trackHeight.toPx()
+            val thumbPx = thumbRadius.toPx() * if (dragging) 1.8f else 1f
+
+            drawLine(
+                color = ProgressInactiveColor,
+                start = Offset(0f, centerY),
+                end = Offset(size.width, centerY),
+                strokeWidth = lineHeight,
+                cap = StrokeCap.Round,
+            )
+            if (fraction > 0f) {
+                drawLine(
+                    color = ProgressActiveColor,
+                    start = Offset(0f, centerY),
+                    end = Offset(size.width * fraction, centerY),
+                    strokeWidth = lineHeight,
+                    cap = StrokeCap.Round,
+                )
+            }
+            // 手柄贴到两端时也要完整落在线内，否则会被裁掉一半
+            val thumbX = (size.width * fraction).coerceIn(thumbPx, size.width - thumbPx)
+            drawCircle(
+                color = ProgressActiveColor,
+                radius = thumbPx,
+                center = Offset(thumbX, centerY),
+            )
+        }
+    }
+}
+
+/**
+ * 横屏（全屏）时的底部控制区 —— 布局对齐 B 站：
+ *
+ * ```
+ * 00:04/50:39                      ← 时间在进度条上方、靠左
+ * ─────────────●───────────────    ← 细进度条，几乎贴左右边
+ * ⏸  ⏭   [ 弹幕设置 ]     列表 速度 1080P
+ * ```
+ *
+ * **左侧只有播放暂停 + 下一个**：B 站横屏没有上一集按钮，翻集走右端的「列表」面板
+ * （也就是我们的播放列表）；快退 / 快进仍然只有双击画面左右 1/3 的手势。
+ * **中间那颗胶囊**在 B 站是弹幕输入框，本地播放没有发弹幕这回事，
+ * 于是换成弹幕设置的入口 —— 位置、形状照旧。
+ * **右端三颗文字按钮**对应 B 站的「选集 / 倍速 / 1080P」：播放列表、倍速、当前视频轨清晰度。
+ */
 @Composable
 private fun ControlsBottomBar(
     shownPosition: Long,
     durationMs: Long,
     isPlaying: Boolean,
     dragging: Boolean,
-    hasPrevious: Boolean,
     hasNext: Boolean,
-    forwardSeconds: Int,
-    backSeconds: Int,
-    isFullscreen: Boolean,
-    onDrag: (Float) -> Unit,
+    /** 当前视频轨的清晰度文案（右下角那颗），取不到时为 null */
+    qualityText: String?,
+    /** 中间胶囊的文案（弹幕开关状态） */
+    danmakuText: String,
+    onDrag: (Long) -> Unit,
     onDragFinished: () -> Unit,
     onTogglePlayPause: () -> Unit,
-    onSeekBack: () -> Unit,
-    onSeekForward: () -> Unit,
-    onPrevious: () -> Unit,
     onNext: () -> Unit,
-    onToggleFullscreen: () -> Unit,
+    onOpenPlaylist: () -> Unit,
+    onOpenSpeed: () -> Unit,
+    onOpenVideoTracks: () -> Unit,
+    onOpenDanmaku: () -> Unit,
 ) {
-    val enabled = durationMs > 0L
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(
                 Brush.verticalGradient(
-                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f))
+                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f))
                 )
             )
             .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 2.dp),
     ) {
-        // 这里用「收 value 的旧重载」而不是新的 `SliderState`：新 API 把 value 当 remember 的
-        // key，进度每 200ms 心跳一次就会重建状态、把正在拖拽的手势打断（音频页同款说明）。
-        Slider(
-            value = if (enabled) shownPosition.toFloat().coerceIn(0f, durationMs.toFloat()) else 0f,
-            onValueChange = onDrag,
-            onValueChangeFinished = onDragFinished,
-            valueRange = 0f..durationMs.toFloat().coerceAtLeast(1f),
-            enabled = enabled,
-            // 不额外收紧高度：Slider 自带的 48dp 触摸区是「手指能按住」的下限
-            modifier = Modifier.fillMaxWidth(),
+        // 时间在进度条**上方**、靠左；拖动时显示目标位置（手指不挡视线）
+        Text(
+            text = "${Tools.formatTime(shownPosition)}/${Tools.formatTime(durationMs)}",
+            color = Color.White,
+            style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
+            maxLines = 1,
+            modifier = Modifier.padding(bottom = 2.dp),
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = Tools.formatTime(shownPosition),
-                color = Color.White,
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.width(64.dp),
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = if (dragging) {
-                    // 拖拽时把「将要跳到的位置」放在总时长那一侧，手指不挡视线
-                    Tools.formatTime(shownPosition)
-                } else {
-                    Tools.formatTime(durationMs)
-                },
-                color = Color.White.copy(alpha = 0.85f),
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.width(64.dp),
-                textAlign = TextAlign.End,
-            )
-        }
+        PlayerProgressBar(
+            positionMs = shownPosition,
+            durationMs = durationMs,
+            onDrag = onDrag,
+            onDragFinished = onDragFinished,
+            dragging = dragging,
+            trackHeight = 3.dp,
+            touchHeight = 26.dp,
+            thumbRadius = 5.dp,
+        )
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 6.dp),
-            horizontalArrangement = Arrangement.Center,
+                .padding(top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onPrevious, enabled = hasPrevious) {
-                Icon(
-                    imageVector = PhoneIcons.SkipPrevious,
-                    contentDescription = stringResource(R.string.phone_player_previous_video),
-                    tint = iconTint(hasPrevious),
-                    modifier = Modifier.size(30.dp),
-                )
-            }
-
-            IconButton(
-                onClick = onSeekBack,
-                modifier = Modifier.padding(horizontal = 4.dp),
-            ) {
-                Icon(
-                    imageVector = PhoneIcons.Rewind,
-                    contentDescription = stringResource(
-                        R.string.phone_player_rewind, backSeconds
-                    ),
-                    tint = Color.White,
-                    modifier = Modifier.size(34.dp),
-                )
-            }
-
-            FilledIconButton(
+            // 播放 / 暂停：B 站这一颗是裸图标，尺寸比旁边的图标大一档
+            PlayerIconButton(
+                icon = if (isPlaying) PhoneIcons.Pause else Icons.Filled.PlayArrow,
+                contentDescription = stringResource(R.string.phone_player_play_pause),
                 onClick = onTogglePlayPause,
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = Color.White.copy(alpha = 0.92f),
-                    contentColor = Color.Black,
-                ),
+                container = false,
+                containerSize = 44.dp,
+                iconSize = 28.dp,
+            )
+
+            // 下一个（B 站横屏只有「下一集」，没有上一集）
+            PlayerIconButton(
+                icon = PhoneIcons.SkipNext,
+                contentDescription = stringResource(R.string.phone_player_next_video),
+                onClick = onNext,
+                enabled = hasNext,
+                container = false,
+                containerSize = 44.dp,
+                iconSize = 24.dp,
+            )
+
+            // 中间：B 站那里是弹幕输入框，这里换成弹幕设置的入口（位置与形状照旧）
+            DanmakuCapsule(
+                text = danmakuText,
+                onClick = onOpenDanmaku,
                 modifier = Modifier
-                    .padding(horizontal = 12.dp)
-                    .size(52.dp),
-            ) {
-                Icon(
-                    imageVector = if (isPlaying) PhoneIcons.Pause else Icons.Filled.PlayArrow,
-                    contentDescription = stringResource(R.string.phone_player_play_pause),
-                    modifier = Modifier.size(28.dp),
-                )
-            }
+                    .weight(1f)
+                    .padding(horizontal = 14.dp),
+            )
 
-            IconButton(
-                onClick = onSeekForward,
-                modifier = Modifier.padding(horizontal = 4.dp),
-            ) {
-                Icon(
-                    imageVector = PhoneIcons.Forward,
-                    contentDescription = stringResource(
-                        R.string.phone_player_forward, forwardSeconds
-                    ),
-                    tint = Color.White,
-                    modifier = Modifier.size(34.dp),
-                )
-            }
-
-            IconButton(onClick = onNext, enabled = hasNext) {
-                Icon(
-                    imageVector = PhoneIcons.SkipNext,
-                    contentDescription = stringResource(R.string.phone_player_next_video),
-                    tint = iconTint(hasNext),
-                    modifier = Modifier.size(30.dp),
-                )
-            }
-
-            // 全屏：转横屏让画面占满整块屏幕，再点回到竖屏。
-            // 播放页本身已经是沉浸全屏（无状态栏），但竖屏下 16:9 画面只占中间一条，
-            // 只有横屏才谈得上「全屏」，所以这个按钮做的是转屏而不是隐藏系统栏。
-            IconButton(
-                onClick = onToggleFullscreen,
-                modifier = Modifier.padding(start = 4.dp),
-            ) {
-                Icon(
-                    imageVector = if (isFullscreen) {
-                        PhoneIcons.FullscreenExit
-                    } else {
-                        PhoneIcons.Fullscreen
-                    },
-                    contentDescription = stringResource(
-                        if (isFullscreen) {
-                            R.string.phone_player_exit_fullscreen
-                        } else {
-                            R.string.phone_player_fullscreen
-                        }
-                    ),
-                    tint = Color.White,
-                    modifier = Modifier.size(30.dp),
-                )
-            }
+            // 右端三颗文字按钮：选集 / 倍速 / 画质
+            PlayerTextButton(
+                text = stringResource(R.string.ui_label_playlist),
+                onClick = onOpenPlaylist,
+            )
+            PlayerTextButton(
+                text = stringResource(R.string.ui_label_speed),
+                onClick = onOpenSpeed,
+            )
+            PlayerTextButton(
+                text = qualityText ?: stringResource(R.string.ui_label_video_track),
+                onClick = onOpenVideoTracks,
+            )
         }
     }
 }
 
 /**
- * 竖屏（未全屏）时的**精简控制行**：只有「播放暂停 · 时间 · 全屏」这一行。
+ * 底部那颗弹幕胶囊（B 站是弹幕输入框）。
  *
- * 竖屏的画面区只有 16:9 那么高（这台机器上约 245dp），把「进度条 + 时间 + 五个按钮」
- * 整块铺进去会盖掉大半个画面 —— B 站竖屏也只留这一行，拖进度条要横屏。
- * 快进 / 快退不受影响：双击画面左右 1/3 的手势照旧（那是 `PhonePlayerGestureLayer` 的事）。
+ * 本地播放没有「发弹幕」这回事，于是做成弹幕设置的入口：形状、颜色、位置与 B 站一致，
+ * 文案换成开关状态。左对齐的文案（不是居中）也是为了贴住 B 站那颗输入框的样子。
+ */
+@Composable
+private fun DanmakuCapsule(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = Color.White.copy(alpha = 0.14f),
+        contentColor = Color.White,
+        modifier = modifier.height(36.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/** 底部右端的文字按钮（B 站的「选集 / 倍速 / 1080P」）：无容器，只有一圈涟漪 */
+@Composable
+private fun PlayerTextButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(percent = 50))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+    ) {
+        Text(
+            text = text,
+            color = Color.White,
+            style = MaterialTheme.typography.labelLarge,
+            maxLines = 1,
+        )
+    }
+}
+
+/**
+ * 竖屏（未全屏）时的底部控制区 —— 布局对齐 B 站竖屏：
+ *
+ * ```
+ * ─────────────●───────────────   ← 2dp 细进度条
+ * ⏸  弹      00:57/41:21  ⛶       ← 左：播放暂停 + 弹幕开关；右：时间 + 全屏
+ * ```
+ *
+ * 竖屏的画面区只有 16:9 那么高（这台机器上约 245dp），所以这一块比横屏再矮一档：
+ * 进度条 2dp、按钮都不套容器。快退 / 快进只有手势（双击左右 1/3），按钮行不放它们。
  */
 @Composable
 private fun ControlsCompactBar(
-    positionMs: Long,
+    shownPosition: Long,
     durationMs: Long,
     isPlaying: Boolean,
-    isFullscreen: Boolean,
+    dragging: Boolean,
+    onDrag: (Long) -> Unit,
+    onDragFinished: () -> Unit,
     onTogglePlayPause: () -> Unit,
+    onOpenDanmaku: () -> Unit,
     onToggleFullscreen: () -> Unit,
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(
@@ -675,42 +975,61 @@ private fun ControlsCompactBar(
                     listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
                 )
             )
-            .padding(horizontal = 8.dp, vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 8.dp),
     ) {
-        IconButton(onClick = onTogglePlayPause) {
-            Icon(
-                imageVector = if (isPlaying) PhoneIcons.Pause else Icons.Filled.PlayArrow,
-                contentDescription = stringResource(R.string.phone_player_play_pause),
-                tint = Color.White,
-                modifier = Modifier.size(26.dp),
-            )
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        Text(
-            text = "${Tools.formatTime(positionMs)} / ${Tools.formatTime(durationMs)}",
-            color = Color.White,
-            style = MaterialTheme.typography.labelMedium,
+        // 竖屏画面区只有 16:9 那么高：进度条压成 2dp 细线、触摸区 24dp、手柄 4dp 小圆点
+        PlayerProgressBar(
+            positionMs = shownPosition,
+            durationMs = durationMs,
+            onDrag = onDrag,
+            onDragFinished = onDragFinished,
+            dragging = dragging,
+            trackHeight = 2.dp,
+            touchHeight = 24.dp,
+            thumbRadius = 4.dp,
+            modifier = Modifier.padding(horizontal = 4.dp),
         )
 
-        IconButton(onClick = onToggleFullscreen) {
-            Icon(
-                imageVector = if (isFullscreen) {
-                    PhoneIcons.FullscreenExit
-                } else {
-                    PhoneIcons.Fullscreen
-                },
-                contentDescription = stringResource(
-                    if (isFullscreen) {
-                        R.string.phone_player_exit_fullscreen
-                    } else {
-                        R.string.phone_player_fullscreen
-                    }
-                ),
-                tint = Color.White,
-                modifier = Modifier.size(26.dp),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // 左侧：播放暂停 + 弹幕开关（B 站竖屏也是这两颗，都是裸图标）
+            PlayerIconButton(
+                icon = if (isPlaying) PhoneIcons.Pause else Icons.Filled.PlayArrow,
+                contentDescription = stringResource(R.string.phone_player_play_pause),
+                onClick = onTogglePlayPause,
+                container = false,
+                iconSize = 26.dp,
+            )
+            PlayerIconButton(
+                icon = PhoneIcons.Danmaku,
+                contentDescription = stringResource(R.string.ui_label_danmaku_settings),
+                onClick = onOpenDanmaku,
+                modifier = Modifier.padding(start = 6.dp),
+                container = false,
+                iconSize = 22.dp,
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // 右侧：时间紧贴全屏按钮，与 B 站竖屏那一行的排法一致
+            Text(
+                text = "${Tools.formatTime(shownPosition)}/${Tools.formatTime(durationMs)}",
+                color = Color.White,
+                style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
+                maxLines = 1,
+                modifier = Modifier.padding(end = 6.dp),
+            )
+
+            PlayerIconButton(
+                icon = PhoneIcons.Fullscreen,
+                contentDescription = stringResource(R.string.phone_player_fullscreen),
+                onClick = onToggleFullscreen,
+                container = false,
+                iconSize = 22.dp,
             )
         }
     }
@@ -720,7 +1039,11 @@ private fun iconTint(enabled: Boolean): Color =
     if (enabled) Color.White else Color.White.copy(alpha = 0.35f)
 
 /**
- * 双击快进 / 快退时的中央脉冲提示：一个大箭头 + `±15s`，700ms 后自己消失。
+ * 双击快进 / 快退时的中央提示：一个圆形容器里放箭头 + `±15s`，700ms 后自己消失。
+ *
+ * 不再铺一层整屏遮罩：Expressive 的反馈是「就地长出来的一个小东西」，
+ * 整屏变暗会跟着双击节奏闪一下。入场用弹簧缩放，跟双击的节奏对得上；
+ * 提示贴在手势那一侧（左 / 右），和画面里手指的位置一致。
  */
 @Composable
 internal fun PhoneSeekPulseOverlay(
@@ -730,43 +1053,57 @@ internal fun PhoneSeekPulseOverlay(
 ) {
     AnimatedVisibility(
         visible = pulse != null,
-        enter = fadeIn(),
-        exit = fadeOut(),
+        enter = fadeIn(tween(durationMillis = 120)) + scaleIn(
+            initialScale = 0.72f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMediumLow,
+            ),
+        ),
+        exit = fadeOut(tween(durationMillis = 160)) +
+                scaleOut(targetScale = 0.9f, animationSpec = tween(durationMillis = 160)),
         modifier = modifier,
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.28f)),
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = when (pulse) {
+                PhoneSeekPulse.BACK -> Alignment.CenterStart
+                else -> Alignment.CenterEnd
+            },
         ) {
-            Column(
-                modifier = Modifier.align(
-                    when (pulse) {
-                        PhoneSeekPulse.BACK -> Alignment.CenterStart
-                        else -> Alignment.CenterEnd
-                    }
-                ).padding(horizontal = 48.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+            Surface(
+                shape = CircleShape,
+                color = Color.Black.copy(alpha = 0.62f),
+                contentColor = Color.White,
+                modifier = Modifier
+                    .padding(horizontal = 40.dp)
+                    .size(96.dp),
             ) {
-                Icon(
-                    imageVector = if (pulse == PhoneSeekPulse.BACK) {
-                        PhoneIcons.Rewind
-                    } else {
-                        PhoneIcons.Forward
-                    },
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(48.dp),
-                )
-                Text(
-                    text = if (pulse == PhoneSeekPulse.BACK) {
-                        "-${seekStepSeconds}s"
-                    } else {
-                        "+${seekStepSeconds}s"
-                    },
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium,
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Icon(
+                        imageVector = if (pulse == PhoneSeekPulse.BACK) {
+                            PhoneIcons.Rewind
+                        } else {
+                            PhoneIcons.Forward
+                        },
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(30.dp),
+                    )
+                    Text(
+                        text = if (pulse == PhoneSeekPulse.BACK) {
+                            "-${seekStepSeconds}s"
+                        } else {
+                            "+${seekStepSeconds}s"
+                        },
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
             }
         }
     }
@@ -786,8 +1123,15 @@ internal fun PhoneLongPressSpeedOverlay(
 ) {
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(),
-        exit = fadeOut(),
+        enter = fadeIn(tween(durationMillis = 120)) + scaleIn(
+            initialScale = 0.8f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMediumLow,
+            ),
+        ),
+        exit = fadeOut(tween(durationMillis = 140)) +
+                scaleOut(targetScale = 0.9f, animationSpec = tween(durationMillis = 140)),
         modifier = modifier,
     ) {
         Box(
@@ -796,11 +1140,11 @@ internal fun PhoneLongPressSpeedOverlay(
         ) {
             Surface(
                 shape = CircleShape,
-                color = Color.Black.copy(alpha = 0.72f),
+                color = Color.Black.copy(alpha = 0.62f),
                 contentColor = Color.White,
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                    modifier = Modifier.padding(horizontal = 22.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
@@ -812,7 +1156,7 @@ internal fun PhoneLongPressSpeedOverlay(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = stringResource(R.string.phone_player_long_press_speed, speedText),
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MaterialTheme.typography.titleSmall,
                     )
                 }
             }
@@ -835,33 +1179,35 @@ internal fun PhonePlayerBanner(
 ) {
     AnimatedVisibility(
         visible = message != null,
-        enter = fadeIn(),
-        exit = fadeOut(),
+        enter = fadeIn(tween(durationMillis = 160)) + scaleIn(
+            initialScale = 0.9f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMediumLow,
+            ),
+        ),
+        exit = fadeOut(tween(durationMillis = 140)),
         modifier = modifier,
     ) {
-        Text(
-            text = message.orEmpty(),
-            color = Color.White,
-            style = MaterialTheme.typography.bodySmall,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .padding(16.dp)
-                .background(
-                    color = Color.Black.copy(alpha = 0.78f),
-                    shape = CircleShape,
-                )
-                .then(
-                    if (onClick != null) {
-                        Modifier.pointerInput(onClick) {
-                            detectTapGestures { onClick() }
-                        }
-                    } else {
-                        Modifier
-                    }
-                )
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-        )
+        // 用 Surface 的 onClick 重载：涟漪会被裁进 shape 里，不用自己接 pointerInput；
+        // 「继续播放」那条不需要按钮，整条吃点击就是它的操作方式
+        Surface(
+            onClick = onClick ?: {},
+            enabled = onClick != null,
+            shape = MaterialTheme.shapes.extraLarge,
+            color = Color.Black.copy(alpha = 0.8f),
+            contentColor = Color.White,
+            modifier = Modifier.padding(16.dp),
+        ) {
+            Text(
+                text = message.orEmpty(),
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            )
+        }
     }
 }
 

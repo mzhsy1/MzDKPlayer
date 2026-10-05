@@ -273,6 +273,7 @@
     <string name="ui_label_select_version_for_title">%s - 選擇版本</string>
     <string name="ui_label_tip_modify_tmdb_info">提示：長按下方版本可修改該檔案的 TMDB 資訊</string>
     <string name="ui_label_tv_show_library">電視劇庫</string>
+    <string name="ui_label_season_count">共 %1$d 季</string>
     <string name="ui_label_scroll_right_for_more">向右滾動以查看更多內容 →</string>
     <string name="ui_label_select_episode_for_title">%s - 選擇劇集</string>
     <string name="ui_label_tip_long_press_edit_tmdb_info">提示：長按下方劇集條目可修改該檔案的 TMDB 資訊</string>
@@ -630,8 +631,5 @@
     <string name="phone_player_long_press_speed">%1$s 快轉中</string>
     <string name="phone_player_fullscreen">全螢幕</string>
     <string name="phone_player_exit_fullscreen">結束全螢幕</string>
-    <string name="phone_player_rewind">倒轉 %1$d 秒</string>
-    <string name="phone_player_forward">快轉 %1$d 秒</string>
-    <string name="phone_player_previous_video">上一部影片</string>
     <string name="phone_player_next_video">下一部影片</string>
 </resources>

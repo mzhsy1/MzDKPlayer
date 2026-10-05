@@ -5,6 +5,10 @@ import android.content.pm.ActivityInfo
 import android.net.TrafficStats
 import android.net.Uri
 import androidx.annotation.OptIn
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,8 +24,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -562,9 +568,23 @@ fun PhonePlayerScreen(
     val playlistIndex = remember(playlist, mediaUri) {
         PhonePlayerLogic.playlistIndexOf(playlist.map { it.uri }, mediaUri)
     }
-    val hasPrevious = playlistIndex > 0
     val nextIndex = PhonePlayerLogic.nextPlaylistIndex(playlist.size, playlistIndex)
     val hasNext = nextIndex != null
+
+    // 横屏右下角那颗「1080P」：当前选中视频轨的清晰度，与轨道面板同一套口径
+    val qualityText = remember(videoTracks) {
+        videoTracks.firstOrNull { it.isSelected }
+    }?.let { track ->
+        when {
+            track.isDolbyVision -> "Dolby Vision"
+            track.isHdr10 -> "HDR"
+            track.height >= 2160 -> "4K"
+            track.height >= 1440 -> "1440P"
+            track.height >= 1080 -> "1080P"
+            track.height >= 720 -> "720P"
+            else -> stringResource(R.string.ui_label_standard_definition)
+        }
+    }
 
     val forwardSeconds = settingsState.ffDuration
     val backSeconds = settingsState.rwDuration
@@ -649,22 +669,24 @@ fun PhonePlayerScreen(
                     modifier = Modifier.fillMaxSize(),
                 )
 
-                if (controlsVisible) {
+                // 控制层的显隐走转场而不是硬切：Expressive 的「出现」是一次淡入，
+                // 硬切会让「点一下画面」的反馈显得很生硬（快退 / 快进按钮已移除，
+                // 它们改由双击画面左右 1/3 的手势承担，见 PhonePlayerGestureLayer）
+                PlayerControlsTransition(visible = controlsVisible) {
                     PhonePlayerControls(
                         title = displayTitle,
                         dateText = displayDateText,
                         isPlaying = isPlaying,
                         positionMs = positionMs,
                         durationMs = durationMs,
-                        hasPrevious = hasPrevious,
                         hasNext = hasNext,
-                        forwardSeconds = forwardSeconds,
-                        backSeconds = backSeconds,
                         networkSpeed = if (settingsState.hideNetworkSpeed || !isPlaying) {
                             null
                         } else {
                             networkSpeed
                         },
+                        qualityText = qualityText,
+                        danmakuText = stringResource(R.string.ui_label_danmaku_settings),
                         isFullscreen = isFullscreen,
                         onBack = onBack,
                         onTogglePlayPause = { if (player.isPlaying) player.pause() else player.play() },
@@ -672,14 +694,28 @@ fun PhonePlayerScreen(
                             player.seekTo(target)
                             positionMs = target
                         },
-                        onSeekBack = { seekBy(-backSeconds * 1000L, PhoneSeekPulse.BACK) },
-                        onSeekForward = { seekBy(forwardSeconds * 1000L, PhoneSeekPulse.FORWARD) },
-                        onPrevious = {
-                            if (hasPrevious) playlist.getOrNull(playlistIndex - 1)?.let(onPlayOther)
-                        },
                         onNext = { nextIndex?.let { onPlayOther(playlist[it]) } },
                         onOpenPlaylist = {
                             panel = PhonePlayerPanel.PLAYLIST
+                            showControls()
+                        },
+                        // 右端那颗清晰度按钮：ISO 原盘进 ISO 标题面板，其余进视频轨面板
+                        // （与设置面板根条目的分叉口径一致）
+                        onOpenVideoTracks = {
+                            val isIso = Tools.extractFileExtension(mediaUri).uppercase() == "ISO"
+                            panel = if (isIso && isoTitles.isNotEmpty()) {
+                                PhonePlayerPanel.ISO
+                            } else {
+                                PhonePlayerPanel.VIDEO
+                            }
+                            showControls()
+                        },
+                        onOpenSpeed = {
+                            panel = PhonePlayerPanel.SPEED
+                            showControls()
+                        },
+                        onOpenDanmaku = {
+                            panel = PhonePlayerPanel.DANMAKU
                             showControls()
                         },
                         onOpenSettings = {
@@ -693,7 +729,7 @@ fun PhonePlayerScreen(
                 }
 
                 // 继续播放 / 一次性提示：抬到控制栏之上（这条提示可点，压在按钮上会挡住它）。
-                // 竖屏时控制栏比横屏矮一截（没有进度条那一行），所以抬得少一些。
+                // 竖屏的控制区现在也有进度条（比原来高约 44dp），所以抬得比之前多一档。
                 PhonePlayerBanner(
                     message = when {
                         resumeTipVisible -> stringResource(
@@ -716,7 +752,7 @@ fun PhonePlayerScreen(
                     },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = if (isFullscreen) 180.dp else 56.dp),
+                        .padding(bottom = if (isFullscreen) 148.dp else 78.dp),
                 )
             }
 
@@ -777,6 +813,27 @@ fun PhonePlayerScreen(
 }
 
 /**
+ * 控制层的显隐转场。
+ *
+ * 单独包一层是为了绕开 `AnimatedVisibility` 的接收者歧义：画面区本身就嵌在一个 `Column` 里，
+ * 直接调用会解析到 `ColumnScope.AnimatedVisibility`（它要求当前作用域恰是 Column），
+ * 而真实调用点在画面区那个 `Box` 内。
+ */
+@Composable
+private fun PlayerControlsTransition(
+    visible: Boolean,
+    content: @Composable () -> Unit,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(durationMillis = 180)),
+        exit = fadeOut(tween(durationMillis = 140)),
+    ) {
+        content()
+    }
+}
+
+/**
  * 同步加载同名的四个候选外挂字幕（ass / srt / ssa / vtt）。
  *
  * 与电视端的「加载外部字幕」是同一套候选与同一份 `[外部加载]` 标记口径：
@@ -827,6 +884,9 @@ private suspend fun openDanmakuStream(
  * 这里刻意不用 `PhoneMessageBox` 那套（它取主题的 `onSurface`，浅色主题下压在黑色画面上
  * 会看不清），文字一律用白色；错误卡用 `errorContainer`，它在深浅两套主题里都是自洽的。
  */
+// 这个文件为了 media3 的 `UnstableApi` 导入了 `androidx.annotation.OptIn`，
+// 它会遮蔽 Kotlin 自己的 `OptIn`，所以这里必须写全限定名才能走 Kotlin 的 opt-in 机制
+@kotlin.OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun BoxScope.PhonePlayerStatusLayer(
     status: VideoPlayerStatus,
@@ -839,13 +899,15 @@ private fun BoxScope.PhonePlayerStatusLayer(
             modifier = Modifier
                 .align(Alignment.Center)
                 .padding(24.dp),
-            shape = MaterialTheme.shapes.large,
+            // Expressive 的容器圆角整体更大一档：错误卡也是一块「容器」而不是给文字描个框
+            shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.errorContainer,
             contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            shadowElevation = 6.dp,
         ) {
             Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
                     text = stringResource(R.string.phone_player_error),
@@ -858,22 +920,31 @@ private fun BoxScope.PhonePlayerStatusLayer(
             }
         }
 
-        status == VideoPlayerStatus.BUFFERING || isFirstLoad -> Column(
+        status == VideoPlayerStatus.BUFFERING || isFirstLoad -> Surface(
             modifier = Modifier.align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            shape = CircleShape,
+            color = Color.Black.copy(alpha = 0.42f),
+            contentColor = Color.White,
         ) {
-            CircularProgressIndicator(
-                color = Color.White,
-                modifier = Modifier.size(36.dp),
-            )
-            Text(
-                text = stringResource(
-                    if (isFirstLoad) R.string.ui_label_initializing else R.string.ui_label_buffering
-                ),
-                color = Color.White,
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(top = 12.dp),
-            )
+            Column(
+                modifier = Modifier.padding(horizontal = 28.dp, vertical = 22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                // `LoadingIndicator` 是 M3 Expressive 的加载指示器（会呼吸的形态形状），
+                // 比一根转圈的圆环更贴合「正在准备画面」这件事
+                LoadingIndicator(
+                    color = Color.White,
+                    modifier = Modifier.size(38.dp),
+                )
+                Text(
+                    text = stringResource(
+                        if (isFirstLoad) R.string.ui_label_initializing else R.string.ui_label_buffering
+                    ),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(top = 14.dp),
+                )
+            }
         }
     }
 }

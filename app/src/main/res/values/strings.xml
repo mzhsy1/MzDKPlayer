@@ -286,6 +286,7 @@
     <string name="ui_label_select_version_for_title">%s - 选择版本</string>
     <string name="ui_label_tip_modify_tmdb_info">提示：长按下方版本可修改该文件的 TMDB 信息</string>
     <string name="ui_label_tv_show_library">电视剧库</string>
+    <string name="ui_label_season_count">共 %1$d 季</string>
 
     <string name="ui_label_scroll_right_for_more">向右滚动以查看更多内容 →</string>
     <string name="ui_label_select_episode_for_title">%s - 选择剧集</string>
@@ -650,8 +651,5 @@
     <string name="phone_player_long_press_speed">%1$s 快进中</string>
     <string name="phone_player_fullscreen">全屏</string>
     <string name="phone_player_exit_fullscreen">退出全屏</string>
-    <string name="phone_player_rewind">快退 %1$d 秒</string>
-    <string name="phone_player_forward">快进 %1$d 秒</string>
-    <string name="phone_player_previous_video">上一个视频</string>
     <string name="phone_player_next_video">下一个视频</string>
 </resources>

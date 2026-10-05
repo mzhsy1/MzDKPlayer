@@ -258,6 +258,7 @@
     <string name="ui_label_select_version_for_title">%s - バージョンを選択</string>
     <string name="ui_label_tip_modify_tmdb_info">ヒント: 下記のバージョンを長押しすると、ファイルのTMDB情報を修正できます</string>
     <string name="ui_label_tv_show_library">TVドラマライブラリ</string>
+    <string name="ui_label_season_count">全 %1$d シーズン</string>
 
 
     <string name="ui_label_scroll_right_for_more">右にスクロールして詳細を表示 →</string>
@@ -651,8 +652,5 @@
     <string name="phone_player_long_press_speed">%1$s 倍速再生中</string>
     <string name="phone_player_fullscreen">全画面</string>
     <string name="phone_player_exit_fullscreen">全画面を終了</string>
-    <string name="phone_player_rewind">%1$d 秒戻る</string>
-    <string name="phone_player_forward">%1$d 秒進む</string>
-    <string name="phone_player_previous_video">前の動画</string>
     <string name="phone_player_next_video">次の動画</string>
 </resources>

@@ -1,12 +1,20 @@
 package org.mz.mzdkplayer.ui.phone.component
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -17,19 +25,23 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,6 +56,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -133,6 +147,17 @@ internal fun PhonePlayerSheet(
         // 默认从 `SheetValue.Hidden` 起弹；跳过「半展开」那一档，否则手机上会先弹到一半
         // 再要用户往上拖（音频播放列表同款处理）。
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        // Expressive 的底部表：顶部两角大圆角（28dp）、容器用 `surfaceContainerLow`
+        // 而不是纯 surface —— 与页面底色之间隔出一层「纸」。拖拽手柄也加大一号，好按。
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        dragHandle = {
+            BottomSheetDefaults.DragHandle(
+                width = 40.dp,
+                height = 4.dp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+            )
+        },
     ) {
         // 子面板里按返回键回到根面板；根面板本身交给系统返回键关掉整张表
         BackHandler(enabled = panel != PhonePlayerPanel.ROOT) {
@@ -235,7 +260,7 @@ private fun RootPanel(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = PanelListMaxHeight),
-            contentPadding = PaddingValues(bottom = 8.dp),
+            contentPadding = PaddingValues(top = 2.dp, bottom = 12.dp),
         ) {
             item {
                 PanelEntry(
@@ -338,19 +363,18 @@ private fun VideoTrackPanel(
             return@PanelScaffold
         }
         itemsIndexed(tracks, key = { _, track -> "v-${track.id}" }) { _, track ->
-            ListItem(
+            PlayerPanelItem(
+                selected = track.isSelected,
                 onClick = { onSelect(track) },
-                leadingContent = { SelectedMark(track.isSelected) },
-                supportingContent = {
+                supporting = {
                     Text(
                         text = videoTrackDetails(track),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
-            ) {
-                Text(videoTrackQualityLabel(track))
-            }
+                headline = { Text(videoTrackQualityLabel(track)) },
+            )
         }
     }
 }
@@ -367,10 +391,10 @@ private fun AudioTrackPanel(
             return@PanelScaffold
         }
         itemsIndexed(tracks, key = { _, track -> "a-${track.id}" }) { _, track ->
-            ListItem(
+            PlayerPanelItem(
+                selected = track.isSelected,
                 onClick = { onSelect(track) },
-                leadingContent = { SelectedMark(track.isSelected) },
-                supportingContent = {
+                supporting = {
                     Text(
                         // 「几声道 · 什么格式 · 采样率」与电视端共用同一条文案
                         text = stringResource(
@@ -387,9 +411,10 @@ private fun AudioTrackPanel(
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
-            ) {
-                Text("${Tools.getFullLanguageName(track.language)} ${track.bitrate / 1000}Kbps")
-            }
+                headline = {
+                    Text("${Tools.getFullLanguageName(track.language)} ${track.bitrate / 1000}Kbps")
+                },
+            )
         }
     }
 }
@@ -436,10 +461,10 @@ private fun SubtitleTrackPanel(
                 else -> "$language $languageSubtitles"
             }
 
-            ListItem(
+            PlayerPanelItem(
+                selected = track.isSelected,
                 onClick = { onSelect(track) },
-                leadingContent = { SelectedMark(track.isSelected) },
-                supportingContent = {
+                supporting = {
                     if (!isOff) {
                         Text(
                             stringResource(
@@ -449,9 +474,8 @@ private fun SubtitleTrackPanel(
                         )
                     }
                 },
-            ) {
-                Text(headline)
-            }
+                headline = { Text(headline) },
+            )
         }
     }
 }
@@ -467,18 +491,17 @@ private fun IsoTitlePanel(
         onBack = onBack,
     ) {
         itemsIndexed(titles, key = { _, title -> "iso-${title.index}" }) { _, title ->
-            ListItem(
+            PlayerPanelItem(
+                selected = title.isSelected,
                 onClick = { onSelect(title) },
-                leadingContent = { SelectedMark(title.isSelected) },
-                supportingContent = {
+                supporting = {
                     Text(
                         text = title.durationText,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 },
-            ) {
-                Text(title.name)
-            }
+                headline = { Text(title.name) },
+            )
         }
     }
 }
@@ -585,13 +608,11 @@ private fun PlaybackSpeedPanel(
             }
         }
         itemsIndexed(PhonePlayerLogic.speedOptions) { _, speed ->
-            val selected = speed == currentSpeed
-            ListItem(
+            PlayerPanelItem(
+                selected = speed == currentSpeed,
                 onClick = { onSelect(speed) },
-                leadingContent = { SelectedMark(selected) },
-            ) {
-                Text("${speed}x")
-            }
+                headline = { Text("${speed}x") },
+            )
         }
     }
 }
@@ -608,32 +629,30 @@ private fun AspectRatioPanel(
 
     PanelScaffold(title = stringResource(R.string.ui_label_aspect_ratio), onBack = onBack) {
         item {
-            ListItem(
+            PlayerPanelItem(
+                selected = false,
                 onClick = {
                     settingsViewModel.toggleLockVideoRatio(!locked)
                     // 打开锁定时把当前比例记成全局比例，否则「锁定」会锁到一个没意义的值
                     if (!locked) settingsViewModel.setGlobalVideoRatio(currentRatio.name)
                 },
-                trailingContent = {
+                trailing = {
                     Switch(checked = locked, onCheckedChange = null)
                 },
-            ) {
-                Text(stringResource(R.string.setting_lock_video_ratio))
-            }
-            HorizontalDivider()
+                headline = { Text(stringResource(R.string.setting_lock_video_ratio)) },
+            )
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
         }
         items(MzAspectRatio.entries) { ratio ->
-            val selected = ratio == currentRatio
-            ListItem(
+            PlayerPanelItem(
+                selected = ratio == currentRatio,
                 onClick = {
                     onSelect(ratio)
                     // 锁定状态下这一次改动就是新的全局比例
                     if (locked) settingsViewModel.setGlobalVideoRatio(ratio.name)
                 },
-                leadingContent = { SelectedMark(selected) },
-            ) {
-                Text(formatAspectRatio(ratio))
-            }
+                headline = { Text(formatAspectRatio(ratio)) },
+            )
         }
     }
 }
@@ -651,12 +670,11 @@ private fun FinishActionPanel(
         onBack = onBack,
     ) {
         items((0 until VIDEO_FINISH_ACTION_COUNT).toList()) { index ->
-            ListItem(
+            PlayerPanelItem(
+                selected = index == current,
                 onClick = { settingsViewModel.setVideoFinishAction(index) },
-                leadingContent = { SelectedMark(index == current) },
-            ) {
-                Text(formatVideoFinishAction(index))
-            }
+                headline = { Text(formatVideoFinishAction(index)) },
+            )
         }
     }
 }
@@ -677,28 +695,33 @@ private fun PlaylistPanel(
         }
         itemsIndexed(playlist, key = { index, item -> "$index-${item.uri}" }) { index, item ->
             val current = index == currentIndex
-            ListItem(
+            PlayerPanelItem(
+                selected = current,
                 onClick = { onSelect(item) },
-                leadingContent = { SelectedMark(current) },
-                trailingContent = {
+                headline = {
+                    Text(
+                        text = item.fileName,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = if (current) {
+                            MaterialTheme.colorScheme.onSecondaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        },
+                    )
+                },
+                trailing = {
                     Text(
                         text = (index + 1).toString(),
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (current) {
+                            MaterialTheme.colorScheme.onSecondaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                     )
                 },
-            ) {
-                Text(
-                    text = item.fileName,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = if (current) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                )
-            }
+            )
         }
     }
 }
@@ -755,9 +778,10 @@ private fun DanmakuPanel(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
         ) {
-            ListItem(
+            PlayerPanelItem(
+                selected = settings.isSwitchEnabled,
                 onClick = { push(settings.copy(isSwitchEnabled = !settings.isSwitchEnabled)) },
-                trailingContent = {
+                trailing = {
                     Switch(
                         checked = settings.isSwitchEnabled,
                         onCheckedChange = { checked ->
@@ -765,9 +789,8 @@ private fun DanmakuPanel(
                         },
                     )
                 },
-            ) {
-                Text(stringResource(R.string.ui_label_danmaku_toggle))
-            }
+                headline = { Text(stringResource(R.string.ui_label_danmaku_toggle)) },
+            )
 
             PanelSectionTitle(stringResource(R.string.ui_label_danmaku_display_area))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -842,7 +865,7 @@ private fun PanelScaffold(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = PanelListMaxHeight),
-            contentPadding = PaddingValues(bottom = 8.dp),
+            contentPadding = PaddingValues(top = 2.dp, bottom = 12.dp),
             content = content,
         )
     }
@@ -870,18 +893,25 @@ private fun PanelHeader(
         }
         Text(
             text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            // Expressive 的底部表标题比正文高一档，才撑得住下面一排列表项
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .weight(1f)
-                .padding(start = if (onBack == null) 16.dp else 0.dp),
+                .padding(start = if (onBack == null) 16.dp else 4.dp),
         )
         trailing?.invoke()
     }
 }
 
+/**
+ * 根面板的一行：图标装在一个圆角容器里。
+ *
+ * Expressive 的列表项是「图标本身就是一块容器」，而不是一行裸图标 ——
+ * 容器先给出视觉锚点，右边的标题才读得下去。
+ */
 @Composable
 private fun PanelEntry(
     title: String,
@@ -891,12 +921,27 @@ private fun PanelEntry(
 ) {
     ListItem(
         onClick = onClick,
+        modifier = Modifier
+            .padding(horizontal = 10.dp, vertical = 2.dp)
+            .clip(MaterialTheme.shapes.large),
         leadingContent = {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Surface(
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(40.dp),
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
         },
         trailingContent = trailing,
     ) {
@@ -904,15 +949,61 @@ private fun PanelEntry(
     }
 }
 
-/** 选中态的对勾；没选中时占一个同宽的空白，避免标题左右跳动 */
+/**
+ * 子面板里的可选条目：左侧选中标记 + 标题 +（可选）副标题 / 尾部内容。
+ *
+ * 选中时整行铺一层 `secondaryContainer`：Expressive 的选中态是「容器变色 + 图标变实」，
+ * 长列表里只靠左边一个对勾并不够显眼。
+ */
+@Composable
+private fun PlayerPanelItem(
+    selected: Boolean,
+    onClick: () -> Unit,
+    headline: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    supporting: (@Composable () -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    ListItem(
+        onClick = onClick,
+        modifier = modifier
+            .padding(horizontal = 10.dp, vertical = 2.dp)
+            .clip(MaterialTheme.shapes.large),
+        colors = ListItemDefaults.colors(
+            containerColor = if (selected) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
+                Color.Transparent
+            },
+        ),
+        leadingContent = { SelectedMark(selected) },
+        supportingContent = supporting,
+        trailingContent = trailing,
+    ) {
+        headline()
+    }
+}
+
+/** 选中态的对勾：弹簧放大出现；没选中时留一个同宽的空白，避免标题左右跳动 */
 @Composable
 private fun SelectedMark(selected: Boolean) {
     Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-        if (selected) {
+        AnimatedVisibility(
+            visible = selected,
+            enter = fadeIn(tween(durationMillis = 120)) + scaleIn(
+                initialScale = 0.6f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+            ),
+            exit = fadeOut(tween(durationMillis = 100)),
+        ) {
             Icon(
                 imageVector = Icons.Filled.Check,
                 contentDescription = stringResource(R.string.ui_label_selected),
                 tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
             )
         }
     }

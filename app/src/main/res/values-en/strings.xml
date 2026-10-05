@@ -279,6 +279,7 @@
     <string name="ui_label_select_version_for_title">%s - Select Version</string>
     <string name="ui_label_tip_modify_tmdb_info">Tip: Long-press the version below to modify the TMDB information of the file</string>
     <string name="ui_label_tv_show_library">TV Show Library</string>
+    <string name="ui_label_season_count">%1$d Seasons</string>
 
 
     <string name="ui_label_scroll_right_for_more">Scroll right to see more content →</string>
@@ -649,8 +650,5 @@
     <string name="phone_player_long_press_speed">Playing at %1$s</string>
     <string name="phone_player_fullscreen">Fullscreen</string>
     <string name="phone_player_exit_fullscreen">Exit fullscreen</string>
-    <string name="phone_player_rewind">Rewind %1$d s</string>
-    <string name="phone_player_forward">Forward %1$d s</string>
-    <string name="phone_player_previous_video">Previous video</string>
     <string name="phone_player_next_video">Next video</string>
 </resources>
