@@ -5,22 +5,27 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -37,16 +42,19 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.max
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.tv.material3.Border
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
@@ -60,15 +68,11 @@ import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.local.MediaCacheEntity
 import org.mz.mzdkplayer.ui.screen.common.LibraryEmpty
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
-import org.mz.mzdkplayer.ui.screen.common.MediaCard
 import org.mz.mzdkplayer.ui.screen.common.MyFileDialog
 import org.mz.mzdkplayer.viewmodel.MediaLibraryViewModel
 import org.mz.mzdkplayer.viewmodel.SettingsViewModel
 import org.mz.mzdkplayer.ui.theme.myListItemCoverColor
 import org.mz.mzdkplayer.tool.Tools.toBase64
-import java.net.URLEncoder
-import java.util.Locale
-import androidx.compose.ui.platform.LocalLocale
 
 // === 电视剧屏幕 (原生 Box 实现沉浸式列表) ===
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -92,7 +96,7 @@ fun TvLibraryScreen(
     val settingsState by settingsViewModel.uiState.collectAsState()
     // 控制弹窗显示
     var showEditDialog by remember { mutableStateOf(false) }
-    // 👇 1. 为电视剧列表创建 FocusRequester
+    // 为电视剧列表创建 FocusRequester
     val listFocusRequester = remember { FocusRequester() }
     // 如果刚进入页面没有焦点，默认尝试获取列表第一个作为背景
     LaunchedEffect(tvSeriesList.itemSnapshotList.items) {
@@ -100,7 +104,7 @@ fun TvLibraryScreen(
             focusedTvShow = tvSeriesList.itemSnapshotList.items.firstOrNull()
         }
     }
-    // 👇 2. 监听加载状态，加载完成且非空时自动请求焦点
+    // 监听加载状态，加载完成且非空时自动请求焦点
     LaunchedEffect(isTvSeriesLoading, isTvSeriesEmpty) {
         if (!isTvSeriesLoading && !isTvSeriesEmpty) {
             runCatching { listFocusRequester.requestFocus() }
@@ -111,211 +115,188 @@ fun TvLibraryScreen(
     } else if (isTvSeriesEmpty) {
         LibraryEmpty(navController = homeNavController, type = "tv")
     } else {
-        // === 使用 Box 容器来实现 ImmersiveList 的效果 ===
-        Box(modifier = Modifier.fillMaxSize())
-        {
-            // 1. 背景层 (Background) - 位于最底层
+        // 使用纯黑背景，确保与导航栏无缝衔接
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+
+            // ================= 1. 沉浸式海报背景层 =================
             AnimatedContent(
                 targetState = focusedTvShow,
                 transitionSpec = {
-                    fadeIn(animationSpec = tween(500)) togetherWith fadeOut(
-                        animationSpec = tween(
-                            500
-                        )
-                    )
+                    fadeIn(animationSpec = tween(600)) togetherWith fadeOut(animationSpec = tween(600))
                 },
                 label = "BackgroundAnimation",
                 modifier = Modifier.fillMaxSize()
             ) { tvShow ->
                 Box(modifier = Modifier.fillMaxSize()) {
-                    if (tvShow != null) {
-                        val backdropUrl = tvShow.backdropPath ?: tvShow.posterPath
-                        if (backdropUrl != null) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    // 使用 Tools 处理 URL
-                                    .data(org.mz.mzdkplayer.tool.Tools.formatImageUrl(backdropUrl, "w1280"))
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
-                                alpha = 0.6f // 稍微调暗一点，让文字更清晰
-                            )
-                        }
-
-                        // 渐变遮罩 (让底部和左侧文字区域更清晰)
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(
-                                            Color.Black.copy(alpha = 0.3f),
-                                            Color.Black.copy(alpha = 0.8f),
-                                            Color.Black.copy(alpha = 0.95f) // 底部接近纯黑
-                                        )
-                                    )
-                                )
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    Brush.horizontalGradient(
-                                        colors = listOf(
-                                            Color.Black,
-                                            Color.Transparent
-                                        ),
-                                        endX = 1000f // 左侧文字区域加深
-                                    )
-                                )
+                    val backdropUrl = tvShow?.backdropPath ?: tvShow?.posterPath
+                    if (tvShow != null && !backdropUrl.isNullOrEmpty()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(org.mz.mzdkplayer.tool.Tools.formatImageUrl(backdropUrl, "w1280"))
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                            alpha = 0.75f
                         )
                     } else {
-                        // 空状态背景
+                        // 空状态背景：铺一层深灰，避免闪白
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(Color(0xFF111111))
                         )
                     }
+
+                    // 多层渐变遮罩，确保背景不管多亮，文字都绝对清晰
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Black.copy(alpha = 0.15f),
+                                        Color.Black.copy(alpha = 0.5f),
+                                        Color.Black.copy(alpha = 0.95f)
+                                    )
+                                )
+                            )
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color.Black,
+                                        Color.Black.copy(alpha = 0.35f),
+                                        Color.Transparent
+                                    ),
+                                    endX = 1100f // 左侧信息区域加深
+                                )
+                            )
+                    )
                 }
             }
 
-            // 2. 列表层 (List) 和预留空间
+            // ================= 2. 核心内容排版层（规范对齐） =================
             Column(modifier = Modifier.fillMaxSize()) {
 
-                // 增加顶部预留空间的高度，确保第一行卡片不会和顶部信息重叠
-                Spacer(modifier = Modifier.height(260.dp)) // 预留出信息展示区域的高度
+                // 顶部信息展示区（自动占据列表上方的所有剩余空间）
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    AnimatedContent(
+                        targetState = focusedTvShow,
+                        transitionSpec = {
+                            fadeIn(animationSpec = tween(400)) togetherWith fadeOut(animationSpec = tween(400))
+                        },
+                        label = "TvShowInfoAnimation",
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(start = 32.dp, top = 150.dp)
+                            .widthIn(max = 720.dp) // 限制最大宽度，防止文字拉得太长
+                    ) { tvShow ->
+                        Column {
+                            // ① 元数据行：类型 · 类型标签/年份 · 评分 · 季数
+                            val year = tvShow?.releaseDate?.take(4) ?: ""
+                            val seasons = tvShow?.numberOfSeasons ?: 0
+                            val ratingString = String.format(
+                                LocalLocale.current.platformLocale,
+                                "%.1f ★",
+                                tvShow?.voteAverage ?: 0.0
+                            )
+                            val genresString = tvShow?.genres?.take(2)?.joinToString("/") { it.name } ?: ""
+                            val metadataText = listOfNotNull(
+                                "TV Series",
+                                genresString.ifEmpty { null },
+                                year.ifEmpty { null },
+                                ratingString,
+                                if (seasons > 0) stringResource(R.string.ui_label_season_count, seasons) else null
+                            ).joinToString(" · ")
 
-                // 剧集列表，使用 LazyHorizontalGrid
+                            Text(
+                                text = metadataText,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = Color.White.copy(alpha = 0.6f),
+                                fontWeight = FontWeight.Medium
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // ② 大标题
+                            Text(
+                                text = tvShow?.title.orEmpty(),
+                                style = MaterialTheme.typography.displaySmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // ③ 简介
+                            Text(
+                                text = tvShow?.overview.orEmpty(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color.White.copy(alpha = 0.75f),
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis,
+                                lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.3f
+                            )
+                        }
+                    }
+                }
+
+                // ================= 3. 横向剧集列表（横版封面卡片） =================
                 LazyHorizontalGrid(
                     rows = GridCells.Fixed(1),
                     contentPadding = PaddingValues(
-                        start = 32.dp,
+                        start = 32.dp,   // 与信息区左对齐
                         end = 32.dp,
-                        top = 10.dp, // 预留焦点放大空间
-                        bottom = 10.dp // 底部预留，避免卡片贴边和遮挡提示文字
+                        top = 12.dp,     // 预留焦点放大空间
+                        bottom = 24.dp
                     ),
-                    horizontalArrangement = Arrangement.spacedBy(24.dp), // 增大水平间距，让卡片更分散
+                    horizontalArrangement = Arrangement.spacedBy(18.dp),
                     modifier = Modifier
-                        .height(260.dp)
-                        .background(Color.Transparent).focusRequester(listFocusRequester) // 占据 Column 剩下的所有垂直空间
+                        .fillMaxWidth()
+                        .height(155.dp) // 16:9 卡片 + 放大与内边距空间
+                        .focusRequester(listFocusRequester)
                 ) {
                     items(tvSeriesList.itemCount) { index ->
                         val tvShow = tvSeriesList[index]
                         if (tvShow != null) {
-                            MediaCard(
-                                title = tvShow.title,
-                                posterPath = tvShow.posterPath,
-                                year = tvShow.releaseDate?.take(4) ?: "",
-                                modifier = Modifier
-                                    .onFocusChanged { focusState ->
-                                        if (focusState.isFocused) {
-                                            focusedTvShow = tvShow
-                                        }
-                                    },
+                            TvShowCard(
+                                tvShow = tvShow,
+                                onFocused = { focusedTvShow = tvShow },
                                 onClick = {
                                     // 点击时，加载该剧集下的所有文件，并显示弹窗
                                     selectedSeriesName = tvShow.title
                                     viewModel.loadEpisodes(tvShow.tmdbId, tvShow.source)
                                     showEpisodeDialog = true
-                                },
-                                onLongClick = {}
+                                }
                             )
                         }
                     }
                 }
-            }
 
-            // 3. 剧集信息展示层 (Foreground) - 位于最上层，独立于滚动内容之外
-            AnimatedContent(
-                targetState = focusedTvShow,
-                transitionSpec = {
-                    fadeIn(animationSpec = tween(500)) togetherWith fadeOut(
-                        animationSpec = tween(
-                            500
-                        )
-                    )
-                },
-                label = "TvShowInfoAnimation",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.TopStart)
-            ) { tvShow ->
-                if (tvShow != null) {
-                    Column(
-                        modifier = Modifier
-                            .padding(start = 32.dp, top = 20.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.ui_label_tv_show_library),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = tvShow.title,
-                            style = MaterialTheme.typography.displaySmall, // 大标题
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // 元数据行：年份 | 评分
-                        val year = tvShow.releaseDate?.take(4) ?: ""
-                        val rating = String.format(LocalLocale.current.platformLocale,"%.1f", tvShow.voteAverage)
-                        Text(
-                            text = "$year  •  TMDB $rating",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color(0xFFFFD700) // 金色强调评分
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            modifier = Modifier.fillMaxWidth(0.7f),
-                            text = tvShow.overview,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = Color.White.copy(alpha = 0.8f),
-                            maxLines = 4,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                } else {
-                    // 如果没有焦点剧集，显示一个占位符，保持布局稳定
-                    Column(
-                        modifier = Modifier
-                            .height(260.dp) // 保持高度一致
-                            .padding(start = 32.dp, top = 20.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.ui_label_tv_show_library),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = Color.Gray
-                        )
-                    }
-                }
-            }
-
-            // 4. 滚动提示文字 (位于最底部居中)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 3.dp)
-            ) {
+                // 底部操作提示
                 Text(
                     text = stringResource(R.string.ui_label_scroll_right_for_more),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.5f), // 半透明
-                    modifier = Modifier.align(Alignment.Center)
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(alpha = 0.35f),
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(bottom = 10.dp)
                 )
             }
         }
     }
-    // === 集数选择弹窗 (保持原样) ===
+    // === 集数选择弹窗 ===
     if (showEpisodeDialog) {
         EpisodeSelectionDialog(
             title = selectedSeriesName,
@@ -329,8 +310,6 @@ fun TvLibraryScreen(
                 showEpisodeDialog = false
                 // 跳转到现有的 TVSeriesDetailsScreen
                 val encodedUri = episode.videoUri.toBase64()
-                // 因为你的文件名可能作为 title 存在，这里要注意
-                val fileName = "S${episode.seasonNumber}E${episode.episodeNumber}"
                 val encodedFileName = episode.fileName.toBase64()
                 val connectionName = episode.connectionName.toBase64()
                 // 核心：这里将具体的 Uri 和 Season/Episode 传给详情页
@@ -341,8 +320,6 @@ fun TvLibraryScreen(
                 } else {
                     navController.navigate("VideoPlayer/$encodedUri/${episode.dataSourceType}/$encodedFileName/$connectionName")
                 }
-
-
             }
         )
     }
@@ -359,7 +336,112 @@ fun TvLibraryScreen(
     }
 }
 
-//弹窗组件 (保持原样，无需修改)
+/**
+ * 剧集卡片：横版 16:9 封面（优先剧照 backdrop，回退海报），
+ * 底部叠加剧名，右上角显示季数角标，焦点态白色描边 + 轻微放大。
+ */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun TvShowCard(
+    tvShow: MediaCacheEntity,
+    onFocused: () -> Unit,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        onLongClick = {},
+        modifier = Modifier
+            .width(190.dp)
+            .height(107.dp)
+            .onFocusChanged { focusState ->
+                if (focusState.isFocused) onFocused()
+            },
+        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
+        border = ClickableSurfaceDefaults.border(
+            focusedBorder = Border(
+                border = BorderStroke(2.5.dp, Color.White),
+                inset = 0.dp
+            )
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color(0xFF252830)
+        )
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            val cover = tvShow.backdropPath ?: tvShow.posterPath
+            if (!cover.isNullOrEmpty()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(org.mz.mzdkplayer.tool.Tools.formatImageUrl(cover, "w500"))
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = tvShow.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                // 兜底文字显示
+                Text(
+                    text = tvShow.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.8f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(8.dp)
+                )
+            }
+
+            // 底部渐变 + 剧名，让卡片自带辨识度
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.85f)
+                            )
+                        )
+                    )
+            )
+            Text(
+                text = tvShow.title,
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 8.dp, end = 8.dp, bottom = 6.dp)
+            )
+
+            // 右上角季数角标
+            val seasons = tvShow.numberOfSeasons ?: 0
+            if (seasons > 0) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.ui_label_season_count, seasons),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+    }
+}
+
+// 集数选择弹窗：左侧剧集海报 + 右侧剧集列表
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun EpisodeSelectionDialog(
@@ -371,89 +453,135 @@ fun EpisodeSelectionDialog(
 ) {
     // 状态：当前选中的、准备编辑的单集
     var selectedEpisodeForEdit by remember { mutableStateOf<MediaCacheEntity?>(null) }
-    Dialog(onDismissRequest = onDismiss) {
+    // 弹窗打开后主动把焦点交给第一条剧集，省去用户再按一次方向键
+    val firstEpisodeFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(episodes) {
+        if (episodes.isNotEmpty()) {
+            runCatching { firstEpisodeFocusRequester.requestFocus() }
+        }
+    }
+    // usePlatformDefaultWidth = false：解除平台对 Dialog 宽度的限制，才能按屏幕比例铺开
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Surface(
             modifier = Modifier
-                .widthIn(min = 400.dp, max=800.dp)
-                .height(500.dp),
-            shape = MaterialTheme.shapes.medium,
+                .fillMaxWidth(0.8f)
+                .fillMaxHeight(0.82f),
+            shape = MaterialTheme.shapes.large,
             colors = SurfaceDefaults.colors(
-                containerColor = Color(0xFF1E1E1E)
+                containerColor = Color(0xFF15171C)
             )
         ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Text(
-                    text = stringResource(R.string.ui_label_select_episode_for_title,title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-                // --- 新增提示文字 ---
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = stringResource(R.string.ui_label_tip_long_press_edit_tmdb_info),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.LightGray // 使用主题色或淡蓝色强调
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-
-                if (episodes.isEmpty()) {
-                    Text(stringResource(R.string.ui_label_loading), color = Color.Gray)
-                } else {
-                    LazyColumn(
-                        Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(28.dp)
+            ) {
+                // 左侧：剧集海报（有封面时才展示，避免空框）
+                val poster = episodes.firstOrNull()?.posterPath
+                if (!poster.isNullOrEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .aspectRatio(2f / 3f)
+                            .background(Color(0xFF252830), RoundedCornerShape(14.dp))
                     ) {
-                        items(episodes) { episode ->
-                            // 【修改点】使用 ListItem 替换 Button
-                            ListItem(
-                                selected = false, // 焦点控制由 TV 框架自动处理
-                                onClick = { onEpisodeClick(episode) },
-                                onLongClick = { selectedEpisodeForEdit = episode},
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = myListItemCoverColor(),
-                                // headlineContent: 显示季集序号
-                                headlineContent = {
-                                    // 1. 先准备好剧集名称后缀（如果有名字，就加上 " · 名字"）
-                                    val episodeNameSuffix = if (!episode.episodeName.isNullOrEmpty()) {
-                                        " · ${episode.episodeName}"
-                                    } else {
-                                        ""
-                                    }
-                                    // 2. 使用 stringResource 填充
-                                    Text(
-                                        text = stringResource(
-                                            R.string.ui_label_episode_format,
-                                            episode.seasonNumber,
-                                            episode.episodeNumber,
-                                            episodeNameSuffix
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(org.mz.mzdkplayer.tool.Tools.formatImageUrl(poster, "w500"))
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(24.dp))
+                }
+
+                // 右侧：标题 + 提示 + 剧集列表
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.ui_label_select_episode_for_title, title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = stringResource(R.string.ui_label_tip_long_press_edit_tmdb_info),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if (episodes.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(stringResource(R.string.ui_label_loading), color = Color.Gray)
+                        }
+                    } else {
+                        LazyColumn(
+                            Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            itemsIndexed(episodes) { index, episode ->
+                                ListItem(
+                                    selected = false, // 焦点控制由 TV 框架自动处理
+                                    onClick = { onEpisodeClick(episode) },
+                                    onLongClick = { selectedEpisodeForEdit = episode },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .then(
+                                            if (index == 0) {
+                                                Modifier.focusRequester(firstEpisodeFocusRequester)
+                                            } else {
+                                                Modifier
+                                            }
                                         ),
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                },
-                                // supportingContent: 显示集名称（如果存在）
-//                                supportingContent = if (!episode.episodeName.isNullOrEmpty()) {
-//                                    {
-//                                        Text(text = episode.episodeName)
-//                                    }
-//                                } else null,
-                                // trailingContent: 可以在右侧放置一个指示图标或文本
-                                overlineContent = {
-                                    Text(
-                                        "${episode.dataSourceType} · ${episode.fileName}",
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            )
+                                    colors = myListItemCoverColor(),
+                                    // headlineContent: 显示季集序号
+                                    headlineContent = {
+                                        // 1. 先准备好剧集名称后缀（如果有名字，就加上 " · 名字"）
+                                        val episodeNameSuffix = if (!episode.episodeName.isNullOrEmpty()) {
+                                            " · ${episode.episodeName}"
+                                        } else {
+                                            ""
+                                        }
+                                        // 2. 使用 stringResource 填充
+                                        Text(
+                                            text = stringResource(
+                                                R.string.ui_label_episode_format,
+                                                episode.seasonNumber,
+                                                episode.episodeNumber,
+                                                episodeNameSuffix
+                                            ),
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    },
+                                    // overlineContent: 显示数据源与文件名
+                                    overlineContent = {
+                                        Text(
+                                            "${episode.dataSourceType} · ${episode.fileName}",
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                )
+                            }
                         }
                     }
                 }
             }
-
         }
     }
-    // --- 在这里插入长按后的二级弹窗 ---
+    // --- 长按后的二级弹窗 ---
     if (selectedEpisodeForEdit != null) {
         MyFileDialog(
             onDismiss = { selectedEpisodeForEdit = null },
@@ -471,5 +599,4 @@ fun EpisodeSelectionDialog(
             onCloseClick = { selectedEpisodeForEdit = null }
         )
     }
-
 }

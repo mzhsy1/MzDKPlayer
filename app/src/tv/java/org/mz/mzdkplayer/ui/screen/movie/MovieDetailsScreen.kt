@@ -79,6 +79,15 @@ import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.di.RepositoryProvider
 import org.mz.mzdkplayer.tool.Tools.getCountryName
 import org.mz.mzdkplayer.di.viewModelWithFactory
+import org.mz.mzdkplayer.ui.screen.common.DetailAccentGold
+import org.mz.mzdkplayer.ui.screen.common.DetailChip
+import org.mz.mzdkplayer.ui.screen.common.DetailInfoLabel
+import org.mz.mzdkplayer.ui.screen.common.DetailInfoRow
+import org.mz.mzdkplayer.ui.screen.common.DetailMetaRow
+import org.mz.mzdkplayer.ui.screen.common.DetailPanel
+import org.mz.mzdkplayer.ui.screen.common.DetailPanelTitle
+import org.mz.mzdkplayer.ui.screen.common.DetailRatingBadge
+import org.mz.mzdkplayer.ui.screen.common.ImmersiveBackdrop
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreenWithSub
 import org.mz.mzdkplayer.ui.screen.common.LocalizedStatusText
@@ -195,55 +204,13 @@ private fun MovieContent(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(themeColor)) {
-        // --- 背景层 ---
-        if (!movie.backdropPath.isNullOrEmpty()) {
-            AsyncImage(
-                model = org.mz.mzdkplayer.tool.Tools.formatImageUrl(movie.backdropPath, "w1280"),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-                alpha = 0.8f
-            )
-        } else {
-            Box(modifier = Modifier.fillMaxSize().background(Color.Black))
-        }
-
-        // --- 优化的渐变遮罩系统 ---
-        // 1. 主垂直渐变 (更平滑的过渡)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,                    // 0%
-                            Color.Transparent,                    // 50% 保持透明
-                            themeColor.copy(alpha = 0.3f),       // 65% 开始渐变
-                            themeColor.copy(alpha = 0.6f),       // 75% 加强
-                            themeColor.copy(alpha = 0.85f),      // 85% 接近不透明
-                            themeColor                           // 100% 完全覆盖
-                        ),
-                        startY = 0f,
-                        endY = 1800f // 更大的渐变范围
-                    )
-                )
-        )
-
-        // 2. 左侧电影感暗角 (改善文字可读性)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.Transparent,
-                            themeColor.copy(alpha = 0.4f)
-                        ),
-                        center = Offset(-0.3f, 0.5f), // 偏左中心
-                        radius = 1.8f
-                    )
-                )
+        // --- 背景层：全屏剧照 + 主题色渐变遮罩（主题色由剧照自动提取） ---
+        ImmersiveBackdrop(
+            imageUrl = movie.backdropPath
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { org.mz.mzdkplayer.tool.Tools.formatImageUrl(it, "w1280") },
+            themeColor = themeColor,
+            onThemeColorExtracted = { themeColor = it }
         )
 
         // --- 内容滚动层 ---
@@ -281,14 +248,14 @@ private fun MovieContent(
                         // 电影标题
                         Surface(
                             onClick = { onPlayClick() },
-                            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
+                            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
                             colors = ClickableSurfaceDefaults.colors(
                                 containerColor = Color.Transparent,
-                                focusedContainerColor = Color.White.copy(alpha = 0.1f),
-                                pressedContainerColor = Color.White.copy(alpha = 0.2f)
+                                focusedContainerColor = Color.White.copy(alpha = 0.08f),
+                                pressedContainerColor = Color.White.copy(alpha = 0.16f)
                             ),
                             border = ClickableSurfaceDefaults.border(
-                                focusedBorder = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.5f)))
+                                focusedBorder = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)))
                             ),
                             modifier = Modifier.offset(x = (-8).dp).focusRequester(titleFR)
                         ) {
@@ -326,41 +293,39 @@ private fun MovieContent(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         // 元数据行 (精简版)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        DetailMetaRow {
                             // 评分
-                            Box(
-                                modifier = Modifier
-                                    .background(Color(0xFFEDA33D), RoundedCornerShape(4.dp))
-                                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "TMDB ${String.format(LocalLocale.current.platformLocale, "%.1f", movie.voteAverage)}",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = Color.Black,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            // 年份
-                            Text(
-                                text = movie.releaseDate?.take(4) ?: "",
-                                color = Color.White,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
+                            DetailRatingBadge(
+                                "TMDB ${
+                                    String.format(
+                                        LocalLocale.current.platformLocale,
+                                        "%.1f",
+                                        movie.voteAverage
+                                    )
+                                }"
                             )
 
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(text = "•", color = Color.Gray)
-                            Spacer(modifier = Modifier.width(12.dp))
+                            // 年份
+                            val year = movie.releaseDate?.take(4)
+                            if (!year.isNullOrEmpty()) {
+                                Text(
+                                    text = year,
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
 
                             // 主要类型 (只显示前两个)
                             val mainGenres = movie.genreList.take(2).joinToString(" • ") { it.name }
                             if (mainGenres.isNotEmpty()) {
                                 Text(
+                                    text = "•",
+                                    color = Color.White.copy(alpha = 0.4f)
+                                )
+                                Text(
                                     text = mainGenres,
-                                    color = Color(0xFFCCCCCC),
+                                    color = Color.White.copy(alpha = 0.8f),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Normal
                                 )
@@ -369,26 +334,27 @@ private fun MovieContent(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // 电影简介 (精简版)
+                        // 电影简介 (精简版，限制宽度以获得更好的可读性)
                         Surface(
                             onClick = { showFullDescDialog = true },
-                            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
+                            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
                             colors = ClickableSurfaceDefaults.colors(
                                 containerColor = Color.Transparent,
                                 focusedContainerColor = Color.White.copy(alpha = 0.1f),
-                                pressedContainerColor = Color.White.copy(alpha = 0.2f)
+                                pressedContainerColor = Color.White.copy(alpha = 0.18f)
                             ),
                             border = ClickableSurfaceDefaults.border(
-                                focusedBorder = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.5f)))
-                            )
+                                focusedBorder = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)))
+                            ),
+                            modifier = Modifier.widthIn(max = 860.dp)
                         ) {
-                            Column(modifier = Modifier.padding(8.dp)) {
+                            Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
                                 Text(
                                     text = movie.overview,
                                     style = MaterialTheme.typography.bodyLarge.copy(
-                                        shadow = Shadow(color = Color.Black, blurRadius = 4f)
+                                        shadow = Shadow(color = Color.Black.copy(alpha = 0.7f), blurRadius = 6f)
                                     ),
-                                    color = Color.White.copy(alpha = 0.95f),
+                                    color = Color.White.copy(alpha = 0.92f),
                                     lineHeight = 24.sp,
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis
@@ -396,7 +362,7 @@ private fun MovieContent(
                                 Text(
                                     text = stringResource(R.string.ui_label_press_ok_for_full_summary),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White.copy(alpha = 0.6f),
+                                    color = Color.White.copy(alpha = 0.55f),
                                     modifier = Modifier.padding(top = 8.dp)
                                 )
                             }
@@ -497,32 +463,17 @@ private fun AnimatedDownArrow() {
     }
 }
 
-// 新增：电影海报部分
+// 电影海报卡片
 @Composable
 private fun MoviePosterSection(movie: MovieDetails) {
-    Surface(
-        onClick = { },
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.White.copy(alpha = 0.05f),
-            focusedContainerColor = Color.White.copy(alpha = 0.1f),
-            pressedContainerColor = Color.White.copy(alpha = 0.15f)
-        ),
-        border = ClickableSurfaceDefaults.border(
-            focusedBorder = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)))
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.padding(24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+    DetailPanel(contentPadding = PaddingValues(24.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             // 海报图
             Box(
                 modifier = Modifier
-                    .width(160.dp)
+                    .width(170.dp)
                     .aspectRatio(2f / 3f)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(Color.Black)
             ) {
                 if (!movie.posterPath.isNullOrEmpty()) {
@@ -537,26 +488,22 @@ private fun MoviePosterSection(movie: MovieDetails) {
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(stringResource(R.string.ui_label_no_poster), color = Color.Gray, style = MaterialTheme.typography.labelSmall)
+                        Text(
+                            text = stringResource(R.string.ui_label_no_poster),
+                            color = Color.Gray,
+                            style = MaterialTheme.typography.labelSmall
+                        )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.width(24.dp))
+            Spacer(modifier = Modifier.width(28.dp))
 
             // 右侧信息
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.ui_label_movie_poster),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFFCCCCCC)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
                     text = movie.title ?: stringResource(R.string.ui_label_unknown_movie),
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.headlineSmall,
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
@@ -565,130 +512,92 @@ private fun MoviePosterSection(movie: MovieDetails) {
 
                 val originalTitle = movie.originalTitle
                 if (!originalTitle.isNullOrEmpty() && originalTitle != movie.title) {
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = originalTitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray,
-                        fontStyle = FontStyle.Italic
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White.copy(alpha = 0.55f),
+                        fontStyle = FontStyle.Italic,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // 评分 / 年份
+                val ratingText =
+                    "TMDB " + String.format(
+                        LocalLocale.current.platformLocale,
+                        "%.1f",
+                        movie.voteAverage
+                    )
+                DetailMetaRow {
+                    DetailRatingBadge(text = ratingText)
+
+                    val year = movie.releaseDate?.take(4)
+                    if (!year.isNullOrEmpty()) {
+                        Text(
+                            text = year,
+                            color = Color.White.copy(alpha = 0.85f),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+
+                // 类型标签
+                if (movie.genreList.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        movie.genreList.take(4).forEach { genre ->
+                            DetailChip(text = genre.name)
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-// 新增：电影附加信息部分
+// 电影附加信息部分
 @Composable
 private fun MovieAdditionalInfoSection(movie: MovieDetails) {
-    Surface(
-        onClick = { },
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.White.copy(alpha = 0.05f),
-            focusedContainerColor = Color.White.copy(alpha = 0.1f),
-            pressedContainerColor = Color.White.copy(alpha = 0.15f)
-        ),
-        border = ClickableSurfaceDefaults.border(
-            focusedBorder = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)))
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.ui_label_movie_details),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFCCCCCC)
+    DetailPanel {
+        DetailPanelTitle(text = stringResource(R.string.ui_label_movie_details))
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // 完整类型列表
+        val genres = movie.genreList.joinToString(" • ") { it.name }
+        if (genres.isNotEmpty()) {
+            DetailInfoRow(label = stringResource(R.string.ui_label_genre), value = genres)
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        // 制作国家
+        val countries = movie.originCountry.joinToString(", ") { getCountryName(it) }
+        if (countries.isNotEmpty()) {
+            DetailInfoRow(
+                label = stringResource(R.string.ui_label_countries_of_origin),
+                value = countries
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+        }
 
-            // 完整类型列表
-            Row(verticalAlignment = Alignment.Top) {
-                Text(
-                    text = stringResource(R.string.ui_label_genre),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray,
-                    modifier = Modifier.width(80.dp)
-                )
-                Text(
-                    text = movie.genreList.joinToString(" • ") { it.name },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.LightGray,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
+        // 状态
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            DetailInfoLabel(text = stringResource(R.string.ui_label_status))
+            LocalizedStatusText(movie.status)
+        }
 
-            // 制作国家
-            val countries = movie.originCountry.joinToString(", ") { getCountryName(it) }
-            if (countries.isNotEmpty()) {
-                Row(verticalAlignment = Alignment.Top) {
-                    Text(
-                        text = stringResource(R.string.ui_label_countries_of_origin),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray,
-                        modifier = Modifier.width(80.dp)
-                    )
-                    Text(
-                        text = countries,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.LightGray
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 状态
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = stringResource(R.string.ui_label_status),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray,
-                    modifier = Modifier.width(80.dp)
-                )
-                LocalizedStatusText(movie.status, )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 上映日期
-            val releaseDate = movie.releaseDate
-            if (!releaseDate.isNullOrEmpty()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(R.string.ui_label_release_date),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray,
-                        modifier = Modifier.width(80.dp)
-                    )
-                    Text(
-                        text = releaseDate,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.LightGray
-                    )
-                }
-            }
-
-            // 运行时间
-//            if (movie.runtime != null && movie.runtime > 0) {
-//                Spacer(modifier = Modifier.height(8.dp))
-//                Row(verticalAlignment = Alignment.CenterVertically) {
-//                    Text(
-//                        text = "片长: ",
-//                        style = MaterialTheme.typography.bodyMedium,
-//                        color = Color.Gray,
-//                        modifier = Modifier.width(80.dp)
-//                    )
-//                    Text(
-//                        text = "${movie.runtime} 分钟",
-//                        style = MaterialTheme.typography.bodyMedium,
-//                        color = Color.LightGray
-//                    )
-//                }
-//            }
+        // 上映日期
+        val releaseDate = movie.releaseDate
+        if (!releaseDate.isNullOrEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            DetailInfoRow(
+                label = stringResource(R.string.ui_label_release_date),
+                value = releaseDate
+            )
         }
     }
 }
@@ -699,57 +608,29 @@ private fun FileInformationSection(
     dataSourceType: String,
     connectionName: String
 ) {
-    Surface(
-        onClick = { },
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.White.copy(alpha = 0.05f),
-            focusedContainerColor = Color.White.copy(alpha = 0.1f),
-            pressedContainerColor = Color.White.copy(alpha = 0.15f)
-        ),
-        border = ClickableSurfaceDefaults.border(
-            focusedBorder = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)))
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.ui_label_media_source_file),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFCCCCCC)
+    DetailPanel {
+        DetailPanelTitle(text = stringResource(R.string.ui_label_media_source_file))
+        Spacer(modifier = Modifier.height(20.dp))
+
+        DetailInfoRow(
+            label = stringResource(R.string.ui_label_file_name),
+            value = fileName,
+            labelWidth = 88.dp
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        DetailInfoRow(
+            label = stringResource(R.string.ui_label_data_source),
+            value = dataSourceType,
+            labelWidth = 88.dp
+        )
+        if (connectionName.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            DetailInfoRow(
+                label = stringResource(R.string.ui_label_connection_name),
+                value = connectionName,
+                labelWidth = 88.dp
             )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            InfoRow(label = stringResource(R.string.ui_label_file_name), value = fileName)
-            Spacer(modifier = Modifier.height(8.dp))
-            InfoRow(label = stringResource(R.string.ui_label_data_source), value = dataSourceType)
-            if (connectionName.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                InfoRow(label = stringResource(R.string.ui_label_connection_name), value = connectionName)
-            }
         }
-    }
-}
-
-@Composable
-private fun InfoRow(label: String, value: String) {
-    Row {
-        Text(
-            text = "$label: ",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray,
-            modifier = Modifier.width(80.dp)
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.LightGray,
-            overflow = TextOverflow.Ellipsis,
-            maxLines = 1
-        )
     }
 }
 
@@ -764,12 +645,17 @@ fun FullDescriptionDialog(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(24.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFF1E1E1E))
+                .clip(RoundedCornerShape(20.dp))
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color(0xFF262A31), Color(0xFF14161A))
+                    )
+                )
+                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
         ) {
             Column(
                 modifier = Modifier
-                    .padding(32.dp)
+                    .padding(36.dp)
                     .fillMaxSize()
             ) {
                 Text(
@@ -779,16 +665,18 @@ fun FullDescriptionDialog(
                     fontWeight = FontWeight.Bold
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
+                // 标题下的强调线
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(Color.Gray.copy(alpha = 0.3f))
+                        .width(56.dp)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(DetailAccentGold)
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 // 滚动文本区域
                 val scrollState = rememberScrollState()
@@ -835,8 +723,8 @@ fun FullDescriptionDialog(
                     Text(
                         text = overview,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color.LightGray,
-                        lineHeight = 32.sp,
+                        color = Color.White.copy(alpha = 0.85f),
+                        lineHeight = 34.sp,
                         fontSize = 18.sp
                     )
                 }
@@ -849,8 +737,8 @@ fun FullDescriptionDialog(
                 ) {
                     MyIconButton(
                         text = stringResource(R.string.ui_label_close),
-                        icon = R.drawable.baseline_play_arrow_24,
-                        modifier = Modifier.width(120.dp),
+                        icon = R.drawable.baseline_close_24,
+                        modifier = Modifier.width(140.dp),
                         onClick = onDismiss
                     )
                 }

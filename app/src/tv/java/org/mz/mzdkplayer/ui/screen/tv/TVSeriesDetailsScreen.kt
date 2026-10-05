@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,27 +45,19 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.graphics.drawable.toBitmap
 import androidx.navigation.NavHostController
-import androidx.palette.graphics.Palette
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import coil3.BitmapImage
-import coil3.asDrawable
 import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.request.allowHardware
-import coil3.request.crossfade
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.model.TVEpisode
 import org.mz.mzdkplayer.data.model.TVSeriesDetails
@@ -72,6 +65,13 @@ import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.di.RepositoryProvider
 import org.mz.mzdkplayer.tool.Tools.getCountryName
 import org.mz.mzdkplayer.di.viewModelWithFactory
+import org.mz.mzdkplayer.ui.screen.common.DetailInfoLabel
+import org.mz.mzdkplayer.ui.screen.common.DetailInfoRow
+import org.mz.mzdkplayer.ui.screen.common.DetailMetaRow
+import org.mz.mzdkplayer.ui.screen.common.DetailPanel
+import org.mz.mzdkplayer.ui.screen.common.DetailPanelTitle
+import org.mz.mzdkplayer.ui.screen.common.DetailRatingBadge
+import org.mz.mzdkplayer.ui.screen.common.ImmersiveBackdrop
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreenWithSub
 import org.mz.mzdkplayer.ui.screen.common.LocalizedStatusText
 import org.mz.mzdkplayer.ui.screen.common.MyIconButton
@@ -192,7 +192,6 @@ private fun TVSeriesContent(
 
     // 主题色
     var themeColor by remember { mutableStateOf(Color(0xFF121212)) }
-    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         //listState.scrollToItem(0)
@@ -211,78 +210,11 @@ private fun TVSeriesContent(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(themeColor)) {
-        // --- 背景层 ---
-        if (bgImageUrl != null) {
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(bgImageUrl)
-                    .allowHardware(false)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-                onSuccess = { result ->
-                    val image = result.result.image
-                    val bitmap = (image as? BitmapImage)?.bitmap
-                        ?: image.asDrawable(context.resources).toBitmap()
-                    bitmap.let { bmp ->
-                        Palette.from(bmp).generate { palette ->
-                            val dominant = palette?.darkVibrantSwatch?.rgb ?: palette?.dominantSwatch?.rgb
-                            if (dominant != null) {
-                                val original = Color(dominant)
-                                // 压暗主题色
-                                themeColor = Color(
-                                    red = original.red * 0.25f,
-                                    green = original.green * 0.25f,
-                                    blue = original.blue * 0.25f,
-                                    alpha = 1f
-                                )
-                            }
-                        }
-                    }
-                }
-            )
-        } else {
-            Box(modifier = Modifier.fillMaxSize().background(Color.Black))
-        }
-
-        // --- 优化的渐变遮罩系统 ---
-        // 1. 主垂直渐变 (更平滑的过渡)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,                    // 0%
-                            Color.Transparent,                    // 50% 保持透明
-                            themeColor.copy(alpha = 0.3f),       // 65% 开始渐变
-                            themeColor.copy(alpha = 0.6f),       // 75% 加强
-                            themeColor.copy(alpha = 0.85f),      // 85% 接近不透明
-                            themeColor                           // 100% 完全覆盖
-                        ),
-                        startY = 0f,
-                        endY = 1800f // 更大的渐变范围
-                    )
-                )
-        )
-
-        // 2. 左侧电影感暗角 (改善文字可读性)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.Transparent,
-                            themeColor.copy(alpha = 0.4f)
-                        ),
-                        center = Offset(-0.3f, 0.5f), // 偏左中心
-                        radius = 1.8f
-                    )
-                )
+        // --- 背景层：全屏剧照 + 主题色渐变遮罩（主题色由剧照自动提取） ---
+        ImmersiveBackdrop(
+            imageUrl = bgImageUrl,
+            themeColor = themeColor,
+            onThemeColorExtracted = { themeColor = it }
         )
 
         // --- 内容滚动层 ---
@@ -321,14 +253,14 @@ private fun TVSeriesContent(
                         // 剧集标题
                         Surface(
                             onClick = { onPlayClick() },
-                            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
+                            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
                             colors = ClickableSurfaceDefaults.colors(
                                 containerColor = Color.Transparent,
-                                focusedContainerColor = Color.White.copy(alpha = 0.1f),
-                                pressedContainerColor = Color.White.copy(alpha = 0.2f)
+                                focusedContainerColor = Color.White.copy(alpha = 0.08f),
+                                pressedContainerColor = Color.White.copy(alpha = 0.16f)
                             ),
                             border = ClickableSurfaceDefaults.border(
-                                focusedBorder = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.5f)))
+                                focusedBorder = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)))
                             ),
                             modifier = Modifier.offset(x = (-8).dp)
                         ) {
@@ -352,41 +284,39 @@ private fun TVSeriesContent(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         // 元数据行 (精简版)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        DetailMetaRow {
                             // 评分
-                            Box(
-                                modifier = Modifier
-                                    .background(Color(0xFFFFC200), RoundedCornerShape(4.dp))
-                                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "TMDB ${String.format(LocalLocale.current.platformLocale, "%.1f", tvSeries.voteAverage)}",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = Color.Black,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            // 年份
-                            Text(
-                                text = tvSeries.firstAirDate?.take(4) ?: "",
-                                color = Color.White,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
+                            DetailRatingBadge(
+                                "TMDB ${
+                                    String.format(
+                                        LocalLocale.current.platformLocale,
+                                        "%.1f",
+                                        tvSeries.voteAverage
+                                    )
+                                }"
                             )
 
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(text = "•", color = Color.Gray)
-                            Spacer(modifier = Modifier.width(12.dp))
+                            // 年份
+                            val year = tvSeries.firstAirDate?.take(4)
+                            if (!year.isNullOrEmpty()) {
+                                Text(
+                                    text = year,
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
 
                             // 主要类型 (只显示前两个)
                             val mainGenres = tvSeries.genreList.take(2).joinToString(" • ") { it.name }
                             if (mainGenres.isNotEmpty()) {
                                 Text(
+                                    text = "•",
+                                    color = Color.White.copy(alpha = 0.4f)
+                                )
+                                Text(
                                     text = mainGenres,
-                                    color = Color(0xFFCCCCCC),
+                                    color = Color.White.copy(alpha = 0.8f),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Normal
                                 )
@@ -395,26 +325,27 @@ private fun TVSeriesContent(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // 剧集简介 (精简版)
+                        // 剧集简介 (精简版，限制宽度以获得更好的可读性)
                         Surface(
                             onClick = { showFullDescDialog = true },
-                            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
+                            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
                             colors = ClickableSurfaceDefaults.colors(
                                 containerColor = Color.Transparent,
                                 focusedContainerColor = Color.White.copy(alpha = 0.1f),
-                                pressedContainerColor = Color.White.copy(alpha = 0.2f)
+                                pressedContainerColor = Color.White.copy(alpha = 0.18f)
                             ),
                             border = ClickableSurfaceDefaults.border(
-                                focusedBorder = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.5f)))
-                            )
+                                focusedBorder = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)))
+                            ),
+                            modifier = Modifier.widthIn(max = 860.dp)
                         ) {
-                            Column(modifier = Modifier.padding(8.dp)) {
+                            Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
                                 Text(
                                     text = tvSeries.overview ?: stringResource(R.string.ui_label_no_introduction_yet),
                                     style = MaterialTheme.typography.bodyLarge.copy(
-                                        shadow = Shadow(color = Color.Black, blurRadius = 4f)
+                                        shadow = Shadow(color = Color.Black.copy(alpha = 0.7f), blurRadius = 6f)
                                     ),
-                                    color = Color.White.copy(alpha = 0.95f),
+                                    color = Color.White.copy(alpha = 0.92f),
                                     lineHeight = 24.sp,
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis
@@ -422,7 +353,7 @@ private fun TVSeriesContent(
                                 Text(
                                     text = stringResource(R.string.ui_label_press_ok_for_full_summary),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White.copy(alpha = 0.6f),
+                                    color = Color.White.copy(alpha = 0.55f),
                                     modifier = Modifier.padding(top = 8.dp)
                                 )
                             }
@@ -468,13 +399,12 @@ private fun TVSeriesContent(
                         .padding(horizontal = 56.dp, vertical = 24.dp)
                 ) {
                     // 当前播放信息
-                    Text(
+                    DetailPanelTitle(
                         text = stringResource(R.string.ui_label_current_playback_info),
                         style = MaterialTheme.typography.headlineSmall,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 24.dp)
+                        barHeight = 26.dp
                     )
+                    Spacer(modifier = Modifier.height(24.dp))
 
                     // 当前单集详情卡片
                     if (currentSeason > 0 && currentEpisode > 0) {
@@ -483,8 +413,7 @@ private fun TVSeriesContent(
                                 CurrentEpisodeInfoSection(
                                     season = currentSeason,
                                     episode = currentEpisode,
-                                    details = tvEpisodeState.data,
-                                    containerColor = Color.White.copy(alpha = 0.08f)
+                                    details = tvEpisodeState.data
                                 )
                             }
                             is Resource.Loading -> {
@@ -524,99 +453,51 @@ private fun TVSeriesContent(
     }
 }
 
-// 新增：剧集附加信息部分
+// 剧集附加信息部分
 @Composable
 private fun SeriesAdditionalInfoSection(tvSeries: TVSeriesDetails) {
-    Surface(
-        onClick = { },
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.White.copy(alpha = 0.05f),
-            focusedContainerColor = Color.White.copy(alpha = 0.1f),
-            pressedContainerColor = Color.White.copy(alpha = 0.15f)
-        ),
-        border = ClickableSurfaceDefaults.border(
-            focusedBorder = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)))
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.ui_label_tv_series_details),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFCCCCCC)
+    DetailPanel {
+        DetailPanelTitle(text = stringResource(R.string.ui_label_tv_series_details))
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // 完整季数/集数
+        DetailInfoRow(
+            label = stringResource(R.string.ui_label_seasons_episodes),
+            value = stringResource(
+                id = R.string.ui_label_seasons_episodes_summary,
+                tvSeries.numberOfSeasons ?: 0,
+                tvSeries.numberOfEpisodes ?: 0
+            ),
+            labelWidth = 100.dp
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 完整类型列表
+        val genres = tvSeries.genreList.joinToString(" • ") { it.name }
+        if (genres.isNotEmpty()) {
+            DetailInfoRow(
+                label = stringResource(R.string.ui_label_genre),
+                value = genres,
+                labelWidth = 100.dp
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+        }
 
-            // 完整季数/集数
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = stringResource(R.string.ui_label_seasons_episodes),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray,
-                    modifier = Modifier.width(100.dp)
-                )
-                Text(
-                    text = stringResource(
-                        id = R.string.ui_label_seasons_episodes_summary,
-                        tvSeries.numberOfSeasons?:0,
-                        tvSeries.numberOfEpisodes?:0
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.LightGray
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
+        // 制作国家
+        val countries = tvSeries.originCountry.joinToString(", ") { getCountryName(it) }
+        if (countries.isNotEmpty()) {
+            DetailInfoRow(
+                label = stringResource(R.string.ui_label_countries_of_origin),
+                value = countries,
+                labelWidth = 100.dp
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
 
-            // 完整类型列表
-            Row(verticalAlignment = Alignment.Top) {
-                Text(
-                    text = stringResource(R.string.ui_label_genre),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray,
-                    modifier = Modifier.width(100.dp)
-                )
-                Text(
-                    text = tvSeries.genreList.joinToString(" • ") { it.name },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.LightGray,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 制作国家
-            val countries = tvSeries.originCountry.joinToString(", ") { getCountryName(it) }
-            if (countries.isNotEmpty()) {
-                Row(verticalAlignment = Alignment.Top) {
-                    Text(
-                        text = stringResource(R.string.ui_label_countries_of_origin),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray,
-                        modifier = Modifier.width(100.dp)
-                    )
-                    Text(
-                        text = countries,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.LightGray
-                    )
-                }
-            }
-
-            // 状态
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = stringResource(R.string.ui_label_status),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray,
-                    modifier = Modifier.width(100.dp)
-                )
-                LocalizedStatusText(tvSeries.status, )
-            }
+        // 状态
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            DetailInfoLabel(text = stringResource(R.string.ui_label_status), width = 100.dp)
+            LocalizedStatusText(tvSeries.status)
         }
     }
 }
@@ -657,57 +538,29 @@ private fun FileInformationSection(
     dataSourceType: String,
     connectionName: String
 ) {
-    Surface(
-        onClick = { },
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.White.copy(alpha = 0.05f),
-            focusedContainerColor = Color.White.copy(alpha = 0.1f),
-            pressedContainerColor = Color.White.copy(alpha = 0.15f)
-        ),
-        border = ClickableSurfaceDefaults.border(
-            focusedBorder = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)))
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.ui_label_media_source_file),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFCCCCCC)
+    DetailPanel {
+        DetailPanelTitle(text = stringResource(R.string.ui_label_media_source_file))
+        Spacer(modifier = Modifier.height(20.dp))
+
+        DetailInfoRow(
+            label = stringResource(R.string.ui_label_file_name),
+            value = fileName,
+            labelWidth = 88.dp
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        DetailInfoRow(
+            label = stringResource(R.string.ui_label_data_source),
+            value = dataSourceType,
+            labelWidth = 88.dp
+        )
+        if (connectionName.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            DetailInfoRow(
+                label = stringResource(R.string.ui_label_connection_name),
+                value = connectionName,
+                labelWidth = 88.dp
             )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            InfoRow(label = stringResource(R.string.ui_label_file_name), value = fileName)
-            Spacer(modifier = Modifier.height(8.dp))
-            InfoRow(label =  stringResource(R.string.ui_label_data_source), value = dataSourceType)
-            if (connectionName.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                InfoRow(label = stringResource(R.string.ui_label_connection_name), value = connectionName)
-            }
         }
-    }
-}
-
-@Composable
-private fun InfoRow(label: String, value: String) {
-    Row {
-        Text(
-            text = "$label: ",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray,
-            modifier = Modifier.width(80.dp)
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.LightGray,
-            overflow = TextOverflow.Ellipsis,
-            maxLines = 1
-        )
     }
 }
 
@@ -715,19 +568,20 @@ private fun InfoRow(label: String, value: String) {
 private fun CurrentEpisodeInfoSection(
     season: Int,
     episode: Int,
-    details: TVEpisode,
-    containerColor: Color
+    details: TVEpisode
 ) {
     var isSpoilerVisible by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(containerColor, RoundedCornerShape(12.dp))
-            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-            .padding(24.dp)
-    ) {
+    DetailPanel(clickable = false) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // 正在播放：绿色圆点 + 文案
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color(0xFF12EA89))
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = stringResource(R.string.ui_label_playing_now),
                 style = MaterialTheme.typography.labelMedium,
@@ -735,12 +589,19 @@ private fun CurrentEpisodeInfoSection(
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = "S${season} E${episode}",
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.White,
-                fontWeight = FontWeight.Black
-            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFF12EA89).copy(alpha = 0.16f))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "S${season} E${episode}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color(0xFF12EA89),
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -751,7 +612,7 @@ private fun CurrentEpisodeInfoSection(
                 modifier = Modifier
                     .width(220.dp)
                     .aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(Color.Black)
             ) {
                 if (!details.stillPath.isNullOrEmpty()) {
@@ -801,7 +662,7 @@ private fun CurrentEpisodeInfoSection(
                 Text(
                     text = "$airDateText$runtimeSuffix",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.LightGray
+                    color = Color.White.copy(alpha = 0.65f)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -812,18 +673,22 @@ private fun CurrentEpisodeInfoSection(
                         Text(
                             text = details.overview,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.LightGray,
+                            color = Color.White.copy(alpha = 0.8f),
                             lineHeight = 24.sp
                         )
                     } else {
                         Surface(
                             onClick = { isSpoilerVisible = true },
-                            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(4.dp)),
+                            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
                             colors = ClickableSurfaceDefaults.colors(
-                                containerColor = Color.White.copy(alpha = 0.1f),
-                                focusedContainerColor = Color.White.copy(alpha = 0.2f)
+                                containerColor = Color.White.copy(alpha = 0.06f),
+                                focusedContainerColor = Color.White.copy(alpha = 0.16f)
                             ),
-                            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+                            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
+                            border = ClickableSurfaceDefaults.border(
+                                border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))),
+                                focusedBorder = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.45f)))
+                            ),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -833,7 +698,7 @@ private fun CurrentEpisodeInfoSection(
                             ) {
                                 Text(
                                     text = stringResource(R.string.ui_label_show_episode_summary_spoiler),
-                                    color = Color.Gray,
+                                    color = Color.White.copy(alpha = 0.7f),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
@@ -843,7 +708,7 @@ private fun CurrentEpisodeInfoSection(
                     Text(
                         text = stringResource(R.string.ui_label_no_episode_summary_available),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray.copy(alpha = 0.5f)
+                        color = Color.White.copy(alpha = 0.4f)
                     )
                 }
             }
