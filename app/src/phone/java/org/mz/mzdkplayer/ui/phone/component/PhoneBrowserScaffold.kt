@@ -1,8 +1,14 @@
 package org.mz.mzdkplayer.ui.phone.component
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,18 +18,24 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -69,11 +81,20 @@ internal fun PhoneBrowserScaffold(
      */
     onOpenDetailEntry: ((PhoneBrowserEntry) -> Unit)? = null,
 ) {
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    // 当前目录路径作为顶栏副标题（展开态可见，滚动收起后隐藏）
+    val subtitleContent: (@Composable () -> Unit)? = if (!subtitle.isNullOrBlank()) {
+        { Text(text = subtitle, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+    } else {
+        null
+    }
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Column {
-                TopAppBar(
+                MediumFlexibleTopAppBar(
                     title = {
                         Text(
                             text = title,
@@ -81,6 +102,7 @@ internal fun PhoneBrowserScaffold(
                             overflow = TextOverflow.Ellipsis,
                         )
                     },
+                    subtitle = subtitleContent,
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(
@@ -92,29 +114,17 @@ internal fun PhoneBrowserScaffold(
                     actions = {
                         if (scrape != null) PhoneScrapeAction(ui = scrape)
                     },
+                    scrollBehavior = scrollBehavior,
                 )
                 if (scrape != null) PhoneScrapeProgressBar(ui = scrape)
             }
         },
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            if (!subtitle.isNullOrBlank()) {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                )
-            }
-
             when (state) {
                 is PhoneBrowserState.Loading -> PhoneLoading()
 
@@ -131,18 +141,28 @@ internal fun PhoneBrowserScaffold(
                     actions = blockedActions,
                 )
 
-                is PhoneBrowserState.Ready -> PhoneBrowserList(
-                    state = state,
-                    showParent = showParent,
-                    onOpenParent = onOpenParent,
-                    onOpenEntry = onOpenEntry,
-                    onOpenDetails = onOpenDetailEntry,
-                    scrape = scrape,
-                )
+                // 列表支持下拉刷新：重新加载当前目录（进入 Loading 态后由 PhoneLoading 接管）
+                is PhoneBrowserState.Ready -> PullToRefreshBox(
+                    isRefreshing = false,
+                    onRefresh = onRetry,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    PhoneBrowserList(
+                        state = state,
+                        showParent = showParent,
+                        onOpenParent = onOpenParent,
+                        onOpenEntry = onOpenEntry,
+                        onOpenDetails = onOpenDetailEntry,
+                        scrape = scrape,
+                    )
+                }
             }
         }
     }
 }
+
+/** 列表行统一的高度下限：Expressive 倾向更大的触控目标（≥48dp） */
+private val BrowserRowMinHeight = 68.dp
 
 @Composable
 private fun PhoneBrowserList(
@@ -159,22 +179,15 @@ private fun PhoneBrowserList(
         return
     }
 
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    // 不再用分割线：Expressive 里用「圆角容器块 + 间距」表达分组
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         if (showParent) {
             item(key = "parent") {
-                ListItem(
-                    onClick = onOpenParent,
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Filled.KeyboardArrowUp,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    },
-                ) {
-                    Text(stringResource(R.string.phone_smb_parent_directory))
-                }
-                HorizontalDivider()
+                PhoneParentRow(onClick = onOpenParent)
             }
         }
         // key 统一加前缀：条目的 key 可能是裸文件名（FTP / NFS），
@@ -191,8 +204,60 @@ private fun PhoneBrowserList(
                     null
                 },
             )
-            HorizontalDivider()
         }
+    }
+}
+
+/** Expressive 列表行：大圆角色块 + 更大触控目标，取代原来的「ListItem + 分割线」 */
+@Composable
+private fun BrowserRow(
+    containerColor: Color,
+    onClick: () -> Unit,
+    leading: @Composable () -> Unit,
+    trailing: (@Composable () -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.largeIncreased,
+        color = containerColor,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier
+                .heightIn(min = BrowserRowMinHeight)
+                .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            leading()
+            Column(modifier = Modifier.weight(1f)) { content() }
+            trailing?.invoke()
+        }
+    }
+}
+
+/** 「返回上一级」：与文件行同款卡片，用 tertiary 色块说明「这不是文件」 */
+@Composable
+private fun PhoneParentRow(onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    BrowserRow(
+        containerColor = scheme.surfaceContainer,
+        onClick = onClick,
+        leading = {
+            LeadingIconBox(
+                icon = Icons.Filled.KeyboardArrowUp,
+                container = scheme.tertiaryContainer,
+                content = scheme.onTertiaryContainer,
+            )
+        },
+    ) {
+        Text(
+            text = stringResource(R.string.phone_smb_parent_directory),
+            style = MaterialTheme.typography.bodyLargeEmphasized,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -210,18 +275,13 @@ private fun PhoneBrowserEntryRow(
         ?.let { Tools.formatFileSize(it) }
     val supporting = PhoneScrapeLogic.displaySubtitle(meta) ?: sizeText
 
-    ListItem(
+    BrowserRow(
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         onClick = onClick,
-        leadingContent = { EntryLeading(entry = entry, meta = meta) },
-        supportingContent = {
-            if (supporting != null) {
-                Text(text = supporting, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        },
-        trailingContent = {
-            val showDetails = onShowDetails
-            if (showDetails != null) {
-                IconButton(onClick = showDetails) {
+        leading = { EntryLeading(entry = entry, meta = meta) },
+        trailing = if (onShowDetails != null) {
+            {
+                IconButton(onClick = onShowDetails) {
                     Icon(
                         imageVector = Icons.Filled.Info,
                         contentDescription = stringResource(R.string.phone_media_detail_title),
@@ -229,39 +289,65 @@ private fun PhoneBrowserEntryRow(
                     )
                 }
             }
+        } else {
+            null
         },
-        modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(text = title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLargeEmphasized,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (supporting != null) {
+            Text(
+                text = supporting,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
 /**
- * 行首图标：刮削到海报的视频用海报缩略图，其余用文件夹 / 影片图标。
+ * 行首图标：刮削到海报的视频用海报缩略图，其余用「饱和色块 + 类型图标」。
  *
- * 海报高度固定 56dp（与 `ListItem` 的最小行高一致），列表行高度不会被撑得参差不齐。
+ * 把文件类型做成一块色块，是 Expressive 里最直接的信息分区手段
+ * （目录 = secondary、视频 = primary、音频 = tertiary）。
  */
 @Composable
 private fun EntryLeading(entry: PhoneBrowserEntry, meta: PhoneScrapeLogic.Meta?) {
     if (!entry.isDirectory && meta != null) {
-        PosterThumb(posterPath = meta.posterPath, width = 40.dp, height = 56.dp)
+        PosterThumb(posterPath = meta.posterPath, width = 44.dp, height = 60.dp)
         return
     }
-    val (icon, playable) = when {
-        entry.isDirectory -> PhoneIcons.Folder to true
-        entry.isVideo -> PhoneIcons.Movie to true
-        entry.isAudio -> PhoneIcons.Music to true
-        entry.isImage -> PhoneIcons.Image to true
-        else -> PhoneIcons.Movie to false
+    val scheme = MaterialTheme.colorScheme
+    when {
+        entry.isDirectory -> LeadingIconBox(PhoneIcons.Folder, scheme.secondaryContainer, scheme.onSecondaryContainer)
+        entry.isVideo -> LeadingIconBox(PhoneIcons.Movie, scheme.primaryContainer, scheme.onPrimaryContainer)
+        entry.isAudio -> LeadingIconBox(PhoneIcons.Music, scheme.tertiaryContainer, scheme.onTertiaryContainer)
+        entry.isImage -> LeadingIconBox(PhoneIcons.Image, scheme.surfaceContainerHighest, scheme.onSurfaceVariant)
+        else -> LeadingIconBox(PhoneIcons.Movie, scheme.surfaceContainerHighest, scheme.onSurfaceVariant)
     }
-    Icon(
-        imageVector = icon,
-        contentDescription = null,
-        modifier = Modifier.size(28.dp),
-        tint = if (playable) {
-            MaterialTheme.colorScheme.primary
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        },
-    )
+}
+
+/** 44dp 圆角图标容器（Expressive 形状对比：小元素用 medium 圆角，大容器用 large+） */
+@Composable
+private fun LeadingIconBox(icon: ImageVector, container: Color, content: Color) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(MaterialTheme.shapes.medium)
+            .background(container),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            tint = content,
+        )
+    }
 }

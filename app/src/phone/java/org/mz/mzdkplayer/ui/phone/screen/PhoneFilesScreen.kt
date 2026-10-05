@@ -1,5 +1,6 @@
 package org.mz.mzdkplayer.ui.phone.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,11 +12,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,8 +40,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -270,45 +274,88 @@ internal fun PhoneFileProtocol.displayLabel(): String =
 @Composable
 private fun LocalStorageEntry(onClick: () -> Unit) {
     Box(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)) {
-        ElevatedCard(
+        FilesEntryCard(
+            title = stringResource(R.string.phone_files_local_entry_title),
+            detail = stringResource(R.string.phone_files_local_entry_sub),
+            // 主入口用 primary 色块，是本页唯一的高饱和分区
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            detailColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            iconContainer = MaterialTheme.colorScheme.primary,
+            iconContent = MaterialTheme.colorScheme.onPrimary,
             onClick = onClick,
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.large,
+        )
+    }
+}
+
+/**
+ * 文件页入口卡片：Expressive 风格的大圆角色块。
+ *
+ * 层级靠 surface 容器色而非阴影（原来的 `ElevatedCard` 用阴影堆层级，与 Expressive 口径不一致），
+ * 卡片用 `extraLarge` 圆角、内部图标块用 `large`，形成「大容器大圆角 / 小元素小圆角」的形状对比。
+ */
+@Composable
+private fun FilesEntryCard(
+    title: String,
+    detail: String,
+    containerColor: Color,
+    contentColor: Color,
+    detailColor: Color,
+    iconContainer: Color,
+    iconContent: Color,
+    onClick: () -> Unit,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    Surface(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.extraLarge,
+        color = containerColor,
+        contentColor = contentColor,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 14.dp, bottom = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Row(
-                modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(MaterialTheme.shapes.large)
+                    .background(iconContainer),
+                contentAlignment = Alignment.Center,
             ) {
-                Surface(
-                    shape = MaterialTheme.shapes.extraLarge,
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(48.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(imageVector = PhoneIcons.Folder, contentDescription = null)
-                    }
-                }
-                Column(modifier = Modifier.weight(1f)) {
+                Icon(
+                    imageVector = PhoneIcons.Folder,
+                    contentDescription = null,
+                    modifier = Modifier.size(26.dp),
+                    tint = iconContent,
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMediumEmphasized,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (detail.isNotEmpty()) {
                     Text(
-                        text = stringResource(R.string.phone_files_local_entry_title),
-                        style = MaterialTheme.typography.titleMedium,
+                        text = detail,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = detailColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text(
-                        text = stringResource(R.string.phone_files_local_entry_sub),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
                 }
+            }
+            if (trailing != null) {
+                trailing()
+            } else {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = contentColor,
                 )
             }
         }
@@ -330,8 +377,8 @@ private fun ConnectionSection(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // 下标参与 key：历史连接数据里 id 可能为空串，单用 id 会撞 key 直接崩
         itemsIndexed(connections, key = { index, item -> "$index-${item.id}" }) { _, connection ->
@@ -352,24 +399,34 @@ private fun EmptyConnections(title: String, subtitle: String) {
             .padding(32.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(
-                imageVector = PhoneIcons.Folder,
-                contentDescription = null,
-                modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.primary,
-            )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // 装饰圆：空状态用一个大色块承载图标，比裸图标更有分量
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = PhoneIcons.Folder,
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp),
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLargeEmphasized,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 20.dp),
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 8.dp),
             )
         }
     }
@@ -381,43 +438,16 @@ private fun ConnectionCard(
     onClick: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    ElevatedCard(
+    FilesEntryCard(
+        title = connection.title,
+        detail = connection.detail,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        detailColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        iconContainer = MaterialTheme.colorScheme.secondaryContainer,
+        iconContent = MaterialTheme.colorScheme.onSecondaryContainer,
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-    ) {
-        Row(
-            modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Surface(
-                shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.size(48.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(imageVector = PhoneIcons.Folder, contentDescription = null)
-                }
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = connection.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (connection.detail.isNotEmpty()) {
-                    Text(
-                        text = connection.detail,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
+        trailing = {
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Filled.Delete,
@@ -430,8 +460,8 @@ private fun ConnectionCard(
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-    }
+        },
+    )
 }
 
 // ---- 各协议连接 → 列表展示形态（detail 用「·」拼可读字段，与第一阶段 SMB 卡片一致）----
