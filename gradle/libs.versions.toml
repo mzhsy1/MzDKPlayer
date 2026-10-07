@@ -20,20 +20,20 @@ kotlin = "2.4.20"
 coreKtx = "1.19.0"
 appcompat = "1.8.0"
 composeBom = "2026.09.00"
-libvlcAll = "3.7.6"
+libvlcAll = "3.7.7"
 logbackAndroid = "3.0.0"
 desugarJdkLibs = "2.1.5" # 检查是否有更新版本
 media3UiCompose = "1.11.1"
 nanohttpd = "2.3.1"
 nfsClient = "1.1.0"
-coilComposeVersion = "3.6.2"
-coilNetworkOkhttp = "3.6.2"
+coilComposeVersion = "3.6.3"
+coilNetworkOkhttp = "3.6.3"
 pagingCompose = "3.5.1"
 pagingRuntimeKtx = "3.5.1"
 paletteKtx = "1.0.0"
-roomCompiler = "2.8.5"
-roomKtx = "2.8.5"
-roomRuntime = "2.8.5"
+# Room 3 是新的 Maven group（androidx.room3），与 Room 2 的 androidx.room 并存但互不兼容；
+# 3.x 把协程/Flow 支持并入了 runtime，不再有 room-ktx 制品。
+room3 = "3.0.3"
 sardineAndroidVersion = "0.9"
 smbj = "0.15.0"
 tvFoundation = "1.0.0"
@@ -64,10 +64,9 @@ androidx-media3-ui-compose = { module = "androidx.media3:media3-ui-compose", ver
 androidx-paging-runtime-ktx = { module = "androidx.paging:paging-runtime-ktx", version.ref = "pagingRuntimeKtx" }
 androidx-paging-compose = { module = "androidx.paging:paging-compose", version.ref = "pagingCompose" }
 androidx-palette-ktx = { module = "androidx.palette:palette-ktx", version.ref = "paletteKtx" }
-androidx-room-paging = { module = "androidx.room:room-paging", version.ref = "roomCompiler" }
-androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
-androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomKtx" }
-androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomCompiler" }
+androidx-room3-runtime = { module = "androidx.room3:room3-runtime", version.ref = "room3" }
+androidx-room3-paging = { module = "androidx.room3:room3-paging", version.ref = "room3" }
+androidx-room3-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room3" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" ,version.ref = "ui"  }
 androidx-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "ui" }
 androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }

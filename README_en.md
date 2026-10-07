@@ -369,7 +369,7 @@ The phone app has no remote — the player screen is entirely touch-driven:
 | UI | Jetpack Compose: Compose for TV (`tv-foundation` / `tv-material`) on the TV side, Material 3 on the phone side; Navigation Compose | Compose BOM 2026.09.00 / Navigation 2.9.8 |
 | Playback engines | Media3 ExoPlayer + libVLC (dual engine behind a shared abstraction) | 1.11.1 / 3.7.6 |
 | Danmaku | AKDanmaku + libGDX / Ashley | — |
-| Database | Room | 2.8.5 |
+| Database | Room 3 (`androidx.room3`, running on the SQLiteDriver API) | 3.0.3 |
 | Preferences | DataStore Preferences | 1.2.1 |
 | Networking | smbj (SMB) / commons-net (FTP) / sardine (WebDAV) / nfs-client (NFS) / OkHttp | — |
 | Image loading | Coil 3 | 3.6.2 |

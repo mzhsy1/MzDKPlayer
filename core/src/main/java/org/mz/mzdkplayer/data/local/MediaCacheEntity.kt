@@ -1,17 +1,19 @@
 package org.mz.mzdkplayer.data.local
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
-import androidx.room.TypeConverters
+import androidx.room3.ColumnTypeConverters
+import androidx.room3.Entity
+import androidx.room3.Index
+import androidx.room3.PrimaryKey
 import org.mz.mzdkplayer.data.model.Genre
 import org.mz.mzdkplayer.data.model.MediaItem
 
 @Entity(tableName = "media_cache",indices = [
-    androidx.room.Index(value = ["groupKey"]), // 加速分组
-    androidx.room.Index(value = ["title"]),    // 加速排序
-    androidx.room.Index(value = ["tmdbId"])    // 加速关联查询
+    Index(value = ["groupKey"]), // 加速分组
+    Index(value = ["title"]),    // 加速排序
+    Index(value = ["tmdbId"])    // 加速关联查询
 ])
-@TypeConverters(MediaConverters::class)
+// Room 3 把 @TypeConverters 改名为 @ColumnTypeConverters（与新的 @DaoReturnTypeConverters 对称）
+@ColumnTypeConverters(MediaConverters::class)
 data class MediaCacheEntity(
     @PrimaryKey
     val videoUri: String, // 主键：文件的完整 SMB URI (或者 HTTP URL, 本地路径)

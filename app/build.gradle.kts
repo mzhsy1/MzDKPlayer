@@ -155,7 +155,7 @@ dependencies {
     implementation(libs.androidx.media3.ui.compose)
     implementation(libs.androidx.paging.runtime.ktx)
     implementation(libs.androidx.paging.compose)
-    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room3.runtime)
     implementation(libs.androidx.palette.ktx)
     implementation(libs.logback.android)
     implementation(libs.gson)

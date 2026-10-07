@@ -2,13 +2,20 @@ package org.mz.mzdkplayer.data.local
 
 
 
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
-import androidx.room.Update
+import androidx.room3.Dao
+import androidx.room3.DaoReturnTypeConverters
+import androidx.room3.Insert
+import androidx.room3.OnConflictStrategy
+import androidx.room3.Query
+import androidx.room3.Update
+import androidx.room3.paging.PagingSourceDaoReturnTypeConverter
 
+/**
+ * Room 3 起 Paging 集成改成「DAO 返回类型转换器」：返回 [androidx.paging.PagingSource]
+ * 必须在 DAO 上显式注册 [PagingSourceDaoReturnTypeConverter]，否则编译期直接报错。
+ */
 @Dao
+@DaoReturnTypeConverters(PagingSourceDaoReturnTypeConverter::class)
 interface MediaDao {
     // 根据 URI 查询缓存
     @Query("SELECT * FROM media_cache WHERE videoUri = :uri LIMIT 1")

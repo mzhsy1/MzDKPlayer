@@ -87,11 +87,11 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.activity.compose)
 
-    // Room
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.paging)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
+    // Room 3（只生成 Kotlin 代码、必须用 KSP、协程是唯一操作模型）
+    implementation(libs.androidx.room3.runtime)
+    // PagingSource 是 Room 3 里的「DAO 返回类型转换器」，需要这个制品 + 在 @Dao 上注册转换器
+    implementation(libs.androidx.room3.paging)
+    ksp(libs.androidx.room3.compiler)
 
     implementation(libs.androidx.paging.runtime.ktx)
     implementation(libs.androidx.datastore.preferences)

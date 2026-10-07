@@ -369,7 +369,7 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 | 界面 | Jetpack Compose：电视端用 Compose for TV（`tv-foundation` / `tv-material`），手机端用 Material 3 + Navigation Compose | Compose BOM 2026.09.00 / Navigation 2.9.8 |
 | 播放内核 | Media3 ExoPlayer + libVLC（双引擎，统一抽象层） | 1.11.1 / 3.7.6 |
 | 弹幕 | AKDanmaku + libGDX / Ashley | — |
-| 数据库 | Room | 2.8.5 |
+| 数据库 | Room 3（`androidx.room3`，跑在 SQLiteDriver 上） | 3.0.3 |
 | 偏好存储 | DataStore Preferences | 1.2.1 |
 | 网络 | smbj (SMB) / commons-net (FTP) / sardine (WebDAV) / nfs-client (NFS) / OkHttp | — |
 | 图片加载 | Coil 3 | 3.6.2 |
