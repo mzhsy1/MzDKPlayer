@@ -54,10 +54,7 @@ fun VideoPlayerControls(
     danmakuPlayer: DanmakuPlayer,
     settingsManager: DanmakuSettingsManager, // 添加设置管理器参数
     getDanmakuConfig: () -> DanmakuConfig, // 添加获取配置的方法参数
-    focusRequester: FocusRequester = remember { FocusRequester() },
-    ffDuration: Int = 15,
-    rwDuration: Int = 15,
-    onTogglePlayPause: () -> Unit = {}
+    focusRequester: FocusRequester = remember { FocusRequester() }
 )
 {
     // 构建主框架
@@ -75,17 +72,13 @@ fun VideoPlayerControls(
             // 媒体操作按钮已移至统一设置面板
         },
         seeker = {
-            // 进度条区域
+            // 进度条区域（只负责显示；左右键的长按加速统一由播放页的 D-Pad 处理）
             VideoPlayerSeeker(
-                state,
-                isPlaying,
-                onSeek = { player.seekTo(player.duration.times(it).toLong()) }, // Seek 回调
+                state = state,
+                isPlaying = isPlaying,
                 contentProgress = currentPositionProvider().milliseconds, // 当前进度
                 contentDuration = player.duration.milliseconds, // 总时长
-                focusRequester = focusRequester,
-                ffDuration = ffDuration,
-                rwDuration = rwDuration,
-                onTogglePlayPause = onTogglePlayPause
+                focusRequester = focusRequester
             )
         },
         more = null // 更多按钮 (未实现)

@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.tool.logic.ScrapeSourcePolicy
+import org.mz.mzdkplayer.tool.logic.SeekAccelerationPolicy
 
 /**
  * 「设置里存的原始值 → 界面文案」的统一映射。
@@ -95,6 +96,24 @@ fun formatScrapeSource(code: String): String = when (code) {
 @Composable
 fun formatScrapeTimeout(seconds: Int): String =
     stringResource(R.string.setting_scrape_timeout_value, seconds)
+
+/**
+ * 长按快进挡位：档位下标 → 「关闭 / 标准 / 快速」。
+ *
+ * 三档都是实词，逐档走多语言资源。具体每一步跳多少秒由片长换算（见 `SeekAccelerationPolicy`），
+ * 不在设置项里堆数字 —— 遥控器上一行显示不下，而且用户关心的只是「有没有、快不快」。
+ */
+@Composable
+fun formatSeekAccelerationLevel(level: Int): String =
+    when (SeekAccelerationPolicy.normalize(level)) {
+        SeekAccelerationPolicy.LEVEL_FAST ->
+            stringResource(R.string.setting_seek_acceleration_value_fast)
+
+        SeekAccelerationPolicy.LEVEL_STANDARD ->
+            stringResource(R.string.setting_seek_acceleration_value_standard)
+
+        else -> stringResource(R.string.setting_seek_acceleration_value_off)
+    }
 
 /**
  * 「修改文件对应影视信息」里的搜索来源：`douban` / `tmdb`。

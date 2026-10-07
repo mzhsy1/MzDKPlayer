@@ -490,6 +490,11 @@
     <string name="ratio_zoom">切り抜き拡大</string>
     <string name="setting_ff_duration">早送り時間 (秒)</string>
     <string name="setting_rw_duration">巻き戻し時間 (秒)</string>
+    <string name="setting_seek_acceleration">長押しシークの段階</string>
+    <string name="setting_seek_acceleration_sub">シークキーを長押しするとステップ幅が段階的に拡大します。各段の秒数は動画の長さに応じて自動計算されます（長い動画ほど大きく移動、最大 5 分）。「オフ」では上の時間で連続シークします</string>
+    <string name="setting_seek_acceleration_value_off">オフ</string>
+    <string name="setting_seek_acceleration_value_standard">標準</string>
+    <string name="setting_seek_acceleration_value_fast">高速</string>
     <string name="ui_label_seek_duration">シーク時間</string>
     <string name="setting_iso_playback_mode_sub">ISO ファイルのデフォルトの再生動作を設定します</string>
     <string name="iso_playback_mode_default">デフォルトの再生設定 (メニューの表示を試行)</string>

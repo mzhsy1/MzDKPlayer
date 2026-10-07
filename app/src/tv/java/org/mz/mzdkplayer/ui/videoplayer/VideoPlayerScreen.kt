@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.AbsoluteAlignment
@@ -77,7 +78,10 @@ import com.kuaishou.akdanmaku.DanmakuConfig
 import com.kuaishou.akdanmaku.ext.RETAINER_BILIBILI
 import com.kuaishou.akdanmaku.render.SimpleRenderer
 import com.kuaishou.akdanmaku.ui.DanmakuPlayer
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.danmaku.DanmakuData
 import org.mz.mzdkplayer.danmaku.DanmakuResponse
@@ -98,6 +102,8 @@ import org.mz.mzdkplayer.data.datasource.FtpDataSource
 import org.mz.mzdkplayer.tool.FileTimeResolver
 import org.mz.mzdkplayer.common.KeepScreenOnManager
 import org.mz.mzdkplayer.tool.logic.PlayerMediaText
+import org.mz.mzdkplayer.tool.logic.SeekAccelerationLogic
+import org.mz.mzdkplayer.tool.logic.SeekDirection
 import org.mz.mzdkplayer.data.datasource.SmbDataSource
 import org.mz.mzdkplayer.data.datasource.SmbUtils
 import org.mz.mzdkplayer.common.SubtitleView
@@ -137,6 +143,9 @@ import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerOverlay
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerOverlayLayer
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulse
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerPulseState
+import org.mz.mzdkplayer.ui.videoplayer.components.SEEK_HUD_LINGER_MS
+import org.mz.mzdkplayer.ui.videoplayer.components.SeekHoldState
+import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerSeekHud
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerSeeker
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerState
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerStatusLayer
@@ -144,6 +153,7 @@ import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerTrackSelectionPane
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerViewLayer
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoTrackPanel
 
+import org.mz.mzdkplayer.ui.videoplayer.components.rememberSeekHoldState
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerPulseState
 import org.mz.mzdkplayer.ui.videoplayer.components.rememberVideoPlayerState
 import java.io.IOException
@@ -265,6 +275,103 @@ fun VideoPlayerScreen(
     // 状态：弹幕是否已加载完成
     var isDanmakuLoaded by remember { mutableStateOf(false) }
     val pulseState = rememberVideoPlayerPulseState()
+
+    // ==================== 长按快进/快退：秒数越按越大 ====================
+    // 不依赖 KeyEvent.repeatCount（各家遥控器重复率不同），改成「按下先跳一步，之后按固定节拍继续
+    // 跳，每 4 拍进一档」，放大多少倍由设置项「长按加速档位」决定（档位表见 SeekAccelerationPolicy）。
+    // 短按（只跳一次）保持原来的「箭头脉冲 + 弹出控制栏」，长按则弹 HUD 并且不弹控制栏
+    // （否则焦点被进度条抢走，长按就断了）。
+    val seekHold = rememberSeekHoldState()
+    val seekScope = rememberCoroutineScope()
+    var seekHoldJob by remember { mutableStateOf<Job?>(null) }
+
+    // 执行第 tickIndex 次步进（从 0 开始），并刷新 HUD 与控制栏
+    val performSeekTick: (Int) -> Unit = { tickIndex ->
+        val stepSeconds = SeekAccelerationLogic.stepSeconds(
+            baseSeconds = seekHold.baseSeconds,
+            steps = seekHold.steps,
+            tickIndex = tickIndex
+        )
+        val accumulated = seekHold.accumulatedSeconds + stepSeconds
+        // 直接定位到「起点 ± 累计步长」的绝对位置，不用 seekForward 让播放器自己累加：
+        // 连续 seek 时播放器还在缓冲，currentPosition 往往还是上一拍的旧值，
+        // 累加出来就退化成「每次都只跳基础步长」，也就是用户看到的「长按和短按一样」。
+        val targetMs = SeekAccelerationLogic.targetPositionMs(
+            startPositionMs = seekHold.startPositionMs,
+            accumulatedSeconds = accumulated,
+            forward = seekHold.direction.isForward,
+            durationMs = seekHold.durationMs
+        )
+        player.seekTo(targetMs)
+        seekHold.onTick(tickIndex, accumulated)
+        Log.d(
+            "VideoPlayerScreen",
+            "[SEEK] tick=$tickIndex step=${stepSeconds}s accumulated=${accumulated}s " +
+                "target=${targetMs}ms start=${seekHold.startPositionMs}ms duration=${seekHold.durationMs}ms"
+        )
+        // 控制栏「本来就可见」时让它保持可见，进度条会实时跟着目标位置走（用户要的「快速定位」）；
+        // 隐藏状态下**不要**弹出来 —— HUD 专门负责控制栏收起时的提示，两者同时出现就是两套 seek 提示叠在一起。
+        if (videoPlayerState.controlsVisible) {
+            videoPlayerState.showControls()
+        }
+    }
+
+    // 按下：同步跳第一步（再短的单击也一定会跳），随后按节拍继续放大步长
+    val startSeekHold: (SeekDirection, Int, Int) -> Unit = { direction, baseSeconds, accelerationLevel ->
+        seekHoldJob?.cancel()
+        seekHold.begin(
+            direction = direction,
+            baseSeconds = baseSeconds,
+            accelerationLevel = accelerationLevel,
+            startPositionMs = player.currentPosition,
+            durationMs = player.duration
+        )
+        Log.d(
+            "VideoPlayerScreen",
+            "[SEEK] 长按开始 dir=$direction base=${seekHold.baseSeconds}s " +
+                "level=${seekHold.accelerationLevel} steps=${seekHold.steps} " +
+                "start=${seekHold.startPositionMs}ms duration=${seekHold.durationMs}ms"
+        )
+        performSeekTick(0)
+        seekHoldJob = seekScope.launch {
+            var tickIndex = 1
+            while (isActive) {
+                delay(SeekAccelerationLogic.TICK_INTERVAL_MS)
+                performSeekTick(tickIndex)
+                tickIndex++
+            }
+        }
+    }
+
+    // 松手：停掉节拍，HUD 多留一会儿再消失（再按一次会把这个收尾协程取消掉）
+    val stopSeekHold: () -> Unit = {
+        Log.d(
+            "VideoPlayerScreen",
+            "[SEEK] 松手 ticks=${seekHold.tickCount} accumulated=${seekHold.accumulatedSeconds}s"
+        )
+        seekHoldJob?.cancel()
+        seekHoldJob = seekScope.launch {
+            delay(SEEK_HUD_LINGER_MS)
+            seekHold.hide()
+        }
+    }
+
+    DisposableEffect(player) {
+        onDispose { seekHoldJob?.cancel() }
+    }
+
+    // 兜底：抽屉面板一旦接管，立刻停掉长按 seek 协程。
+    // 否则「按住右键再按上键打开面板」之后，松手的 UP 会被面板吃掉，协程会一直 seek 下去。
+    //
+    // 这里只认抽屉面板，不认控制栏：控制栏可见时长按会持续续命、收起时长按只出 HUD，
+    // 两种情况都不该打断正在跑的长按（早先把 controlsVisible 也算进来，长按一露控制栏就被取消）。
+    LaunchedEffect(videoPlayerViewModel.atpVisibility) {
+        if (videoPlayerViewModel.atpVisibility) {
+            seekHoldJob?.cancel()
+            seekHoldJob = null
+            seekHold.hide()
+        }
+    }
 
     // 弹幕设置管理器
     val settingsManager = remember { DanmakuSettingsManager(context) }
@@ -653,14 +760,19 @@ fun VideoPlayerScreen(
         Modifier
             // 添加 D-Pad 事件处理
             .dPadEvents(
-                player,
-                videoPlayerState,
-                pulseState,
-                videoPlayerViewModel,
-                settingsState.dpadUpAction,
-                settingsState.dpadDownAction,
-                settingsState.ffDuration,
-                settingsState.rwDuration
+                player = player,
+                videoPlayerState = videoPlayerState,
+                pulseState = pulseState,
+                videoPlayerViewModel = videoPlayerViewModel,
+                seekHold = seekHold,
+                dpadUpAction = settingsState.dpadUpAction,
+                dpadDownAction = settingsState.dpadDownAction,
+                ffDuration = settingsState.ffDuration,
+                rwDuration = settingsState.rwDuration,
+                onSeekHoldStart = { direction, baseSeconds ->
+                    startSeekHold(direction, baseSeconds, settingsState.seekAccelerationLevel)
+                },
+                onSeekHoldStop = stopSeekHold
             )
             .background(Color(0, 0, 0)) // 黑色背景
             .focusable() // 可获得焦点
@@ -731,19 +843,34 @@ fun VideoPlayerScreen(
                 videoPlayerState = videoPlayerState,
                 isPlaying = isPlaying,
                 pulseState = pulseState,
-                currentPositionProvider = { contentCurrentPosition },
+                // 长按 seek 期间直接用目标位置驱动进度条，不必等 200ms 一次的轮询，
+                // 否则进度条会跟不上长按（用户反馈的「长条没定位」）
+                currentPositionProvider = {
+                    if (seekHold.visible) seekHold.targetPositionMs else contentCurrentPosition
+                },
                 player = player,
                 mediaTitle = displayTitle,
                 mediaDateText = displayDateText,
                 statusText = statusText,
                 mDanmakuPlayer = mDanmakuPlayer,
                 settingsManager = settingsManager,
-                getDanmakuConfig = ::getDanmakuConfig,
-                ffDuration = settingsState.ffDuration,
-                rwDuration = settingsState.rwDuration,
-                onTogglePlayPause = {
-                    if (player.isPlaying) player.pause() else player.play()
-                }
+                getDanmakuConfig = ::getDanmakuConfig
+            )
+        }
+
+        // 长按快进/快退的 HUD：告诉用户一共跳了多少、跳到哪儿了。
+        //
+        // 位置只能选底部：
+        // - 正中央偏上是「正在缓冲」的菊花（`VideoPlayerStatusLayer` 的 LoadingScreen 定在
+        //   `Alignment.Center` + `offset(-68.dp)`），长按 seek 必然触发缓冲，放上面会压成一团；
+        // - 与控制栏**互斥**：控制栏可见时进度条本身就在实时跟着定位，再叠一个 HUD 就是两套 seek
+        //   提示一起糊在屏幕上（用户反馈的「UI 重叠」）；控制栏收起时底部空着，HUD 才接管提示。
+        if (!videoPlayerViewModel.atpVisibility && !videoPlayerState.controlsVisible) {
+            VideoPlayerSeekHud(
+                state = seekHold,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 100.dp)
             )
         }
 
@@ -907,50 +1034,61 @@ private fun Modifier.dPadEvents(
     videoPlayerState: VideoPlayerState,
     pulseState: VideoPlayerPulseState,
     videoPlayerViewModel: VideoPlayerViewModel,
+    seekHold: SeekHoldState,
     dpadUpAction: String,
     dpadDownAction: String,
     ffDuration: Int,
-    rwDuration: Int
+    rwDuration: Int,
+    onSeekHoldStart: (SeekDirection, Int) -> Unit,
+    onSeekHoldStop: () -> Unit
 ): Modifier = this.onKeyEvent { keyEvent ->
     val isActionDown = keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN
     val isActionUp = keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_UP
     val isLongPress = keyEvent.nativeKeyEvent.repeatCount > 0
 
     when (keyEvent.key) {
-        Key.DirectionLeft -> {
-            if (isActionDown) {
-                if (isLongPress) {
-                    if (!videoPlayerState.controlsVisible) {
-                        videoPlayerState.showControls()
-                    }
-                    return@onKeyEvent true
-                }
-            } else if (isActionUp) {
-                if (!videoPlayerState.controlsVisible) {
-                    player.seekBack(rwDuration * 1000L)
-                    pulseState.setType(VideoPlayerPulse.Type.BACK)
-                    videoPlayerState.showControls()
-                    return@onKeyEvent true
-                }
+        Key.DirectionLeft, Key.DirectionRight -> {
+            val direction = if (keyEvent.key == Key.DirectionLeft) {
+                SeekDirection.BACK
+            } else {
+                SeekDirection.FORWARD
             }
-            false
-        }
+            val baseSeconds = if (direction == SeekDirection.BACK) rwDuration else ffDuration
 
-        Key.DirectionRight -> {
-            if (isActionDown) {
-                if (isLongPress) {
-                    if (!videoPlayerState.controlsVisible) {
-                        videoPlayerState.showControls()
-                    }
-                    return@onKeyEvent true
-                }
-            } else if (isActionUp) {
-                if (!videoPlayerState.controlsVisible) {
-                    player.seekForward(ffDuration * 1000L)
-                    pulseState.setType(VideoPlayerPulse.Type.FORWARD)
+            if (isActionUp) {
+                // 松手一律收尾：中途「按住右键再按上键打开面板」时，这个 UP 可能已经不再走播放页的
+                // 焦点路径，但绝不能让 seek 协程继续跑下去
+                val accelerated = seekHold.tickCount > 1
+                val takenOver = videoPlayerViewModel.atpVisibility
+                onSeekHoldStop()
+                if (!accelerated && !takenOver) {
+                    // 短按：保持原来的反馈（箭头脉冲 + 弹出控制栏）
+                    pulseState.setType(
+                        if (direction == SeekDirection.FORWARD) {
+                            VideoPlayerPulse.Type.FORWARD
+                        } else {
+                            VideoPlayerPulse.Type.BACK
+                        }
+                    )
                     videoPlayerState.showControls()
-                    return@onKeyEvent true
                 }
+                return@onKeyEvent !takenOver
+            }
+
+            // 只有抽屉面板接管时才让出左右键。控制栏可见时左右键也归这里统一处理
+            // （进度条本身不再处理键盘，见 VideoPlayerIndicator），否则「长按加速」在
+            // 「控制栏可见 / 不可见」两种状态下的行为会不一致
+            if (videoPlayerViewModel.atpVisibility) {
+                return@onKeyEvent false
+            }
+
+            if (isActionDown) {
+                // 只有第一次按下（repeatCount == 0）才启动节拍；后续重复键直接吞掉，
+                // 加速完全由 SeekAccelerationLogic 的固定节拍驱动
+                if (!isLongPress) {
+                    onSeekHoldStart(direction, baseSeconds)
+                }
+                return@onKeyEvent true
             }
             false
         }

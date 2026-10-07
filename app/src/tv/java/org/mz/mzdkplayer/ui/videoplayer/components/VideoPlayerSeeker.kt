@@ -26,20 +26,15 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
 
-
 import kotlin.time.Duration
 
 @Composable
 fun VideoPlayerSeeker(
     state: VideoPlayerState,
     isPlaying: Boolean,
-    onSeek: (Float) -> Unit,
     contentProgress: Duration,
     contentDuration: Duration,
-    focusRequester: FocusRequester = remember { FocusRequester() },
-    ffDuration: Int = 15,
-    rwDuration: Int = 15,
-    onTogglePlayPause: () -> Unit = {}
+    focusRequester: FocusRequester = remember { FocusRequester() }
 ) {
     val contentProgressString =
         contentProgress.toComponents { h, m, s, _ ->
@@ -74,13 +69,8 @@ fun VideoPlayerSeeker(
         VideoPlayerControllerText(text = contentProgressString)
         VideoPlayerControllerIndicator(
             progress = (contentProgress / contentDuration).toFloat(),
-            onSeek = onSeek,
             state = state,
-            modifier = Modifier.focusRequester(focusRequester),
-            durationMs = contentDuration.inWholeMilliseconds,
-            ffDurationS = ffDuration,
-            rwDurationS = rwDuration,
-            onTogglePlayPause = onTogglePlayPause
+            modifier = Modifier.focusRequester(focusRequester)
         )
         VideoPlayerControllerText(text = contentDurationString)
     }

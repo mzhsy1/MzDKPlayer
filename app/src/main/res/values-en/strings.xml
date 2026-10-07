@@ -67,6 +67,11 @@
     <string name="setting_dpad_down_action">Down Key Action</string>
     <string name="setting_ff_duration">Fast Forward Duration (sec)</string>
     <string name="setting_rw_duration">Rewind Duration (sec)</string>
+    <string name="setting_seek_acceleration">Long-press Seek Gear</string>
+    <string name="setting_seek_acceleration_sub">Holding the seek key grows the step size; each gear is scaled to the video length (longer videos jump further per step, up to 5 minutes). Choose Off to keep stepping by the duration above</string>
+    <string name="setting_seek_acceleration_value_off">Off</string>
+    <string name="setting_seek_acceleration_value_standard">Standard</string>
+    <string name="setting_seek_acceleration_value_fast">Fast</string>
     <string name="ui_label_seek_duration">Seek Duration</string>
     <string name="setting_iso_playback_mode_sub">Set default playback behavior for ISO files</string>
     <string name="setting_sub_lang">Preferred Subtitle</string>

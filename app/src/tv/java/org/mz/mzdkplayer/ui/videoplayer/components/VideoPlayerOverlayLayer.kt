@@ -29,10 +29,7 @@ fun BoxScope.VideoPlayerOverlayLayer(
     statusText: String,
     mDanmakuPlayer: DanmakuPlayer,
     settingsManager: DanmakuSettingsManager,
-    getDanmakuConfig: () -> DanmakuConfig,
-    ffDuration: Int = 15,
-    rwDuration: Int = 15,
-    onTogglePlayPause: () -> Unit = {}
+    getDanmakuConfig: () -> DanmakuConfig
 ) {
     VideoPlayerOverlay(
         modifier = Modifier
@@ -58,10 +55,7 @@ fun BoxScope.VideoPlayerOverlayLayer(
                 danmakuPlayer = mDanmakuPlayer,
                 settingsManager = settingsManager,
                 getDanmakuConfig = getDanmakuConfig,
-                focusRequester = focusRequester,
-                ffDuration = ffDuration,
-                rwDuration = rwDuration,
-                onTogglePlayPause = onTogglePlayPause
+                focusRequester = focusRequester
             )
         },
         atpFocus = videoPlayerViewModel.atpFocus

@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import org.mz.mzdkplayer.tool.logic.ScrapeSourcePolicy
 import org.mz.mzdkplayer.tool.logic.ScrapeTimeoutPolicy
+import org.mz.mzdkplayer.tool.logic.SeekAccelerationPolicy
 
 // 定义一个单例或者通过 Hilt 注入，这里用简单的单例模式
 object SettingsRepository {
@@ -63,6 +64,12 @@ object SettingsRepository {
     // 🔥 新增：快进快退时长 (秒)
     private const val KEY_FF_DURATION = "ff_duration"
     private const val KEY_RW_DURATION = "rw_duration"
+
+    /**
+     * 电视端长按左右键时步长的放大档位，档位定义见 [SeekAccelerationPolicy]。
+     * 存的是档位下标而不是倍数：以后想改档位表也不用迁移老数据。
+     */
+    private const val KEY_SEEK_ACCELERATION_LEVEL = "seek_acceleration_level"
 
     // 🔥 新增：视频播放完成动作 (0: 循环播放, 1: 播放暂停, 2: 播放下一个)
     private const val KEY_VIDEO_FINISH_ACTION = "video_finish_action"
@@ -266,6 +273,18 @@ object SettingsRepository {
     var rwDuration: Int
         get() = prefs.getInt(KEY_RW_DURATION, 15)
         set(value) = prefs.edit { putInt(KEY_RW_DURATION, value) }
+
+    /**
+     * 长按左右键的加速档位（倍数链），档位表见 [SeekAccelerationPolicy]。
+     * 读写都过一次 `normalize`，老版本残留 / 手改过的存储值会回退到默认档位。
+     */
+    var seekAccelerationLevel: Int
+        get() = SeekAccelerationPolicy.normalize(
+            prefs.getInt(KEY_SEEK_ACCELERATION_LEVEL, SeekAccelerationPolicy.DEFAULT_LEVEL)
+        )
+        set(value) = prefs.edit {
+            putInt(KEY_SEEK_ACCELERATION_LEVEL, SeekAccelerationPolicy.normalize(value))
+        }
 
     var videoFinishAction: Int
         get() = prefs.getInt(KEY_VIDEO_FINISH_ACTION, 2) // 默认 2: 播放下一个

@@ -14,6 +14,7 @@ import org.mz.mzdkplayer.common.LanguageManager
 import org.mz.mzdkplayer.tool.logic.PhoneSettingsLogic
 import org.mz.mzdkplayer.tool.logic.ScrapeSourcePolicy
 import org.mz.mzdkplayer.tool.logic.ScrapeTimeoutPolicy
+import org.mz.mzdkplayer.tool.logic.SeekAccelerationPolicy
 import org.mz.mzdkplayer.tool.logic.SubtitleOffsetLogic
 
 // 简单的数据类用于 UI 状态
@@ -45,6 +46,8 @@ data class SettingsUiState(
     val dpadDownAction: String = "A",
     val ffDuration: Int = 15,
     val rwDuration: Int = 15,
+    /** 电视端长按左右键的加速档位（倍数链），档位表见 [SeekAccelerationPolicy] */
+    val seekAccelerationLevel: Int = SeekAccelerationPolicy.DEFAULT_LEVEL,
     val videoFinishAction: Int = 2, // 新增：播放完成动作 (0: 循环播放, 1: 播放暂停, 2: 播放下一个)
     // 刮削
     val smb: Boolean = true,
@@ -120,6 +123,7 @@ class SettingsViewModel : ViewModel() {
                 dpadDownAction = repo.dpadDownAction,
                 ffDuration = repo.ffDuration,
                 rwDuration = repo.rwDuration,
+                seekAccelerationLevel = repo.seekAccelerationLevel,
                 videoFinishAction = repo.videoFinishAction,
                 smb = repo.enableSmb,
                 webdav = repo.enableWebDav,
@@ -288,6 +292,17 @@ class SettingsViewModel : ViewModel() {
     /** 在档位之间循环（电视端设置项是「按一次换一个」的交互） */
     fun nextScrapeTimeout() {
         setScrapeTimeout(ScrapeTimeoutPolicy.next(repo.scrapeTimeoutSeconds))
+    }
+
+    /** 设置长按加速档位，取值由 [SeekAccelerationPolicy] 收敛到合法档位 */
+    fun setSeekAccelerationLevel(level: Int) {
+        repo.seekAccelerationLevel = level
+        refreshState()
+    }
+
+    /** 在加速档位之间循环（电视端设置项是「按一次换一个」的交互） */
+    fun nextSeekAccelerationLevel() {
+        setSeekAccelerationLevel(SeekAccelerationPolicy.next(repo.seekAccelerationLevel))
     }
 
     private val _tmdbTestResult = MutableStateFlow<Resource<String>?>(null)

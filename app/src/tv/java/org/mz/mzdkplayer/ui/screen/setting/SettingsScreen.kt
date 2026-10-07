@@ -59,6 +59,7 @@ import org.mz.mzdkplayer.ui.common.formatLang
 import org.mz.mzdkplayer.ui.common.formatRecursiveScanLevel
 import org.mz.mzdkplayer.ui.common.formatScrapeSource
 import org.mz.mzdkplayer.ui.common.formatScrapeTimeout
+import org.mz.mzdkplayer.ui.common.formatSeekAccelerationLevel
 import org.mz.mzdkplayer.ui.common.formatSubFontName
 import org.mz.mzdkplayer.ui.common.formatTmdbLang
 import org.mz.mzdkplayer.ui.common.formatVideoFinishAction
@@ -354,6 +355,12 @@ fun PlaybackSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
             maxValue = 600,
             minValue = 5,
             label = stringResource(R.string.setting_rw_duration)
+        )
+        ActionSettingItem(
+            title = stringResource(R.string.setting_seek_acceleration),
+            subtitle = stringResource(R.string.setting_seek_acceleration_sub),
+            value = formatSeekAccelerationLevel(state.seekAccelerationLevel),
+            onClick = { settingsVM.nextSeekAccelerationLevel() }
         )
         SwitchSettingItem(
             title = stringResource(R.string.setting_remember_playback_pref),

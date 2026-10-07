@@ -62,6 +62,11 @@
     <string name="setting_dpad_down_action">遙控器下鍵功能</string>
     <string name="setting_ff_duration">快進時長 (秒)</string>
     <string name="setting_rw_duration">快退時長 (秒)</string>
+    <string name="setting_seek_acceleration">長按快進檔位</string>
+    <string name="setting_seek_acceleration_sub">長按快進/快退鍵時步長逐級放大，每一檔跳多少秒依時長自動換算（片長越長每檔跳得越多，最長不超過 5 分鐘）；選「關閉」則只按上面的時長連續跳</string>
+    <string name="setting_seek_acceleration_value_off">關閉</string>
+    <string name="setting_seek_acceleration_value_standard">標準</string>
+    <string name="setting_seek_acceleration_value_fast">快速</string>
     <string name="ui_label_seek_duration">快進快退時長</string>
     <string name="setting_iso_playback_mode_sub">設定 ISO 檔案的初始播放行為</string>
     <string name="iso_playback_mode_default">預設播放設定 (嘗試顯示選單)</string>
