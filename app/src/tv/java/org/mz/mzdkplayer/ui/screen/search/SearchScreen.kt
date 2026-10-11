@@ -50,12 +50,21 @@ import java.net.URLEncoder
 @Composable
 fun SearchScreen(
     navController: NavController, // 需要传入 NavController 进行跳转
+    // 主页搜索框带过来的初始关键词（已解码）；为空表示直接进入搜索页
+    initialQuery: String = "",
     viewModel: SearchViewModel =  viewModelWithFactory {
         createSearchViewModel()
     }
 ) {
     val query by viewModel.searchQuery.collectAsState()
     val pagedItems = viewModel.searchResults.collectAsLazyPagingItems()
+
+    // 主页搜索框回车后直接把词丢进 ViewModel（防抖逻辑仍在 ViewModel 里，这里只灌一次）
+    LaunchedEffect(initialQuery) {
+        if (initialQuery.isNotBlank() && initialQuery != query) {
+            viewModel.onSearchQueryChanged(initialQuery)
+        }
+    }
 
     // --- TV 弹窗状态管理 ---
     val episodes by viewModel.selectedSeriesEpisodes.collectAsState()

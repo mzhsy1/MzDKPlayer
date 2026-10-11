@@ -38,6 +38,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.data.model.RecentConnection
+import org.mz.mzdkplayer.data.repository.RecentConnectionRepository
 import org.mz.mzdkplayer.ui.screen.common.ConListAccent
 import org.mz.mzdkplayer.ui.screen.common.ConOpPanel
 // --- 导入 FTP 相关的模型和 ViewModel ---
@@ -193,10 +195,15 @@ fun FTPConListScreen(mainNavController: NavHostController, ftpListViewModel: FTP
                                                     "Share: $encodedShareName"
                                         )
                                         // 导航到 FTP 文件列表屏幕，传递编码后的参数
-                                        mainNavController.navigate(
-                                            "FTPFileListScreen/$encodedIp/" +
-                                                    "$encodedUsername/$encodedPassword/${conn.port}/$encodedShareName/$encodedConnName"
+                                        val route = "FTPFileListScreen/$encodedIp/" +
+                                                "$encodedUsername/$encodedPassword/${conn.port}/$encodedShareName/$encodedConnName"
+                                        // 记进主页的「最近访问的连接」
+                                        RecentConnectionRepository.record(
+                                            type = RecentConnection.TYPE_FTP,
+                                            name = conn.name.orEmpty(),
+                                            route = route
                                         )
+                                        mainNavController.navigate(route)
                                     } catch (e: Exception) {
                                         Log.e(
                                             "FTPList",

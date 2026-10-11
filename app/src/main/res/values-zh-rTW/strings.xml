@@ -112,6 +112,9 @@
     <string name="ui_label_file_browsing">檔案瀏覽</string>
     <string name="ui_label_search">搜尋</string>
     <string name="ui_label_settings">設定</string>
+    <string name="ui_label_media_library">媒體庫</string>
+    <string name="ui_label_history">歷史</string>
+    <string name="ui_label_recent_connections">最近造訪的連線</string>
     <string name="ui_label_http_external_video">/HTTP/外部影片/外部影片</string>
     <string name="ui_label_unknown">未知</string>
     <string name="ui_label_unknown_filename">未知檔案名稱</string>

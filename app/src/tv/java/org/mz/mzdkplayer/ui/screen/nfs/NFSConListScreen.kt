@@ -39,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.data.model.RecentConnection
+import org.mz.mzdkplayer.data.repository.RecentConnectionRepository
 import org.mz.mzdkplayer.ui.screen.common.ConListAccent
 import org.mz.mzdkplayer.ui.screen.common.ConOpPanel
 // --- 导入 NFS 相关的模型和 ViewModel ---
@@ -185,9 +187,15 @@ fun NFSConListScreen(mainNavController: NavHostController, nfsListViewModel: NFS
                                                     "IP: $encodedIp, SharePath: $encodedSharePath"
                                         )
                                         // 导航到 NFS 文件列表屏幕，传递编码后的参数
-                                        mainNavController.navigate(
+                                        val route =
                                             "NFSFileListScreen/$encodedIp/$encodedSharePath/$encodedSubPath/$encodedName"
+                                        // 记进主页的「最近访问的连接」
+                                        RecentConnectionRepository.record(
+                                            type = RecentConnection.TYPE_NFS,
+                                            name = conn.name.orEmpty(),
+                                            route = route
                                         )
+                                        mainNavController.navigate(route)
                                     } catch (e: Exception) {
                                         Log.e(
                                             "NFSList",

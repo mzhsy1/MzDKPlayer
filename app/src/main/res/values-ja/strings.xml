@@ -90,6 +90,9 @@
     <string name="ui_label_file_browsing">ファイル閲覧</string>
     <string name="ui_label_search">検索</string>
     <string name="ui_label_settings">設定</string>
+    <string name="ui_label_media_library">メディアライブラリ</string>
+    <string name="ui_label_history">履歴</string>
+    <string name="ui_label_recent_connections">最近アクセスした接続</string>
     <string name="ui_label_http_external_video">)/HTTP/外部ビデオ/外部ビデオ</string>
     <string name="ui_label_unknown">不明</string>
     <string name="ui_label_unknown_filename">不明なファイル名</string>

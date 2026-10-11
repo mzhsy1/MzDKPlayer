@@ -48,6 +48,8 @@ import androidx.navigation.NavHostController
 
 import kotlinx.coroutines.delay
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.data.model.RecentConnection
+import org.mz.mzdkplayer.data.repository.RecentConnectionRepository
 import org.mz.mzdkplayer.tool.Tools.fromBase64
 import org.mz.mzdkplayer.tool.Tools.toBase64
 import org.mz.mzdkplayer.ui.screen.common.ConListAccent
@@ -204,7 +206,14 @@ fun SMBConListScreen(mainNavController: NavHostController,smbListViewModel: SMBL
                                     val safeConnectionName = (conn.name ?: "unknown").toBase64()
                                     Log.d("SMBConListScreen", safePath)
                                     Log.d("SMBConListScreen", safePath.fromBase64())
-                                    mainNavController.navigate("SMBFileListScreen/$safePath/$safeConnectionName")
+                                    val route = "SMBFileListScreen/$safePath/$safeConnectionName"
+                                    // 记进主页的「最近访问的连接」
+                                    RecentConnectionRepository.record(
+                                        type = RecentConnection.TYPE_SMB,
+                                        name = conn.name.orEmpty(),
+                                        route = route
+                                    )
+                                    mainNavController.navigate(route)
 
                                     smbListViewModel.setSelectedIndex(index)
                                     smbListViewModel.setSelectedId(conn.id)

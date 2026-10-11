@@ -16,6 +16,7 @@ import okhttp3.OkHttpClient
 import org.mz.mzdkplayer.di.AppContext
 import org.mz.mzdkplayer.data.repository.AudioPlaylistRepository
 import org.mz.mzdkplayer.data.repository.PlaybackPreferenceRepository
+import org.mz.mzdkplayer.data.repository.RecentConnectionRepository
 import org.mz.mzdkplayer.data.repository.VideoPlaylistRepository
 import org.mz.mzdkplayer.data.repository.SettingsRepository
 import org.mz.mzdkplayer.di.RepositoryProvider
@@ -102,6 +103,9 @@ class MzDkPlayerApplication: Application(), SingletonImageLoader.Factory {
 
         // 5. 初始化「按文件记住播放偏好」的存储
         PlaybackPreferenceRepository.init(this)
+
+        // 6. 初始化「最近访问的连接」（电视端主页快捷入口）
+        RecentConnectionRepository.init(this)
 
         val cacheDir = File(filesDir, "exoplayer_cache")
         val evictor = LeastRecentlyUsedCacheEvictor(5000 * 1024 * 1024)

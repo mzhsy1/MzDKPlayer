@@ -123,6 +123,9 @@
     <string name="ui_label_file_browsing">文件浏览</string>
     <string name="ui_label_search">搜索</string>
     <string name="ui_label_settings">设置</string>
+    <string name="ui_label_media_library">媒体库</string>
+    <string name="ui_label_history">历史</string>
+    <string name="ui_label_recent_connections">最近访问的连接</string>
     <string name="ui_label_http_external_video">)}/HTTP/外部视频/外部视频</string>
     <string name="ui_label_unknown">未知</string>
     <string name="ui_label_unknown_filename">未知文件名</string>

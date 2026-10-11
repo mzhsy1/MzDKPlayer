@@ -25,9 +25,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -40,6 +38,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -94,10 +93,9 @@ import org.mz.mzdkplayer.ui.screen.localfile.FontPickerScreen
 import org.mz.mzdkplayer.ui.screen.localfile.LocalFileListScreen
 import org.mz.mzdkplayer.ui.screen.localfile.LocalFileTypeScreen
 import org.mz.mzdkplayer.ui.screen.httplink.HTTPLinkConScreen
-import org.mz.mzdkplayer.ui.screen.library.AudioLibraryScreen
 import org.mz.mzdkplayer.ui.screen.library.HomeScreen
-import org.mz.mzdkplayer.ui.screen.library.MovieLibraryScreen
-import org.mz.mzdkplayer.ui.screen.library.TvLibraryScreen
+import org.mz.mzdkplayer.ui.screen.library.MediaLibraryScreen
+import org.mz.mzdkplayer.ui.screen.library.MediaLibraryTab
 import org.mz.mzdkplayer.ui.screen.nfs.NFSConListScreen
 import org.mz.mzdkplayer.ui.screen.nfs.NFSConScreen
 import org.mz.mzdkplayer.ui.screen.nfs.NFSFileListScreen
@@ -140,18 +138,24 @@ fun MzDKPlayerAPP(
     }
 
 
-    var selectedIndex by remember { mutableIntStateOf(0) }
+    // 侧边栏收敛成 5 项：电影 / 剧集 / 音乐 合并进「媒体库」的分页标签，搜索移到主页搜索框，
+    // 播放历史保留独立入口（追剧用户每天都要用）
     val items =
         listOf(
             stringResource(id = R.string.ui_label_home) to painterResource(id = R.drawable.baseline_home_24),
-            stringResource(id = R.string.ui_label_movies) to painterResource(id = R.drawable.moviefileicon),
-            stringResource(id = R.string.ui_label_tv) to painterResource(id = R.drawable.tv24dp),
-            stringResource(id = R.string.ui_label_music) to painterResource(id = R.drawable.librarymusic24dp),
-            stringResource(id = R.string.ui_label_continue_playing) to painterResource(id = R.drawable.history24dp),
+            stringResource(id = R.string.ui_label_media_library) to painterResource(id = R.drawable.moviefileicon),
+            stringResource(id = R.string.ui_label_history) to painterResource(id = R.drawable.history24dp),
             stringResource(id = R.string.ui_label_file_browsing) to painterResource(id = R.drawable.baseline_folder_24),
-            stringResource(id = R.string.ui_label_search) to painterResource(id = R.drawable.baseline_search_24),
             stringResource(id = R.string.ui_label_settings) to painterResource(id = R.drawable.baseline_settings_24),
         )
+    // 与 items 一一对应的内层路由：既用于「当前路由 → 选中项」，也用于点击跳转
+    val itemRoutes = listOf(
+        "HomePage",
+        "MediaLibraryPage",
+        "HistoryPage",
+        "FileHomePage",
+        "SettingsPage",
+    )
     var backPressedTime by remember { mutableLongStateOf(0L) }
     val backPressThreshold = 2000L // 2秒内再次按返回键才退出
     val mainNavController = rememberNavController()
@@ -201,6 +205,15 @@ fun MzDKPlayerAPP(
 
         composable("MainPage") {
             val homeNavController = rememberNavController()
+            // 当前路由 → 侧边栏选中项。不再用一个独立的 selectedIndex 状态跟着点击走：
+            // 那样从主页快捷入口跳进媒体库时，侧边栏会停在上一次点的那一项上。
+            // 带参数的主页面（MediaLibraryPage?tab=xxx）在 NavDestination.route 里拿到的是
+            // 带占位符的模式串，所以按「路由 + ?」前缀匹配。
+            val currentHomeRoute = homeNavController.currentBackStackEntryAsState()
+                .value?.destination?.route.orEmpty()
+            // -1 = 当前页不在侧边栏里（比如搜索页），这时谁都不高亮
+            val selectedIndex = itemRoutes
+                .indexOfFirst { currentHomeRoute == it || currentHomeRoute.startsWith("$it?") }
             val contentFocusRequest = remember { FocusRequester() }
             val drawerState = remember { DrawerState(initialValue = DrawerValue.Closed) }
             ModalNavigationDrawer(
@@ -241,74 +254,18 @@ fun MzDKPlayerAPP(
                                 selected = isSelected,
 //
                                 onClick = {
-                                    selectedIndex = index
-                                    when (selectedIndex) {
-                                        0 ->  homeNavController.navigate(
-                                            "HomePage",
-                                            navOptions = navOptions {
-                                                launchSingleTop = true
-                                                popUpTo("HomePage") {
-                                                    inclusive = true
-                                                }
-                                            })
-                                        1 ->  homeNavController.navigate(
-                                            "MoviesPage",
-                                            navOptions = navOptions {
-                                                launchSingleTop = true
-                                                popUpTo("MoviesPage") {
-                                                    inclusive = true
-                                                }
-                                            })
-                                        2 ->homeNavController.navigate(
-                                            "TvLibraryPage",
-                                            navOptions = navOptions {
-                                                launchSingleTop = true
-                                                popUpTo("TvLibraryPage") {
-                                                    inclusive = true
-                                                }
-                                            })
-                                        3 ->homeNavController.navigate(
-                                            "AudioLibraryPage",
-                                            navOptions = navOptions {
-                                                launchSingleTop = true
-                                                popUpTo("AudioLibraryPage") {
-                                                    inclusive = true
-                                                }
-                                            })
-                                        4 -> homeNavController.navigate(
-                                            "HistoryPage",
-                                            navOptions = navOptions {
-                                                launchSingleTop = true
-                                                popUpTo("HistoryPage") {
-                                                    inclusive = true
-                                                }
-                                            })
-                                        5 -> homeNavController.navigate(
-                                            "FileHomePage",
-                                            navOptions = navOptions {
-                                                launchSingleTop = true
-                                                popUpTo("FileHomePage") {
-                                                    inclusive = true
-                                                }
-                                            })
-                                        6 ->homeNavController.navigate(
-                                            "SearchPage",
-                                            navOptions = navOptions {
-                                                launchSingleTop = true
-                                                popUpTo("SearchPage") {
-                                                    inclusive = true
-                                                }
-                                            })
-
-                                        7 -> homeNavController.navigate(
-                                            "SettingsPage",
-                                            navOptions = navOptions {
-                                                launchSingleTop = true
-                                                popUpTo("SettingsPage") {
-                                                    inclusive = true
-                                                }
-                                            })
-                                    }
+                                    val target = itemRoutes[index]
+                                    homeNavController.navigate(
+                                        target,
+                                        navOptions = navOptions {
+                                            launchSingleTop = true
+                                            // 首页是内层导航的起点：点首页就把自己换掉，点其它页则把它留在栈底，
+                                            // 于是内层栈深度恒为 1~2，返回键的落点始终可预期
+                                            popUpTo("HomePage") {
+                                                inclusive = target == "HomePage"
+                                            }
+                                        }
+                                    )
                                 },
                                 leadingContent = {
                                     Icon(
@@ -373,22 +330,37 @@ fun MzDKPlayerAPP(
                             //页面路由对应的页面组件
                             MediaHistoryScreen(mainNavController,mediaHistoryViewModel)
                         }
-                        composable("MoviesPage") {
-                            //页面路由对应的页面组件
-                            MovieLibraryScreen(libraryViewModel,mainNavController,homeNavController,settingsVM)
-                        }
-
-                        composable("TvLibraryPage") {
-                            //页面路由对应的页面组件
-                            TvLibraryScreen(libraryViewModel,mainNavController,homeNavController,settingsVM)
-                        }
-                        composable("AudioLibraryPage") {
-                            //页面路由对应的页面组件
-                            AudioLibraryScreen(audioViewModel,homeNavController,mainNavController)
+                        // 媒体库：电影 / 剧集 / 音乐 三个库收在一个页面里，用顶部标签切换。
+                        // tab 是可选参数，侧边栏进来时用默认值（电影），主页快捷入口带 tab 进来
+                        composable(
+                            route = "MediaLibraryPage?tab={tab}",
+                            arguments = listOf(navArgument("tab") {
+                                type = NavType.StringType
+                                defaultValue = MediaLibraryTab.DEFAULT.key
+                            })
+                        ) { backStackEntry ->
+                            MediaLibraryScreen(
+                                libraryViewModel = libraryViewModel,
+                                audioViewModel = audioViewModel,
+                                navController = mainNavController,
+                                homeNavController = homeNavController,
+                                settingsViewModel = settingsVM,
+                                initialTab = backStackEntry.arguments?.getString("tab")
+                                    ?: MediaLibraryTab.DEFAULT.key
+                            )
                         }
                         composable("SearchPage") {
                             //页面路由对应的页面组件
                             SearchScreen(mainNavController)
+                        }
+                        // 主页搜索框带着关键词进来：词是 base64（与其它路由参数同一套编码口径），
+                        // 单独一条路由而不是给 SearchPage 加可选参数 —— 空词时路由段会变成空串，匹配不上
+                        composable("SearchPage/{query}") { backStackEntry ->
+                            val encodedQuery = backStackEntry.arguments?.getString("query").orEmpty()
+                            SearchScreen(
+                                navController = mainNavController,
+                                initialQuery = encodedQuery.fromBase64()
+                            )
                         }
 
                     }
@@ -400,10 +372,23 @@ fun MzDKPlayerAPP(
                 contentFocusRequest.requestFocus()
             }
 
-            // 首次启动：等待窗口焦点建立后，把焦点落到内容区（防止焦点落到侧边导航栏导致抽屉展开）
-            LaunchedEffect(Unit) {
+            // 首次启动：等窗口真正拿到焦点后，再把焦点交给内容区（焦点落到侧边导航栏会让抽屉弹开）。
+            // 原来固定 delay(150)：冷启动 / 低端电视上这个时间点窗口还没拿到焦点，requestFocus 静默失败，
+            // 焦点就留在了侧边栏上 —— 表现为「一进应用侧边栏就是展开的」（模拟器上必现）。
+            // 改成等窗口焦点事件，同时补一次请求兜住「抽屉先把焦点抢走」的时序
+            val windowFocused = LocalWindowInfo.current.isWindowFocused
+            LaunchedEffect(windowFocused) {
+                if (!windowFocused) return@LaunchedEffect
                 delay(150)
-                contentFocusRequest.requestFocus()
+                runCatching { contentFocusRequest.requestFocus() }
+                // 兜底：有的机型到更晚才把焦点定下来，那时抽屉已经被焦点带开了。
+                // 只在抽屉真被带开时才动手，免得每次都把页面自己挑的落点抢走
+                delay(450)
+                if (drawerState.currentValue == DrawerValue.Open) {
+                    drawerState.setValue(DrawerValue.Closed)
+                    delay(250)
+                    runCatching { contentFocusRequest.requestFocus() }
+                }
             }
         }
         composable("LocalFileTypeScreen") { backStackEntry ->

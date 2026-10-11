@@ -54,6 +54,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -93,6 +94,7 @@ import org.mz.mzdkplayer.ui.theme.myIconButtonColor
  *   与输入框的聚焦态是两套状态，边框高亮经常对不上
  * - 聚焦时描边换成主题色并轻微放大，未聚焦是低调的深灰底
  * - 支持常驻字段名 label（输入后不消失）、placeholder、前置图标、密码掩码与错误态
+ * - 可选的 [onSubmit]：软键盘上按「搜索 / 完成」时回调（主页搜索框靠它回车即搜）
  */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -111,11 +113,14 @@ fun TvTextField(
     compact: Boolean = label != null,
     keyboardOptions: KeyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
     textStyle: TextStyle = TextStyle.Default,
+    // 软键盘上按「搜索 / 完成」时回调；不传则维持原来的空实现（表单页不需要）
+    onSubmit: (() -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isTfFocused by interactionSource.collectIsFocusedAsState()
     val focusManager = LocalFocusManager.current
     val tfFocusRequester = remember { FocusRequester() } // 独立焦点请求器
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     val shape = ShapeDefaults.Medium
     val containerColor by animateColorAsState(
@@ -214,7 +219,17 @@ fun TvTextField(
                         cursorBrush = SolidColor(contentColor),
                         interactionSource = interactionSource,
                         keyboardOptions = keyboardOptions,
-                        keyboardActions = KeyboardActions(onAny = { }),
+                        // 回车 / 软键盘的「搜索」「完成」都算提交。
+                        // 注意 KeyboardActions 的两组重载：带 onSearch 的那个没有 onAny，
+                        // 所以只有传了 onSubmit 时才接管这两个动作，其余情况维持原来的空实现
+                        keyboardActions = if (onSubmit == null) {
+                            KeyboardActions(onAny = { })
+                        } else {
+                            KeyboardActions(
+                                onSearch = { onSubmit() },
+                                onDone = { onSubmit() },
+                            )
+                        },
                         visualTransformation = if (isPassword) {
                             PasswordVisualTransformation()
                         } else {
@@ -240,6 +255,15 @@ fun TvTextField(
 
                                         Key.Back -> {
                                             focusManager.moveFocus(FocusDirection.Exit)
+                                            true
+                                        }
+
+                                        // 遥控器「确定」：把软键盘叫出来。
+                                        // 调用方如果传了 showKeyboardOnFocus = false（主页搜索框就是这样，
+                                        // 免得一进页面焦点落在输入框上就弹键盘），键盘就只能靠这里显式拉起；
+                                        // 键盘已经在显示时焦点在输入法窗口上，这段根本不会被触发
+                                        Key.DirectionCenter -> {
+                                            keyboardController?.show()
                                             true
                                         }
 

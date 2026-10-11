@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.data.model.RecentConnection
+import org.mz.mzdkplayer.data.repository.RecentConnectionRepository
 import org.mz.mzdkplayer.ui.screen.common.ConListAccent
 import org.mz.mzdkplayer.ui.screen.common.ConOpPanel
 import org.mz.mzdkplayer.ui.screen.common.ConnectionCard
@@ -195,7 +197,15 @@ fun WebDavConListScreen(
                                             "WebDavList",
                                             "Navigating to WebDavFileListScreen with URL: $encodedUrl"
                                         )
-                                        mainNavController.navigate("WebDavFileListScreen/$encodedUrl/$encodedUsername/$encodedPassword/$encodedName")
+                                        val route =
+                                            "WebDavFileListScreen/$encodedUrl/$encodedUsername/$encodedPassword/$encodedName"
+                                        // 记进主页的「最近访问的连接」
+                                        RecentConnectionRepository.record(
+                                            type = RecentConnection.TYPE_WEBDAV,
+                                            name = conn.name.orEmpty(),
+                                            route = route
+                                        )
+                                        mainNavController.navigate(route)
                                     } catch (e: Exception) {
                                         Log.e("WebDavList", "Error encoding URL: ${e.message}")
 
