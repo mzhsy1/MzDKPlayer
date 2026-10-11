@@ -1,5 +1,6 @@
 package org.mz.mzdkplayer.ui.audioplayer.components
 
+import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -26,6 +27,7 @@ import org.mz.mzdkplayer.data.model.AudioInfo
 @Composable
 fun AudioPlayerBackground(
     audioInfo: AudioInfo?,
+    coverBitmap: Bitmap?,
     isPlaying: Boolean,
     currentAudioSessionId: Int,
     hasAudioPermission: Boolean
@@ -61,10 +63,14 @@ fun AudioPlayerBackground(
                 }
 
                 // === 渐变遮罩层 ===
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.5f))
+                // 原来是纯黑 alpha 0.5 的遮罩，现在换成按 3x3 区域从封面采样的网格渐变
+                // （Compose 1.12 的 MeshGradientPainter）：同样是压暗封面、保证文字对比度，
+                // 但整屏会被封面的配色铺满，播放时颜色带还会沿画面边缘缓慢流动。
+                // 取不到封面颜色 / 系统低于 Android 10 时，AmbientMeshGradient 内部会退回纯黑遮罩。
+                AmbientMeshGradient(
+                    coverBitmap = coverBitmap,
+                    isPlaying = isPlaying,
+                    modifier = Modifier.fillMaxSize()
                 )
 
                 Box(

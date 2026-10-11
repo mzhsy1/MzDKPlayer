@@ -615,6 +615,7 @@ fun AudioPlayerScreen(
         // --- 背景层 ---
         AudioPlayerBackground(
             audioInfo = audioInfo,
+            coverBitmap = coverBitmap,
             isPlaying = isPlaying,
             currentAudioSessionId = currentAudioSessionId,
             hasAudioPermission = hasAudioPermission
