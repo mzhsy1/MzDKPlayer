@@ -122,10 +122,11 @@ MzDKPlayer 支持音频直通功能，可以将原始音频信号（源码）直
 
 ### 主界面与文件列表
 
-![主界面截图](screenshots/Screenshot_20260708_114700.webp)
-![主界面截图](screenshots/Screenshot_20260708_105320.webp)
-![主界面截图](screenshots/Screenshot_20251116_163213.webp)
-![主界面截图](screenshots/Screenshot_20251223_174613.webp)
+![主界面截图](screenshots/Screenshot_20261013_212001.webp)
+![主界面截图](screenshots/Screenshot_20261013_212013.webp)
+![主界面截图](screenshots/Screenshot_20261013_212025.webp)
+![主界面截图](screenshots/Screenshot_20261013_212037.webp)
+![主界面截图](screenshots/Screenshot_20261013_212049.webp)
 ![主界面截图](screenshots/Screenshot_20260708_111419.webp)
 
 ### 播放界面与弹幕效果
@@ -136,12 +137,12 @@ MzDKPlayer 支持音频直通功能，可以将原始音频信号（源码）直
 
 ### 电影/电视剧详情页面
 
-![电影详情页面截图](screenshots/Screenshot_20251220_112824.webp)
+![电影详情页面截图](screenshots/Screenshot_20261013_212101.webp)
 ![电视剧详情页面截图](screenshots/Screenshot_20251220_112844.webp)
 
 ### 设置页面
 
-![设置页面截图](screenshots/Screenshot_20260708_105422.webp)
+![设置页面截图](screenshots/Screenshot_20261013_212113.webp)
 
 ---
 
@@ -151,9 +152,9 @@ MzDKPlayer 支持音频直通功能，可以将原始音频信号（源码）直
 
 > 适合只想在电视上使用的用户，不需要任何开发环境。
 >
-> 📱 **Releases 目前只提供电视端安装包**（`app-tv-*-release.apk`）。手机端尚未发版，需要按 [方式二](#方式二从源码构建) 自行构建；两端 `applicationId` 不同，可以同机安装。
+> 📱 **Releases 同时提供电视端（`app-tv-*-release.apk`）与手机端（`app-phone-*-release.apk`）安装包**；两端 `applicationId` 不同，可以同机安装。
 
-1. 打开 [Releases](https://github.com/mzhsy1/MzDKPlayer/releases) 页面，下载最新版本的 APK（由 GitHub Actions 自动构建）。
+1. 打开 [Releases](https://github.com/mzhsy1/MzDKPlayer/releases) 页面，下载最新版本的 APK。
 2. 根据电视芯片架构选择安装包（**不确定就先用通用包**）：
 
    | 安装包 | 适用设备 |
@@ -271,12 +272,12 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 ### 示例 1：播放本地文件
 
 1. 首次启动会请求存储权限，在 Android 11+ 上选择 **「允许管理所有文件」** 体验最好（否则部分目录扫描不到）。
-2. 首页 / 文件浏览 -> 选择分类（视频 / 音频 / 图片）。
+2. 侧边栏「文件浏览」-> 本地文件 -> 选择分类（视频 / 音频 / 图片）。
 3. 进入目录后点击文件即可播放；播放器会自动加载同目录下的同名 `.xml` 弹幕文件与同名字幕文件。
 
 ### 示例 2：添加网络存储（SMB / FTP / WebDAV / NFS / HTTP）
 
-1. 侧边栏进入 **「网络存储」**，选择协议类型。
+1. 侧边栏进入 **「文件浏览」**，选择协议类型（SMB / WebDAV / FTP / NFS / HTTP）。
 2. 点击右上角 **「新建连接」**，填写地址、账号、密码（SMB 需填共享名，FTP 需填端口）。
 3. 保存后回到连接列表即可看到该存储，点进去像本地目录一样浏览、播放。
 4. 支持的 URI 形态（用于排查问题时参考）：
@@ -367,12 +368,12 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 | 语言 | Kotlin | 2.4.20 |
 | 构建 | Gradle / AGP / KSP | 9.7.1 / 9.4.0 / 2.3.9 |
 | 界面 | Jetpack Compose：电视端用 Compose for TV（`tv-foundation` / `tv-material`），手机端用 Material 3 + Navigation Compose | Compose BOM 2026.09.00 / Navigation 2.9.8 |
-| 播放内核 | Media3 ExoPlayer + libVLC（双引擎，统一抽象层） | 1.11.1 / 3.7.6 |
+| 播放内核 | Media3 ExoPlayer + libVLC（双引擎，统一抽象层） | 1.11.1 / 3.7.7 |
 | 弹幕 | AKDanmaku + libGDX / Ashley | — |
 | 数据库 | Room 3（`androidx.room3`，跑在 SQLiteDriver 上） | 3.0.3 |
 | 偏好存储 | DataStore Preferences | 1.2.1 |
 | 网络 | smbj (SMB) / commons-net (FTP) / sardine (WebDAV) / nfs-client (NFS) / OkHttp | — |
-| 图片加载 | Coil 3 | 3.6.2 |
+| 图片加载 | Coil 3 | 3.6.3 |
 | 内置服务 | NanoHTTPD（本地代理 + 手机遥控页）、ZXing（二维码） | — |
 | 元数据 | Retrofit + Gson（TMDB）、OkHttp + Gson（国内刮削源）、jaudiotagger（音频标签） | — |
 
@@ -395,7 +396,7 @@ core/src/main/java/org/mz/mzdkplayer/     # :core —— 业务层，tv / phone 
 │   ├── exo/          # MzExoPlayer 实现
 │   └── vlc/          # MzVlcPlayer 实现
 ├── tool/             # 工具层：协议 DataSource、字幕扫描、时间解析、局域网代理与遥控服务
-│   └── logic/        # 纯逻辑（可 JVM 单测）：文件名解析、协议 URI、刮削来源顺序与熔断等
+│   └── logic/        # 纯逻辑（可 JVM 单测）：文件名解析、协议 URI、刮削数据源单选与超时档位等
 └── viewmodel/        # 各页面的 ViewModel
 
 app/src/main/java/org/mz/mzdkplayer/
@@ -468,7 +469,7 @@ app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # 手机端 flavor（只用 and
   因此测试必须写成纯 JVM 测试：`android.net.Uri`、`android.util.Log`、`android.util.Base64`、`Context` 等 Android 类型一旦调用就会抛 `RuntimeException("Stub!")`。
 - 需要测试的纯逻辑请抽到不依赖 Android 的 `object` / `internal object` 中；测试与被测代码同在 `:core`（`internal` 对 app 不可见，这条边界是有意保留的）。
 - 命名约定：类名 `XxxTest`，测试函数用反引号中文描述，例如 `` `剧集 - 标题加季集加年份` ``。
-- 现有 **28 个测试类、474 个用例**，全部集中在 `:core`。较有代表性的：`MediaInfoExtractorFormFileNameTest`（文件名解析）、`PlayerMediaTextTest`（播放页标题与日期）、`HttpDirectoryListingTest` / `FileTimeParseTest`（HTTP 目录页与日期解析）、`ProtocolUriParserTest` / `SidecarPathTest`（协议 URI 与伴生文件路径）、`StreamSizePolicyTest`（各协议的流读取策略）、`Phone*Test`（手机端纯逻辑）、`DoubanLogicTest` / `ScrapeSourcePolicyTest` / `ScrapeTimeoutPolicyTest`（国内源字段归一化、数据源单选、刮削超时档位）。完整清单见 `core/src/test/`。
+- 现有 **31 个测试类、510 个用例**，全部集中在 `:core`。较有代表性的：`MediaInfoExtractorFormFileNameTest`（文件名解析）、`PlayerMediaTextTest`（播放页标题与日期）、`HttpDirectoryListingTest` / `FileTimeParseTest`（HTTP 目录页与日期解析）、`ProtocolUriParserTest` / `SidecarPathTest`（协议 URI 与伴生文件路径）、`StreamSizePolicyTest`（各协议的流读取策略）、`Phone*Test`（手机端纯逻辑）、`DoubanLogicTest` / `ScrapeSourcePolicyTest` / `ScrapeTimeoutPolicyTest`（国内源字段归一化、数据源单选、刮削超时档位）。完整清单见 `core/src/test/`。
 
 ### 日志
 
@@ -594,11 +595,11 @@ app/src/phone/java/org/mz/mzdkplayer/ui/phone/   # 手机端 flavor（只用 and
 | 工作流 | 触发时机 | 做什么 |
 | --- | --- | --- |
 | `ci.yml` | 推送到 `main`、每个 PR | 编译两个 flavor + 跑 JVM 单元测试，测试报告作为 artifact 上传 |
-| `release.yml` | 推送到 `main`（版本号是新的）、推送 `V*` tag、手动触发 | 跑测试 → 构建**电视端**签名 APK → 创建 Release 并上传三个 APK（目前只发电视端，手机端需自行构建） |
+| `release.yml` | 推送到 `main`（版本号是新的）、推送 `V*` tag、手动触发 | 跑测试 → 构建**电视端**签名 APK → 创建 Release 并上传电视端的三个包（`universal` / `arm64-v8a` / `armeabi-v7a`）；手机端包目前是手动构建后一并附上 |
 
 **发布是版本号驱动的**：`release.yml` 会读取 `app/build.gradle.kts` 里的 `versionName`，如果还没有对应的 `V<版本号>` Release，就自动构建并发布。也就是说，按约定 bump 完 `versionName` 并推送，Release 就自动出来了，不需要手动打 tag（tag 会由工作流创建，沿用历史的 `V1.17.4` 这种大写 `V` 前缀）。
 
-Release 正文取自 [CHANGELOG.md](CHANGELOG.md) 的「未发布」段落，所以**发布前记得先把变更写进 CHANGELOG**。
+Release 正文取自 [CHANGELOG.md](CHANGELOG.md) 顶部的 `## [未发布]` 段落（工作流按这个标题取正文，改名会让正文取空），所以**发布前记得先把变更写进这一段的顶部**。
 
 发布需要以下 Secrets（`Settings → Secrets and variables → Actions`），缺任意一项工作流会跳过发布并在运行摘要里列出缺什么：
 

@@ -122,10 +122,11 @@ MzDKPlayer supports audio passthrough, allowing raw audio signals (source) to be
 
 ### Main Interface & File List
 
-![Main Interface Screenshot](screenshots/Screenshot_20260708_114700.webp)
-![Main Interface Screenshot](screenshots/Screenshot_20260708_105320.webp)
-![Main Interface Screenshot](screenshots/Screenshot_20251116_163213.webp)
-![Main Interface Screenshot](screenshots/Screenshot_20251223_174613.webp)
+![Main Interface Screenshot](screenshots/Screenshot_20261013_212001.webp)
+![Main Interface Screenshot](screenshots/Screenshot_20261013_212013.webp)
+![Main Interface Screenshot](screenshots/Screenshot_20261013_212025.webp)
+![Main Interface Screenshot](screenshots/Screenshot_20261013_212037.webp)
+![Main Interface Screenshot](screenshots/Screenshot_20261013_212049.webp)
 ![Main Interface Screenshot](screenshots/Screenshot_20260708_111419.webp)
 
 ### Playback Interface & Danmaku
@@ -136,12 +137,12 @@ MzDKPlayer supports audio passthrough, allowing raw audio signals (source) to be
 
 ### Movie/TV Details Page
 
-![Movie Details Screenshot](screenshots/Screenshot_20251220_112824.webp)
+![Movie Details Screenshot](screenshots/Screenshot_20261013_212101.webp)
 ![TV Details Screenshot](screenshots/Screenshot_20251220_112844.webp)
 
 ### Settings Page
 
-![Settings Screenshot](screenshots/Screenshot_20260708_105422.webp)
+![Settings Screenshot](screenshots/Screenshot_20261013_212113.webp)
 
 ---
 
@@ -151,9 +152,9 @@ MzDKPlayer supports audio passthrough, allowing raw audio signals (source) to be
 
 > For users who just want to use the app on their TV — no development environment needed.
 >
-> 📱 **Releases currently ship the TV build only** (`app-tv-*-release.apk`). The phone app has not been released yet — build it yourself with `assemblePhoneDebug` as described in [Option 2](#option-2-build-from-source). The two use different `applicationId`s, so both can be installed on one device.
+> 📱 **Releases ship both the TV build** (`app-tv-*-release.apk`)** and the phone build** (`app-phone-*-release.apk`). The two use different `applicationId`s, so both can be installed on one device.
 
-1. Open the [Releases](https://github.com/mzhsy1/MzDKPlayer/releases) page and download the latest APK (built automatically by GitHub Actions).
+1. Open the [Releases](https://github.com/mzhsy1/MzDKPlayer/releases) page and download the latest APK.
 2. Pick the package matching your TV's chipset (**use the universal package if unsure**):
 
    | Package | Target devices |
@@ -271,12 +272,12 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 ### Example 1: Play a local file
 
 1. The app requests storage permission on first launch. On Android 11+, choosing **"Allow management of all files"** gives the best experience (otherwise some directories are not scanned).
-2. Home / File Browsing -> pick a category (video / audio / image).
+2. Sidebar "File Browsing" -> Local Files -> pick a category (video / audio / image).
 3. Tap a file inside a directory to play it. The player automatically loads a same-named `.xml` danmaku file and same-named subtitles from the same directory.
 
 ### Example 2: Add network storage (SMB / FTP / WebDAV / NFS / HTTP)
 
-1. Open **"Network Storage"** from the sidebar and pick the protocol.
+1. Open **"File Browsing"** from the sidebar and pick the protocol (SMB / WebDAV / FTP / NFS / HTTP).
 2. Tap **"New Connection"** in the top-right corner and fill in the address, username, and password (SMB needs a share name; FTP needs a port).
 3. Saved storages appear in the connection list — browse and play them like a local directory.
 4. Supported URI forms (useful when troubleshooting):
@@ -367,12 +368,12 @@ The phone app has no remote — the player screen is entirely touch-driven:
 | Language | Kotlin | 2.4.20 |
 | Build | Gradle / AGP / KSP | 9.7.1 / 9.4.0 / 2.3.9 |
 | UI | Jetpack Compose: Compose for TV (`tv-foundation` / `tv-material`) on the TV side, Material 3 on the phone side; Navigation Compose | Compose BOM 2026.09.00 / Navigation 2.9.8 |
-| Playback engines | Media3 ExoPlayer + libVLC (dual engine behind a shared abstraction) | 1.11.1 / 3.7.6 |
+| Playback engines | Media3 ExoPlayer + libVLC (dual engine behind a shared abstraction) | 1.11.1 / 3.7.7 |
 | Danmaku | AKDanmaku + libGDX / Ashley | — |
 | Database | Room 3 (`androidx.room3`, running on the SQLiteDriver API) | 3.0.3 |
 | Preferences | DataStore Preferences | 1.2.1 |
 | Networking | smbj (SMB) / commons-net (FTP) / sardine (WebDAV) / nfs-client (NFS) / OkHttp | — |
-| Image loading | Coil 3 | 3.6.2 |
+| Image loading | Coil 3 | 3.6.3 |
 | Built-in services | NanoHTTPD (local proxy + phone remote page), ZXing (QR code) | — |
 | Metadata | Retrofit + Gson (TMDB), OkHttp + Gson (domestic source), jaudiotagger (audio tags) | — |
 
@@ -395,7 +396,7 @@ core/src/main/java/org/mz/mzdkplayer/     # :core — business layer, shared by 
 │   ├── exo/          # MzExoPlayer implementation
 │   └── vlc/          # MzVlcPlayer implementation
 ├── tool/             # Utilities: protocol data sources, subtitle scanning, time parsing, LAN proxy and remote services
-│   └── logic/        # Pure logic (JVM-testable): file name parsing, protocol URIs, scrape source order and breaker
+│   └── logic/        # Pure logic (JVM-testable): file name parsing, protocol URIs, single-choice scrape source and timeout steps
 └── viewmodel/        # ViewModels for every screen
 
 app/src/main/java/org/mz/mzdkplayer/
@@ -469,7 +470,7 @@ Playback is abstracted behind `player/core/IMzPlayer.kt`, implemented by `MzExoP
   Tests must therefore be pure JVM tests: calling Android types such as `android.net.Uri`, `android.util.Log`, `android.util.Base64`, or `Context` throws `RuntimeException("Stub!")`.
 - Extract testable pure logic into `object` / `internal object` declarations that do not depend on Android; tests and the code under test both live in `:core` (`internal` is deliberately invisible to the app module).
 - Naming convention: class names end with `Test`, and test functions use backtick-quoted descriptions, e.g. `` `Series - title with season/episode/year` ``.
-- There are currently **28 test classes with 474 cases**, all of them in `:core`. Representative ones: `MediaInfoExtractorFormFileNameTest` (file name parsing), `PlayerMediaTextTest` (player title and date), `HttpDirectoryListingTest` / `FileTimeParseTest` (HTTP date parsing), `ProtocolUriParserTest` / `SidecarPathTest` (protocol URIs and sidecar paths), `StreamSizePolicyTest` (per-protocol stream read policy), `Phone*Test` (phone-side pure logic), and `DoubanLogicTest` / `ScrapeSourcePolicyTest` / `ScrapeTimeoutPolicyTest` (domestic source field normalisation, the single-choice scraping source, and timeout steps). See `core/src/test/` for the full list.
+- There are currently **31 test classes with 510 cases**, all of them in `:core`. Representative ones: `MediaInfoExtractorFormFileNameTest` (file name parsing), `PlayerMediaTextTest` (player title and date), `HttpDirectoryListingTest` / `FileTimeParseTest` (HTTP date parsing), `ProtocolUriParserTest` / `SidecarPathTest` (protocol URIs and sidecar paths), `StreamSizePolicyTest` (per-protocol stream read policy), `Phone*Test` (phone-side pure logic), and `DoubanLogicTest` / `ScrapeSourcePolicyTest` / `ScrapeTimeoutPolicyTest` (domestic source field normalisation, the single-choice scraping source, and timeout steps). See `core/src/test/` for the full list.
 
 ### Logging
 
@@ -595,7 +596,7 @@ Two workflows ship with the repository, so you never have to package a build by 
 | Workflow | Trigger | What it does |
 | --- | --- | --- |
 | `ci.yml` | Push to `main`, every PR | Compiles both flavors and runs the JVM unit tests, uploads the test report as an artifact |
-| `release.yml` | Push to `main` (when the version is new), `V*` tag push, manual run | Runs the tests → builds the **TV** signed APKs → creates the Release with all three APKs attached (the TV build only for now — build the phone app yourself) |
+| `release.yml` | Push to `main` (when the version is new), `V*` tag push, manual run | Runs the tests → builds the **TV** signed APKs → creates the Release with the three TV packages attached (`universal` / `arm64-v8a` / `armeabi-v7a`); the phone packages are currently built by hand and attached together |
 
 **Releases are version-driven**: `release.yml` reads `versionName` from `app/build.gradle.kts` and, if there is no `V<version>` Release yet, builds and publishes automatically. In other words, bump `versionName` as usual, push, and the Release appears — no manual tagging needed (the workflow creates the tag, keeping the historical uppercase `V` prefix such as `V1.17.4`).
 
