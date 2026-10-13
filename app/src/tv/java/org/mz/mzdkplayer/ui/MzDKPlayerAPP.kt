@@ -9,6 +9,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -36,7 +37,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -212,6 +215,8 @@ fun MzDKPlayerAPP(
             val selectedIndex = itemRoutes
                 .indexOfFirst { currentHomeRoute == it || currentHomeRoute.startsWith("$it?") }
             val contentFocusRequest = remember { FocusRequester() }
+            // 内容区按左键时焦点落进侧边栏，落在这一项上（见 FloatingSideBar 的 focusRequester 参数）
+            val sideBarFocusRequest = remember { FocusRequester() }
 
             // 悬浮侧边栏的容器：内容整屏铺开，胶囊按钮列浮在它上面（Box 里先内容、后侧边栏）
             Box(modifier = Modifier.fillMaxSize()) {
@@ -225,6 +230,21 @@ fun MzDKPlayerAPP(
                             // 只是列表第一项不会被按钮压住
                             .padding(start = FloatingSideBarReservedWidth)
                             .focusRequester(contentFocusRequest)
+                            // 把内容区圈成一个 focus group，并接管「焦点离开内容区」这件事。
+                            // 侧边栏和内容本来在同一个焦点树里，内容区在某个方向上没有可聚焦项时，
+                            // 2D 搜索会兜底到侧边栏 —— 最典型的就是媒体库页从海报按「上」跳到侧边栏，
+                            // 顶部的 电影/剧集/音乐 分页标签反而按不到。
+                            // 现在只有「左」允许离开内容区（落到侧边栏的当前项），其它方向一律取消、焦点停在原地。
+                            .focusGroup()
+                            .focusProperties {
+                                onExit = {
+                                    if (requestedFocusDirection == FocusDirection.Left) {
+                                        sideBarFocusRequest
+                                    } else {
+                                        FocusRequester.Cancel
+                                    }
+                                }
+                            }
                     ) {
                         composable("HomePage") {
                             HomeScreen(libraryViewModel, mainNavController, homeNavController, settingsVM)
@@ -281,6 +301,7 @@ fun MzDKPlayerAPP(
                     FloatingSideBar(
                         items = items,
                         selectedIndex = selectedIndex,
+                        focusRequester = sideBarFocusRequest,
                         onSelect = { index ->
                             val target = itemRoutes[index]
                             homeNavController.navigate(
@@ -688,8 +709,12 @@ private fun FloatingSideBar(
     items: List<Pair<String, Painter>>,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
+    focusRequester: FocusRequester,
     modifier: Modifier = Modifier
 ) {
+    // 内容区按左键时把焦点交给「当前页对应的那一项」；当前页不在侧边栏里（搜索页等）就交给第一项。
+    // FocusRequester 只能挂在一个节点上，所以只挂在入口项上
+    val entryIndex = if (selectedIndex in items.indices) selectedIndex else 0
     Column(
         modifier = modifier.selectableGroup(),
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -700,7 +725,12 @@ private fun FloatingSideBar(
                 text = item.first,
                 icon = item.second,
                 selected = selectedIndex == index,
-                onClick = { onSelect(index) }
+                onClick = { onSelect(index) },
+                modifier = if (index == entryIndex) {
+                    Modifier.focusRequester(focusRequester)
+                } else {
+                    Modifier
+                }
             )
         }
     }
@@ -713,7 +743,8 @@ private fun FloatingSideBarItem(
     text: String,
     icon: Painter,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
@@ -737,7 +768,7 @@ private fun FloatingSideBarItem(
 
     Surface(
         onClick = onClick,
-        modifier = Modifier
+        modifier = modifier
             .width(width)
             .height(FloatingSideBarItemSize)
             // 投影是为了「浮」起来：黑底上按钮与内容之间靠这圈阴影和描边分层
