@@ -4,19 +4,23 @@ import org.mz.mzdkplayer.data.repository.AudioPlaylistRepository
 import org.mz.mzdkplayer.ui.screen.setting.SolarSystem
 import android.net.Uri
 import android.util.Log
-import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -34,13 +38,15 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.util.UnstableApi
@@ -51,16 +57,12 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import androidx.navigation.navOptions
-import androidx.tv.material3.DrawerState
-import androidx.tv.material3.DrawerValue
+import androidx.tv.material3.Border
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
-import androidx.tv.material3.ListItem
-import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.ModalNavigationDrawer
-import androidx.tv.material3.NavigationDrawer
-import androidx.tv.material3.NavigationDrawerItem
-import androidx.tv.material3.NavigationDrawerItemDefaults
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
@@ -120,13 +122,12 @@ import org.mz.mzdkplayer.viewmodel.NFSListViewModel
 import org.mz.mzdkplayer.viewmodel.SMBListViewModel
 import org.mz.mzdkplayer.viewmodel.SettingsViewModel
 import org.mz.mzdkplayer.viewmodel.WebDavListViewModel
-import org.mz.mzdkplayer.ui.theme.mySideListItemColor
 
 import org.mz.mzdkplayer.ui.videoplayer.VideoPlayerScreen
 import java.net.URLDecoder
 import java.net.URLEncoder
 
-@OptIn(UnstableApi::class)
+@OptIn(UnstableApi::class, ExperimentalTvMaterial3Api::class)
 @Composable
 fun MzDKPlayerAPP(
     externalVideoUri: Uri?,
@@ -159,11 +160,7 @@ fun MzDKPlayerAPP(
     var backPressedTime by remember { mutableLongStateOf(0L) }
     val backPressThreshold = 2000L // 2秒内再次按返回键才退出
     val mainNavController = rememberNavController()
-    val len = items.size
     val context = LocalContext.current
-    val currentRoute = mainNavController.currentBackStackEntryAsState().value?.destination?.route
-    // 判断是否为主页面（需要显示侧边栏）
-    val isMainPage = currentRoute in listOf("HomePage", "HistoryPage", "SettingsPage")
 
     // 👇 关键：如果 externalVideoUri 存在，直接播放，不显示主页
     LaunchedEffect(externalVideoUri) {
@@ -215,103 +212,18 @@ fun MzDKPlayerAPP(
             val selectedIndex = itemRoutes
                 .indexOfFirst { currentHomeRoute == it || currentHomeRoute.startsWith("$it?") }
             val contentFocusRequest = remember { FocusRequester() }
-            val drawerState = remember { DrawerState(initialValue = DrawerValue.Closed) }
-            ModalNavigationDrawer(
-                drawerState = drawerState, // 直接传入保存的状态,
-                modifier = Modifier.fillMaxSize(),
-                drawerContent = {drawerValue ->
-                    val isOpen = drawerValue == DrawerValue.Open
-                    val warmWhite = Color(0xFFFFF6E5)       // 定义暖白色
-                    Column(
-                        Modifier
-                            // 展开时使用深色半透明背景，收起时完全透明
-                            // 👇 修改 1：使用水平渐变色
-                            .background(
-                                if (isOpen) {
-                                    Brush.horizontalGradient(
-                                        colors = listOf(
-                                            Color(0xE6000000), // 左侧：90% 黑
-                                            Color(0x00000000)  // 右侧：完全透明
-                                        )
-                                    )
-                                } else {
-                                    SolidColor(Color.Transparent) // 收起时纯透明
-                                }
-                            )
 
-                            .fillMaxHeight()
-                            .padding(vertical = 24.dp, horizontal = 12.dp)
-                            // 动画过渡宽度
-                            .width(if (isOpen) 240.dp else 64.dp)
-                            .selectableGroup(),
-                        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-                    ) {
-                        items.forEachIndexed { index, item ->
-                            val (text, icon) = item
-                            val isSelected = selectedIndex == index // 提取一个变量方便复用
-                            NavigationDrawerItem(
-
-                                selected = isSelected,
-//
-                                onClick = {
-                                    val target = itemRoutes[index]
-                                    homeNavController.navigate(
-                                        target,
-                                        navOptions = navOptions {
-                                            launchSingleTop = true
-                                            // 首页是内层导航的起点：点首页就把自己换掉，点其它页则把它留在栈底，
-                                            // 于是内层栈深度恒为 1~2，返回键的落点始终可预期
-                                            popUpTo("HomePage") {
-                                                inclusive = target == "HomePage"
-                                            }
-                                        }
-                                    )
-                                },
-                                leadingContent = {
-                                    Icon(
-                                        painter = icon,
-                                        contentDescription = text,
-                                        // 👇 修改 2：强制统一所有图标大小为 24.dp
-                                        modifier = Modifier.size(24.dp),
-                                        // 👇 修改 2：选中时图标变黑，未选中时保持半透明白
-                                        tint = if (isSelected) Color.Black else Color.White.copy(alpha = 0.6f)
-                                    )
-                                },
-                                // 👇 修改 3：配置 Item 的底色
-                                colors = NavigationDrawerItemDefaults.colors(
-                                    containerColor = Color.Transparent,                     // 默认底色透明
-                                    focusedContainerColor = Color.White.copy(alpha = 0.15f),// 未选中但焦点悬停时的底色
-                                    selectedContainerColor = warmWhite,                     // 选中时的底色 (暖白)
-                                    focusedSelectedContainerColor = warmWhite               // 选中且焦点悬停时的底色 (暖白)
-                                ),
-                                modifier = Modifier.fillMaxWidth()
-
-                            ){
-                                if (isOpen) {
-                                    Text(
-                                        text = text,
-                                        // 👇 修改 4：选中时文字变黑，未选中时纯白
-                                        color = if (isSelected) Color.Black else Color.White,
-                                        modifier = Modifier.padding(start = 12.dp),
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                },
-
-                content = {
+            // 悬浮侧边栏的容器：内容整屏铺开，胶囊按钮列浮在它上面（Box 里先内容、后侧边栏）
+            Box(modifier = Modifier.fillMaxSize()) {
                     NavHost(
                         navController = homeNavController,
                         startDestination = "HomePage",
                         modifier = Modifier
                             .background(Color.Black)
-                            .fillMaxHeight()
-                            .fillMaxWidth()
-                            // 👇 关键修改：统一在这里加上 64.dp 的左侧边距
-                            .padding(start = 84.dp)
+                            .fillMaxSize()
+                            // 左侧让出悬浮侧边栏的宽度：背景仍是全屏黑，看不出内容被让位，
+                            // 只是列表第一项不会被按钮压住
+                            .padding(start = FloatingSideBarReservedWidth)
                             .focusRequester(contentFocusRequest)
                     ) {
                         composable("HomePage") {
@@ -364,31 +276,40 @@ fun MzDKPlayerAPP(
                         }
 
                     }
-                })
 
-            // 导航栏展开时，按返回键先收起导航栏并把焦点交回内容区，而不是退出应用
-            BackHandler(enabled = drawerState.currentValue == DrawerValue.Open) {
-                drawerState.setValue(DrawerValue.Closed)
-                contentFocusRequest.requestFocus()
-            }
+                    // 悬浮侧边栏：左侧居中一列胶囊按钮，点哪一项切哪一页
+                    FloatingSideBar(
+                        items = items,
+                        selectedIndex = selectedIndex,
+                        onSelect = { index ->
+                            val target = itemRoutes[index]
+                            homeNavController.navigate(
+                                target,
+                                navOptions = navOptions {
+                                    launchSingleTop = true
+                                    // 首页是内层导航的起点：点首页就把自己换掉，点其它页则把它留在栈底，
+                                    // 于是内层栈深度恒为 1~2，返回键的落点始终可预期
+                                    popUpTo("HomePage") {
+                                        inclusive = target == "HomePage"
+                                    }
+                                }
+                            )
+                        },
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(start = FloatingSideBarEdgePadding)
+                    )
+                }
 
-            // 首次启动：等窗口真正拿到焦点后，再把焦点交给内容区（焦点落到侧边导航栏会让抽屉弹开）。
+            // 首次启动：等窗口真正拿到焦点后，再把焦点交给内容区。
             // 原来固定 delay(150)：冷启动 / 低端电视上这个时间点窗口还没拿到焦点，requestFocus 静默失败，
-            // 焦点就留在了侧边栏上 —— 表现为「一进应用侧边栏就是展开的」（模拟器上必现）。
-            // 改成等窗口焦点事件，同时补一次请求兜住「抽屉先把焦点抢走」的时序
+            // 焦点就留在侧边栏上 —— 表现为「一进应用焦点先落在侧边栏」（模拟器上必现）。
+            // 改成等窗口焦点事件
             val windowFocused = LocalWindowInfo.current.isWindowFocused
             LaunchedEffect(windowFocused) {
                 if (!windowFocused) return@LaunchedEffect
                 delay(150)
                 runCatching { contentFocusRequest.requestFocus() }
-                // 兜底：有的机型到更晚才把焦点定下来，那时抽屉已经被焦点带开了。
-                // 只在抽屉真被带开时才动手，免得每次都把页面自己挑的落点抢走
-                delay(450)
-                if (drawerState.currentValue == DrawerValue.Open) {
-                    drawerState.setValue(DrawerValue.Closed)
-                    delay(250)
-                    runCatching { contentFocusRequest.requestFocus() }
-                }
             }
         }
         composable("LocalFileTypeScreen") { backStackEntry ->
@@ -739,4 +660,132 @@ fun MzDKPlayerAPP(
     }
     MzToast(state = MzToastManager.state)
 
+}
+
+// ===== 悬浮侧边栏（电视端）=====
+// 尺寸集中在这里：圆钮直径、展开后的胶囊宽度、距屏幕左缘的留白。
+// 内容区左侧让出的宽度 = 圆钮直径 + 左缘留白 + 一点呼吸空间
+private val FloatingSideBarItemSize = 52.dp
+private val FloatingSideBarItemExpandedWidth = 196.dp
+private val FloatingSideBarEdgePadding = 14.dp
+private val FloatingSideBarReservedWidth =
+    FloatingSideBarItemSize + FloatingSideBarEdgePadding + 6.dp
+
+/** 选中项底色：与媒体库分页标签、主页快捷入口用的是同一块暖白 */
+private val FloatingSideBarSelectedColor = Color(0xFFFFF6E5)
+
+/**
+ * 电视端侧边栏：贴在屏幕左侧、浮在内容之上的一列胶囊按钮。
+ *
+ * 与原来的抽屉（`ModalNavigationDrawer`）的区别：
+ * - 不再推挤内容，也没有自己的深色背景板 —— 内容整屏铺开，按钮直接浮在它上面；
+ * - 没有「展开 / 收起」两个形态，平时就是一枚枚圆钮，焦点落在哪一枚、哪一枚横向拉长露出名字；
+ * - 于是也就不存在「冷启动焦点落进侧边栏把抽屉带开」的问题，返回键无需再拦截。
+ */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun FloatingSideBar(
+    items: List<Pair<String, Painter>>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.selectableGroup(),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalAlignment = Alignment.Start
+    ) {
+        items.forEachIndexed { index, item ->
+            FloatingSideBarItem(
+                text = item.first,
+                icon = item.second,
+                selected = selectedIndex == index,
+                onClick = { onSelect(index) }
+            )
+        }
+    }
+}
+
+/** 单枚胶囊按钮：收起时是圆钮（只有图标），拿到焦点时横向拉长并显示名字 */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun FloatingSideBarItem(
+    text: String,
+    icon: Painter,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+
+    // 展开只由宽度动画驱动、不做文字的出入场动画：文字位置固定，由外层裁剪出宽度，
+    // 看起来像是从左往右把名字「露」出来（左缘贴屏幕，胶囊只能朝右长），比淡入淡出更贴合
+    // 一枚胶囊被拉长的物理感
+    val width by animateDpAsState(
+        targetValue = if (focused) FloatingSideBarItemExpandedWidth else FloatingSideBarItemSize,
+        animationSpec = tween(durationMillis = 220),
+        label = "floatingSideBarItemWidth"
+    )
+    val containerColor = when {
+        selected -> FloatingSideBarSelectedColor
+        focused -> Color(0xFF3C3C3C)
+        else -> Color(0xE61C1C1C)
+    }
+    val contentColor =
+        if (selected) Color.Black else Color.White.copy(alpha = if (focused) 1f else 0.75f)
+    val shape = RoundedCornerShape(percent = 50)
+
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .width(width)
+            .height(FloatingSideBarItemSize)
+            // 投影是为了「浮」起来：黑底上按钮与内容之间靠这圈阴影和描边分层
+            .shadow(elevation = 12.dp, shape = shape),
+        interactionSource = interactionSource,
+        shape = ClickableSurfaceDefaults.shape(shape = shape),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = containerColor,
+            contentColor = contentColor,
+            focusedContainerColor = containerColor,
+            focusedContentColor = contentColor
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
+        border = ClickableSurfaceDefaults.border(
+            focusedBorder = Border(
+                border = BorderStroke(
+                    2.dp,
+                    // 暖白底上再描一圈白看不见，换成压暗的描边
+                    if (selected) Color.Black.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.7f)
+                ),
+                inset = 0.dp
+            )
+        )
+    ) {
+        Row(
+            // 收起时 52dp 里图标正好居中：左侧留白 =（52 - 24）/ 2
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = icon,
+                contentDescription = text,
+                modifier = Modifier.size(24.dp),
+                tint = contentColor
+            )
+            if (focused) {
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Clip
+                )
+            }
+        }
+    }
 }
