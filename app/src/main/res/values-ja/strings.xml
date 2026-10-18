@@ -478,7 +478,6 @@
 
     <string name="setting_webdav_remove_first_item">WebDAV リストの最初の項目を削除</string>
     <string name="setting_webdav_remove_first_item_sub">一部の WebDAV サービスは現在のディレクトリを最初の項目として返します。重複を避けるためにこれを有効にします</string>
-    <string name="setting_iso_playback_mode">ISO ブルーレイ再生動作</string>
     <string name="setting_lock_video_ratio">ビデオ比率を固定</string>
     <string name="setting_global_video_ratio">全体の画面比率</string>
     <string name="setting_global_video_ratio_sub">「ビデオ比率を固定」がオンの場合のみ有効。オフの場合は毎回「自動」から開始します</string>
@@ -499,9 +498,6 @@
     <string name="setting_seek_acceleration_value_standard">標準</string>
     <string name="setting_seek_acceleration_value_fast">高速</string>
     <string name="ui_label_seek_duration">シーク時間</string>
-    <string name="setting_iso_playback_mode_sub">ISO ファイルのデフォルトの再生動作を設定します</string>
-    <string name="iso_playback_mode_default">デフォルトの再生設定 (メニューの表示を試行)</string>
-    <string name="iso_playback_mode_main_movie">本編を直接再生</string>
     <string name="setting_auto_load_subtitle">同名の字幕を自動読み込み</string>
     <string name="setting_auto_load_subtitle_sub">再生時にビデオディレクトリをスキャンし、同名の字幕を自動的に読み込みます</string>
     <string name="ui_label_home">ホーム</string>

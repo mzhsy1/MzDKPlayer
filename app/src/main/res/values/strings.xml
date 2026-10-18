@@ -50,7 +50,6 @@
 
     <string name="setting_audio_lang">音频首选语言</string>
     <string name="setting_default_player">默认播放器内核</string>
-    <string name="setting_iso_playback_mode">ISO 蓝光播放行为</string>
     <string name="setting_lock_video_ratio">锁定视频比例</string>
     <string name="setting_global_video_ratio">全局画面比例</string>
     <string name="setting_global_video_ratio_sub">仅在「锁定视频比例」开启时生效；关闭时每次播放都从自适应开始</string>
@@ -73,9 +72,6 @@
     <string name="setting_seek_acceleration_value_standard">标准</string>
     <string name="setting_seek_acceleration_value_fast">快速</string>
     <string name="ui_label_seek_duration">快进快退时长</string>
-    <string name="setting_iso_playback_mode_sub">设置 ISO 文件的初始播放行为</string>
-    <string name="iso_playback_mode_default">默认播放设置 (尝试显示菜单)</string>
-    <string name="iso_playback_mode_main_movie">直接播放正片</string>
     <string name="setting_sub_lang">字幕首选语言</string>
     <string name="setting_tunneling">视频隧道模式 (Tunneling)</string>
     <string name="setting_tunneling_sub">可能改善 4K/HDR 播放性能，但可能存在兼容性问题</string>

@@ -1,5 +1,25 @@
 # 更新日志 (Changelog)
 
+## [未发布]
+
+### 1.18.9（versionCode 122）发布说明
+
+> 本段会被 `.github/workflows/release.yml` 取作 Release 说明，所以只放摘要。
+
+**新增**
+
+- 字幕默认字体改为**得意黑**（SmileySans Oblique）：字体随 APK 内置，首次播放自动解压到应用私有目录；设置里没选第三方字体时，VLC 内核（SRT / ASS / 内嵌文本字幕）与 Exo 播放器的文本字幕层统一使用它
+- VLC 内核换成自编译精简版（`io.github.mzhsy1:vlc-android-mini:3.7.7`），字幕字体补丁支持直接指定字体文件绝对路径——此前 Android 上 `--freetype-font` 只认字体族名，传路径无效
+
+**变更**
+
+- 精简版 VLC 取代官方 `libvlc-all`：去掉 Lua、Chromecast 投屏、BD-J、编码器与转码输出，HDR / 10bit 解码、音频直通、网络协议、蓝光主影片播放全部保留；`libvlc.so` 在 arm64 上由 41.3 MB 降到 36.2 MB
+- 去掉「ISO 蓝光播放行为」设置：精简版 VLC 编译时关闭了 BD-J（没有 Java 菜单），「尝试显示菜单」实际放不出内容，ISO 现在固定直接播放正片
+
+**修复**
+
+- 部分电视盒子 / 机型上 SRT 中文字幕不显示或显示成方块（freetype 走了 fontconfig 后端，盒子上缓存目录不可写导致字体匹配失败）
+
 ## [已发布]
 
 ### 1.18.8（versionCode 121）发布说明

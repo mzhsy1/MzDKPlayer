@@ -15,12 +15,11 @@ gson = "2.14.0"
 converterGson = "3.0.0"
 jaudiotagger = "3.0.1"
 junit = "4.13.2"
-vlcAndroidMini = "3.7.0"
+vlcAndroidMini = "3.7.7"
 kotlin = "2.4.20"
 coreKtx = "1.19.0"
 appcompat = "1.8.0"
 composeBom = "2026.09.00"
-libvlcAll = "3.7.7"
 logbackAndroid = "3.0.0"
 desugarJdkLibs = "2.1.5" # 检查是否有更新版本
 media3UiCompose = "1.11.1"
@@ -97,7 +96,6 @@ ass-media = { module = "io.github.peerless2012:ass-media", version.ref = "assMed
 core = { module = "com.google.zxing:core", version.ref = "core" }
 gdx = { module = "com.badlogicgames.gdx:gdx", version.ref = "gdx" }
 gdx-backend-android = { module = "com.badlogicgames.gdx:gdx-backend-android", version.ref = "gdxBackendAndroid" }
-libvlc-all = { module = "org.videolan.android:libvlc-all", version.ref = "libvlcAll" }
 nanohttpd = { module = "org.nanohttpd:nanohttpd", version.ref = "nanohttpd" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 commons-net = { module = "commons-net:commons-net", version.ref = "commonsNet" }

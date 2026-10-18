@@ -535,16 +535,11 @@ fun PhonePlayerScreen(
     }
 
     // ==================== 自定义字幕外观 ====================
+    // 优先用设置里挑的第三方字体，没挑就用内置的得意黑
     val customSubtitleFontFamily = remember(settingsState.subFontPath) {
-        val path = settingsState.subFontPath
-        if (path.isBlank()) {
-            null
-        } else {
-            runCatching {
-                val fontFile = java.io.File(path)
-                if (fontFile.exists() && fontFile.isFile) FontFamily(Font(fontFile)) else null
-            }.getOrNull()
-        }
+        runCatching {
+            Tools.resolveSubtitleFont(context, settingsState.subFontPath)?.let { FontFamily(Font(it)) }
+        }.getOrNull()
     }
     val customSubtitleStyle = remember(
         settingsState.subColor,

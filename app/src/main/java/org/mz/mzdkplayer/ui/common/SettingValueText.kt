@@ -53,14 +53,6 @@ fun formatAudioDecodeMode(mode: Int): String = when (mode) {
     else -> stringResource(R.string.ui_label_unknown)
 }
 
-/** ISO 蓝光播放行为：0 尝试显示菜单 / 1 直接播放正片 */
-@Composable
-fun formatIsoPlaybackMode(mode: Int): String = when (mode) {
-    0 -> stringResource(R.string.iso_playback_mode_default)
-    1 -> stringResource(R.string.iso_playback_mode_main_movie)
-    else -> stringResource(R.string.ui_label_unknown)
-}
-
 /** 批量扫描的递归层级：0～5 层 */
 @Composable
 fun formatRecursiveScanLevel(level: Int): String = when (level) {

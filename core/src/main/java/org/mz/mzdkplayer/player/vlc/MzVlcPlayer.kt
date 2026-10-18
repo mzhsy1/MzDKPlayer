@@ -85,7 +85,6 @@ import kotlin.collections.mapIndexed
 import kotlin.time.Duration.Companion.milliseconds
 
 import androidx.core.net.toUri
-import org.mz.mzdkplayer.tool.Tools.prepareSubtitleFont
 
 
 @UnstableApi
@@ -125,6 +124,14 @@ class MzVlcPlayer(
                 !lower.startsWith("file:///") // 其他全部当网络处理
 
     }
+
+// 0. 字幕字体：优先用户在设置里挑的第三方字体，否则用内置的得意黑。
+//    精简版 aar 的字幕字体补丁支持直接传字体文件的绝对路径（以前只能传字体族名）。
+
+    private val subtitleFontFile = Tools.resolveSubtitleFont(
+        context,
+        settingsViewModel.uiState.value.subFontPath
+    )
 
 // 1. 初始化 VLC 命令行参数
 
@@ -170,20 +177,16 @@ class MzVlcPlayer(
 
 //add(":no-bluray-menu")
 
-// 1. 获取解压后的字体绝对路径
+// 1. 字幕字体：传字体文件的绝对路径，aar 会注册成内部字体族 user-font 并作为默认字体
 
-        // 1. 先把字体准备好，拿到文件对象
-    //    val fontFile = prepareSubtitleFont(context, "SmileySans-Oblique.ttf")
-//        Log.d("sds",fontFile.absolutePath)
-//        if (fontFile.exists()) {
-//
-//            add("--freetype-font=monospace")
-//        }
-//// （可选）顺手把字幕设为黄色、加粗、带黑色描边，在电视上看着更清晰
-//        add("--freetype-color=16776960") // 黄色
-//        add("--freetype-bold")
-//        add("--freetype-outline-color=0") // 黑色描边
-//        add("--freetype-outline-thickness=4") // 描边粗细
+        subtitleFontFile?.let {
+
+            Log.d("MzVlcPlayer", "subtitle font = ${it.absolutePath}")
+
+            add("--freetype-font=${it.absolutePath}")
+
+        }
+
 // VLC 的语言设置通常在初始化时通过参数传入
 
         add("--audio-language=$preferredAudioLang")
@@ -309,13 +312,11 @@ class MzVlcPlayer(
 
         val media = Media(libVLC, finalUrl.toUri()).apply {
             setHWDecoderEnabled(true, true)
-            // 🟢 处理 ISO 蓝光播放逻辑
+            // ISO 蓝光原盘：固定直接播放正片。
+            // 精简版 VLC 编译时关掉了 BD-J（没有 Java 菜单），「尝试显示菜单」等于放不出东西，
+            // 所以设置里那个开关也一并去掉了，行为固定成 :no-bluray-menu。
             if (mediaUri.lowercase().endsWith(".iso") || mediaUri.lowercase().endsWith(".iso/")) {
-                if (settingsViewModel.uiState.value.isoPlaybackMode == 1) {
-                    addOption(":no-bluray-menu") // 直接播放正片
-                } else {
-                    addOption(":bluray-menu") // 显示菜单
-                }
+                addOption(":no-bluray-menu")
             }
 
 //addOption(":codec=mediacodec_ndk")

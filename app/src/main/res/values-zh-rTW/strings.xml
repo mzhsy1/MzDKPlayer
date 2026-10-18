@@ -45,7 +45,6 @@
     <string name="ui_label_tmdb_connection_failed">TMDB 連線失敗：%s</string>
     <string name="setting_audio_lang">音訊首選語言</string>
     <string name="setting_default_player">預設播放器核心</string>
-    <string name="setting_iso_playback_mode">ISO 藍光播放行為</string>
     <string name="setting_lock_video_ratio">鎖定影片比例</string>
     <string name="setting_global_video_ratio">全域畫面比例</string>
     <string name="setting_global_video_ratio_sub">僅在「鎖定影片比例」開啟時生效；關閉時每次播放都從自動適應開始</string>
@@ -68,9 +67,6 @@
     <string name="setting_seek_acceleration_value_standard">標準</string>
     <string name="setting_seek_acceleration_value_fast">快速</string>
     <string name="ui_label_seek_duration">快進快退時長</string>
-    <string name="setting_iso_playback_mode_sub">設定 ISO 檔案的初始播放行為</string>
-    <string name="iso_playback_mode_default">預設播放設定 (嘗試顯示選單)</string>
-    <string name="iso_playback_mode_main_movie">直接播放正片</string>
     <string name="setting_sub_lang">字幕首選語言</string>
     <string name="setting_tunneling">影片隧道模式 (Tunneling)</string>
     <string name="setting_tunneling_sub">可能改善 4K/HDR 播放效能，但可能存在相容性問題</string>

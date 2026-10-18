@@ -40,7 +40,6 @@ data class SettingsUiState(
     val lockVideoRatio: Boolean = false,
     val globalVideoRatio: String = "FIT",
     val defaultPlayer: String = "exo",
-    val isoPlaybackMode: Int = 0, // 新增：ISO 播放模式
     // 新增：遥控器上下键功能 (默认: 上=弹幕设置 D, 下=音轨选择 A)
     val dpadUpAction: String = "D",
     val dpadDownAction: String = "A",
@@ -118,7 +117,6 @@ class SettingsViewModel : ViewModel() {
                 lockVideoRatio = repo.lockVideoRatio,
                 globalVideoRatio = repo.globalVideoRatio,
                 defaultPlayer = repo.defaultPlayer,
-                isoPlaybackMode = repo.isoPlaybackMode,
                 dpadUpAction = repo.dpadUpAction,
                 dpadDownAction = repo.dpadDownAction,
                 ffDuration = repo.ffDuration,
@@ -179,10 +177,6 @@ class SettingsViewModel : ViewModel() {
     fun setGlobalVideoRatio(v: String) { repo.globalVideoRatio = v; refreshState() }
     fun setDefaultPlayer(kernel: String) {
         repo.defaultPlayer = kernel
-        refreshState()
-    }
-    fun setIsoPlaybackMode(mode: Int) {
-        repo.isoPlaybackMode = mode
         refreshState()
     }
     fun setDpadUpAction(v: String) { repo.dpadUpAction = v; refreshState() }

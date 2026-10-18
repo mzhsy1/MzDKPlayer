@@ -619,22 +619,13 @@ fun VideoPlayerScreen(
         }
     }
 
-    // 自定义第三方字幕字体（仅对 CustomSubtitleView 纯文本字幕生效）
+    // 字幕字体（仅对 CustomSubtitleView 纯文本字幕生效，VLC 内核走 --freetype-font）：
+    // 优先用设置里挑的第三方字体，没挑就用内置的得意黑
     val customSubtitleFontFamily = remember(settingsState.subFontPath) {
-        val path = settingsState.subFontPath
-        if (path.isNotBlank()) {
-            try {
-                val fontFile = java.io.File(path)
-                if (fontFile.exists() && fontFile.isFile) {
-                    FontFamily(Font(fontFile))
-                } else {
-                    null
-                }
-            } catch (e: Exception) {
-                Log.e("VideoPlayer", "Failed to load subtitle font: $path", e)
-                null
-            }
-        } else {
+        runCatching {
+            Tools.resolveSubtitleFont(context, settingsState.subFontPath)?.let { FontFamily(Font(it)) }
+        }.getOrElse { e ->
+            Log.e("VideoPlayer", "Failed to load subtitle font: ${settingsState.subFontPath}", e)
             null
         }
     }

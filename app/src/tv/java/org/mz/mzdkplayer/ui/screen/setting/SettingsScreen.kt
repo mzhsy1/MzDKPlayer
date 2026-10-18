@@ -54,7 +54,6 @@ import org.mz.mzdkplayer.ui.common.aspectRatioFromName
 import org.mz.mzdkplayer.ui.common.formatAppLang
 import org.mz.mzdkplayer.ui.common.formatAspectRatio
 import org.mz.mzdkplayer.ui.common.formatAudioDecodeMode
-import org.mz.mzdkplayer.ui.common.formatIsoPlaybackMode
 import org.mz.mzdkplayer.ui.common.formatLang
 import org.mz.mzdkplayer.ui.common.formatRecursiveScanLevel
 import org.mz.mzdkplayer.ui.common.formatScrapeSource
@@ -300,14 +299,6 @@ fun PlaybackSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
             onClick = {
                 val next = if (state.defaultPlayer == "exo") "vlc" else "exo"
                 settingsVM.setDefaultPlayer(next)
-            }
-        )
-        ActionSettingItem(
-            title = stringResource(R.string.setting_iso_playback_mode),
-            value = formatIsoPlaybackMode(state.isoPlaybackMode),
-            onClick = {
-                val next = (state.isoPlaybackMode + 1) % 2
-                settingsVM.setIsoPlaybackMode(next)
             }
         )
         SwitchSettingItem(
@@ -1000,8 +991,8 @@ fun AboutItem(
 
 // --- Helper Functions ---
 // 「设置里存的原始值 → 界面文案」的映射（formatLang / parseBgColorName / formatSubFontName /
-// formatAppLang / formatAudioDecodeMode / formatRecursiveScanLevel / formatTmdbLang /
-// formatIsoPlaybackMode）第八阶段搬到了 main 的 `ui/common/SettingValueText.kt`：
+// formatAppLang / formatAudioDecodeMode / formatRecursiveScanLevel / formatTmdbLang）
+// 第八阶段搬到了 main 的 `ui/common/SettingValueText.kt`：
 // 手机端设置页要用同一批文案，两端各写一份迟早会漂移。
 
 // 遥控器上下键可选功能列表

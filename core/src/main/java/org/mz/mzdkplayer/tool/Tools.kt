@@ -742,6 +742,25 @@ object Tools {
         }
     }
 
+    /**
+     * 内置字幕字体：得意黑（SmileySans-Oblique），放在 app 的 assets/fonts 下。
+     * 系统缺中文字体、或用户没挑第三方字体时都用它。
+     */
+    const val BUNDLED_SUBTITLE_FONT = "SmileySans-Oblique.ttf"
+
+    /**
+     * 解析实际要用的字幕字体文件：
+     * 设置里选了第三方字体、且文件还在，就用它；否则回落到内置的得意黑（首次使用会从 assets 解压到 filesDir）。
+     * 只有真正拿到可读文件才返回，调用方据此决定要不要把路径喂给 VLC 的 --freetype-font。
+     */
+    fun resolveSubtitleFont(context: Context, pickedPath: String): File? {
+        if (pickedPath.isNotBlank()) {
+            val picked = File(pickedPath)
+            if (picked.isFile) return picked
+        }
+        return prepareSubtitleFont(context, BUNDLED_SUBTITLE_FONT).takeIf { it.isFile }
+    }
+
     fun prepareSubtitleFont(context: Context, fontFileName: String): File {
         // 目标文件路径：/data/user/0/你的包名/files/TvFont.ttf
         val destFile = File(context.filesDir, fontFileName)

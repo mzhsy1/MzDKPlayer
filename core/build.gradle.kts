@@ -71,7 +71,9 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.ui.compose)
-    implementation(libs.libvlc.all)
+    // VLC 内核：自编译的精简版（无 lua / chromecast / sout，含字幕字体补丁），
+    // 与官方 libvlc-all 同一套 org.videolan.libvlc API，但体积小一半
+    implementation(libs.vlc.android.mini)
     implementation(files(rootProject.file("app/libs/lib-decoder-ffmpeg-release.aar")))
     // akdanmaku 的公开类型会出现在业务层签名里（DanmakuType / VideoPlayerViewModel.danmakuConfig），
     // 而且 app 的弹幕渲染组件直接用它的 API，所以这里必须是 api —— 顺带避免同一个 aar 被两个模块各声明一次。

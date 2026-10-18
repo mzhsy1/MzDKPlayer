@@ -29,7 +29,6 @@ import org.mz.mzdkplayer.ui.common.VIDEO_FINISH_ACTION_COUNT
 import org.mz.mzdkplayer.ui.common.aspectRatioFromName
 import org.mz.mzdkplayer.ui.common.formatAspectRatio
 import org.mz.mzdkplayer.ui.common.formatAudioDecodeMode
-import org.mz.mzdkplayer.ui.common.formatIsoPlaybackMode
 import org.mz.mzdkplayer.ui.common.formatLang
 import org.mz.mzdkplayer.ui.common.formatSubFontName
 import org.mz.mzdkplayer.ui.common.formatVideoFinishAction
@@ -76,18 +75,6 @@ internal fun PhonePlaybackSettingsPage(
                     SettingsOption("vlc", stringResource(R.string.setting_default_player_vlc)),
                 ),
                 onSelect = settingsViewModel::setDefaultPlayer,
-            )
-            SettingsDivider()
-            SettingsOptionsRow(
-                title = stringResource(R.string.setting_iso_playback_mode),
-                subtitle = stringResource(R.string.setting_iso_playback_mode_sub),
-                value = formatIsoPlaybackMode(state.isoPlaybackMode),
-                selected = state.isoPlaybackMode,
-                options = listOf(
-                    SettingsOption(0, stringResource(R.string.iso_playback_mode_default)),
-                    SettingsOption(1, stringResource(R.string.iso_playback_mode_main_movie)),
-                ),
-                onSelect = settingsViewModel::setIsoPlaybackMode,
             )
         }
 
