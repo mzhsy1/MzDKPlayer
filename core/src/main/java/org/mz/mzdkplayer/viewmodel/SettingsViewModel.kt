@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.data.repository.SettingsRepository
 import org.mz.mzdkplayer.common.LanguageManager
+import org.mz.mzdkplayer.tool.logic.FileSortLogic
 import org.mz.mzdkplayer.tool.logic.PhoneSettingsLogic
 import org.mz.mzdkplayer.tool.logic.ScrapeSourcePolicy
 import org.mz.mzdkplayer.tool.logic.ScrapeTimeoutPolicy
@@ -66,6 +67,8 @@ data class SettingsUiState(
     /** TMDB 语言：搜索与详情共用（原「搜索语言」已删除，见 [SettingsRepository.tmdbResultLang]） */
     val tmdbResultLang: String = "",
     val removeWebDavFirstItem: Boolean = false,
+    /** 文件浏览排序（六个协议共用），存 [FileSortLogic.encode] 的字符串 */
+    val fileBrowserSort: String = FileSortLogic.encode(FileSortLogic.DEFAULT),
     /** 手机端：打开目录时是否自动刮削（默认关；电视端没有这个开关） */
     val phoneAutoScrape: Boolean = false,
     /** 手机端播放页：左侧上下滑调亮度 */
@@ -137,6 +140,7 @@ class SettingsViewModel : ViewModel() {
                 recursiveScanLevel = repo.recursiveScanLevel,
                 tmdbResultLang = repo.tmdbResultLang,
                 removeWebDavFirstItem = repo.removeWebDavFirstItem,
+                fileBrowserSort = repo.fileBrowserSort,
                 phoneAutoScrape = repo.phoneAutoScrape,
                 phoneGestureBrightness = repo.phoneGestureBrightness,
                 phoneGestureVolume = repo.phoneGestureVolume,
@@ -352,6 +356,20 @@ class SettingsViewModel : ViewModel() {
 
     fun toggleRemoveWebDavFirstItem(v: Boolean) {
         repo.removeWebDavFirstItem = v
+        refreshState()
+    }
+
+    /** 文件浏览排序：传入 [FileSortLogic.encode] 的结果（电视端文件列表页的排序菜单用） */
+    fun setFileBrowserSort(v: String) {
+        repo.fileBrowserSort = v
+        refreshState()
+    }
+
+    /** 设置页「点一下换一档」：按 [FileSortLogic.PRESETS] 顺序循环 */
+    fun nextFileBrowserSort() {
+        repo.fileBrowserSort = FileSortLogic.encode(
+            FileSortLogic.next(FileSortLogic.decode(repo.fileBrowserSort))
+        )
         refreshState()
     }
 }

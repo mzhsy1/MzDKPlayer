@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,9 +41,11 @@ import androidx.paging.compose.collectAsLazyPagingItems
 
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.ui.screen.common.EmptyStateView
 import org.mz.mzdkplayer.ui.screen.common.MediaCard
 import org.mz.mzdkplayer.ui.screen.common.MyIconButton
 import org.mz.mzdkplayer.ui.screen.common.TvTextField
+import org.mz.mzdkplayer.ui.screen.common.TwoArcLoading
 import org.mz.mzdkplayer.ui.screen.library.EpisodeSelectionDialog // 假设你已将其提取或放在同一包下
 import org.mz.mzdkplayer.tool.Tools.toBase64
 import java.net.URLEncoder
@@ -105,11 +108,26 @@ fun SearchScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         // --- 结果展示区域 ---
-        if (pagedItems.itemCount == 0 && query.isNotEmpty() && pagedItems.loadState.refresh is LoadState.NotLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(stringResource(R.string.ui_label_no_results_found), color = Color.Gray)
+        val refreshState = pagedItems.loadState.refresh
+        when {
+            // 加载中：在空态位置放转圈，避免「按了搜索没反应」的错觉
+            pagedItems.itemCount == 0 && query.isNotBlank() && refreshState is LoadState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    TwoArcLoading(modifier = Modifier.size(64.dp))
+                }
             }
-        } else {
+            // 无结果：统一空态组件（图标底 + 标题 + 提示），不再是一行灰字
+            pagedItems.itemCount == 0 && query.isNotBlank() && refreshState is LoadState.NotLoading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    EmptyStateView(
+                        iconRes = R.drawable.searchoff,
+                        title = stringResource(R.string.ui_label_no_results_found),
+                        description = stringResource(R.string.ui_label_search_empty_hint),
+                        accent = Color(0xFF90A4AE)
+                    )
+                }
+            }
+            else -> {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(5),
                 contentPadding = PaddingValues(bottom = 40.dp),
@@ -158,6 +176,7 @@ fun SearchScreen(
                         )
                     }
                 }
+            }
             }
         }
     }

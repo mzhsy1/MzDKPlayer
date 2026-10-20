@@ -1,13 +1,11 @@
 package org.mz.mzdkplayer.ui.screen.common
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.focusGroup
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -19,70 +17,70 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.tv.material3.Icon
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 
+/**
+ * 媒体库空态：图标 + 标题 + 「去文件浏览添加」。
+ *
+ * 图标与强调色跟着库类型走（电影蓝 / 剧集紫 / 音乐绿），和媒体库顶部分页标签同一套取色；
+ * 版式交给 [EmptyStateView]，不再单独维护一份间距。
+ */
 @Composable
-fun LibraryEmpty(type: String ="movie", navController: NavController){
-    // 👇 添加一个 FocusRequester
+fun LibraryEmpty(type: String = "movie", navController: NavController) {
     val buttonFocusRequester = remember { FocusRequester() }
+    val accent = when (type) {
+        "movie" -> Color(0xFF64B5F6)
+        "tv" -> Color(0xFFBA68C8)
+        else -> Color(0xFF81C784)
+    }
+    val iconRes = when (type) {
+        "movie" -> R.drawable.movieoff24dp
+        "tv" -> R.drawable.tvoff24dp
+        else -> R.drawable.musicoff24dp
+    }
+    val title = when (type) {
+        "movie" -> stringResource(R.string.ui_label_no_movie_info_yet)
+        "tv" -> stringResource(R.string.ui_label_no_tv_show_info_yet)
+        else -> stringResource(R.string.ui_label_no_music_info_yet)
+    }
 
-    // 👇 关键：页面加载后，主动把焦点丢给按钮
     LaunchedEffect(Unit) {
         buttonFocusRequester.requestFocus()
     }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp) // 添加整体内边距
+            .padding(16.dp)
     ) {
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
-                .verticalScroll(rememberScrollState()) // 允许内容滚动以防文本过长
-                .padding(24.dp)// 给内容区域添加内边距 // 👇 关键：让整个内容区成为一个焦点组，并确保焦点能自动恢复到按钮上
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .focusGroup()
                 .focusRestorer(),
-            horizontalAlignment = Alignment.CenterHorizontally, // 水平居中 Column 内的元素
-            verticalArrangement = Arrangement.spacedBy(16.dp) // 设置元素间的垂直间距
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 图标
-            Icon(
-                painter =   when (type){
-                    "movie"-> painterResource(id = R.drawable.movieoff24dp)
-                    "tv"-> painterResource(id = R.drawable.tvoff24dp)
-                    else ->painterResource(id = R.drawable.musicoff24dp)}, // 请确保资源存在
-                contentDescription = "Error Icon",
-                tint = Color.Gray,
-                modifier = Modifier.size(100.dp) // 可选：调整图标大小
-            )
-
-
-            // 标题
-            Text(
-                text = when (type) {"movie"->stringResource(R.string.ui_label_no_movie_info_yet) "tv"->stringResource(R.string.ui_label_no_tv_show_info_yet) else -> stringResource(R.string.ui_label_no_music_info_yet)},
-                style = MaterialTheme.typography.headlineSmall, // 使用 Material3 标题样式
-                fontWeight = FontWeight.Bold, // 加粗
-                color = Color.White, // 使用主题文字颜色
-                textAlign = TextAlign.Center
-            )
-
-            //
-            MyIconButton(
-                text = stringResource(R.string.ui_label_go_to_file_section_to_add),
-                modifier = Modifier.focusRequester(buttonFocusRequester), // 👇 绑定请求器
-                icon = when (type) {"movie","tv"->R.drawable.videoadd24dp
-                    else -> {R.drawable.musicnoteadd_24dp}
-                },
-                onClick = {navController.navigate("FileHomePage")}
+            EmptyStateView(
+                iconRes = iconRes,
+                title = title,
+                accent = accent,
+                action = {
+                    MyIconButton(
+                        text = stringResource(R.string.ui_label_go_to_file_section_to_add),
+                        modifier = Modifier.focusRequester(buttonFocusRequester),
+                        icon = when (type) {
+                            "movie", "tv" -> R.drawable.videoadd24dp
+                            else -> R.drawable.musicnoteadd_24dp
+                        },
+                        onClick = { navController.navigate("FileHomePage") }
+                    )
+                }
             )
         }
-    }}
+    }
+}

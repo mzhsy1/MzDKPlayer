@@ -125,7 +125,7 @@ import org.mz.mzdkplayer.viewmodel.MediaMetaViewModel
 import org.mz.mzdkplayer.viewmodel.SettingsViewModel
 import org.mz.mzdkplayer.viewmodel.VideoPlayerStatus
 import org.mz.mzdkplayer.viewmodel.VideoPlayerViewModel
-import org.mz.mzdkplayer.ui.common.asDisplayString
+import org.mz.mzdkplayer.ui.common.playerStatusChip
 import org.mz.mzdkplayer.di.viewModelWithFactory
 import org.mz.mzdkplayer.ui.theme.myIconButtonColor
 import org.mz.mzdkplayer.ui.videoplayer.components.AkDanmakuPlayer
@@ -824,7 +824,8 @@ fun VideoPlayerScreen(
                     .padding(16.dp) // 内边距
             )
         }
-        val statusText = playerStatus.asDisplayString()
+        // 暂停时状态仍是 READY（VLC/Exo 都如此），必须结合 isPlayingFlow 才能显示成「暂停中」
+        val statusChip = playerStatusChip(playerStatus, isPlayerPlaying)
 
         // 视频播放器覆盖层
         if (!videoPlayerViewModel.atpVisibility) {
@@ -842,7 +843,7 @@ fun VideoPlayerScreen(
                 player = player,
                 mediaTitle = displayTitle,
                 mediaDateText = displayDateText,
-                statusText = statusText,
+                statusChip = statusChip,
                 mDanmakuPlayer = mDanmakuPlayer,
                 settingsManager = settingsManager,
                 getDanmakuConfig = ::getDanmakuConfig

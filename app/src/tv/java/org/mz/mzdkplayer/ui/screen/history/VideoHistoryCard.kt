@@ -1,5 +1,6 @@
 package org.mz.mzdkplayer.ui.screen.history
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,13 +11,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -25,12 +29,30 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
-import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.model.HistoryWithMetadata
 
+private val CardBackground = Color(0xFF1A1A21)
+private val CardFocusedBackground = Color(0xFF24242C)
+private val PosterBackground = Color(0xFF141419)
+private val TitleColor = Color(0xFFF4F1EA)
+private val MetaColor = Color(0xFF9A96A6)
+private val ProgressStart = Color(0xFFE9C46A)
+private val ProgressEnd = Color(0xFFD9A441)
+
+/**
+ * 播放历史卡片。
+ *
+ * 原来的版式是「协议标签在卡片最上方 → 图片 → 标题 + 进度」，协议标签把海报挤下去一块，
+ * 没有海报时又是一整片黑底 + 写死的英文 "No Image"；进度条还得靠 `textSectionHeightDp`
+ * 估算位置往上顶。这里改成标准海报卡：
+ * - 图片区占满卡片上半部分，协议/连接名做成海报左上角的小胶囊
+ * - 无海报时显示图标 + 本地化的「无海报」，不再是英文占位
+ * - 进度条贴在海报底边，进度色与设置页开关统一为暖金
+ */
 @Composable
 fun VideoHistoryCard(
     historyItem: HistoryWithMetadata,
@@ -43,206 +65,168 @@ fun VideoHistoryCard(
     // 优先使用元数据中的标题和图片，如果没有则使用文件名
     val title = metadata?.title ?: history.fileName
     val posterPath = metadata?.posterPath
-    val year = metadata?.releaseDate?.take(4)?: "--"
+    val year = metadata?.releaseDate?.take(4) ?: "--"
     val seasonNumber = metadata?.seasonNumber ?: 0
     val episodeNumber = metadata?.episodeNumber ?: 0
-// --- 关键修改点：确保微小进度至少显示 1% ---
+
+    // 只要有播放进度就至少显示 1%，避免 10 秒（0.1%）看起来像没看过
     val rawPercentageInt = history.getPlaybackPercentage()
-    // Req 2: 计算进度。只要有播放进度，percentage 就大于 0
-    // 如果 getPlaybackPercentage() 返回 0，但实际播放位置大于 0，则强制显示 1%。
-    // 这样 10 秒（0.1%）的播放量就会显示 1%。
     val percentageToDisplayInt = when {
         rawPercentageInt == 0 && history.playbackPosition > 0 -> 1
         else -> rawPercentageInt
     }
+    val percentage = (percentageToDisplayInt / 100f).coerceIn(0f, 1f)
+    val percentageText = (percentage * 100).toInt()
 
-    val percentage = percentageToDisplayInt / 100f
+    val progressText = if (seasonNumber > 0 && episodeNumber > 0) {
+        stringResource(
+            R.string.ui_label_playback_progress_episode,
+            seasonNumber,
+            episodeNumber,
+            percentageText
+        )
+    } else {
+        stringResource(R.string.ui_label_playback_progress_year, percentageText)
+    }
+    // 电影补一个年份，剧集已经有 S/E 信息就不重复
+    val metaText = if (seasonNumber == 0 && year.isNotBlank() && year != "--") {
+        "$year · $progressText"
+    } else {
+        progressText
+    }
 
-    // 估算文字区域的精确高度 (4.dp top + title + 2.dp + year + 4.dp bottom) 约为 45.dp
-    val textSectionHeightDp = 45.dp
+    val sourceLabel = listOf(history.connectionName, history.protocolName)
+        .filter { it.isNotBlank() }
+        .joinToString(" · ")
+
+    val shape = RoundedCornerShape(14.dp)
 
     Card(
         onClick = onClick,
         modifier = modifier
-            // Req 6: 外部 padding 设为 4.dp，使卡片总体变小
             .padding(4.dp)
             .aspectRatio(2f / 3f),
-        shape = CardDefaults.shape(shape = RoundedCornerShape(12.dp)),
+        shape = CardDefaults.shape(shape = shape),
         colors = CardDefaults.colors(
-            containerColor = Color.Transparent,
-            focusedContainerColor = Color.White.copy(alpha = 0.1f)
+            containerColor = CardBackground,
+            contentColor = TitleColor,
+            focusedContainerColor = CardFocusedBackground,
+            focusedContentColor = TitleColor
         ),
         border = CardDefaults.border(
+            border = Border(
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
+                shape = shape
+            ),
             focusedBorder = Border(
-                border = androidx.compose.foundation.BorderStroke(3.dp, Color(0xFFFFC200)),
-                shape = RoundedCornerShape(12.dp)
+                border = BorderStroke(2.dp, Color(0xFFFFF6E5)),
+                shape = shape
             )
         ),
-        scale = CardDefaults.scale(
-            focusedScale = 1.03f // 聚焦时轻微放大
-        )
+        scale = CardDefaults.scale(focusedScale = 1.03f, pressedScale = 0.99f)
     ) {
-        // 使用一个 Box 来包裹所有内容，以便进行叠加 (图片、文字、进度条、标签)
-        Box(modifier = Modifier.fillMaxSize()) {
-
-            Column(modifier = Modifier.fillMaxSize()) {
-
-                // --- 1. 图片区域 ---
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f) // 图片占据剩余高度
-                ) {
-                    if (!posterPath.isNullOrEmpty()) {
-                        AsyncImage(
-                            model = org.mz.mzdkplayer.tool.Tools.formatImageUrl(posterPath, "w500"),
-                            contentDescription = title,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
+        Column(modifier = Modifier.fillMaxSize()) {
+            // --- 海报区 ---
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .background(PosterBackground)
+            ) {
+                if (!posterPath.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = org.mz.mzdkplayer.tool.Tools.formatImageUrl(posterPath, "w500"),
+                        contentDescription = title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.image24dp),
+                            contentDescription = null,
+                            tint = Color(0xFF4A4752),
+                            modifier = Modifier.size(38.dp)
                         )
-                    } else {
-                        // 占位图
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("No Image", color = Color.Gray)
-                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.ui_label_no_poster),
+                            fontSize = 11.sp,
+                            color = Color(0xFF6E6A78)
+                        )
                     }
                 }
 
-                // --- 2. 文字区域 ---
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        // 垂直 padding 从 8.dp 减少到 4.dp
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = title,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
-
-
-                    Text(
-                        text = if (seasonNumber > 0 && episodeNumber > 0) {
-                            // 自动匹配第1季、第2集、百分比
-                            stringResource(
-                                id = R.string.ui_label_playback_progress_episode,
-                                seasonNumber,
-                                episodeNumber,
-                                (percentage * 100).toInt()
-                            )
-                        } else {
-                            // 自动匹配年份、百分比
-                            stringResource(
-                                id = R.string.ui_label_playback_progress_year,
-                                (percentage * 100).toInt()
-                            )
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-
-                }
-            }
-
-            // --- 3. 覆盖层元素：解决焦点消失问题 (Req 5) ---
-
-            // 协议标签 (左上角) (Req 3, 4, 5)
-            if (history.connectionName.isNotEmpty() || history.protocolName.isNotEmpty()) {
-                Box(
-                    modifier = Modifier
-                        // Req 4: 外部 padding 8.dp，使其与 Card 内部对齐
-                        .padding(8.dp)
-                        .align(Alignment.TopStart)
-                        .background(
-                            color = Color.Black.copy(alpha = 0.7f), // 确保对比度
-                            shape = RoundedCornerShape(4.dp)
-                        )
-                        .padding(horizontal = 6.dp, vertical = 3.dp)
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        val protocolText = history.protocolName
-                        val connectionText = history.connectionName
-
-                        if (connectionText.isNotEmpty()) {
-                            Text(
-                                text = connectionText,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
-
-                        if (protocolText.isNotEmpty()) {
-                            if (connectionText.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(1.dp))
-                            }
-                            Text(
-                                text = if (connectionText.isNotEmpty()) "($protocolText)" else protocolText,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontSize = if (connectionText.isNotEmpty()) 8.sp else 10.sp,
-                                fontWeight = if (connectionText.isNotEmpty()) FontWeight.Normal else FontWeight.Bold,
-                                color = Color.LightGray
-                            )
-                        }
-                    }
-                }
-            }
-
-
-            // 播放进度条 (图片底部) (Req 1, 2)
-            if (percentage > 0f) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.BottomCenter)
-                        // Req 1: 向上偏移 textSectionHeightDp，定位到图片和文字区域的精确交界处
-                        .padding(bottom = textSectionHeightDp - 2.dp)
-                        .padding(horizontal = 12.dp) // 与 Card 边框对齐
-                ) {
-                    // 进度百分比提示
-//                    Text(
-//                        text = "${(percentage * 100).toInt()}%",
-//                        style = MaterialTheme.typography.labelSmall,
-//                        fontSize = 10.sp,
-//                        fontWeight = FontWeight.SemiBold,
-//                        color = Color.White,
-//                        modifier = Modifier
-//                            .align(Alignment.End)
-//                            .padding(bottom = 2.dp)
-//                    )
-
-                    // 进度条容器
+                // 来源胶囊：连接名 + 协议，贴在海报左上角
+                if (sourceLabel.isNotBlank()) {
                     Box(
                         modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(8.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color.Black.copy(alpha = 0.62f))
+                            .padding(horizontal = 7.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = sourceLabel,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFFE4DFD8),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                // 进度条：贴在海报底边，和封面同宽
+                if (percentage > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
                             .fillMaxWidth()
                             .height(4.dp)
-                            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(2.dp))
+                            .background(Color.Black.copy(alpha = 0.55f))
                     ) {
-                        // 实际进度
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth(percentage)
                                 .fillMaxHeight()
                                 .background(
                                     brush = Brush.horizontalGradient(
-                                        colors = listOf(Color(0xFFFFC200), Color(0xFFFF9800))
-                                    ),
-                                    shape = RoundedCornerShape(2.dp)
+                                        colors = listOf(ProgressStart, ProgressEnd)
+                                    )
                                 )
                         )
                     }
                 }
+            }
+
+            // --- 文字区 ---
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TitleColor
+                )
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                    text = metaText,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = 11.sp,
+                    color = MetaColor
+                )
             }
         }
     }

@@ -1,49 +1,26 @@
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+package org.mz.mzdkplayer.ui.screen.common
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.tv.material3.Icon
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 
+/**
+ * 搜索无结果 / 过滤无匹配。
+ *
+ * 原来只有一枚 48dp 纯白 tint 图标加一行白字，和新的空态组件不是一套；
+ * 现在统一走 [EmptyStateView] 的紧凑版，文件列表里塞进 LazyColumn 时也不会把行高撑爆。
+ */
 @Composable
 fun NoSearchResult(
     text: String,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    EmptyStateView(
+        iconRes = R.drawable.searchoff,
+        title = text,
+        accent = Color(0xFF90A4AE),
+        compact = true,
         modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 32.dp, horizontal = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            painter = painterResource( R.drawable.searchoff),
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(48.dp)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color.White,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            softWrap = true
-        )
-    }
+    )
 }

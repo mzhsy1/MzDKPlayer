@@ -56,14 +56,14 @@ fun myListItemCoverColor(): ListItemColors {
 @Composable
 fun MyFileListItemColor(): ListItemColors {
     return ListItemDefaults.colors(
-        containerColor = Color(0, 0, 0), // 保持深色背景
+        containerColor = Color(0xFF16161B), // 比纯黑略亮一档，行与行之间有边界
         contentColor = Color(255, 248, 240), // 暖白色替代纯白
         selectedContainerColor = Color(32, 32, 32), // 保持深色背景
         selectedContentColor = Color(255, 248, 240), // 暖白色
         focusedSelectedContentColor = Color(255, 248, 240), // 暖白色
         focusedSelectedContainerColor = Color(32, 32, 32), // 保持深色背景
-        focusedContainerColor = Color(255, 250, 245), // 米白色替代纯白
-        focusedContentColor = Color(0, 0, 0) // 纯黑
+        focusedContainerColor = Color(0xFFFFF6E5), // 与主页卡片、侧边栏一致的暖白
+        focusedContentColor = Color(0xFF16151A) // 暖深灰替代纯黑
     )
 }
 

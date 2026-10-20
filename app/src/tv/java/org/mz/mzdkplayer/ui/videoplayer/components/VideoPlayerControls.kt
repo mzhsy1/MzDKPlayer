@@ -19,6 +19,7 @@ import org.mz.mzdkplayer.data.repository.DanmakuSettingsManager
 import org.mz.mzdkplayer.player.core.IMzPlayer
 import org.mz.mzdkplayer.player.core.MzIsoTitle
 import org.mz.mzdkplayer.tool.Tools
+import org.mz.mzdkplayer.ui.common.PlayerStatusChip
 import org.mz.mzdkplayer.viewmodel.VideoPlayerViewModel
 import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
@@ -48,7 +49,7 @@ fun VideoPlayerControls(
     player: IMzPlayer,
     state: VideoPlayerState,
     title: String, 
-    secondaryText: String, 
+    statusChip: PlayerStatusChip, 
     tertiaryText: String,
     videoPlayerViewModel: VideoPlayerViewModel,
     danmakuPlayer: DanmakuPlayer,
@@ -63,7 +64,7 @@ fun VideoPlayerControls(
             // 媒体标题区域
             VideoPlayerMediaTitle(
                 title = title,
-                secondaryText = secondaryText,
+                statusChip = statusChip,
                 tertiaryText = tertiaryText,
                 type = VideoPlayerMediaTitleType.DEFAULT
             )

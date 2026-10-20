@@ -42,8 +42,10 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Switch
+import androidx.tv.material3.SwitchDefaults
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.common.MzToastManager
 import org.mz.mzdkplayer.di.RepositoryProvider
 import org.mz.mzdkplayer.data.repository.SettingsRepository
 import org.mz.mzdkplayer.player.core.MzAspectRatio
@@ -54,6 +56,7 @@ import org.mz.mzdkplayer.ui.common.aspectRatioFromName
 import org.mz.mzdkplayer.ui.common.formatAppLang
 import org.mz.mzdkplayer.ui.common.formatAspectRatio
 import org.mz.mzdkplayer.ui.common.formatAudioDecodeMode
+import org.mz.mzdkplayer.ui.common.formatFileSort
 import org.mz.mzdkplayer.ui.common.formatLang
 import org.mz.mzdkplayer.ui.common.formatRecursiveScanLevel
 import org.mz.mzdkplayer.ui.common.formatScrapeSource
@@ -67,6 +70,7 @@ import org.mz.mzdkplayer.ui.screen.common.DeleteConfirmDialog
 import org.mz.mzdkplayer.ui.screen.common.FilePermissionScreen
 import org.mz.mzdkplayer.ui.screen.common.MyIconButton
 import org.mz.mzdkplayer.viewmodel.AudioViewModel
+import org.mz.mzdkplayer.viewmodel.MediaHistoryViewModel
 import org.mz.mzdkplayer.viewmodel.MovieViewModel
 import org.mz.mzdkplayer.viewmodel.SettingsUiState
 import org.mz.mzdkplayer.viewmodel.SettingsViewModel
@@ -98,6 +102,10 @@ fun SettingsScreen(
     // 获取 ViewModel
 
     val movieVM: MovieViewModel = viewModelWithFactory { RepositoryProvider.createMovieViewModel() }
+    // 「清空播放历史」用：和手机端设置页同一个 ViewModel，调用 clearAll() 清空 media_history
+    val mediaHistoryViewModel: MediaHistoryViewModel = viewModelWithFactory {
+        RepositoryProvider.createMediaHistoryViewModel()
+    }
     val state by settingsVM.uiState.collectAsState()
     val context = LocalContext.current
 // 👇 1. 为lie创建 FocusRequester
@@ -220,7 +228,7 @@ fun SettingsScreen(
                     }
 
                     SettingCategory.Tools -> item {
-                        ToolsSection(movieVM, audioViewModel)
+                        ToolsSection(movieVM, audioViewModel, mediaHistoryViewModel)
                     }
 
                     SettingCategory.About -> item {
@@ -545,6 +553,14 @@ fun SourceSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
             checked = state.removeWebDavFirstItem,
             onCheckedChange = { settingsVM.toggleRemoveWebDavFirstItem(it) }
         )
+        Spacer(modifier = Modifier.height(8.dp))
+        // 文件浏览排序：六个协议共用一条，点一下换一档（更细的选择在各列表页的排序按钮里）
+        ActionSettingItem(
+            title = stringResource(R.string.setting_file_sort),
+            subtitle = stringResource(R.string.setting_file_sort_sub),
+            value = formatFileSort(state.fileBrowserSort),
+            onClick = { settingsVM.nextFileBrowserSort() }
+        )
     }
 }
 
@@ -612,10 +628,16 @@ fun MetadataSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
 }
 
 @Composable
-fun ToolsSection(movieVM: MovieViewModel, audioViewModel: AudioViewModel) {
-    // 1. 定义两个状态，用来控制影视库和音乐库清理弹窗的显示
+fun ToolsSection(
+    movieVM: MovieViewModel,
+    audioViewModel: AudioViewModel,
+    mediaHistoryViewModel: MediaHistoryViewModel
+) {
+    val context = LocalContext.current
+    // 清理弹窗：影视库 / 音乐库 / 播放历史
     var showClearMovieDialog by remember { mutableStateOf(false) }
     var showClearAudioDialog by remember { mutableStateOf(false) }
+    var showClearHistoryDialog by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         // --- 权限管理板块 ---
@@ -654,23 +676,36 @@ fun ToolsSection(movieVM: MovieViewModel, audioViewModel: AudioViewModel) {
                     )
                     .padding(8.dp)
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        MyIconButton(
+                            text = stringResource(R.string.btn_clear_movie_db),
+                            icon = R.drawable.delete24dp,
+                            modifier = Modifier.weight(1f),
+                            onClick = { showClearMovieDialog = true }
+                        )
+                        MyIconButton(
+                            text = stringResource(R.string.btn_clear_audio_db),
+                            icon = R.drawable.delete24dp,
+                            modifier = Modifier.weight(1f),
+                            onClick = { showClearAudioDialog = true }
+                        )
+                    }
+                    // 播放历史与「影视库 / 音乐库」是两回事：前者只是 media_history 里的进度记录，
+                    // 清掉不影响已刮削的影片信息，所以单独占一行，图标也用「历史」而不是垃圾桶
                     MyIconButton(
-                        text = stringResource(R.string.btn_clear_movie_db),
-                        icon = R.drawable.delete24dp,
-                        modifier = Modifier.weight(1f),
-                        onClick = { showClearMovieDialog = true }
-                    )
-                    MyIconButton(
-                        text = stringResource(R.string.btn_clear_audio_db),
-                        icon = R.drawable.delete24dp,
-                        modifier = Modifier.weight(1f),
-                        onClick = { showClearAudioDialog = true }
+                        text = stringResource(R.string.ui_label_clear_playback_history),
+                        icon = R.drawable.historyoff24dp,
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { showClearHistoryDialog = true }
                     )
                 }
             }
@@ -725,6 +760,23 @@ fun ToolsSection(movieVM: MovieViewModel, audioViewModel: AudioViewModel) {
             }
         )
     }
+
+    if (showClearHistoryDialog) {
+        DeleteConfirmDialog(
+            title = stringResource(R.string.ui_label_clear_playback_history),
+            message = stringResource(R.string.ui_label_clear_playback_history_confirm),
+            onConfirm = {
+                mediaHistoryViewModel.clearAll()
+                showClearHistoryDialog = false
+                MzToastManager.show(
+                    context.getString(R.string.ui_label_playback_history_cleared)
+                )
+            },
+            onDismiss = {
+                showClearHistoryDialog = false
+            }
+        )
+    }
 }
 
 
@@ -747,7 +799,20 @@ fun SwitchSettingItem(
             { Text(subtitle) }
         } else null,
         trailingContent = {
-            Switch(checked = checked, onCheckedChange = null)
+            // 默认开关是 Material 的紫色，和整页暖白/深灰的配色不是一套；
+            // 打开态改成暖金色轨道 + 深色滑块，和侧边栏选中色、卡片描边同一个色系
+            Switch(
+                checked = checked,
+                onCheckedChange = null,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color(0xFF16151A),
+                    checkedTrackColor = Color(0xFFE9C46A),
+                    checkedBorderColor = Color(0xFFE9C46A),
+                    uncheckedThumbColor = Color(0xFF9A96A6),
+                    uncheckedTrackColor = Color(0xFF2A2A32),
+                    uncheckedBorderColor = Color(0xFF4A4752)
+                )
+            )
         },
         modifier = Modifier.fillMaxWidth()
     )

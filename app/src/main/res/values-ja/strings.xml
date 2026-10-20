@@ -126,6 +126,14 @@
     <string name="ui_label_unknown_title">不明なタイトル</string>
     <string name="ui_label_network_storage">ネットワークストレージ</string>
     <string name="ui_label_local_storage">ローカルストレージ</string>
+    <string name="ui_label_file_browse_subtitle">保存先を選んで、動画やファイルの閲覧を始めましょう</string>
+    <string name="ui_label_file_browse_hint">方向キーで選択 · 「決定」で開く</string>
+    <string name="ui_label_file_browse_local_desc">本体ストレージ、USB メモリ、マウント先</string>
+    <string name="ui_label_file_browse_smb_desc">Windows 共有フォルダー</string>
+    <string name="ui_label_file_browse_webdav_desc">WebDAV クラウドと NAS</string>
+    <string name="ui_label_file_browse_ftp_desc">FTP / FTPS サーバー</string>
+    <string name="ui_label_file_browse_nfs_desc">NFS ネットワークファイルシステム</string>
+    <string name="ui_label_file_browse_http_desc">HTTP ディレクトリリンク</string>
     <string name="ui_label_add_connection">接続を追加</string>
     <string name="ui_label_help">ヘルプ</string>
     <string name="ui_label_saved_connections">保存済みの接続数: %1$d</string>
@@ -220,6 +228,15 @@
     <string name="ui_label_connection_name_encoding_failed">接続名のエンコードに失敗</string>
     <string name="ui_label_unsupported_file_format">サポートされていないファイル形式: %s</string>
     <string name="ui_label_please_enter_filename">ファイル名を入力してください</string>
+    <string name="ui_label_file_sort">並び替え</string>
+    <string name="ui_label_file_sort_folders_first">フォルダーを優先</string>
+    <string name="ui_label_file_sort_name_asc">名前 A→Z</string>
+    <string name="ui_label_file_sort_name_desc">名前 Z→A</string>
+    <string name="ui_label_file_sort_time_desc">日時 新しい順</string>
+    <string name="ui_label_file_sort_time_asc">日時 古い順</string>
+    <string name="ui_label_file_sort_size_desc">サイズ 大きい順</string>
+    <string name="ui_label_file_sort_size_asc">サイズ 小さい順</string>
+    <string name="ui_label_file_sort_type">ファイルの種類</string>
     <string name="ui_label_getting_video_info">ビデオ情報を取得中</string>
     <string name="ui_label_preparing_video_scan">ビデオスキャンを準備中…</string>
     <string name="ui_label_parsing_music_filename">音楽ファイル名を解析中…</string>
@@ -236,6 +253,9 @@
     <string name="ui_label_playback_history">再生履歴</string>
     <string name="ui_label_video_history_count">ビデオ %s</string>
     <string name="ui_label_audio_history_count">オーディオ %s</string>
+    <string name="ui_label_no_playback_history">再生履歴はまだありません</string>
+    <string name="ui_label_no_playback_history_desc">再生した映画・ドラマ・音楽がここに表示されます</string>
+    <string name="ui_label_search_empty_hint">別のキーワードでお試しください</string>
     <string name="ui_label_unknown_year">不明な年</string>
     <string name="ui_label_playback_progress_episode">シーズン%1$d エピソード%2$d - 視聴率 %3$d%%</string>
     <string name="ui_label_playback_progress_year">視聴率 %1$d%%</string>
@@ -394,6 +414,8 @@
     <string name="ui_label_initializing">初期化中</string>
     <string name="ui_label_buffering">バッファリング中…</string>
     <string name="ui_label_playing">再生中</string>
+    <string name="ui_label_paused">一時停止中</string>
+    <string name="ui_label_playback_error_short">再生エラー</string>
     <string name="ui_label_playback_ended">再生終了</string>
     <string name="ui_label_playback_error">再生エラー: %1$s</string>
     <string name="ui_label_sardine_not_initialized_or_failed">Sardineが初期化されていないか、接続に失敗しました</string>
@@ -440,6 +462,9 @@
     <string name="setting_audio_decode_sw_priority">ソフトウェア優先 (互換性重視)</string>
     <string name="msg_clear_movie_db_confirm">すべての映画/TV データを消去してもよろしいですか？この操作は元に戻せません。</string>
     <string name="msg_clear_audio_db_confirm">すべての音楽データを消去してもよろしいですか？この操作は元に戻せません。</string>
+    <string name="ui_label_clear_playback_history">再生履歴を消去</string>
+    <string name="ui_label_clear_playback_history_confirm">すべての再生履歴と再生位置を消去しますか？この操作は取り消せません。</string>
+    <string name="ui_label_playback_history_cleared">再生履歴を消去しました</string>
     <string name="lang_auto_system">Auto (System)</string>
     <string name="lang_english">English</string>
     <string name="ui_label_version_prefix">Version: </string>
@@ -478,6 +503,8 @@
 
     <string name="setting_webdav_remove_first_item">WebDAV リストの最初の項目を削除</string>
     <string name="setting_webdav_remove_first_item_sub">一部の WebDAV サービスは現在のディレクトリを最初の項目として返します。重複を避けるためにこれを有効にします</string>
+    <string name="setting_file_sort">ファイル一覧の並び順</string>
+    <string name="setting_file_sort_sub">ローカル / SMB / FTP / NFS / HTTP / WebDAV のファイル一覧で共通。各一覧ページの右側からも切り替えられます</string>
     <string name="setting_lock_video_ratio">ビデオ比率を固定</string>
     <string name="setting_global_video_ratio">全体の画面比率</string>
     <string name="setting_global_video_ratio_sub">「ビデオ比率を固定」がオンの場合のみ有効。オフの場合は毎回「自動」から開始します</string>

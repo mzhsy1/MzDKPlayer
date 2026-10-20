@@ -25,6 +25,8 @@
 
     <string name="setting_webdav_remove_first_item">Remove first item from WebDAV list</string>
     <string name="setting_webdav_remove_first_item_sub">Some WebDAV services return the current directory as the first item; enable this to avoid duplicates</string>
+    <string name="setting_file_sort">File list sorting</string>
+    <string name="setting_file_sort_sub">One rule for Local / SMB / FTP / NFS / HTTP / WebDAV lists; it can also be switched on each file list page</string>
 
     <string name="setting_recursive_scan_level">Recursive Scan Level</string>
     <string name="setting_recursive_scan_level_sub">Depth for recursive video searching during bulk add</string>
@@ -150,6 +152,14 @@
     <string name="ui_label_unknown_title">Unknown Title</string>
     <string name="ui_label_network_storage">Network Storage</string>
     <string name="ui_label_local_storage">Local Storage</string>
+    <string name="ui_label_file_browse_subtitle">Pick a storage location to start browsing</string>
+    <string name="ui_label_file_browse_hint">D-pad to select · Press OK to open</string>
+    <string name="ui_label_file_browse_local_desc">Internal storage, USB drives and mounts</string>
+    <string name="ui_label_file_browse_smb_desc">Windows shared folders</string>
+    <string name="ui_label_file_browse_webdav_desc">WebDAV drives and NAS</string>
+    <string name="ui_label_file_browse_ftp_desc">FTP / FTPS servers</string>
+    <string name="ui_label_file_browse_nfs_desc">NFS network file system</string>
+    <string name="ui_label_file_browse_http_desc">HTTP directory links</string>
     <string name="ui_label_add_connection">Add Connection</string>
     <string name="ui_label_help">Help</string>
     <string name="ui_label_saved_connections">Saved Connections: %1$d </string>
@@ -244,6 +254,15 @@
     <string name="ui_label_connection_name_encoding_failed">Connection Name Encoding Failed</string>
     <string name="ui_label_unsupported_file_format">Unsupported File Format: %s</string>
     <string name="ui_label_please_enter_filename">Please Enter Filename</string>
+    <string name="ui_label_file_sort">Sort by</string>
+    <string name="ui_label_file_sort_folders_first">Folders first</string>
+    <string name="ui_label_file_sort_name_asc">Name A→Z</string>
+    <string name="ui_label_file_sort_name_desc">Name Z→A</string>
+    <string name="ui_label_file_sort_time_desc">Date newest first</string>
+    <string name="ui_label_file_sort_time_asc">Date oldest first</string>
+    <string name="ui_label_file_sort_size_desc">Size largest first</string>
+    <string name="ui_label_file_sort_size_asc">Size smallest first</string>
+    <string name="ui_label_file_sort_type">File type</string>
     <string name="ui_label_getting_video_info">Retrieving Video Information</string>
     <string name="ui_label_preparing_video_scan">Preparing Video Scan...</string>
     <string name="ui_label_parsing_music_filename">Parsing Music Filename...</string>
@@ -260,6 +279,9 @@
     <string name="ui_label_playback_history">Playback History</string>
     <string name="ui_label_video_history_count">Videos %s</string>
     <string name="ui_label_audio_history_count">Audio %s</string>
+    <string name="ui_label_no_playback_history">No playback history yet</string>
+    <string name="ui_label_no_playback_history_desc">Movies, series and music you have played will appear here</string>
+    <string name="ui_label_search_empty_hint">Try a different keyword</string>
     <string name="ui_label_unknown_year">Unknown Year</string>
     <string name="ui_label_playback_progress_episode">Season %1$d, Episode %2$d - Watched %3$d%%</string>
     <string name="ui_label_playback_progress_year">Watched %1$d%%</string>
@@ -416,6 +438,8 @@
     <string name="ui_label_initializing">Initializing</string>
     <string name="ui_label_buffering">Buffering...</string>
     <string name="ui_label_playing">Playing</string>
+    <string name="ui_label_paused">Paused</string>
+    <string name="ui_label_playback_error_short">Playback Error</string>
     <string name="ui_label_playback_ended">Playback Ended</string>
     <string name="ui_label_playback_error">Error: %1$s</string>
     <string name="ui_label_sardine_not_initialized_or_failed">Sardine Not Initialized or Connection Failed</string>
@@ -462,6 +486,9 @@
     <string name="setting_audio_decode_sw_priority">Software Priority (Best Compatibility)</string>
     <string name="msg_clear_movie_db_confirm">Are you sure you want to clear all movie/TV data? This cannot be undone.</string>
     <string name="msg_clear_audio_db_confirm">Are you sure you want to clear all music data? This cannot be undone.</string>
+    <string name="ui_label_clear_playback_history">Clear playback history</string>
+    <string name="ui_label_clear_playback_history_confirm">Clear all playback records and resume positions? This cannot be undone.</string>
+    <string name="ui_label_playback_history_cleared">Playback history cleared</string>
     <string name="lang_auto_system">Auto (System)</string>
     <string name="lang_english">English</string>
     <string name="ui_label_version_prefix">Version: </string>

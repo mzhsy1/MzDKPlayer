@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
+import org.mz.mzdkplayer.tool.logic.FileSortLogic
 import org.mz.mzdkplayer.tool.logic.ScrapeSourcePolicy
 import org.mz.mzdkplayer.tool.logic.ScrapeTimeoutPolicy
 import org.mz.mzdkplayer.tool.logic.SeekAccelerationPolicy
@@ -120,6 +121,14 @@ object SettingsRepository {
 
     // 🔥 新增：是否移除 WebDAV 列表的首个元素
     private const val KEY_REMOVE_WEBDAV_FIRST_ITEM = "remove_webdav_first_item"
+
+    /**
+     * 文件浏览排序：电视端本地 / SMB / FTP / NFS / HTTP / WebDAV 六个列表页共用一条。
+     *
+     * 存 [FileSortLogic.encode] 的结果（例如 `name-asc-dirs`），而不是档位序号 ——
+     * 以后往排序档位中间插新值，老用户的选择也不会错位。
+     */
+    private const val KEY_FILE_BROWSER_SORT = "file_browser_sort"
 
     // --- 手机端（Phone）外观 Keys ---
     /** 主题模式：`PhoneThemeMode` 的枚举名（SYSTEM / LIGHT / DARK） */
@@ -366,6 +375,14 @@ object SettingsRepository {
     var removeWebDavFirstItem: Boolean
         get() = prefs.getBoolean(KEY_REMOVE_WEBDAV_FIRST_ITEM, false)
         set(value) = prefs.edit { putBoolean(KEY_REMOVE_WEBDAV_FIRST_ITEM, value) }
+
+    /**
+     * 文件浏览排序，读写都过一次 [FileSortLogic.normalize]：
+     * 被手改 / 早期版本写入的半截值收敛回默认档，「文件夹优先 + 名称升序」。
+     */
+    var fileBrowserSort: String
+        get() = FileSortLogic.normalize(prefs.getString(KEY_FILE_BROWSER_SORT, null))
+        set(value) = prefs.edit { putString(KEY_FILE_BROWSER_SORT, FileSortLogic.normalize(value)) }
 
     /**
      * 手机端主题模式，存 [PhoneThemeMode] 的枚举名。

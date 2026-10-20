@@ -18,12 +18,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 import java.io.File
@@ -150,24 +147,11 @@ fun FileEmptyScreen(text: String) {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.baseline_folder_off_24),
-                contentDescription = null,
-                tint = Color.Gray,
-                modifier = Modifier.size(64.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp
-            )
-        }
+        EmptyStateView(
+            iconRes = R.drawable.baseline_folder_off_24,
+            title = text,
+            accent = Color(0xFF90A4AE),
+            compact = true
+        )
     }
 }

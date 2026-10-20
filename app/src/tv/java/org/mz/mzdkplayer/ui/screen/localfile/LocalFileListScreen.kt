@@ -1,6 +1,6 @@
 package org.mz.mzdkplayer.ui.screen.localfile
 
-import NoSearchResult
+import org.mz.mzdkplayer.ui.screen.common.NoSearchResult
 import android.content.Context
 import android.os.Build
 import android.provider.MediaStore
@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -68,11 +69,13 @@ import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.di.RepositoryProvider
 import org.mz.mzdkplayer.tool.metadata.MediaInfoExtractorFormFileName
 import org.mz.mzdkplayer.tool.Tools
+import org.mz.mzdkplayer.tool.logic.FileSortLogic
 import org.mz.mzdkplayer.ui.common.VideoBigIcon
 import org.mz.mzdkplayer.di.viewModelWithFactory
 import org.mz.mzdkplayer.ui.screen.common.CirCleIconButton
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 import org.mz.mzdkplayer.ui.screen.common.FileIcon
+import org.mz.mzdkplayer.ui.screen.common.FileSortEntry
 import org.mz.mzdkplayer.ui.screen.common.FileName
 import org.mz.mzdkplayer.ui.screen.common.FileSize
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
@@ -122,6 +125,20 @@ fun LocalFileListScreen(path: String?, navController: NavHostController, setting
     val focusedMovie by movieViewModel.focusedMovie.collectAsState()
     val settingsState by settingsViewModel.uiState.collectAsState()
 
+    // 排序：设置里存一条，六个协议页面共用；先过滤再排序
+    val sortOption = remember(settingsState.fileBrowserSort) {
+        FileSortLogic.decode(settingsState.fileBrowserSort)
+    }
+    val sortedFiles = remember(filteredFiles, sortOption) {
+        FileSortLogic.sort(
+            items = filteredFiles,
+            option = sortOption,
+            nameOf = { it.name },
+            isDirectoryOf = { it.isDirectory },
+            modifiedOf = { it.lastModified() },
+            sizeOf = { it.length() },
+        )
+    }
     val isScanning by movieViewModel.isScanning.collectAsState()
     val currentScanIndex by movieViewModel.currentScanIndex.collectAsState() // 新增：引入当前进度
     val totalScanCount by movieViewModel.totalScanCount.collectAsState() // 新增：引入总数
@@ -253,7 +270,7 @@ fun LocalFileListScreen(path: String?, navController: NavHostController, setting
                                 }
                                 // 目录本身为空（未搜索时）
                                 else -> {
-                                    items(filteredFiles) { file ->
+                                    items(sortedFiles) { file ->
                                         val isDirectory = file.isDirectory
                                         val fileName = file.name
                                         val fullPath = file.absolutePath // 获取文件的绝对路径
@@ -291,7 +308,8 @@ fun LocalFileListScreen(path: String?, navController: NavHostController, setting
 
                                                         Tools.containsVideoFormat(fileExtension) -> {
                                                             // 构建视频播放列表
-                                                            val videoFiles = filteredFiles.filter { localFile ->
+                                                            // 播放列表跟随界面顺序，播完下一个和眼睛看到的一致
+                                                            val videoFiles = sortedFiles.filter { localFile ->
                                                                 !localFile.isDirectory && Tools.containsVideoFormat(Tools.extractFileExtension(localFile.name))
                                                             }
                                                             val videoItems = videoFiles.map { localFile ->
@@ -394,7 +412,7 @@ fun LocalFileListScreen(path: String?, navController: NavHostController, setting
                                             colors = MyFileListItemColor(),
                                             modifier = Modifier
                                                 .padding(end = 10.dp)
-                                                .height(40.dp)
+                                                .height(52.dp)
                                                 .onFocusChanged {
                                                     if (it.isFocused) {
                                                         focusedFileName = file.name
@@ -438,13 +456,23 @@ fun LocalFileListScreen(path: String?, navController: NavHostController, setting
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Top
                         ) {
+                            FileSortEntry(
+                                current = sortOption,
+                                onSortChange = {
+                                    settingsViewModel.setFileBrowserSort(FileSortLogic.encode(it))
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp),
+                            )
+                            Spacer(Modifier.height(8.dp))
                             TvTextField(
                                 value = seaText,
                                 onValueChange = { seaText = it },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 8.dp),
-                                placeholder =stringResource(R.string.ui_label_please_enter_filename),
+                                placeholder = stringResource(R.string.ui_label_please_enter_filename),
                                 textStyle = TextStyle(color = Color.White),
                             )
                             // 2. 中间的海报和文字区域（包裹在一个 Column 里）

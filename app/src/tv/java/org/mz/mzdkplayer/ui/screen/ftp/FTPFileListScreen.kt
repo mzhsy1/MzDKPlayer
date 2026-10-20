@@ -1,6 +1,6 @@
 package org.mz.mzdkplayer.ui.screen.ftp
 
-import NoSearchResult
+import org.mz.mzdkplayer.ui.screen.common.NoSearchResult
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
@@ -47,11 +47,13 @@ import org.mz.mzdkplayer.data.repository.Resource
 import org.mz.mzdkplayer.di.RepositoryProvider
 import org.mz.mzdkplayer.tool.metadata.MediaInfoExtractorFormFileName
 import org.mz.mzdkplayer.tool.Tools
+import org.mz.mzdkplayer.tool.logic.FileSortLogic
 import org.mz.mzdkplayer.ui.common.VideoBigIcon
 import org.mz.mzdkplayer.di.viewModelWithFactory
 import org.mz.mzdkplayer.ui.screen.common.CirCleIconButton
 import org.mz.mzdkplayer.ui.screen.common.FileEmptyScreen
 import org.mz.mzdkplayer.ui.screen.common.FileIcon
+import org.mz.mzdkplayer.ui.screen.common.FileSortEntry
 import org.mz.mzdkplayer.ui.screen.common.FileName
 import org.mz.mzdkplayer.ui.screen.common.FileSize
 import org.mz.mzdkplayer.ui.screen.common.LoadingScreen
@@ -121,6 +123,21 @@ fun FTPFileListScreen(
                 }
             }
         }
+    }
+    // 排序：设置里存一条，六个协议页面共用；先过滤再排序
+    val sortOption = remember(settingsState.fileBrowserSort) {
+        FileSortLogic.decode(settingsState.fileBrowserSort)
+    }
+    val sortedFiles = remember(filteredFiles, sortOption) {
+        FileSortLogic.sort(
+            items = filteredFiles,
+            option = sortOption,
+            nameOf = { it.name ?: "" },
+            isDirectoryOf = { it.isDirectory },
+            // LIST 命令不一定带时间戳，取不到就留 0（按时间排序时排最后）
+            modifiedOf = { it.timestamp?.timeInMillis ?: 0L },
+            sizeOf = { it.size },
+        )
     }
     val audioViewModel: AudioViewModel = viewModelWithFactory {
         RepositoryProvider.createAudioViewModel() // 不需要 context 了
@@ -256,7 +273,7 @@ fun FTPFileListScreen(
                                 // 目录本身为空（未搜索时）
 
                                 else -> {
-                                    items(filteredFiles) { file ->
+                                    items(sortedFiles) { file ->
                                         // FTPFile 使用 isDirectory 方法
                                         val isDirectory = file.isDirectory
                                         val fileName = file.name ?: "Unknown"
@@ -304,7 +321,8 @@ fun FTPFileListScreen(
 
                                                             Tools.containsVideoFormat(fileExtension) -> {
                                                                 // 构建视频播放列表
-                                                                val videoFiles = filteredFiles.filter { ftpFile ->
+                                                                // 播放列表跟随界面顺序，播完下一个和眼睛看到的一致
+                                                                val videoFiles = sortedFiles.filter { ftpFile ->
                                                                     !ftpFile.isDirectory && Tools.containsVideoFormat(Tools.extractFileExtension(ftpFile.name))
                                                                 }
                                                                 val videoItems = videoFiles.map { ftpFile ->
@@ -404,7 +422,7 @@ fun FTPFileListScreen(
                                             colors = MyFileListItemColor(),
                                             modifier = Modifier
                                                 .padding(end = 10.dp)
-                                                .height(40.dp)
+                                                .height(52.dp)
                                                 .onFocusChanged {
                                                     if (it.isFocused) {
                                                         focusedFileName = file.name;
@@ -446,11 +464,19 @@ fun FTPFileListScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Top
                         ) {
+                            FileSortEntry(
+                                current = sortOption,
+                                onSortChange = {
+                                    settingsViewModel.setFileBrowserSort(FileSortLogic.encode(it))
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Spacer(Modifier.height(8.dp))
                             TvTextField(
                                 value = seaText,
                                 onValueChange = { seaText = it },
                                 modifier = Modifier.fillMaxWidth(),
-                                placeholder =stringResource(R.string.ui_label_please_enter_filename),
+                                placeholder = stringResource(R.string.ui_label_please_enter_filename),
                                 textStyle = TextStyle(color = Color.White),
                             )
                             // 2. 中间的海报和文字区域（包裹在一个 Column 里）

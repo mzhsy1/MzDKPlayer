@@ -2,7 +2,7 @@
 
 package org.mz.mzdkplayer.ui.screen.httplink
 
-import NoSearchResult
+import org.mz.mzdkplayer.ui.screen.common.NoSearchResult
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
@@ -39,6 +39,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.tool.logic.FileSortLogic
+import org.mz.mzdkplayer.ui.screen.common.FileSortEntry
 import org.mz.mzdkplayer.data.repository.AudioPlaylistRepository
 import org.mz.mzdkplayer.data.repository.VideoPlaylistRepository
 import org.mz.mzdkplayer.data.model.AudioItem
@@ -131,6 +133,22 @@ fun HTTPLinkFileListScreen(
                 }
             }
         }
+    }
+    // 排序：设置里存一条，六个协议页面共用；先过滤再排序
+    val sortOption = remember(settingsState.fileBrowserSort) {
+        FileSortLogic.decode(settingsState.fileBrowserSort)
+    }
+    val sortedFiles = remember(filteredFiles, sortOption) {
+        FileSortLogic.sort(
+            items = filteredFiles,
+            option = sortOption,
+            nameOf = { it.name },
+            isDirectoryOf = { it.isDirectory },
+            // HTML 目录页通常只有「名称 + 大小」两列，没有时间列：按时间排序时全部为 0，
+            // 会退化成名称顺序，不会乱跳；大小排序真实可用
+            modifiedOf = { 0L },
+            sizeOf = { it.fileSize },
+        )
     }
     // 标准化 path：确保非空时以 "/" 结尾
     val normalizedPath = path?.let { p ->
@@ -262,7 +280,7 @@ fun HTTPLinkFileListScreen(
                                 // 目录本身为空（未搜索时）
 
                                 else -> {
-                                    items(filteredFiles) { resource ->
+                                    items(sortedFiles) { resource ->
                                         // 这里假设 resource 有 isDirectory: Boolean 和 name: String, path: String 属性
                                         val isDirectory = resource.isDirectory
                                         val resourceName = resource.name // 这里应该已经是完整的文件/目录名
@@ -304,7 +322,8 @@ fun HTTPLinkFileListScreen(
                                                         when {
                                                             Tools.containsVideoFormat(fileExtension) -> {
                                                                 // 构建视频播放列表
-                                                                val videoFiles = filteredFiles.filter { httpFile ->
+                                                                // 播放列表跟随界面顺序，播完下一个和眼睛看到的一致
+                                                                val videoFiles = sortedFiles.filter { httpFile ->
                                                                     !httpFile.isDirectory && Tools.containsVideoFormat(Tools.extractFileExtension(httpFile.name))
                                                                 }
                                                                 val videoItems = videoFiles.map { httpFile ->
@@ -408,7 +427,7 @@ fun HTTPLinkFileListScreen(
                                             colors = MyFileListItemColor(),
                                             modifier = Modifier
                                                 .padding(end = 10.dp)
-                                                .height(40.dp)
+                                                .height(52.dp)
                                                 .onFocusChanged {
                                                     if (it.isFocused) {
                                                         focusedFileName = resource.name;
@@ -461,11 +480,19 @@ fun HTTPLinkFileListScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
+                            FileSortEntry(
+                                current = sortOption,
+                                onSortChange = {
+                                    settingsViewModel.setFileBrowserSort(FileSortLogic.encode(it))
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Spacer(Modifier.height(8.dp))
                             TvTextField(
                                 value = seaText,
                                 onValueChange = { seaText = it },
                                 modifier = Modifier.fillMaxWidth(),
-                                placeholder =stringResource(R.string.ui_label_please_enter_filename),
+                                placeholder = stringResource(R.string.ui_label_please_enter_filename),
                                 textStyle = TextStyle(color = Color.White),
                             )
                             // 2. 中间的海报和文字区域（包裹在一个 Column 里）

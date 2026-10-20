@@ -129,7 +129,9 @@ class WebDavConViewModel : ViewModel() {
                                 path = resource.path,
                                 username = username ?: "",
                                 password = password ?: "",
-                                size = resource.contentLength
+                                size = resource.contentLength,
+                                // DavResource.getModified() 在部分服务端为空，取不到就留 0（按时间排序时排最后）
+                                modified = resource.modified?.time ?: 0L
                             )
                         }.sortedBy { it.name }
 
@@ -345,5 +347,7 @@ data class WebDavFileItem(
     val path: String,
     val username: String,
     val password: String,
-    val size: Long
+    val size: Long,
+    /** 最后修改时间（毫秒），服务端没返回时为 0；电视端「按时间排序」用 */
+    val modified: Long = 0L
 )

@@ -60,7 +60,7 @@ fun FileSize(isDirectory: Boolean = true,fileSize: Long = 1L){
 
     if (!isDirectory) {
         Box(
-            modifier = Modifier.widthIn(min = 60.dp), // 设置最小宽度，确保单位对齐
+            modifier = Modifier.widthIn(min = 72.dp), // 设置最小宽度，确保单位对齐
             contentAlignment = Alignment.CenterEnd    // 文字靠右对齐
         )
         {
@@ -68,19 +68,19 @@ fun FileSize(isDirectory: Boolean = true,fileSize: Long = 1L){
                 text = formatFileSize(fileSize),
                 maxLines = 1,
                 style = TextStyle(
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     textAlign = TextAlign.End,
-                    color = Color.Gray
+                    color = Color(0xFF9A96A6)
                 )
             )
         }
     } else {
-        //如果是目录，可以显示一个小箭头或者保持空白
+        // 目录项右侧只给一个淡箭头，和文件的体量文字区分开
         Icon(
             painter = painterResource(R.drawable.arrowright24dp),
             contentDescription = null,
-            modifier = Modifier.size(24.dp),
-            tint = Color.Gray
+            modifier = Modifier.size(20.dp),
+            tint = Color(0xFF6E6A78)
         )
     }
 }
@@ -91,7 +91,8 @@ fun FileName(fileName: String=""){
         fileName,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-        fontSize = 10.sp
+        fontSize = 15.sp,
+        fontWeight = FontWeight.Medium
     )
 }
 @Composable
@@ -100,14 +101,19 @@ fun MediaInfoLoading(){
         modifier = Modifier
             .widthIn(200.dp)
             .fillMaxHeight(0.6f)
-            .background(Color.DarkGray.copy(alpha = 0.3f))
+            .background(Color(0xFF1A1A21))
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(alpha = 0.06f),
+                shape = RoundedCornerShape(20.dp)
+            )
             .clip(RoundedCornerShape(20.dp)),
         contentAlignment = Alignment.Center
     ) {
         Text(
             stringResource(R.string.ui_label_loading_in_progress),
-            color = Color.White,
-            fontSize = 12.sp
+            color = Color(0xFF918D9C),
+            fontSize = 13.sp
         )
     }
 }
@@ -117,7 +123,7 @@ fun MediaTitle(title: String?){
         title?: stringResource(R.string.ui_label_unknown_title),
         color = Color.White,
         fontWeight = FontWeight.Bold,
-        fontSize = 18.sp, // 稍微减小字体
+        fontSize = 20.sp,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
         textAlign = TextAlign.Center
@@ -128,10 +134,10 @@ fun MediaTitle(title: String?){
 fun MediaReleaseDate(releaseDate: String?){
     Text(
         text = releaseDate?.substring(0, 4) ?: "N/A",
-        color = Color.White,
-        fontWeight = FontWeight.Bold,
-        fontSize = 16.sp, // 稍微减小字体
-        maxLines = 2,
+        color = Color(0xFF9A96A6),
+        fontWeight = FontWeight.Medium,
+        fontSize = 14.sp,
+        maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         textAlign = TextAlign.Center
     )
@@ -141,9 +147,9 @@ fun MediaReleaseDate(releaseDate: String?){
 fun MediaFocusedFileName(focusedFileName: String?){
     Text(
         focusedFileName?:stringResource(R.string.ui_label_unknown_filename),
-        color = Color.White,
+        color = Color(0xFFF4F1EA),
         fontWeight = FontWeight.Bold,
-        fontSize = 18.sp,
+        fontSize = 20.sp,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
         textAlign = TextAlign.Center,
@@ -245,13 +251,19 @@ fun MediaPreviewSection(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            // 预览区不再铺灰色底板：海报/图片直接浮在黑底上，只保留圆角，
+            // 否则竖版海报左右会露出两条灰边，和整页纯黑背景割裂
             Box(
                 modifier = Modifier
-                    .weight(0.8f)
+                    .weight(1f)
                     .fillMaxWidth()
-                    .padding(top = 20.dp),
+                    .padding(top = 16.dp, start = 8.dp, end = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
                 // 判断是否是图片文件
                 val isImage = focusedFileName?.let {
                     Tools.containsImageFileExtension(Tools.extractFileExtension(it))
@@ -274,23 +286,15 @@ fun MediaPreviewSection(
                             when {
                                 // 图片文件优先显示图片本身，避免被同名电影的刮削海报"抢"走
                                 previewUri != null -> ImagePreview(previewUri, focusedFileName, focusedDataSourceType)
-                                movie.posterPath != null -> Box(
-                                    Modifier.border(
-                                        width = 2.dp,
-                                        color = Color.Gray.copy(alpha = 0.5f),
-                                        shape = RoundedCornerShape(20.dp)
-                                    )
-                                ) {
-                                    AsyncImage(
-                                        model = org.mz.mzdkplayer.tool.Tools.formatImageUrl(movie.posterPath, "w500"),
-                                        contentDescription = movie.title,
-                                        contentScale = ContentScale.Fit,
-                                        modifier = Modifier
-                                            .fillMaxHeight()
-                                            .align(Alignment.Center)
-                                            .clip(RoundedCornerShape(20.dp))
-                                    )
-                                }
+                                movie.posterPath != null -> AsyncImage(
+                                    model = org.mz.mzdkplayer.tool.Tools.formatImageUrl(movie.posterPath, "w500"),
+                                    contentDescription = movie.title,
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(10.dp)
+                                        .clip(RoundedCornerShape(14.dp))
+                                )
                                 else -> VideoBigIcon(focusedIsDir, focusedFileName, Modifier.fillMaxWidth().height(200.dp))
                             }
                         } else {
@@ -320,25 +324,35 @@ fun MediaPreviewSection(
                         }
                     }
                 }
+                }
             }
 
             // --- 文字信息区 ---
-            Box(
-                modifier = Modifier.weight(0.2f).fillMaxWidth(),
-                contentAlignment = Alignment.Center
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 val movie = (focusedMovie as? Resource.Success)?.data
                 if (movie != null) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        MediaTitle(movie.title)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        MediaReleaseDate(movie.releaseDate)
-                    }
+                    MediaTitle(movie.title)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    MediaReleaseDate(movie.releaseDate)
                 } else {
                     MediaFocusedFileName(focusedFileName)
+                    // 文件名下方补一行格式标签，空态也不再只有光秃秃一行名字
+                    val extension = Tools.extractFileExtension(focusedFileName ?: "").uppercase()
+                    if (!focusedIsDir && extension.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = extension,
+                            color = Color(0xFF8C88A0),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = 1.sp
+                        )
+                    }
                 }
             }
         }
@@ -352,25 +366,17 @@ fun ImagePreview(uri: String, fileName: String?, dataSourceType: String = "LOCAL
     // 自定义 scheme 的 URI 无法被 Coil 解析，预览会一直空白
     val imageLoader = rememberRemoteMediaImageLoader()
 
-    Box(
-        Modifier.border(
-            width = 2.dp,
-            color = Color.Gray.copy(alpha = 0.5f),
-            shape = RoundedCornerShape(20.dp)
-        )
-    ) {
-        AsyncImage(
-            model = ImageRequest.Builder(context)
-                .data(RemoteMedia(uri, dataSourceType))
-                .crossfade(true)
-                .build(),
-            imageLoader = imageLoader,
-            contentDescription = fileName,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .fillMaxHeight()
-                .align(Alignment.Center)
-                .clip(RoundedCornerShape(20.dp))
-        )
-    }
+    AsyncImage(
+        model = ImageRequest.Builder(context)
+            .data(RemoteMedia(uri, dataSourceType))
+            .crossfade(true)
+            .build(),
+        imageLoader = imageLoader,
+        contentDescription = fileName,
+        contentScale = ContentScale.Fit,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(10.dp)
+            .clip(RoundedCornerShape(14.dp))
+    )
 }

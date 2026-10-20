@@ -13,6 +13,7 @@ import com.kuaishou.akdanmaku.ui.DanmakuPlayer
 import org.mz.mzdkplayer.data.repository.DanmakuSettingsManager
 import org.mz.mzdkplayer.player.core.IMzPlayer
 import org.mz.mzdkplayer.player.core.MzIsoTitle
+import org.mz.mzdkplayer.ui.common.PlayerStatusChip
 import org.mz.mzdkplayer.viewmodel.VideoPlayerViewModel
 
 @Composable
@@ -26,7 +27,7 @@ fun BoxScope.VideoPlayerOverlayLayer(
     player: IMzPlayer,
     mediaTitle: String,
     mediaDateText: String,
-    statusText: String,
+    statusChip: PlayerStatusChip,
     mDanmakuPlayer: DanmakuPlayer,
     settingsManager: DanmakuSettingsManager,
     getDanmakuConfig: () -> DanmakuConfig
@@ -49,7 +50,7 @@ fun BoxScope.VideoPlayerOverlayLayer(
                 player = player,
                 state = videoPlayerState,
                 title = mediaTitle,
-                secondaryText = statusText,
+                statusChip = statusChip,
                 tertiaryText = mediaDateText,
                 videoPlayerViewModel = videoPlayerViewModel,
                 danmakuPlayer = mDanmakuPlayer,

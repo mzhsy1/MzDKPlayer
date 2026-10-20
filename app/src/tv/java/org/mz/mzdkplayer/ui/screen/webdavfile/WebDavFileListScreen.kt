@@ -2,7 +2,7 @@
 
 package org.mz.mzdkplayer.ui.screen.webdavfile
 
-import NoSearchResult
+import org.mz.mzdkplayer.ui.screen.common.NoSearchResult
 import android.util.Log
 import org.mz.mzdkplayer.common.MzToastManager
 import androidx.annotation.OptIn
@@ -71,6 +71,8 @@ import org.mz.mzdkplayer.viewmodel.AudioViewModel
 import org.mz.mzdkplayer.viewmodel.MovieViewModel
 import org.mz.mzdkplayer.viewmodel.SettingsViewModel
 import org.mz.mzdkplayer.tool.logic.FileBrowserLogic
+import org.mz.mzdkplayer.tool.logic.FileSortLogic
+import org.mz.mzdkplayer.ui.screen.common.FileSortEntry
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(UnstableApi::class)
@@ -114,6 +116,20 @@ fun WebDavFileListScreen(
                 }
             }
         }
+    }
+    // 排序：设置里存一条，六个协议页面共用；先过滤再排序
+    val sortOption = remember(settingsState.fileBrowserSort) {
+        FileSortLogic.decode(settingsState.fileBrowserSort)
+    }
+    val sortedFiles = remember(filteredFiles, sortOption) {
+        FileSortLogic.sort(
+            items = filteredFiles,
+            option = sortOption,
+            nameOf = { it.name },
+            isDirectoryOf = { it.isDirectory },
+            modifiedOf = { it.modified },
+            sizeOf = { it.size },
+        )
     }
     val isScanning by movieViewModel.isScanning.collectAsState()
     val currentScanIndex by movieViewModel.currentScanIndex.collectAsState() // 新增：引入当前进度
@@ -244,7 +260,7 @@ fun WebDavFileListScreen(
                                 }
 
                                 else -> {
-                                    items(filteredFiles) { file ->
+                                    items(sortedFiles) { file ->
                                         val isDirectory = file.isDirectory
                                         val fileName = file.name
                                         // 处理文件点击
@@ -277,7 +293,8 @@ fun WebDavFileListScreen(
                                                         when {
                                                             Tools.containsVideoFormat(fileExtension) -> {
                                                                 // 构建视频播放列表
-                                                                val videoFiles = filteredFiles.filter { webdavFile ->
+                                                                // 播放列表跟随界面顺序，播完下一个和眼睛看到的一致
+                                                                val videoFiles = sortedFiles.filter { webdavFile ->
                                                                     !webdavFile.isDirectory && Tools.containsVideoFormat(Tools.extractFileExtension(webdavFile.name))
                                                                 }
                                                                 val videoItems = videoFiles.map { webdavFile ->
@@ -376,7 +393,7 @@ fun WebDavFileListScreen(
                                             colors = MyFileListItemColor(),
                                             modifier = Modifier
                                                 .padding(end = 10.dp)
-                                                .height(40.dp)
+                                                .height(52.dp)
                                                 .onFocusChanged {
                                                     if (it.isFocused) {
                                                         focusedFileName = file.name
@@ -420,11 +437,19 @@ fun WebDavFileListScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
+                            FileSortEntry(
+                                current = sortOption,
+                                onSortChange = {
+                                    settingsViewModel.setFileBrowserSort(FileSortLogic.encode(it))
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Spacer(Modifier.height(8.dp))
                             TvTextField(
                                 value = seaText,
                                 onValueChange = { seaText = it },
                                 modifier = Modifier.fillMaxWidth(),
-                                placeholder =stringResource(R.string.ui_label_please_enter_filename),
+                                placeholder = stringResource(R.string.ui_label_please_enter_filename),
                                 textStyle = TextStyle(color = Color.White),
                             )
                             // 添加弹性空间，让海报区域在垂直方向上居中

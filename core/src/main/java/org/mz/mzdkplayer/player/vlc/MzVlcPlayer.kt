@@ -32,6 +32,10 @@ import kotlinx.coroutines.flow.asStateFlow
 
 import kotlinx.coroutines.launch
 
+import kotlinx.coroutines.SupervisorJob
+
+import kotlinx.coroutines.cancel
+
 import androidx.media3.common.util.UnstableApi
 
 import org.mz.mzdkplayer.player.core.IMzPlayer
@@ -202,6 +206,16 @@ class MzVlcPlayer(
     private val libVLC = LibVLC(context, options)
 
     private val mediaPlayer = MediaPlayer(libVLC)
+
+    /**
+     * 播放器自己的协程作用域。所有「等一会儿再读轨道」的任务都挂在这里，
+     * release() 时一并取消，避免延迟任务在播放器销毁后去碰已释放的 native 对象。
+     */
+    private val playerScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    /** release() 之后置 true；此后任何事件回调都不再访问 native 对象 */
+    @Volatile
+    private var released = false
 
 
 
@@ -492,7 +506,7 @@ class MzVlcPlayer(
 
 //Toast.makeText(context,"添加成功，找到外部字幕", Toast.LENGTH_SHORT).show()
 
-                    CoroutineScope(Dispatchers.Main).launch {
+                    playerScope.launch {
 
                         delay(1000.milliseconds)
 
@@ -582,7 +596,31 @@ class MzVlcPlayer(
 
     }
 
+    /**
+     * 轨道刷新的统一入口。
+     *
+     * VLC 的轨道事件是异步派发的：播放结束、切下一集、退出播放页时 MediaPlayer 可能已经
+     * release，此时再读 audioTracks/subtitleTracks 会抛
+     * IllegalStateException("can't get VLCObject instance")，未捕获就是闪退。
+     * 所以这里统一做释放标记 + 异常兜底。
+     */
     private fun updateTracks() {
+
+        if (released) return
+
+        try {
+
+            updateTracksInternal()
+
+        } catch (e: IllegalStateException) {
+
+            Log.w("MzVlcPlayer", "updateTracks 跳过：播放器已释放（${e.message}）")
+
+        }
+
+    }
+
+    private fun updateTracksInternal() {
 
         val media = mediaPlayer.media ?: return
 
@@ -757,11 +795,12 @@ class MzVlcPlayer(
 
 
 
-    override val isPlaying: Boolean get() = mediaPlayer.isPlaying
+    // 切集/退出时旧的读取方（定时保存进度等）可能比 release 晚一步，已释放就返回安全默认值
+    override val isPlaying: Boolean get() = if (released) false else mediaPlayer.isPlaying
 
-    override val currentPosition: Long get() = mediaPlayer.time
+    override val currentPosition: Long get() = if (released) 0L else mediaPlayer.time
 
-    override val duration: Long get() = mediaPlayer.length
+    override val duration: Long get() = if (released) 0L else mediaPlayer.length
 
 
 
@@ -881,6 +920,11 @@ class MzVlcPlayer(
 
     override fun release() {
 
+        // 先置标记并取消延迟任务，再释放 native 对象：轨道事件回调此刻可能仍在途
+        released = true
+
+        playerScope.cancel()
+
         mediaPlayer.stop()
 
         mediaPlayer.release()
@@ -960,7 +1004,8 @@ class MzVlcPlayer(
                 }
             },
             onRelease = {
-                mediaPlayer.detachViews()
+                // 切下一集时视图会先于 release 销毁，也可能反过来；已释放就不能再碰 native 对象
+                if (!released) runCatching { mediaPlayer.detachViews() }
             }
         )
     }
@@ -969,7 +1014,9 @@ class MzVlcPlayer(
 
     override fun addExternalSubtitles(subtitles: List<Pair<String, String>>) {
 
-        val media = mediaPlayer.media ?: return
+        if (released) return
+
+        val media = runCatching { mediaPlayer.media }.getOrNull() ?: return
 
 
 

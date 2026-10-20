@@ -141,6 +141,8 @@ class SMBConViewModel : ViewModel() {
                                                 share = config.share,
                                                 username = config.username,
                                                 password = config.password,
+                                                // 目录项自带 FILETIME，顺手带上，省得排序时再逐个查一次
+                                                modified = fileInfo.lastWriteTime?.toEpochMillis() ?: 0L
                                             )
                                         )
                                     }
@@ -302,7 +304,9 @@ data class SMBFileItem(
     val server: String,
     val share: String,
     val username: String,
-    val password: String
+    val password: String,
+    /** 最后修改时间（毫秒），取不到时为 0；电视端「按时间排序」用 */
+    val modified: Long = 0L
 )
 
 

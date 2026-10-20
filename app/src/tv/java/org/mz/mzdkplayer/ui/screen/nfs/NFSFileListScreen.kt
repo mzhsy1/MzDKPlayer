@@ -2,7 +2,7 @@
 
 package org.mz.mzdkplayer.ui.screen.nfs
 
-import NoSearchResult
+import org.mz.mzdkplayer.ui.screen.common.NoSearchResult
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
@@ -39,6 +39,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.tool.logic.FileSortLogic
+import org.mz.mzdkplayer.ui.screen.common.FileSortEntry
 import org.mz.mzdkplayer.data.repository.AudioPlaylistRepository
 import org.mz.mzdkplayer.data.repository.VideoPlaylistRepository
 import org.mz.mzdkplayer.data.model.AudioItem
@@ -127,6 +129,21 @@ fun NFSFileListScreen(
                 }
             }
         }
+    }
+    // 排序：设置里存一条，六个协议页面共用；先过滤再排序
+    val sortOption = remember(settingsState.fileBrowserSort) {
+        FileSortLogic.decode(settingsState.fileBrowserSort)
+    }
+    val sortedFiles = remember(filteredFiles, sortOption) {
+        FileSortLogic.sort(
+            items = filteredFiles,
+            option = sortOption,
+            nameOf = { it.name ?: "" },
+            isDirectoryOf = { it.isDirectory },
+            // 时间/大小都是 getattr 结果，取不到就当未知（0），不让个别坏条目拖垮整页
+            modifiedOf = { runCatching { it.getAttributes()?.mtime?.timeInMillis }.getOrNull() ?: 0L },
+            sizeOf = { runCatching { it.length() }.getOrDefault(0L) },
+        )
     }
     val isScanning by movieViewModel.isScanning.collectAsState()
     val currentScanIndex by movieViewModel.currentScanIndex.collectAsState() // 新增：引入当前进度
@@ -262,7 +279,7 @@ fun NFSFileListScreen(
                                         }")
                                     }
                                 }
-                                else -> items(filteredFiles)
+                                else -> items(sortedFiles)
                                 { file ->
                                     // 假设有一个类似 FTPFile 的 NFSFile 类，或使用通用文件信息类
                                     // 这里假设 file 有 isDirectory: Boolean 和 name: String? 属性
@@ -311,7 +328,8 @@ fun NFSFileListScreen(
                                                         )
                                                     ) {
                                                         // 构建视频播放列表
-                                                        val videoFiles = filteredFiles.filter { nfsFile ->
+                                                        // 播放列表跟随界面顺序，播完下一个和眼睛看到的一致
+                                                        val videoFiles = sortedFiles.filter { nfsFile ->
                                                             !nfsFile.isDirectory && Tools.containsVideoFormat(Tools.extractFileExtension(nfsFile.name))
                                                         }
                                                         val videoItems = videoFiles.map { nfsFile ->
@@ -413,7 +431,7 @@ fun NFSFileListScreen(
                                         colors = MyFileListItemColor(),
                                         modifier = Modifier
                                             .padding(end = 10.dp)
-                                            .height(40.dp)
+                                            .height(52.dp)
                                             .onFocusChanged {
                                                 if (it.isFocused) {
                                                     focusedFileName = file.name;
@@ -457,14 +475,24 @@ fun NFSFileListScreen(
                             verticalArrangement = Arrangement.Top
                         )
                         {
-                            // 搜索框放在最上面
+                            // 排序入口与搜索框放在最上面
+                            FileSortEntry(
+                                current = sortOption,
+                                onSortChange = {
+                                    settingsViewModel.setFileBrowserSort(FileSortLogic.encode(it))
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp),
+                            )
+                            Spacer(Modifier.height(8.dp))
                             TvTextField(
                                 value = seaText,
                                 onValueChange = { seaText = it },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 8.dp),
-                                placeholder =stringResource(R.string.ui_label_please_enter_filename),
+                                placeholder = stringResource(R.string.ui_label_please_enter_filename),
                                 textStyle = TextStyle(color = Color.White),
                             )
                             // 2. 中间的海报和文字区域（包裹在一个 Column 里）

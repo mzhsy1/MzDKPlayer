@@ -1,7 +1,7 @@
 package org.mz.mzdkplayer.ui.screen.smbfile
 
 import org.mz.mzdkplayer.tool.metadata.MediaInfoExtractorFormFileName
-import NoSearchResult
+import org.mz.mzdkplayer.ui.screen.common.NoSearchResult
 import android.util.Log
 import org.mz.mzdkplayer.common.MzToastManager
 import androidx.annotation.OptIn
@@ -58,6 +58,8 @@ import kotlinx.coroutines.launch
 import org.mz.mzdkplayer.MzDkPlayerApplication
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.data.repository.AudioPlaylistRepository
+import org.mz.mzdkplayer.tool.logic.FileSortLogic
+import org.mz.mzdkplayer.ui.screen.common.FileSortEntry
 import org.mz.mzdkplayer.data.repository.VideoPlaylistRepository
 import org.mz.mzdkplayer.data.model.AudioItem
 import org.mz.mzdkplayer.data.model.VideoItem
@@ -146,6 +148,20 @@ fun SMBFileListScreen(
                 }
             }
         }
+    }
+    // 排序：设置里存一条，六个协议页面共用；先过滤再排序
+    val sortOption = remember(settingsState.fileBrowserSort) {
+        FileSortLogic.decode(settingsState.fileBrowserSort)
+    }
+    val sortedFiles = remember(filteredFiles, sortOption) {
+        FileSortLogic.sort(
+            items = filteredFiles,
+            option = sortOption,
+            nameOf = { it.name },
+            isDirectoryOf = { it.isDirectory },
+            modifiedOf = { it.modified },
+            sizeOf = { it.fileSize },
+        )
     }
     // 控制弹窗显示
     var showEditDialog by remember { mutableStateOf(false) }
@@ -290,7 +306,7 @@ fun SMBFileListScreen(
                                     }
                                     // 目录本身为空（未搜索时）
                                     else -> {
-                                        items(filteredFiles) { file ->
+                                        items(sortedFiles) { file ->
                                             val fileExtension =
                                                 Tools.extractFileExtension(file.name)
                                             ListItem(
@@ -324,7 +340,8 @@ fun SMBFileListScreen(
 
                                                         Tools.containsVideoFormat(fileExtension) -> {
                                                             // 构建视频播放列表
-                                                            val videoFiles = filteredFiles.filter { smbFile ->
+                                                            // 播放列表跟随界面顺序，播完下一个和眼睛看到的一致
+                                                            val videoFiles = sortedFiles.filter { smbFile ->
                                                                 !smbFile.isDirectory && Tools.containsVideoFormat(Tools.extractFileExtension(smbFile.name))
                                                             }
                                                             val videoItems = videoFiles.map { smbFile ->
@@ -437,7 +454,7 @@ fun SMBFileListScreen(
                                                 colors = MyFileListItemColor(),
                                                 modifier = Modifier
                                                     .padding(end = 10.dp)
-                                                    .height(40.dp)
+                                                    .height(52.dp)
                                                     .onFocusChanged { focusState ->
                                                         if (focusState.isFocused) {
                                                             focusedFileName = file.name
@@ -485,14 +502,24 @@ fun SMBFileListScreen(
                             verticalArrangement = Arrangement.Top
                         )
                         {
-                            // 搜索框放在最上面
+                            // 排序入口与搜索框放在最上面
+                            FileSortEntry(
+                                current = sortOption,
+                                onSortChange = {
+                                    settingsViewModel.setFileBrowserSort(FileSortLogic.encode(it))
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp),
+                            )
+                            Spacer(Modifier.height(8.dp))
                             TvTextField(
                                 value = seaText,
                                 onValueChange = { seaText = it },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 8.dp),
-                                placeholder =stringResource(R.string.ui_label_please_enter_filename),
+                                placeholder = stringResource(R.string.ui_label_please_enter_filename),
                                 textStyle = TextStyle(color = Color.White),
                             )
                             // --- 关键修改：添加弹簧 1 ---

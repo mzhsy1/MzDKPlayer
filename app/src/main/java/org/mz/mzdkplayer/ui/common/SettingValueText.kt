@@ -3,6 +3,9 @@ package org.mz.mzdkplayer.ui.common
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import org.mz.mzdkplayer.R
+import org.mz.mzdkplayer.tool.logic.FileSortField
+import org.mz.mzdkplayer.tool.logic.FileSortLogic
+import org.mz.mzdkplayer.tool.logic.FileSortOption
 import org.mz.mzdkplayer.tool.logic.ScrapeSourcePolicy
 import org.mz.mzdkplayer.tool.logic.SeekAccelerationPolicy
 
@@ -128,3 +131,43 @@ fun formatAppLang(code: String): String = when (code) {
     "ja" -> stringResource(R.string.ui_label_japanese_language)
     else -> stringResource(R.string.lang_auto)
 }
+
+/**
+ * 文件浏览排序的界面文案：「文件夹优先 · 名称 A→Z」。
+ *
+ * 电视端六个文件列表页的排序菜单与设置页共用这一份，避免两边措辞漂移；
+ * 「文件夹优先」是独立开关，开启时给整段文案加前缀，而不是单独占一行。
+ */
+@Composable
+fun fileSortLabel(option: FileSortOption): String {
+    val fieldText = when (option.field) {
+        FileSortField.NAME -> if (option.descending) {
+            stringResource(R.string.ui_label_file_sort_name_desc)
+        } else {
+            stringResource(R.string.ui_label_file_sort_name_asc)
+        }
+
+        FileSortField.TIME -> if (option.descending) {
+            stringResource(R.string.ui_label_file_sort_time_desc)
+        } else {
+            stringResource(R.string.ui_label_file_sort_time_asc)
+        }
+
+        FileSortField.SIZE -> if (option.descending) {
+            stringResource(R.string.ui_label_file_sort_size_desc)
+        } else {
+            stringResource(R.string.ui_label_file_sort_size_asc)
+        }
+
+        FileSortField.TYPE -> stringResource(R.string.ui_label_file_sort_type)
+    }
+    return if (option.foldersFirst) {
+        "${stringResource(R.string.ui_label_file_sort_folders_first)} · $fieldText"
+    } else {
+        fieldText
+    }
+}
+
+/** 设置里存的排序字符串 → 界面文案（`name-asc-dirs` → 「文件夹优先 · 名称 A→Z」） */
+@Composable
+fun formatFileSort(encoded: String): String = fileSortLabel(FileSortLogic.decode(encoded))
