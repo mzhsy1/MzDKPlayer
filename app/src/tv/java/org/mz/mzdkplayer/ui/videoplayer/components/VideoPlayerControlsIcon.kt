@@ -22,8 +22,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -41,10 +50,14 @@ fun VideoPlayerControlsIcon(
     contentDescription: String? = null,
     tooltipText: String? = null,
     focusable: Boolean = true,
+    /** 圆形按钮直径。控制栏里的播放/暂停比换集按钮大一档，图标内边距按比例缩放 */
+    buttonSize: Dp = 40.dp,
     onClick: () -> Unit = {}
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
+    val iconPadding = buttonSize * 0.2f
+    val focusManager = LocalFocusManager.current
 
     // 外层 Box 仅作为定位锚点
     Box(
@@ -54,7 +67,9 @@ fun VideoPlayerControlsIcon(
         // 原有的按钮 Surface
         if (focusable) {
             Surface(
-                modifier = Modifier.size(40.dp), // 固定按钮尺寸
+                modifier = Modifier
+                    .size(buttonSize) // 固定按钮尺寸
+                    .moveFocusOnHorizontalKeys(focusManager),
                 onClick = onClick,
                 shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
                 colors = ClickableSurfaceDefaults.colors(
@@ -68,7 +83,7 @@ fun VideoPlayerControlsIcon(
                     icon,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(8.dp),
+                        .padding(iconPadding),
                     contentDescription = contentDescription,
                     tint = LocalContentColor.current
                 )
@@ -76,7 +91,7 @@ fun VideoPlayerControlsIcon(
         } else {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(buttonSize)
                     .background(Color.Black.copy(0.9f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
@@ -84,7 +99,7 @@ fun VideoPlayerControlsIcon(
                     icon,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(8.dp),
+                        .padding(iconPadding),
                     contentDescription = contentDescription,
                     tint = Color.White
                 )
@@ -132,3 +147,27 @@ fun VideoPlayerControlsIcon(
         }
     }
 }
+
+/**
+ * 左右键在按钮之间切换焦点。
+ *
+ * 播放页根节点的 `onKeyEvent` 统一处理方向键做快进/快退，而它在按键冒泡路径上比 Compose 的
+ * 「焦点移动」更早生效 —— 不在这里消费的话，左右键一律被当成 seek，焦点永远困在同一枚按钮上。
+ *
+ * 按下（KeyDown）也必须一起吞掉：播放页把「左右按下」当成长按 seek 的起点开始按节拍步进，
+ * 只消费松手的话，那个协程就拿不到 UP、永远停不下来（实测表现是一路步进到片尾）。
+ * 到边的按钮（最左按左 / 最右按右）没有可去的地方，这次按键就当没发生 —— 想 seek 先按「上」
+ * 把焦点交回进度条，那边才是播放页处理左右键的地盘。
+ */
+private fun Modifier.moveFocusOnHorizontalKeys(focusManager: FocusManager): Modifier =
+    this.onKeyEvent { event ->
+        val direction = when (event.key) {
+            Key.DirectionLeft -> FocusDirection.Left
+            Key.DirectionRight -> FocusDirection.Right
+            else -> return@onKeyEvent false
+        }
+        if (event.type == KeyEventType.KeyDown) return@onKeyEvent true
+        if (event.type != KeyEventType.KeyUp) return@onKeyEvent false
+        focusManager.moveFocus(direction)
+        true
+    }

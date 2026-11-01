@@ -94,6 +94,16 @@ class VideoPlayerPulseState {
         _type = type
         channel.trySend(Unit)
     }
+
+    /**
+     * 立刻收掉箭头脉冲，不等 2 秒的 debounce 到点。
+     *
+     * 用在长按开始的时候：上一次单击的箭头还在屏幕上（它有 2 秒寿命），
+     * 紧接着长按又亮出迷你进度提示，就会「箭头 + 迷你条」两张皮叠在一起。
+     */
+    fun clear() {
+        _type = VideoPlayerPulse.Type.NONE
+    }
 }
 
 @Composable

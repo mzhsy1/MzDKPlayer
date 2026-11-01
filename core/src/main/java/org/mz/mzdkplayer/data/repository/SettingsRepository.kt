@@ -12,6 +12,7 @@ import org.mz.mzdkplayer.tool.logic.FileSortLogic
 import org.mz.mzdkplayer.tool.logic.ScrapeSourcePolicy
 import org.mz.mzdkplayer.tool.logic.ScrapeTimeoutPolicy
 import org.mz.mzdkplayer.tool.logic.SeekAccelerationPolicy
+import org.mz.mzdkplayer.tool.logic.SeekFeedbackPolicy
 
 // 定义一个单例或者通过 Hilt 注入，这里用简单的单例模式
 object SettingsRepository {
@@ -68,6 +69,15 @@ object SettingsRepository {
      * 存的是档位下标而不是倍数：以后想改档位表也不用迁移老数据。
      */
     private const val KEY_SEEK_ACCELERATION_LEVEL = "seek_acceleration_level"
+
+    /**
+     * 遥控器左右键**单击**快进/快退时，是否唤起底部控制栏（默认 true，保持老行为）。
+     *
+     * 控制栏自带一层从顶到底的黑色渐变，只看一眼「跳了多少」就把画面压暗，观感代价太大。
+     * 关掉后单击只跳步 + 方向箭头脉冲，长按的迷你 seek 提示条不受影响（它本来就只在
+     * 控制栏收起时出现）。
+     */
+    private const val KEY_DPAD_SEEK_SHOW_CONTROLS = "dpad_seek_show_controls"
 
     // 🔥 新增：视频播放完成动作 (0: 循环播放, 1: 播放暂停, 2: 播放下一个)
     private const val KEY_VIDEO_FINISH_ACTION = "video_finish_action"
@@ -287,6 +297,17 @@ object SettingsRepository {
         set(value) = prefs.edit {
             putInt(KEY_SEEK_ACCELERATION_LEVEL, SeekAccelerationPolicy.normalize(value))
         }
+
+    /**
+     * 单击左右键是否唤起底部控制栏，默认开（见 [KEY_DPAD_SEEK_SHOW_CONTROLS]）。
+     * 只影响**单击**：长按的迷你 seek 提示条与「控制栏已可见时续期」都不看这个开关。
+     */
+    var dpadSeekShowControls: Boolean
+        get() = prefs.getBoolean(
+            KEY_DPAD_SEEK_SHOW_CONTROLS,
+            SeekFeedbackPolicy.DEFAULT_SHOW_CONTROLS
+        )
+        set(value) = prefs.edit { putBoolean(KEY_DPAD_SEEK_SHOW_CONTROLS, value) }
 
     var videoFinishAction: Int
         get() = prefs.getInt(KEY_VIDEO_FINISH_ACTION, 2) // 默认 2: 播放下一个

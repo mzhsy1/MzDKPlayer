@@ -18,7 +18,14 @@ import org.mz.mzdkplayer.viewmodel.VideoPlayerStatus
 @Composable
 fun BoxScope.VideoPlayerStatusLayer(
     playerStatus: VideoPlayerStatus,
-    isFirstLoad: Boolean
+    isFirstLoad: Boolean,
+    /**
+     * 用户正在用遥控器连续 seek 时压掉「正在缓冲」。
+     *
+     * 网络源每跳一步都会进 BUFFERING，菊花一闪一闪地盖在画面正中，和 HUD、箭头挤在一起；
+     * 这段时间的缓冲本来就是 seek 的必然结果，不用提示。真卡住的话 HUD 收尾后菊花会自己回来。
+     */
+    suppressBuffering: Boolean = false
 ) {
     when (playerStatus) {
         is VideoPlayerStatus.Error -> {
@@ -33,25 +40,27 @@ fun BoxScope.VideoPlayerStatusLayer(
         }
 
         is VideoPlayerStatus.BUFFERING -> {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(1f)
-            ) {
-                LoadingScreen(
-                    stringResource(id = R.string.ui_label_buffering_now),
+            if (!suppressBuffering) {
+                Box(
                     modifier = Modifier
-                        .width(95.dp)
-                        .height(95.dp)
-                        .align(Alignment.Center)
-                        .offset(y = (-68).dp)
-                        .background(
-                            Color.Black.copy(0.5f),
-                            shape = RoundedCornerShape(8.dp)
-                        ),
-                    fontSize = 16,
-                    36
-                )
+                        .fillMaxSize()
+                        .zIndex(1f)
+                ) {
+                    LoadingScreen(
+                        stringResource(id = R.string.ui_label_buffering_now),
+                        modifier = Modifier
+                            .width(95.dp)
+                            .height(95.dp)
+                            .align(Alignment.Center)
+                            .offset(y = (-68).dp)
+                            .background(
+                                Color.Black.copy(0.5f),
+                                shape = RoundedCornerShape(8.dp)
+                            ),
+                        fontSize = 16,
+                        36
+                    )
+                }
             }
         }
 

@@ -524,6 +524,8 @@
     <string name="setting_seek_acceleration_value_off">オフ</string>
     <string name="setting_seek_acceleration_value_standard">標準</string>
     <string name="setting_seek_acceleration_value_fast">高速</string>
+    <string name="setting_dpad_seek_show_controls">左右キーで下部バーを表示</string>
+    <string name="setting_dpad_seek_show_controls_sub">オン：左右キーの単押しでシークし、下部バーを表示します（画面は暗くなります）。オフ：シークのみで、バーは表示しません。長押し時のミニシーク表示は変わりません</string>
     <string name="ui_label_seek_duration">シーク時間</string>
     <string name="setting_auto_load_subtitle">同名の字幕を自動読み込み</string>
     <string name="setting_auto_load_subtitle_sub">再生時にビデオディレクトリをスキャンし、同名の字幕を自動的に読み込みます</string>
@@ -676,6 +678,14 @@
     <!-- 第七段階：動画再生ページ、テレビ側とスマホ側で共用 -->
     <string name="ui_label_playlist">プレイリスト</string>
     <string name="ui_label_last_video">最後の動画です</string>
+    <string name="ui_label_first_video">最初の動画です</string>
+    <string name="ui_label_playlist_empty">プレイリストは空です</string>
+    <string name="ui_label_video_not_in_playlist">現在の動画はプレイリストにありません</string>
+    <string name="ui_label_previous_video">前の動画</string>
+    <string name="ui_label_next_video">次の動画</string>
+    <string name="ui_label_play">再生</string>
+    <string name="ui_label_pause">一時停止</string>
+    <string name="ui_label_show_controls">下部バー</string>
     <string name="ui_label_speed_passthrough_locked">音声パススルー中は倍速を変更できません</string>
 
     <!-- 第七段階：スマホ側の動画再生ページ -->

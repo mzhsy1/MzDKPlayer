@@ -16,6 +16,7 @@ import org.mz.mzdkplayer.tool.logic.PhoneSettingsLogic
 import org.mz.mzdkplayer.tool.logic.ScrapeSourcePolicy
 import org.mz.mzdkplayer.tool.logic.ScrapeTimeoutPolicy
 import org.mz.mzdkplayer.tool.logic.SeekAccelerationPolicy
+import org.mz.mzdkplayer.tool.logic.SeekFeedbackPolicy
 import org.mz.mzdkplayer.tool.logic.SubtitleOffsetLogic
 
 // 简单的数据类用于 UI 状态
@@ -48,6 +49,8 @@ data class SettingsUiState(
     val rwDuration: Int = 15,
     /** 电视端长按左右键的加速档位（倍数链），档位表见 [SeekAccelerationPolicy] */
     val seekAccelerationLevel: Int = SeekAccelerationPolicy.DEFAULT_LEVEL,
+    /** 电视端单击左右键是否唤起底部控制栏（默认开，保持老行为） */
+    val dpadSeekShowControls: Boolean = SeekFeedbackPolicy.DEFAULT_SHOW_CONTROLS,
     val videoFinishAction: Int = 2, // 新增：播放完成动作 (0: 循环播放, 1: 播放暂停, 2: 播放下一个)
     // 刮削
     val smb: Boolean = true,
@@ -125,6 +128,7 @@ class SettingsViewModel : ViewModel() {
                 ffDuration = repo.ffDuration,
                 rwDuration = repo.rwDuration,
                 seekAccelerationLevel = repo.seekAccelerationLevel,
+                dpadSeekShowControls = repo.dpadSeekShowControls,
                 videoFinishAction = repo.videoFinishAction,
                 smb = repo.enableSmb,
                 webdav = repo.enableWebDav,
@@ -187,6 +191,8 @@ class SettingsViewModel : ViewModel() {
     fun setDpadDownAction(v: String) { repo.dpadDownAction = v; refreshState() }
     fun setFFDuration(v: Int) { repo.ffDuration = v; refreshState() }
     fun setRWDuration(v: Int) { repo.rwDuration = v; refreshState() }
+    /** 单击左右键是否唤起底部控制栏（只影响单击，长按的迷你提示不受影响） */
+    fun toggleDpadSeekShowControls(v: Boolean) { repo.dpadSeekShowControls = v; refreshState() }
     fun setVideoFinishAction(v: Int) { repo.videoFinishAction = v; refreshState() }
     fun setAppLanguage(context: Context, lang: String) {
         repo.appLanguage = lang

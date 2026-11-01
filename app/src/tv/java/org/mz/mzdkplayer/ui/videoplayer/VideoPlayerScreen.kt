@@ -49,6 +49,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -100,9 +101,12 @@ import org.mz.mzdkplayer.player.exo.MzExoPlayer
 import org.mz.mzdkplayer.player.vlc.MzVlcPlayer
 import org.mz.mzdkplayer.data.datasource.FtpDataSource
 import org.mz.mzdkplayer.tool.FileTimeResolver
+import org.mz.mzdkplayer.common.ImmersiveModeManager
 import org.mz.mzdkplayer.common.KeepScreenOnManager
+import org.mz.mzdkplayer.tool.logic.DpadActionPolicy
 import org.mz.mzdkplayer.tool.logic.PlayerMediaText
 import org.mz.mzdkplayer.tool.logic.SeekAccelerationLogic
+import org.mz.mzdkplayer.tool.logic.SeekFeedbackPolicy
 import org.mz.mzdkplayer.tool.logic.SeekDirection
 import org.mz.mzdkplayer.data.datasource.SmbDataSource
 import org.mz.mzdkplayer.data.datasource.SmbUtils
@@ -132,6 +136,7 @@ import org.mz.mzdkplayer.ui.videoplayer.components.AkDanmakuPlayer
 import org.mz.mzdkplayer.ui.videoplayer.components.AudioTrackPanel
 import org.mz.mzdkplayer.ui.videoplayer.components.DanmakuPanel
 import org.mz.mzdkplayer.ui.videoplayer.components.IsoTitlePanel
+import org.mz.mzdkplayer.ui.videoplayer.components.PlaybackClockIndicator
 import org.mz.mzdkplayer.ui.videoplayer.components.PlaybackSpeedPanel
 import org.mz.mzdkplayer.ui.videoplayer.components.SubtitleTrackPanel
 import org.mz.mzdkplayer.ui.videoplayer.components.VideoPlayerControls
@@ -204,6 +209,16 @@ fun VideoPlayerScreen(
         }
     }
 
+    // 播放时隐藏系统栏：部分电视盒子固件会常驻顶部状态栏，全屏播放时压在画面上。
+    // 同样用引用计数 —— 切集时新旧播放页短暂共存，旧页面退出不能把新页面隐藏掉的状态栏又放出来。
+    val view = LocalView.current
+    DisposableEffect(view) {
+        ImmersiveModeManager.acquire(activity?.window, view)
+        onDispose {
+            ImmersiveModeManager.release(activity?.window, view)
+        }
+    }
+
     // 记住并创建 Player 实例
     // 1. 根据配置实例化解耦的 Player 内核
     val player: IMzPlayer = remember(useVlc, mediaUri) {
@@ -238,6 +253,43 @@ fun VideoPlayerScreen(
     }
     val displayDateText = remember(fileTimeMillis) {
         PlayerMediaText.buildFileDateText(fileTimeMillis)
+    }
+
+    // ==================== 播放列表：底部换集按钮 ====================
+    // 列表由文件列表页在点击播放时写入（VideoPlaylistRepository），这里只读。
+    // 用 indexOfFirst 的结果直接判断有没有上一集 / 下一集：当前视频不在列表里时两个按钮都压暗，
+    // 点下去会提示「播放列表为空」，不会变成点了没反应。
+    val videoPlaylist by VideoPlaylistRepository.playlist.collectAsState()
+    val playlistIndex = videoPlaylist.indexOfFirst { it.uri == mediaUri }
+    val hasPreviousVideo = playlistIndex > 0
+    val hasNextVideo = playlistIndex in 0 until videoPlaylist.lastIndex
+
+    // 切到列表里相邻的视频。每次都从 Repository 取最新列表：这个 lambda 会被
+    // DisposableEffect 里的回调（播放结束）捕获，捕获组合期的快照容易拿到过期数据。
+    val playAdjacentVideo: (Int) -> Unit = { delta ->
+        val playlist = VideoPlaylistRepository.getPlaylist()
+        val index = playlist.indexOfFirst { it.uri == mediaUri }
+        val target = if (index >= 0) index + delta else -1
+        if (target in playlist.indices) {
+            val video = playlist[target]
+            navController.navigate(
+                "VideoPlayer/${video.uri.toBase64()}/${video.dataSourceType}/" +
+                    "${video.fileName.toBase64()}/${video.connectionName.toBase64()}"
+            ) {
+                popUpTo("VideoPlayer/{sourceUri}/{dataSourceType}/{fileName}/{connectionName}") {
+                    inclusive = true
+                }
+            }
+        } else {
+            val message = when {
+                playlist.isEmpty() -> R.string.ui_label_playlist_empty
+                // 外部 intent / 单个文件直接播放时不在任何列表里，单独给一句更准确的提示
+                index < 0 -> R.string.ui_label_video_not_in_playlist
+                delta < 0 -> R.string.ui_label_first_video
+                else -> R.string.ui_label_last_video
+            }
+            showToast(context, context.getString(message))
+        }
     }
 
     // 状态：返回按钮按压状态，用于双击退出逻辑
@@ -284,6 +336,9 @@ fun VideoPlayerScreen(
     val seekHold = rememberSeekHoldState()
     val seekScope = rememberCoroutineScope()
     var seekHoldJob by remember { mutableStateOf<Job?>(null) }
+    // 「用户正在连续 seek」的窗口（按下 → 松手 → HUD 收尾）。网络源每跳一次都会进 BUFFERING，
+    // 这个窗口里不让「正在缓冲」的菊花叠上来，否则画面同时有菊花 + 箭头 + 迷你进度条。
+    var isSeeking by remember { mutableStateOf(false) }
 
     // 执行第 tickIndex 次步进（从 0 开始），并刷新 HUD 与控制栏
     val performSeekTick: (Int) -> Unit = { tickIndex ->
@@ -304,6 +359,11 @@ fun VideoPlayerScreen(
         )
         player.seekTo(targetMs)
         seekHold.onTick(tickIndex, accumulated)
+        // HUD 亮起来的这一拍（第 2 次步进）收掉上一次单击留下的箭头脉冲：
+        // 它有 2 秒寿命，不收就会和迷你进度条一起挂在画面中央
+        if (tickIndex == 1) {
+            pulseState.clear()
+        }
         Log.d(
             "VideoPlayerScreen",
             "[SEEK] tick=$tickIndex step=${stepSeconds}s accumulated=${accumulated}s " +
@@ -319,6 +379,7 @@ fun VideoPlayerScreen(
     // 按下：同步跳第一步（再短的单击也一定会跳），随后按节拍继续放大步长
     val startSeekHold: (SeekDirection, Int, Int) -> Unit = { direction, baseSeconds, accelerationLevel ->
         seekHoldJob?.cancel()
+        isSeeking = true
         seekHold.begin(
             direction = direction,
             baseSeconds = baseSeconds,
@@ -353,6 +414,9 @@ fun VideoPlayerScreen(
         seekHoldJob = seekScope.launch {
             delay(SEEK_HUD_LINGER_MS)
             seekHold.hide()
+            // HUD 收尾后才放行「正在缓冲」：seek 引起的瞬态缓冲没必要提示，
+            // 真的还在缓冲时菊花会在 HUD 消失后自然出现
+            isSeeking = false
         }
     }
 
@@ -370,6 +434,7 @@ fun VideoPlayerScreen(
             seekHoldJob?.cancel()
             seekHoldJob = null
             seekHold.hide()
+            isSeeking = false
         }
     }
 
@@ -760,6 +825,7 @@ fun VideoPlayerScreen(
                 dpadDownAction = settingsState.dpadDownAction,
                 ffDuration = settingsState.ffDuration,
                 rwDuration = settingsState.rwDuration,
+                showControlsOnSeek = settingsState.dpadSeekShowControls,
                 onSeekHoldStart = { direction, baseSeconds ->
                     startSeekHold(direction, baseSeconds, settingsState.seekAccelerationLevel)
                 },
@@ -824,6 +890,16 @@ fun VideoPlayerScreen(
                     .padding(16.dp) // 内边距
             )
         }
+        // 暂停时右上角换成当前时间：长时间暂停（去泡茶、接电话）回来能一眼看到几点了。
+        // 网速只在播放中显示，两者不会叠在一起；暂停后控制栏 6 秒收起，右上角的时间就一直在。
+        // 要求 READY：刚进播放页时还没准备好（IDLE / BUFFERING），那时冒一个时钟出来纯属闪眼睛
+        if (!isPlaying && playerStatus == VideoPlayerStatus.READY) {
+            PlaybackClockIndicator(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+            )
+        }
         // 暂停时状态仍是 READY（VLC/Exo 都如此），必须结合 isPlayingFlow 才能显示成「暂停中」
         val statusChip = playerStatusChip(playerStatus, isPlayerPlaying)
 
@@ -846,7 +922,22 @@ fun VideoPlayerScreen(
                 statusChip = statusChip,
                 mDanmakuPlayer = mDanmakuPlayer,
                 settingsManager = settingsManager,
-                getDanmakuConfig = ::getDanmakuConfig
+                getDanmakuConfig = ::getDanmakuConfig,
+                hasPreviousVideo = hasPreviousVideo,
+                hasNextVideo = hasNextVideo,
+                // 按钮点完顺手续一下控制栏的自动隐藏计时：否则点一下就得看着它消失
+                onPlayPause = {
+                    if (player.isPlaying) player.pause() else player.play()
+                    videoPlayerState.showControls()
+                },
+                onPreviousVideo = {
+                    videoPlayerState.showControls()
+                    playAdjacentVideo(-1)
+                },
+                onNextVideo = {
+                    videoPlayerState.showControls()
+                    playAdjacentVideo(1)
+                }
             )
         }
 
@@ -958,7 +1049,8 @@ fun VideoPlayerScreen(
         // 状态层 (Error, Buffering, FirstLoad)
         VideoPlayerStatusLayer(
             playerStatus = playerStatus,
-            isFirstLoad = isFirstLoad
+            isFirstLoad = isFirstLoad,
+            suppressBuffering = isSeeking
         )
     }
 }
@@ -1031,6 +1123,8 @@ private fun Modifier.dPadEvents(
     dpadDownAction: String,
     ffDuration: Int,
     rwDuration: Int,
+    /** 单击左右键是否唤起底部控制栏（设置项「方向键快进唤起底部进度条」，默认开） */
+    showControlsOnSeek: Boolean,
     onSeekHoldStart: (SeekDirection, Int) -> Unit,
     onSeekHoldStop: () -> Unit
 ): Modifier = this.onKeyEvent { keyEvent ->
@@ -1050,11 +1144,16 @@ private fun Modifier.dPadEvents(
             if (isActionUp) {
                 // 松手一律收尾：中途「按住右键再按上键打开面板」时，这个 UP 可能已经不再走播放页的
                 // 焦点路径，但绝不能让 seek 协程继续跑下去
-                val accelerated = seekHold.tickCount > 1
                 val takenOver = videoPlayerViewModel.atpVisibility
                 onSeekHoldStop()
-                if (!accelerated && !takenOver) {
-                    // 短按：保持原来的反馈（箭头脉冲 + 弹出控制栏）
+                // 单击：方向箭头脉冲照旧；控制栏看设置项 —— 关掉后只跳步，画面不会被
+                // 控制栏的整屏渐变压暗。长按（步进 ≥ 2 次）只由 HUD 负责，这里不插一脚。
+                val feedback = SeekFeedbackPolicy.shortPressFeedback(
+                    showControlsOnSeek = showControlsOnSeek,
+                    tickCount = seekHold.tickCount,
+                    panelTakenOver = takenOver
+                )
+                if (feedback.pulse) {
                     pulseState.setType(
                         if (direction == SeekDirection.FORWARD) {
                             VideoPlayerPulse.Type.FORWARD
@@ -1062,6 +1161,8 @@ private fun Modifier.dPadEvents(
                             VideoPlayerPulse.Type.BACK
                         }
                     )
+                }
+                if (feedback.showControls) {
                     videoPlayerState.showControls()
                 }
                 return@onKeyEvent !takenOver
@@ -1110,8 +1211,7 @@ private fun Modifier.dPadEvents(
         Key.DirectionUp -> {
             if (isActionUp) {
                 if (!videoPlayerState.controlsVisible && !videoPlayerViewModel.atpVisibility) {
-                    videoPlayerViewModel.selectedAorVorS = dpadUpAction
-                    videoPlayerViewModel.atpVisibility = true
+                    activateDpadAction(dpadUpAction, videoPlayerState, videoPlayerViewModel)
                     return@onKeyEvent true
                 }
             } else if (isActionDown && isLongPress) {
@@ -1125,8 +1225,7 @@ private fun Modifier.dPadEvents(
         Key.DirectionDown -> {
             if (isActionUp) {
                 if (!videoPlayerState.controlsVisible && !videoPlayerViewModel.atpVisibility) {
-                    videoPlayerViewModel.selectedAorVorS = dpadDownAction
-                    videoPlayerViewModel.atpVisibility = true
+                    activateDpadAction(dpadDownAction, videoPlayerState, videoPlayerViewModel)
                     return@onKeyEvent true
                 }
             }
@@ -1157,6 +1256,33 @@ private fun Modifier.dPadEvents(
 
 
 
+
+/**
+ * 上 / 下键单击时执行绑定的功能。
+ *
+ * - 「底部进度条」（[DpadActionPolicy.CONTROLS]）直接唤起控制栏 —— 把
+ *   「方向键快进唤起底部进度条」关掉之后，这是只看一眼进度条、又不打断播放的最顺手的入口；
+ * - 「播放列表」（[DpadActionPolicy.PLAYLIST]）打开右侧抽屉并直接停在列表本身，
+ *   不是面板首页（[DpadActionPolicy.PLAYLIST] 的 code 与面板里的字面量 "L" 不同，要单独映射）；
+ * - 其它功能照旧按 code 开右侧抽屉面板。
+ */
+private fun activateDpadAction(
+    action: String,
+    videoPlayerState: VideoPlayerState,
+    videoPlayerViewModel: VideoPlayerViewModel
+) {
+    when {
+        DpadActionPolicy.isControls(action) -> videoPlayerState.showControls()
+        DpadActionPolicy.isPlaylist(action) -> {
+            videoPlayerViewModel.selectedAorVorS = "L"
+            videoPlayerViewModel.atpVisibility = true
+        }
+        else -> {
+            videoPlayerViewModel.selectedAorVorS = action
+            videoPlayerViewModel.atpVisibility = true
+        }
+    }
+}
 
 // 返回按钮按压状态枚举
 sealed class BackPress {

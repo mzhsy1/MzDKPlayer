@@ -36,8 +36,13 @@ import org.mz.mzdkplayer.tool.logic.SeekAccelerationLogic
 import org.mz.mzdkplayer.tool.logic.SeekAccelerationPolicy
 import org.mz.mzdkplayer.tool.logic.SeekDirection
 
-/** 松手后 HUD 再停留多久（毫秒）。太短看不清，太长会挡字幕 */
-const val SEEK_HUD_LINGER_MS = 900L
+/**
+ * 松手后 HUD 再停留多久（毫秒）。
+ *
+ * 900ms 时用户反馈「刚看清就没了」：松手瞬间视线才移到底部，再读到「+30 秒 / 01:15」需要时间，
+ * 1.5 秒刚好够看完又不至于压着字幕太久。
+ */
+const val SEEK_HUD_LINGER_MS = 1500L
 
 /**
  * 长按快进/快退的状态。

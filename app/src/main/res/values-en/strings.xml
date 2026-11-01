@@ -73,6 +73,8 @@
     <string name="setting_seek_acceleration_value_off">Off</string>
     <string name="setting_seek_acceleration_value_standard">Standard</string>
     <string name="setting_seek_acceleration_value_fast">Fast</string>
+    <string name="setting_dpad_seek_show_controls">Show Bottom Bar on Seek</string>
+    <string name="setting_dpad_seek_show_controls_sub">On: a tap on Left/Right seeks and opens the bottom bar, dimming the picture. Off: a tap only seeks, with no bar. The long-press seek HUD is unaffected</string>
     <string name="ui_label_seek_duration">Seek Duration</string>
     <string name="setting_sub_lang">Preferred Subtitle</string>
     <string name="setting_tunneling">Video Tunneling</string>
@@ -674,6 +676,14 @@
     <!-- 第七阶段：视频播放页，电视端与手机端共用 -->
     <string name="ui_label_playlist">Playlist</string>
     <string name="ui_label_last_video">Already the last video</string>
+    <string name="ui_label_first_video">Already the first video</string>
+    <string name="ui_label_playlist_empty">Playlist is empty</string>
+    <string name="ui_label_video_not_in_playlist">Current video is not in the playlist</string>
+    <string name="ui_label_previous_video">Previous video</string>
+    <string name="ui_label_next_video">Next video</string>
+    <string name="ui_label_play">Play</string>
+    <string name="ui_label_pause">Pause</string>
+    <string name="ui_label_show_controls">Bottom Bar</string>
     <string name="ui_label_speed_passthrough_locked">Playback speed cannot be changed while audio passthrough is on</string>
 
     <!-- 第七阶段：手机端视频播放页 -->

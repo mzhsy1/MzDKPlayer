@@ -55,6 +55,11 @@ fun VideoPlayerControls(
     danmakuPlayer: DanmakuPlayer,
     settingsManager: DanmakuSettingsManager, // 添加设置管理器参数
     getDanmakuConfig: () -> DanmakuConfig, // 添加获取配置的方法参数
+    hasPreviousVideo: Boolean,
+    hasNextVideo: Boolean,
+    onPlayPause: () -> Unit,
+    onPreviousVideo: () -> Unit,
+    onNextVideo: () -> Unit,
     focusRequester: FocusRequester = remember { FocusRequester() }
 )
 {
@@ -80,6 +85,17 @@ fun VideoPlayerControls(
                 contentProgress = currentPositionProvider().milliseconds, // 当前进度
                 contentDuration = player.duration.milliseconds, // 总时长
                 focusRequester = focusRequester
+            )
+        },
+        transportControls = {
+            VideoPlayerTransportControls(
+                state = state,
+                isPlaying = isPlaying,
+                hasPrevious = hasPreviousVideo,
+                hasNext = hasNextVideo,
+                onPlayPause = onPlayPause,
+                onPrevious = onPreviousVideo,
+                onNext = onNextVideo
             )
         },
         more = null // 更多按钮 (未实现)

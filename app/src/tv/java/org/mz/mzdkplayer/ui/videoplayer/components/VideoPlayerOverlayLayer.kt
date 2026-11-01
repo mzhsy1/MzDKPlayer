@@ -30,7 +30,12 @@ fun BoxScope.VideoPlayerOverlayLayer(
     statusChip: PlayerStatusChip,
     mDanmakuPlayer: DanmakuPlayer,
     settingsManager: DanmakuSettingsManager,
-    getDanmakuConfig: () -> DanmakuConfig
+    getDanmakuConfig: () -> DanmakuConfig,
+    hasPreviousVideo: Boolean,
+    hasNextVideo: Boolean,
+    onPlayPause: () -> Unit,
+    onPreviousVideo: () -> Unit,
+    onNextVideo: () -> Unit
 ) {
     VideoPlayerOverlay(
         modifier = Modifier
@@ -56,6 +61,11 @@ fun BoxScope.VideoPlayerOverlayLayer(
                 danmakuPlayer = mDanmakuPlayer,
                 settingsManager = settingsManager,
                 getDanmakuConfig = getDanmakuConfig,
+                hasPreviousVideo = hasPreviousVideo,
+                hasNextVideo = hasNextVideo,
+                onPlayPause = onPlayPause,
+                onPreviousVideo = onPreviousVideo,
+                onNextVideo = onNextVideo,
                 focusRequester = focusRequester
             )
         },

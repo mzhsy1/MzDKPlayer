@@ -4,6 +4,7 @@ import org.mz.mzdkplayer.data.repository.AudioPlaylistRepository
 import org.mz.mzdkplayer.ui.screen.setting.SolarSystem
 import android.net.Uri
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -30,7 +31,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -84,7 +85,9 @@ import org.mz.mzdkplayer.ui.picviewer.PicViewerScreen
 import org.mz.mzdkplayer.ui.screen.common.EditTMDBInfoScreen
 import org.mz.mzdkplayer.ui.screen.common.MzToast
 import org.mz.mzdkplayer.common.MzToastManager
+import org.mz.mzdkplayer.common.findActivity
 import org.mz.mzdkplayer.ui.screen.common.rememberMzToastState
+import org.mz.mzdkplayer.ui.screen.common.showToast
 import org.mz.mzdkplayer.ui.screen.movie.MovieDetailsScreen
 import org.mz.mzdkplayer.ui.screen.history.MediaHistoryScreen
 import org.mz.mzdkplayer.ui.screen.ftp.FTPConListScreen
@@ -160,8 +163,6 @@ fun MzDKPlayerAPP(
         "FileHomePage",
         "SettingsPage",
     )
-    var backPressedTime by remember { mutableLongStateOf(0L) }
-    val backPressThreshold = 2000L // 2秒内再次按返回键才退出
     val mainNavController = rememberNavController()
     val context = LocalContext.current
 
@@ -331,6 +332,26 @@ fun MzDKPlayerAPP(
                 if (!windowFocused) return@LaunchedEffect
                 delay(150)
                 runCatching { contentFocusRequest.requestFocus() }
+            }
+
+            // 退出确认：电视端返回键一点就退出太容易误触（遥控器松手、小孩乱按），
+            // 改成标准的「再按一次退出」——第一次只提示，2 秒内再按一次才真的结束。
+            // 只在内层栈停在首页时接管：媒体库 / 设置 / 搜索等页面仍由内层 NavHost 正常返回上一级，
+            // 播放页在外层 NavHost 的另一个目的地，压根不参与这里的拦截。
+            var exitConfirmPending by remember { mutableStateOf(false) }
+            LaunchedEffect(exitConfirmPending) {
+                if (!exitConfirmPending) return@LaunchedEffect
+                delay(2000)
+                exitConfirmPending = false
+            }
+            BackHandler(enabled = currentHomeRoute == "HomePage") {
+                if (exitConfirmPending) {
+                    exitConfirmPending = false
+                    context.findActivity()?.finish()
+                } else {
+                    exitConfirmPending = true
+                    showToast(context, context.getString(R.string.ui_label_press_again_to_exit))
+                }
             }
         }
         composable("LocalFileTypeScreen") { backStackEntry ->

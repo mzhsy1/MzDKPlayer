@@ -77,9 +77,8 @@ class SeekAccelerationTest {
 
     @Test
     fun `步长单调不减`() {
-        var previous = 0
         listOf(5, 15, 120, 600).forEach { base ->
-            previous = 0
+            var previous = 0
             for (tickIndex in 0..60) {
                 val current = step(base, tickIndex)
                 assertTrue("base=$base tick=$tickIndex: $current 不应小于 $previous", current >= previous)

@@ -49,6 +49,7 @@ import org.mz.mzdkplayer.common.MzToastManager
 import org.mz.mzdkplayer.di.RepositoryProvider
 import org.mz.mzdkplayer.data.repository.SettingsRepository
 import org.mz.mzdkplayer.player.core.MzAspectRatio
+import org.mz.mzdkplayer.tool.logic.DpadActionPolicy
 import org.mz.mzdkplayer.tool.logic.SubtitleOffsetLogic
 import org.mz.mzdkplayer.di.viewModelWithFactory
 import org.mz.mzdkplayer.ui.common.VIDEO_FINISH_ACTION_COUNT
@@ -387,6 +388,13 @@ fun RemoteSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
             onClick = {
                 settingsVM.setDpadDownAction(nextDpadAction(state.dpadDownAction))
             }
+        )
+        // 单击左右键快进/快退时的反馈：默认弹底部控制栏（老行为），可关掉只留箭头脉冲
+        SwitchSettingItem(
+            title = stringResource(R.string.setting_dpad_seek_show_controls),
+            subtitle = stringResource(R.string.setting_dpad_seek_show_controls_sub),
+            checked = state.dpadSeekShowControls,
+            onCheckedChange = { settingsVM.toggleDpadSeekShowControls(it) }
         )
     }
 }
@@ -1060,22 +1068,18 @@ fun AboutItem(
 // 第八阶段搬到了 main 的 `ui/common/SettingValueText.kt`：
 // 手机端设置页要用同一批文案，两端各写一份迟早会漂移。
 
-// 遥控器上下键可选功能列表
-private val DPAD_ACTION_ORDER = listOf("A", "S", "D", "V", "SPEED", "R")
-
-private fun nextDpadAction(current: String): String {
-    val idx = DPAD_ACTION_ORDER.indexOf(current)
-    val next = if (idx < 0) 0 else (idx + 1) % DPAD_ACTION_ORDER.size
-    return DPAD_ACTION_ORDER[next]
-}
+// 遥控器上下键可选功能列表见 `DpadActionPolicy.ORDER`（纯逻辑在 core，播放页要按同一份 code 分流）
+private fun nextDpadAction(current: String): String = DpadActionPolicy.next(current)
 
 @Composable
 fun formatDpadAction(code: String): String = when (code) {
-    "A" -> stringResource(R.string.ui_label_audio_track)
-    "S" -> stringResource(R.string.ui_label_subtitle_select)
-    "D" -> stringResource(R.string.ui_label_danmaku_settings)
-    "V" -> stringResource(R.string.ui_label_video_track)
-    "SPEED" -> stringResource(R.string.ui_label_speed)
-    "R" -> stringResource(R.string.ui_label_aspect_ratio)
+    DpadActionPolicy.AUDIO -> stringResource(R.string.ui_label_audio_track)
+    DpadActionPolicy.SUBTITLE -> stringResource(R.string.ui_label_subtitle_select)
+    DpadActionPolicy.DANMAKU -> stringResource(R.string.ui_label_danmaku_settings)
+    DpadActionPolicy.VIDEO -> stringResource(R.string.ui_label_video_track)
+    DpadActionPolicy.SPEED -> stringResource(R.string.ui_label_speed)
+    DpadActionPolicy.ASPECT_RATIO -> stringResource(R.string.ui_label_aspect_ratio)
+    DpadActionPolicy.CONTROLS -> stringResource(R.string.ui_label_show_controls)
+    DpadActionPolicy.PLAYLIST -> stringResource(R.string.ui_label_playlist)
     else -> stringResource(R.string.ui_label_unknown)
 }

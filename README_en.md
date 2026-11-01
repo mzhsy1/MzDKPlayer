@@ -334,14 +334,22 @@ adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
 
 | Key | Function on the playback screen |
 | --- | --- |
-| Left / Right | Rewind / Fast forward (long-press for continuous seeking) |
+| Left / Right | Rewind / Fast forward (long-press for continuous seeking; whether a tap opens the bottom bar is configurable) |
 | OK | Pause / Play |
 | Menu | Show / hide the control bar (tracks, subtitles, speed, danmaku, etc.) |
 | Up | Danmaku settings (configurable) |
 | Down | Audio track selection (configurable) |
 | Back | Exit playback / collapse the control bar |
 
-> The Up and Down key behaviors can be customized under `Settings -> Remote & Input -> Remote Up Key / Remote Down Key`.
+> The Up and Down key behaviors can be customized under `Settings -> Remote & Input -> Remote Up Key / Remote Down Key`: audio track, subtitles, danmaku, video track, speed, aspect ratio, bottom bar, or playlist. With `Bottom Bar` bound, a single press pops up the bottom bar instead of opening the side panel; with `Playlist` bound it opens the playlist drawer directly.
+
+> The bottom bar also carries Previous video / Play-Pause / Next video buttons: while the bar is visible, press Down to move focus into them, Left / Right to switch between them, and Up to hand focus back to the seek bar (Left / Right only seek there).
+
+> While paused, the current time is shown in the top-right corner (during playback that spot shows the network speed instead), so a long pause does not leave you guessing what time it is.
+
+> A tap on Left / Right opens the bottom bar by default (together with the full-screen gradient dim). To seek without dimming the picture, turn off `Settings -> Remote & Input -> Show Bottom Bar on Seek`: a tap then only seeks with no bar, while the long-press seek HUD is unaffected.
+
+> On the home screen, Back no longer exits immediately: the first press only shows "Press again to exit", and a second press within 2 seconds quits. On other screens Back still goes up one level.
 
 ### Phone Gestures
 

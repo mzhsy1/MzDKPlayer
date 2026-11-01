@@ -39,7 +39,9 @@ fun VideoPlayerMainFrame(
     mediaTitle: @Composable () -> Unit,
     seeker: @Composable () -> Unit,
     mediaActions: @Composable () -> Unit = {},
-    more: (@Composable () -> Unit)? = null
+    more: (@Composable () -> Unit)? = null,
+    /** 进度条下面那一行换集按钮（上一个 / 播放暂停 / 下一个），居中摆放 */
+    transportControls: (@Composable () -> Unit)? = null
 ) {
     Column(Modifier.fillMaxWidth()) {
         Row(
@@ -52,6 +54,12 @@ fun VideoPlayerMainFrame(
         }
         Spacer(Modifier.height(16.dp))
         seeker()
+        if (transportControls != null) {
+            Spacer(Modifier.height(12.dp))
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                transportControls()
+            }
+        }
         if (more != null) {
             Spacer(Modifier.height(12.dp))
             Box(Modifier.align(Alignment.CenterHorizontally)) {

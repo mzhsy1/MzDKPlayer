@@ -73,6 +73,8 @@
     <string name="setting_seek_acceleration_value_off">关闭</string>
     <string name="setting_seek_acceleration_value_standard">标准</string>
     <string name="setting_seek_acceleration_value_fast">快速</string>
+    <string name="setting_dpad_seek_show_controls">左右键唤起底部进度条</string>
+    <string name="setting_dpad_seek_show_controls_sub">开启：单击左 / 右键快退 / 快进时弹出底部进度条，画面会跟着压暗；关闭：单击只跳步，不弹进度条。长按的迷你进度提示不受影响</string>
     <string name="ui_label_seek_duration">快进快退时长</string>
     <string name="setting_sub_lang">字幕首选语言</string>
     <string name="setting_tunneling">视频隧道模式 (Tunneling)</string>
@@ -675,6 +677,14 @@
     <!-- 第七阶段：视频播放页，电视端与手机端共用 -->
     <string name="ui_label_playlist">播放列表</string>
     <string name="ui_label_last_video">已是最后一个视频</string>
+    <string name="ui_label_first_video">已是第一个视频</string>
+    <string name="ui_label_playlist_empty">播放列表为空</string>
+    <string name="ui_label_video_not_in_playlist">当前视频不在播放列表中</string>
+    <string name="ui_label_previous_video">上一个视频</string>
+    <string name="ui_label_next_video">下一个视频</string>
+    <string name="ui_label_play">播放</string>
+    <string name="ui_label_pause">暂停</string>
+    <string name="ui_label_show_controls">底部进度条</string>
     <string name="ui_label_speed_passthrough_locked">音频直通模式下不可更改倍速</string>
 
     <!-- 第七阶段：手机端视频播放页 -->

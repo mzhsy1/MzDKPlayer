@@ -1,7 +1,7 @@
 [versions]
 accompanistPermissions = "0.37.3"
 
-agp = "9.4.0"
+agp = "9.5.0"
 akdanmaku = "1.0.3"
 
 ashley = "1.7.4"
@@ -11,12 +11,12 @@ commonsNet = "3.13.0"
 core = "3.5.4"
 gdx = "1.14.2"
 gdxBackendAndroid = "1.14.2"
-gson = "2.14.0"
+gson = "2.15.0"
 converterGson = "3.0.0"
 jaudiotagger = "3.0.1"
 junit = "4.13.2"
 vlcAndroidMini = "3.7.7"
-kotlin = "2.4.20"
+kotlin = "2.4.21"
 coreKtx = "1.19.0"
 appcompat = "1.8.0"
 composeBom = "2026.09.00"
