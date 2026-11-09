@@ -37,7 +37,7 @@
     <string name="setting_hide_net_speed">通信速度の表示を隠す</string>
     <string name="setting_app_lang">アプリの言語</string>
     <string name="setting_tmdb_api_mirror">TMDB API アドレス (ミラー)</string>
-    <string name="setting_tmdb_api_mirror_sub">一部の地域で TMDB に直接アクセスできない場合、ミラーアドレスの使用をお勧めします</string>
+    <string name="setting_tmdb_api_mirror_sub">TMDB ソースのみで必要です。地域によっては TMDB に直接アクセスできないため、ミラーを推奨します。「TMDB 接続テスト」は TMDB のみをテストします（国内ソースの豆瓣には不要）</string>
     <string name="setting_tmdb_result_lang">TMDB 言語</string>
     <string name="ui_label_custom_tmdb_url">カスタム TMDB API アドレス</string>
     <string name="ui_label_enter_tmdb_url">TMDB API アドレスを入力してください (/3/ で終わる必要があります)</string>
@@ -242,7 +242,7 @@
     <string name="ui_label_parsing_music_filename">音楽ファイル名を解析中…</string>
     <string name="ui_label_getting_info">情報を取得中</string>
     <string name="ui_label_bulk_add_to_video_library">ビデオライブラリに一括追加</string>
-    <string name="ui_label_scraping_not_enabled">現在のデータソースでスクレイピング機能が有効になっていません。設定で有効にしてください。</string>
+    <string name="ui_label_scraping_not_enabled">このデータソースの自動スクレイピングが無効です。動画情報の一括取得には必要です（設定 → ソース）。音楽の一括追加には影響しません。</string>
     <string name="ui_label_no_video_files_in_directory">現在のディレクトリにビデオファイルはありません</string>
     <string name="ui_label_start_background_info_retrieval">バックグラウンドで情報を取得を開始します。しばらくお待ちください…</string>
     <string name="ui_label_parsing_filename">ファイル名を解析中…</string>
@@ -501,6 +501,7 @@
     <string name="pic_viewer_scale_mode">スケーリングモード</string>
     <string name="pic_viewer_reset">リセット</string>
 
+    <string name="setting_source_switch_hint">これらのスイッチは、動画をライブラリへ一括追加するときにオンラインで情報を取得するかどうかだけを決めます。オフでもファイル閲覧・音楽の一括追加・手動スクレイピングは可能です。</string>
     <string name="setting_webdav_remove_first_item">WebDAV リストの最初の項目を削除</string>
     <string name="setting_webdav_remove_first_item_sub">一部の WebDAV サービスは現在のディレクトリを最初の項目として返します。重複を避けるためにこれを有効にします</string>
     <string name="setting_file_sort">ファイル一覧の並び順</string>

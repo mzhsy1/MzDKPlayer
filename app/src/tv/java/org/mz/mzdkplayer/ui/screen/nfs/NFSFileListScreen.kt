@@ -601,46 +601,40 @@ fun NFSFileListScreen(
                                         icon = painterResource(R.drawable.musicnoteadd_24dp),
                                         tooltip = if (isAudioScanning) stringResource(R.string.ui_label_parsing_filename) else  stringResource(R.string.ui_label_bulk_add_to_music_library),
                                         onClick = {
-                                            if (!settingsState.nfs) {
-                                                showToast(
-                                                    context,
-                                                    context.getString(R.string.ui_label_scraping_not_enabled)
-                                                )
-                                            } else {
-                                                // 1. 过滤音频文件
-                                                val audioFiles = fileList.filter {
-                                                    !it.isDirectory && Tools.containsAudioFormat(
-                                                        Tools.extractFileExtension(
-                                                            it.name
-                                                        )
+                                            // 音乐入库只解析文件名，不联网刮削，因此不受「自动刮削数据源」开关约束
+                                            // 1. 过滤音频文件
+                                            val audioFiles = fileList.filter {
+                                                !it.isDirectory && Tools.containsAudioFormat(
+                                                    Tools.extractFileExtension(
+                                                        it.name
                                                     )
-                                                }
-
-                                                if (audioFiles.isEmpty()) {
-                                                    showToast(
-                                                        context,
-                                                        context.getString(R.string.ui_label_no_audio_files_found)
-                                                    )
-                                                    return@CirCleIconButton
-                                                }
-
-                                                // 2. 只有文件名和URI是必须的
-                                                val list = audioFiles.map {
-                                                    it.name to "nfs://${nfsConnection.serverAddress}:${nfsConnection.shareName}:${it.path.ifEmpty { " " }}"
-                                                }
-
-                                                // 3. 直接调用，瞬间完成
-                                                audioViewModel.batchScrapeAudioInfo(
-                                                    audioList = list,
-                                                    dataSourceType = "NFS",
-                                                    connectionName = nfsConnection.name
-                                                        ?: "未知连接"
-                                                )
-                                                showToast(
-                                                    context,
-                                                    context.getString(R.string.ui_label_added_music_in_background,list.size)
                                                 )
                                             }
+
+                                            if (audioFiles.isEmpty()) {
+                                                showToast(
+                                                    context,
+                                                    context.getString(R.string.ui_label_no_audio_files_found)
+                                                )
+                                                return@CirCleIconButton
+                                            }
+
+                                            // 2. 只有文件名和URI是必须的
+                                            val list = audioFiles.map {
+                                                it.name to "nfs://${nfsConnection.serverAddress}:${nfsConnection.shareName}:${it.path.ifEmpty { " " }}"
+                                            }
+
+                                            // 3. 直接调用，瞬间完成
+                                            audioViewModel.batchScrapeAudioInfo(
+                                                audioList = list,
+                                                dataSourceType = "NFS",
+                                                connectionName = nfsConnection.name
+                                                    ?: "未知连接"
+                                            )
+                                            showToast(
+                                                context,
+                                                context.getString(R.string.ui_label_added_music_in_background,list.size)
+                                            )
                                         }
                                     )
                                 }

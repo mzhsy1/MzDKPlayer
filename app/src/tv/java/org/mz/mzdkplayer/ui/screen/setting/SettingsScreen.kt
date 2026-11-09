@@ -527,6 +527,13 @@ fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel, navCo
 fun SourceSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
 
     Column(Modifier.fillMaxWidth()) {
+        // 这组开关只管「视频批量入库时是否自动刮削」，与浏览文件 / 音乐入库无关，先讲清楚免得误导
+        Text(
+            text = stringResource(R.string.setting_source_switch_hint),
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray
+        )
+        Spacer(modifier = Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             val modifier = Modifier.weight(1f)
             DataSourceSwitch("SMB", state.smb, modifier) { settingsVM.toggleSource("SMB", it) }
@@ -580,6 +587,7 @@ fun MetadataSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         ActionSettingItem(
             title = stringResource(R.string.setting_tmdb_api_mirror),
+            subtitle = stringResource(R.string.setting_tmdb_api_mirror_sub),
             value = if (state.tmdbBaseUrl == SettingsRepository.DEFAULT_TMDB_URL) "Official" else state.tmdbBaseUrl,
             onClick = { showTmdbConfig = true }
         )

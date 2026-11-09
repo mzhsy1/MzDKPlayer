@@ -21,6 +21,7 @@
     <string name="setting_scrape_timeout">刮削逾時時間</string>
     <string name="setting_scrape_timeout_sub">單次請求最長等多久，豆瓣與 TMDB 共用。預設 5 秒：兩個來源正常時都是亞秒級回應，調小能讓斷網時的批次刮削快很多；網路慢或走鏡像時可以調大</string>
     <string name="setting_scrape_timeout_value">%1$d 秒</string>
+    <string name="setting_source_switch_hint">這些開關只決定「把影片批次加入媒體庫時是否聯網刮削影視資訊」：關閉後仍可瀏覽檔案、把音樂批次加入音樂庫，也可以隨時手動刮削。</string>
     <string name="setting_webdav_remove_first_item">移除 WebDAV 列表首個元素</string>
     <string name="setting_webdav_remove_first_item_sub">部分 WebDAV 服務傳回的列表首項為目前目錄，開啟此項可避免重複顯示</string>
     <string name="setting_file_sort">檔案瀏覽排序</string>
@@ -38,7 +39,7 @@
     <string name="setting_hide_net_speed">隱藏播放頁網速顯示</string>
     <string name="setting_app_lang">App語言</string>
     <string name="setting_tmdb_api_mirror">TMDB API 地址 (鏡像)</string>
-    <string name="setting_tmdb_api_mirror_sub">在某些地區可能無法直接存取 TMDB，建議使用鏡像地址</string>
+    <string name="setting_tmdb_api_mirror_sub">僅 TMDB 數據源需要：某些地區無法直接存取 TMDB，建議用鏡像地址。「測試 TMDB 連接」只測 TMDB，國內源（豆瓣）無需設定</string>
     <string name="setting_tmdb_result_lang">TMDB 語言</string>
     <string name="ui_label_custom_tmdb_url">自訂 TMDB API 地址</string>
     <string name="ui_label_enter_tmdb_url">請輸入 TMDB API 地址 (以 /3/ 結尾)</string>
@@ -262,7 +263,7 @@
     <string name="ui_label_parsing_music_filename">正在解析音樂檔案名稱…</string>
     <string name="ui_label_getting_info">正在獲取資訊</string>
     <string name="ui_label_bulk_add_to_video_library">批次添加到影片庫</string>
-    <string name="ui_label_scraping_not_enabled">目前數據源未開啟刮削功能，請在設定中開啟</string>
+    <string name="ui_label_scraping_not_enabled">目前數據源未開啟自動刮削，批次刮削影視資訊需要它（設定 → 數據源）；批次添加音樂不受影響</string>
     <string name="ui_label_no_video_files_in_directory">目前目錄沒有影片檔案</string>
     <string name="ui_label_start_background_info_retrieval">開始後台獲取資訊，請稍候…</string>
     <string name="ui_label_parsing_filename">正在解析檔案名稱…</string>

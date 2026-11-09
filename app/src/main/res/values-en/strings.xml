@@ -23,6 +23,7 @@
     <string name="setting_scrape_timeout_sub">Longest wait for a single request, shared by Douban and TMDB. Default 5 s: both answer in well under a second when reachable, so a smaller value makes batch scraping much faster while offline; raise it on slow networks or when using a mirror</string>
     <string name="setting_scrape_timeout_value">%1$d s</string>
 
+    <string name="setting_source_switch_hint">These switches only decide whether bulk-adding videos to the library scrapes metadata online. When one is off you can still browse files, bulk-add music, and scrape manually at any time.</string>
     <string name="setting_webdav_remove_first_item">Remove first item from WebDAV list</string>
     <string name="setting_webdav_remove_first_item_sub">Some WebDAV services return the current directory as the first item; enable this to avoid duplicates</string>
     <string name="setting_file_sort">File list sorting</string>
@@ -42,7 +43,7 @@
     <string name="setting_hide_net_speed">Hide Network Speed</string>
     <string name="setting_app_lang">App Language</string>
     <string name="setting_tmdb_api_mirror">TMDB API URL (Mirror)</string>
-    <string name="setting_tmdb_api_mirror_sub">Useful if TMDB is blocked in your region. Example: https://api.tmdb.org/3/</string>
+    <string name="setting_tmdb_api_mirror_sub">Only needed for the TMDB source: if TMDB is blocked in your region, use a mirror. "Test TMDB Connection" tests TMDB only — the domestic source (Douban) needs no mirror.</string>
     <string name="setting_tmdb_result_lang">TMDB Language</string>
     <string name="ui_label_custom_tmdb_url">Custom TMDB API URL</string>
     <string name="ui_label_enter_tmdb_url">Enter TMDB API URL (must end with /3/)</string>
@@ -270,7 +271,7 @@
     <string name="ui_label_parsing_music_filename">Parsing Music Filename...</string>
     <string name="ui_label_getting_info">Retrieving Information</string>
     <string name="ui_label_bulk_add_to_video_library">Bulk Add to Video Library</string>
-    <string name="ui_label_scraping_not_enabled">Scraping function is not enabled for the current data source. Please enable it in Settings.</string>
+    <string name="ui_label_scraping_not_enabled">Auto scraping is off for the current source; bulk scraping video info needs it (Settings → Sources). Bulk adding music is not affected.</string>
     <string name="ui_label_no_video_files_in_directory">No Video Files in Current Directory</string>
     <string name="ui_label_start_background_info_retrieval">Starting background information retrieval, please wait...</string>
     <string name="ui_label_parsing_filename">Parsing Filename...</string>
