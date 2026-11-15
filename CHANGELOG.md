@@ -8,6 +8,7 @@
 
 - 字幕设置新增「ASS 字幕缩放」（50%~300%）：字幕组做的 ASS/SSA 在电视上普遍偏小，现在可以整体放大或缩小；VLC 内核生效（`--sub-text-scale`），纯文本字幕的字号仍由「字体大小」控制
 - 字幕设置新增「忽略 ASS 字幕指定字体」：ASS/SSA 字幕一般把字体名写死在脚本里，勾选后强制用设置里选的第三方字体渲染（自编译 VLC 新增 `--ssa-force-font`，用 FreeType 读字体族名 + libass 样式覆写实现）；日志里能看到 `forcing ASS font ... (family: ...)`
+- VLC 内核升级到 **3.7.8**（Maven Central：`io.github.mzhsy1:vlc-android-mini`）：user-font 直接加载字体文件 + ASS 缩放/强制字体两个补丁都在里面，三架构合一，不必再把 50 MB 的 AAR 提交进仓库
 
 ### 1.19.0（versionCode 123）发布说明
 
