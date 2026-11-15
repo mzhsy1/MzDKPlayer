@@ -277,6 +277,18 @@ internal fun PhoneSubtitleSettingsPage(
                 maxValue = 100,
             )
             SettingsDivider()
+            // ASS/SSA 字幕是 libass 自己渲染的，字号不受上面那一项控制，单独给个整体缩放
+            SettingsNumberRow(
+                title = stringResource(R.string.setting_ass_scale),
+                subtitle = stringResource(R.string.setting_ass_scale_sub),
+                value = state.subAssScale,
+                onValueChange = settingsViewModel::setSubAssScale,
+                step = 5,
+                minValue = 50,
+                maxValue = 300,
+                valueText = "${state.subAssScale}%",
+            )
+            SettingsDivider()
             SettingsOptionsRow(
                 title = stringResource(R.string.setting_font_color),
                 value = stringResource(
@@ -342,6 +354,14 @@ internal fun PhoneSubtitleSettingsPage(
                     },
                 )
             }
+            SettingsDivider()
+            // ASS 字幕一般自带 Fontname，想让选中的字体真的生效就得显式忽略它
+            SettingsSwitchRow(
+                title = stringResource(R.string.setting_ignore_ass_font),
+                subtitle = stringResource(R.string.setting_ignore_ass_font_sub),
+                checked = state.ignoreAssFont,
+                onCheckedChange = settingsViewModel::toggleIgnoreAssFont,
+            )
             if (importFailed) {
                 Text(
                     text = stringResource(R.string.phone_setting_sub_font_failed),

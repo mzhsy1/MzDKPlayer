@@ -2,6 +2,13 @@
 
 ## [未发布]
 
+### 下一版
+
+**新增**
+
+- 字幕设置新增「ASS 字幕缩放」（50%~300%）：字幕组做的 ASS/SSA 在电视上普遍偏小，现在可以整体放大或缩小；VLC 内核生效（`--sub-text-scale`），纯文本字幕的字号仍由「字体大小」控制
+- 字幕设置新增「忽略 ASS 字幕指定字体」：ASS/SSA 字幕一般把字体名写死在脚本里，勾选后强制用设置里选的第三方字体渲染（自编译 VLC 新增 `--ssa-force-font`，用 FreeType 读字体族名 + libass 样式覆写实现）；日志里能看到 `forcing ASS font ... (family: ...)`
+
 ### 1.19.0（versionCode 123）发布说明
 
 > 本段会被 `.github/workflows/release.yml` 取作 Release 说明，所以只放摘要。

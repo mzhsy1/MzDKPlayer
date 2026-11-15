@@ -47,6 +47,12 @@ object SettingsRepository {
     // 字幕时间轴偏移（毫秒）：正值=字幕延后出现，负值=字幕提前出现
     private const val KEY_SUB_DELAY_MS = "sub_delay_ms"
 
+    // ASS/SSA 字幕整体缩放百分比（100 = 按字幕脚本原尺寸）。电视上看字幕脚本自带的字号普遍偏小
+    private const val KEY_SUB_ASS_SCALE = "sub_ass_scale"
+
+    // 忽略 ASS/SSA 字幕里指定的字体，强制用上面选中的字体渲染
+    private const val KEY_SUB_IGNORE_ASS_FONT = "sub_ignore_ass_font"
+
     // 是否按文件记住播放偏好（音轨/字幕轨/倍速/画面比例）
     private const val KEY_REMEMBER_PLAYBACK_PREF = "remember_playback_pref"
 
@@ -255,6 +261,19 @@ object SettingsRepository {
     var subtitleDelayMs: Int
         get() = prefs.getInt(KEY_SUB_DELAY_MS, 0)
         set(value) = prefs.edit { putInt(KEY_SUB_DELAY_MS, value) }
+
+    /**
+     * ASS/SSA 字幕整体缩放百分比，100 = 字幕脚本原尺寸。
+     * 电视端字幕组做的 ASS 普遍偏小，靠这个放大；纯文本字幕走字号设置。
+     */
+    var subtitleAssScale: Int
+        get() = prefs.getInt(KEY_SUB_ASS_SCALE, 100)
+        set(value) = prefs.edit { putInt(KEY_SUB_ASS_SCALE, value.coerceIn(50, 300)) }
+
+    /** 忽略 ASS/SSA 字幕脚本里指定的字体，强制使用用户选的字体（VLC 内核） */
+    var ignoreAssFont: Boolean
+        get() = prefs.getBoolean(KEY_SUB_IGNORE_ASS_FONT, false)
+        set(value) = prefs.edit { putBoolean(KEY_SUB_IGNORE_ASS_FONT, value) }
 
     /** 是否按文件记住播放偏好（音轨/字幕轨/倍速/画面比例） */
     var rememberPlaybackPreference: Boolean

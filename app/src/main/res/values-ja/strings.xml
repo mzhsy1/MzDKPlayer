@@ -64,6 +64,10 @@
     <string name="setting_force_pgs_center_sub">グラフィック字幕のみに適用</string>
     <string name="setting_sub_font">カスタムフォント</string>
     <string name="setting_sub_font_sub">ローカルフォルダからフォントを選択。テキスト字幕（ExoPlayer）のみに適用</string>
+    <string name="setting_ass_scale">ASS 字幕の拡大率</string>
+    <string name="setting_ass_scale_sub">ASS / SSA 字幕をまとめて拡大・縮小（100% = 字幕ファイル本来のサイズ）。VLC エンジンのみ</string>
+    <string name="setting_ignore_ass_font">ASS 字幕の指定フォントを無視</string>
+    <string name="setting_ignore_ass_font_sub">ASS / SSA 字幕を上で選んだフォントで描画します。VLC エンジンのみ</string>
     <string name="font_default">デフォルトフォント</string>
     <string name="font_picker_title">フォントファイルを選択</string>
     <string name="font_picker_up">一つ上の階層へ</string>

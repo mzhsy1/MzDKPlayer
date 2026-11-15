@@ -485,6 +485,24 @@ fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel, navCo
             value = formatSubFontName(state.subFontPath),
             onClick = { navController.navigate("FontPickerScreen") }
         )
+        // ASS/SSA 字幕缩放：字幕组做的 ASS 在电视上普遍偏小，这里整体放大
+        NumberControl(
+            value = state.subAssScale,
+            onValueChange = { settingsVM.setSubAssScale(it) },
+            maxValue = 300,
+            minValue = 50,
+            step = 5,
+            label = stringResource(R.string.setting_ass_scale),
+            displayValue = { "$it%" },
+            subtitle = stringResource(R.string.setting_ass_scale_sub)
+        )
+        // 忽略 ASS 脚本里写的字体，强制用上面选的第三方字体
+        SwitchSettingItem(
+            title = stringResource(R.string.setting_ignore_ass_font),
+            subtitle = stringResource(R.string.setting_ignore_ass_font_sub),
+            checked = state.ignoreAssFont,
+            onCheckedChange = { settingsVM.toggleIgnoreAssFont(it) }
+        )
         // 背景颜色
         ActionSettingItem(
             title = stringResource(R.string.setting_bg_color),

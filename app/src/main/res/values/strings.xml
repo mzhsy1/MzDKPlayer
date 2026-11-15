@@ -94,6 +94,10 @@
     <string name="setting_auto_load_subtitle_sub">播放时自动扫描视频所在目录并加载同名字幕</string>
     <string name="setting_sub_font">第三方字体</string>
     <string name="setting_sub_font_sub">从本地文件夹选择字体文件，仅对纯文本字幕（ExoPlayer）生效</string>
+    <string name="setting_ass_scale">ASS 字幕缩放</string>
+    <string name="setting_ass_scale_sub">整体放大 / 缩小 ASS、SSA 字幕（100% = 字幕自带尺寸），仅 VLC 内核</string>
+    <string name="setting_ignore_ass_font">忽略 ASS 字幕指定字体</string>
+    <string name="setting_ignore_ass_font_sub">强制用上面选的字体渲染 ASS、SSA 字幕，仅 VLC 内核</string>
     <string name="font_default">默认字体</string>
     <string name="font_picker_title">选择字体文件</string>
     <string name="font_picker_up">上一级</string>

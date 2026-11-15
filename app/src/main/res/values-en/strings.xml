@@ -94,6 +94,10 @@
     <string name="setting_auto_load_subtitle_sub">Scan the video directory and load same-name subtitles automatically</string>
     <string name="setting_sub_font">Custom Font</string>
     <string name="setting_sub_font_sub">Pick a font file from local folders. Applies to plain-text subtitles (ExoPlayer) only</string>
+    <string name="setting_ass_scale">ASS subtitle scale</string>
+    <string name="setting_ass_scale_sub">Scale ASS/SSA subtitles up or down (100% = size set by the subtitle file). VLC engine only</string>
+    <string name="setting_ignore_ass_font">Ignore fonts set by ASS subtitles</string>
+    <string name="setting_ignore_ass_font_sub">Render ASS/SSA subtitles with the font chosen above instead of the one in the file. VLC engine only</string>
     <string name="font_default">Default font</string>
     <string name="font_picker_title">Select a font file</string>
     <string name="font_picker_up">Up one level</string>

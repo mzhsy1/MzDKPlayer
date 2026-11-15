@@ -1,7 +1,7 @@
 [versions]
 accompanistPermissions = "0.37.3"
 
-agp = "9.5.0"
+agp = "9.5.1"
 akdanmaku = "1.0.3"
 
 ashley = "1.7.4"
@@ -17,7 +17,7 @@ jaudiotagger = "3.0.1"
 junit = "4.13.2"
 vlcAndroidMini = "3.7.7"
 kotlin = "2.4.21"
-coreKtx = "1.19.0"
+coreKtx = "1.19.1"
 appcompat = "1.8.0"
 composeBom = "2026.09.00"
 logbackAndroid = "3.0.0"
@@ -27,8 +27,8 @@ nanohttpd = "2.3.1"
 nfsClient = "1.1.0"
 coilComposeVersion = "3.6.3"
 coilNetworkOkhttp = "3.6.3"
-pagingCompose = "3.5.1"
-pagingRuntimeKtx = "3.5.1"
+pagingCompose = "3.5.3"
+pagingRuntimeKtx = "3.5.3"
 paletteKtx = "1.0.0"
 # Room 3 是新的 Maven group（androidx.room3），与 Room 2 的 androidx.room 并存但互不兼容；
 # 3.x 把协程/Flow 支持并入了 runtime，不再有 room-ktx 制品。
@@ -41,7 +41,7 @@ media3Ui = "1.11.1"
 # 手机端 UI 专用的 Compose Material 3。电视端用 androidx.tv.material3，两边是两套独立的设计系统，不共用组件。
 # 只有 1.5.0-alpha 起 MaterialExpressiveTheme / MotionScheme / LoadingIndicator / ButtonGroup 才是 public
 # （1.4.0 稳定版里这些全是 internal），要「全面 Expressive」只能上这个版本。
-material3 = "1.5.0-alpha29"
+material3 = "1.5.0-rc01"
 materialIconsCore = "1.7.8"
 lifecycleRuntimeKtx = "2.11.0"
 activityCompose = "1.13.0"

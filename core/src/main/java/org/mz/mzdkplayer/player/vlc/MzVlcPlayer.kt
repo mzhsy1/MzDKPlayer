@@ -191,6 +191,30 @@ class MzVlcPlayer(
 
         }
 
+// 2. ASS/SSA 字幕是 libass 自己渲染的，上面那套 freetype 参数管不到它，单独给：
+//    --sub-text-scale 整体缩放百分比（freetype 文本字幕也吃这个），
+//    --ssa-force-font 强制用指定字体文件、忽略脚本里写的 Fontname
+
+        val subState = settingsViewModel.uiState.value
+
+        if (subState.subAssScale != 100) {
+
+            add("--sub-text-scale=${subState.subAssScale}")
+
+        }
+
+        if (subState.ignoreAssFont) {
+
+            subtitleFontFile?.let {
+
+                Log.d("MzVlcPlayer", "force ASS font = ${it.absolutePath}")
+
+                add("--ssa-force-font=${it.absolutePath}")
+
+            }
+
+        }
+
 // VLC 的语言设置通常在初始化时通过参数传入
 
         add("--audio-language=$preferredAudioLang")

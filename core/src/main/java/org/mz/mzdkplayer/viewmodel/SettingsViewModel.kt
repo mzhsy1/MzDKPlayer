@@ -37,6 +37,10 @@ data class SettingsUiState(
     val autoLoadSubtitle: Boolean = true,
     /** 字幕时间轴偏移（毫秒）：正值 = 字幕延后出现，负值 = 字幕提前出现 */
     val subtitleDelayMs: Int = 0,
+    /** ASS/SSA 字幕整体缩放百分比（100 = 脚本原尺寸） */
+    val subAssScale: Int = 100,
+    /** 忽略 ASS/SSA 字幕脚本里指定的字体，强制用 subFontPath */
+    val ignoreAssFont: Boolean = false,
     /** 是否按文件记住播放偏好（音轨/字幕轨/倍速/画面比例） */
     val rememberPlaybackPreference: Boolean = true,
     val lockVideoRatio: Boolean = false,
@@ -119,6 +123,8 @@ class SettingsViewModel : ViewModel() {
                 forcePgsCenter = repo.forcePgsCenter,
                 autoLoadSubtitle = repo.autoLoadSubtitle,
                 subtitleDelayMs = repo.subtitleDelayMs,
+                subAssScale = repo.subtitleAssScale,
+                ignoreAssFont = repo.ignoreAssFont,
                 rememberPlaybackPreference = repo.rememberPlaybackPreference,
                 lockVideoRatio = repo.lockVideoRatio,
                 globalVideoRatio = repo.globalVideoRatio,
@@ -177,6 +183,9 @@ class SettingsViewModel : ViewModel() {
         repo.subtitleDelayMs = SubtitleOffsetLogic.clamp(v)
         refreshState()
     }
+    /** ASS/SSA 字幕缩放（%），存储层会夹到 50~300 */
+    fun setSubAssScale(v: Int) { repo.subtitleAssScale = v; refreshState() }
+    fun toggleIgnoreAssFont(v: Boolean) { repo.ignoreAssFont = v; refreshState() }
     fun toggleRememberPlaybackPreference(v: Boolean) {
         repo.rememberPlaybackPreference = v
         refreshState()
