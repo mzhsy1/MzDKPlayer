@@ -78,6 +78,7 @@
     <string name="setting_passthrough">音訊透傳 (Passthrough)</string>
     <string name="setting_passthrough_sub">開啟後，音訊將源碼直傳至功放或解碼設備。注意：僅對 VLC 生效。</string>
     <string name="setting_font_size">字體大小</string>
+    <string name="setting_sub_font_size_shared">ExoPlayer 與 VLC 共用的 SRT 等文字字幕字級，以 1280×720 為基準縮放</string>
     <string name="setting_font_color">字體顏色</string>
     <string name="setting_bg_color">背景顏色</string>
     <string name="setting_bottom_padding">距離底部位置</string>

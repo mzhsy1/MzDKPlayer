@@ -85,6 +85,7 @@
     <string name="setting_passthrough_sub">Pass raw audio to receiver. Works for VLC only.</string>
 
     <string name="setting_font_size">Font Size</string>
+    <string name="setting_sub_font_size_shared">ExoPlayer and VLC share this size for SRT and other plain-text subtitles, scaled from 1280×720</string>
     <string name="setting_font_color">Font Color</string>
     <string name="setting_bg_color">Background Color</string>
     <string name="setting_bottom_padding">Bottom Margin</string>

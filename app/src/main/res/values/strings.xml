@@ -85,6 +85,7 @@
     <string name="setting_passthrough_sub">开启后，音频将源码直传至功放或解码设备。注意：仅对 VLC 生效。</string>
 
     <string name="setting_font_size">字体大小</string>
+    <string name="setting_sub_font_size_shared">ExoPlayer 与 VLC 共用的 SRT 等文本字幕字号，基于 1280×720 缩放</string>
     <string name="setting_font_color">字体颜色</string>
     <string name="setting_bg_color">背景颜色</string>
     <string name="setting_bottom_padding">距离底部位置</string>

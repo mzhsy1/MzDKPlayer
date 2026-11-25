@@ -57,6 +57,7 @@
     <string name="setting_passthrough_sub">アンプに生データを送信します。VLCのみ有効です。</string>
 
     <string name="setting_font_size">フォントサイズ</string>
+    <string name="setting_sub_font_size_shared">ExoPlayer と VLC で共通の SRT などのテキスト字幕サイズ（1280×720 を基準に拡大・縮小）</string>
     <string name="setting_font_color">フォントの色</string>
     <string name="setting_bg_color">背景色</string>
     <string name="setting_bottom_padding">下部からの距離</string>

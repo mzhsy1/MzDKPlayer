@@ -43,6 +43,7 @@ internal fun PhonePlayerSurface(
     player: IMzPlayer,
     useVlc: Boolean,
     cueGroup: CueGroup?,
+    subtitleFontSize: Float,
     subtitleStyle: TextStyle,
     subBottomPadding: Float,
     subBgColor: Long,
@@ -72,6 +73,7 @@ internal fun PhonePlayerSurface(
         if (showCustomSubtitle && !useVlc) {
             SubtitleView(
                 cueGroup = cueGroup,
+                subtitleFontSize = subtitleFontSize,
                 subtitleStyle = subtitleStyle,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)

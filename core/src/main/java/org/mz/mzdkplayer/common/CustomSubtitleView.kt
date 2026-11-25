@@ -26,11 +26,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.media3.common.text.Cue
 import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
+import org.mz.mzdkplayer.tool.logic.SubtitleTextSize
 
 @Composable
 @UnstableApi
@@ -38,20 +38,19 @@ fun SubtitleView(
     cueGroup: CueGroup?,
     modifier: Modifier = Modifier,
     videoSizeDp: IntSize, // 视频容器尺寸（dp）
-    subtitleStyle: TextStyle = TextStyle(
-        color = Color.White,
-        fontSize = 22.sp
-    ),
+    subtitleFontSize: Float,
+    subtitleStyle: TextStyle = TextStyle(color = Color.White),
     backgroundColor: Color = Color.Black.copy(alpha = 0.0f),
     sourceVideoWidth: Int,      // ← 新增
     sourceVideoHeight: Int,     // ← 新增
     forcePGSCenter: Boolean = false
 ) {
-    if (cueGroup == null || cueGroup.cues.isEmpty()) {
+    if (cueGroup == null || cueGroup.cues.isEmpty() || videoSizeDp.width <= 0 || videoSizeDp.height <= 0) {
         return
     }
 
-    val density = LocalDensity.current.density
+    val composeDensity = LocalDensity.current
+    val density = composeDensity.density
     val textMeasurer = rememberTextMeasurer()
 
     // 直接使用传入的参数
@@ -70,6 +69,16 @@ fun SubtitleView(
         // 无法计算，假设视频填满容器
         VideoDisplayRect(videoSizeDp.width.toFloat(), videoSizeDp.height.toFloat(), 0f, 0f)
     }
+
+    val textSizePx = SubtitleTextSize.pixels(
+        subtitleFontSize,
+        displayedVideoRect.widthDp * density,
+        displayedVideoRect.heightDp * density,
+    )
+    val centeredTextStyle = subtitleStyle.copy(
+        fontSize = with(composeDensity) { textSizePx.toSp() },
+        textAlign = TextAlign.Center,
+    )
 
     Log.d("SubtitleView", "Video container: ${videoSizeDp.width}x${videoSizeDp.height}cueGroup.cues.size ${cueGroup.cues.size}")
     Log.d("SubtitleView", "Video source: ${videoSourceWidth}x$sourceVideoHeight")
@@ -96,9 +105,6 @@ fun SubtitleView(
                 cueGroup.cues.forEach { cue ->
                     // Render text cue
                     cue.text?.toString()?.takeIf { it.isNotEmpty() && it != "null" }?.let { text ->
-                        // 创建带居中对齐的文本样式
-                        val centeredTextStyle = subtitleStyle.copy(textAlign = TextAlign.Center)
-
                         // 测量文本尺寸
                         val textLayoutResult = textMeasurer.measure(
                             text = text,

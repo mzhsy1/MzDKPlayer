@@ -29,6 +29,7 @@ fun BoxScope.VideoPlayerViewLayer(
     isCusSubtitleViewVis: Boolean,
     useVlc: Boolean,
     currentCueGroup: CueGroup?,
+    subtitleFontSize: Float,
     customSubtitleStyle: TextStyle,
     subBottomPadding: Float,
     subBgColor: Long,
@@ -48,6 +49,7 @@ fun BoxScope.VideoPlayerViewLayer(
     if (isCusSubtitleViewVis && !useVlc) {
         SubtitleView(
             cueGroup = currentCueGroup,
+            subtitleFontSize = subtitleFontSize,
             subtitleStyle = customSubtitleStyle,
             modifier = Modifier
                 .align(Alignment.BottomCenter)

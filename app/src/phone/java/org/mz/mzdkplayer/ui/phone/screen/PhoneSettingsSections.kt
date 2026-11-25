@@ -269,7 +269,7 @@ internal fun PhoneSubtitleSettingsPage(
             SettingsDivider()
             SettingsNumberRow(
                 title = stringResource(R.string.setting_font_size),
-                // 一格 2sp：16～100 全铺开要点 40 多次，手指受不了
+                // 每次调节 2 号，减少大范围调节需要的操作。
                 value = state.subFontSize.toInt(),
                 onValueChange = { settingsViewModel.setSubFontSize(it.toFloat()) },
                 step = 2,

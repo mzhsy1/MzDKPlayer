@@ -55,7 +55,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -543,12 +542,10 @@ fun PhonePlayerScreen(
     }
     val customSubtitleStyle = remember(
         settingsState.subColor,
-        settingsState.subFontSize,
         customSubtitleFontFamily,
     ) {
         TextStyle(
             color = Color(settingsState.subColor),
-            fontSize = settingsState.subFontSize.sp,
             fontFamily = customSubtitleFontFamily,
             shadow = Shadow(
                 color = Color.Black,
@@ -627,6 +624,7 @@ fun PhonePlayerScreen(
                     player = player,
                     useVlc = useVlc,
                     cueGroup = cueGroup,
+                    subtitleFontSize = settingsState.subFontSize,
                     subtitleStyle = customSubtitleStyle,
                     subBottomPadding = settingsState.subBottomPadding,
                     subBgColor = settingsState.subBgColor,

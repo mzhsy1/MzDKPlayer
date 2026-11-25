@@ -63,6 +63,7 @@ import org.mz.mzdkplayer.tool.logic.PlaybackTrackRef
 import org.mz.mzdkplayer.data.datasource.SmbDataSource
 
 import org.mz.mzdkplayer.tool.logic.SubtitleOffsetLogic
+import org.mz.mzdkplayer.tool.logic.SubtitleTextSize
 
 import org.mz.mzdkplayer.tool.Tools
 
@@ -132,10 +133,8 @@ class MzVlcPlayer(
 // 0. 字幕字体：优先用户在设置里挑的第三方字体，否则用内置的得意黑。
 //    精简版 aar 的字幕字体补丁支持直接传字体文件的绝对路径（以前只能传字体族名）。
 
-    private val subtitleFontFile = Tools.resolveSubtitleFont(
-        context,
-        settingsViewModel.uiState.value.subFontPath
-    )
+    private val subtitleSettings = settingsViewModel.uiState.value
+    private val subtitleFontFile = Tools.resolveSubtitleFont(context, subtitleSettings.subFontPath)
 
 // 1. 初始化 VLC 命令行参数
 
@@ -191,19 +190,11 @@ class MzVlcPlayer(
 
         }
 
-// 2. ASS/SSA 字幕是 libass 自己渲染的，上面那套 freetype 参数管不到它，单独给：
-//    --sub-text-scale 整体缩放百分比（freetype 文本字幕也吃这个），
-//    --ssa-force-font 强制用指定字体文件、忽略脚本里写的 Fontname
+        // 视频输出侧的 FreeType 使用共用字号，媒体输入侧的 libass 另设缩放。
+        add("--freetype-rel-fontsize=${SubtitleTextSize.VLC_HEIGHT_DIVISOR}")
+        add("--sub-text-scale=${SubtitleTextSize.vlcScalePercent(subtitleSettings.subFontSize)}")
 
-        val subState = settingsViewModel.uiState.value
-
-        if (subState.subAssScale != 100) {
-
-            add("--sub-text-scale=${subState.subAssScale}")
-
-        }
-
-        if (subState.ignoreAssFont) {
+        if (subtitleSettings.ignoreAssFont) {
 
             subtitleFontFile?.let {
 
@@ -350,6 +341,8 @@ class MzVlcPlayer(
 
         val media = Media(libVLC, finalUrl.toUri()).apply {
             setHWDecoderEnabled(true, true)
+            // libass 从媒体输入继承缩放，需要显式传入 100% 以覆盖全局文本字号。
+            addOption(":sub-text-scale=${subtitleSettings.subAssScale}")
             // ISO 蓝光原盘：固定直接播放正片。
             // 精简版 VLC 编译时关掉了 BD-J（没有 Java 菜单），「尝试显示菜单」等于放不出东西，
             // 所以设置里那个开关也一并去掉了，行为固定成 :no-bluray-menu。

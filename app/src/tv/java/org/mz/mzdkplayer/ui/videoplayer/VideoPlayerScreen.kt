@@ -698,7 +698,6 @@ fun VideoPlayerScreen(
     // 定义自定义字幕样式
     val customSubtitleStyle = TextStyle(
         color = Color(settingsState.subColor), // 字幕颜色为白色
-        fontSize = settingsState.subFontSize.sp,     // 字体大小
         fontFamily = customSubtitleFontFamily,
         shadow = Shadow(
             color = Color.Black, // 黑色阴影
@@ -872,6 +871,7 @@ fun VideoPlayerScreen(
             isCusSubtitleViewVis = videoPlayerViewModel.isCusSubtitleViewVis,
             useVlc = useVlc,
             currentCueGroup = currentCueGroup,
+            subtitleFontSize = settingsState.subFontSize,
             customSubtitleStyle = customSubtitleStyle,
             subBottomPadding = settingsState.subBottomPadding,
             subBgColor = settingsState.subBgColor,

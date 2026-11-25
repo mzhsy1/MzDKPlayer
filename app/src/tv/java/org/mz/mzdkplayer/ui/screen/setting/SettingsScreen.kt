@@ -18,6 +18,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -43,6 +44,8 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Switch
 import androidx.tv.material3.SwitchDefaults
+import androidx.tv.material3.Tab
+import androidx.tv.material3.TabRow
 import androidx.tv.material3.Text
 import org.mz.mzdkplayer.R
 import org.mz.mzdkplayer.common.MzToastManager
@@ -439,7 +442,44 @@ fun AudioSection(state: SettingsUiState, settingsVM: SettingsViewModel) {
 @Composable
 fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel, navController: NavHostController) {
     val secondsUnit = stringResource(R.string.unit_seconds)
+    val engineTabs = listOf(R.string.setting_default_player_exo, R.string.setting_default_player_vlc)
+    var selectedTab by rememberSaveable { mutableIntStateOf(if (state.defaultPlayer == "vlc") 1 else 0) }
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        NumberControl(
+            value = state.subFontSize.toInt(),
+            onValueChange = { settingsVM.setSubFontSize(it.toFloat()) },
+            maxValue = 100,
+            minValue = 16,
+            label = stringResource(R.string.setting_font_size),
+            subtitle = stringResource(R.string.setting_sub_font_size_shared),
+        )
+        ActionSettingItem(
+            title = stringResource(R.string.setting_sub_font),
+            value = formatSubFontName(state.subFontPath),
+            onClick = { navController.navigate("FontPickerScreen") }
+        )
+
+        TabRow(selectedTabIndex = selectedTab, modifier = Modifier.padding(top = 12.dp)) {
+            engineTabs.forEachIndexed { index, label ->
+                Tab(
+                    selected = selectedTab == index,
+                    onFocus = { selectedTab = index },
+                    onClick = { selectedTab = index },
+                ) {
+                    Text(
+                        text = stringResource(label),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    )
+                }
+            }
+        }
+        if (selectedTab == 0) {
+            ExoSubtitleSettings(state, settingsVM)
+        } else {
+            VlcSubtitleSettings(state, settingsVM)
+        }
+
         ActionSettingItem(
             title = stringResource(R.string.setting_sub_lang),
             value = formatLang(state.subLang),
@@ -462,15 +502,18 @@ fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel, navCo
             displayValue = { SubtitleOffsetLogic.formatSeconds(it) + secondsUnit },
             subtitle = stringResource(R.string.ui_label_subtitle_delay_text_only)
         )
-        // 字体大小 - 数字调节
-        NumberControl(
-            value = state.subFontSize.toInt(),
-            onValueChange = { settingsVM.setSubFontSize(it.toFloat()) },
-            maxValue = 100,
-            minValue = 16,
-            label = stringResource(R.string.setting_font_size)
+        SwitchSettingItem(
+            title = stringResource(R.string.setting_auto_load_subtitle),
+            subtitle = stringResource(R.string.setting_auto_load_subtitle_sub),
+            checked = state.autoLoadSubtitle,
+            onCheckedChange = { settingsVM.toggleAutoLoadSubtitle(it) }
         )
-        // 字体颜色
+    }
+}
+
+@Composable
+private fun ExoSubtitleSettings(state: SettingsUiState, settingsVM: SettingsViewModel) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         ActionSettingItem(
             title = stringResource(R.string.setting_font_color),
             value = if (state.subColor == 0xFFFFFFFF) stringResource(R.string.color_white) else stringResource(R.string.color_yellow),
@@ -479,31 +522,6 @@ fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel, navCo
                 settingsVM.setSubColor(next)
             }
         )
-        // 第三方字体
-        ActionSettingItem(
-            title = stringResource(R.string.setting_sub_font),
-            value = formatSubFontName(state.subFontPath),
-            onClick = { navController.navigate("FontPickerScreen") }
-        )
-        // ASS/SSA 字幕缩放：字幕组做的 ASS 在电视上普遍偏小，这里整体放大
-        NumberControl(
-            value = state.subAssScale,
-            onValueChange = { settingsVM.setSubAssScale(it) },
-            maxValue = 300,
-            minValue = 50,
-            step = 5,
-            label = stringResource(R.string.setting_ass_scale),
-            displayValue = { "$it%" },
-            subtitle = stringResource(R.string.setting_ass_scale_sub)
-        )
-        // 忽略 ASS 脚本里写的字体，强制用上面选的第三方字体
-        SwitchSettingItem(
-            title = stringResource(R.string.setting_ignore_ass_font),
-            subtitle = stringResource(R.string.setting_ignore_ass_font_sub),
-            checked = state.ignoreAssFont,
-            onCheckedChange = { settingsVM.toggleIgnoreAssFont(it) }
-        )
-        // 背景颜色
         ActionSettingItem(
             title = stringResource(R.string.setting_bg_color),
             value = parseBgColorName(state.subBgColor),
@@ -517,7 +535,6 @@ fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel, navCo
                 settingsVM.setSubBgColor(next)
             }
         )
-        // 距离底部 - 数字调节
         NumberControl(
             value = state.subBottomPadding.toInt(),
             onValueChange = { settingsVM.setSubBottomPadding(it.toFloat()) },
@@ -531,11 +548,27 @@ fun SubtitleSection(state: SettingsUiState, settingsVM: SettingsViewModel, navCo
             checked = state.forcePgsCenter,
             onCheckedChange = { settingsVM.togglePgsCenter(it) }
         )
+    }
+}
+
+@Composable
+private fun VlcSubtitleSettings(state: SettingsUiState, settingsVM: SettingsViewModel) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        NumberControl(
+            value = state.subAssScale,
+            onValueChange = { settingsVM.setSubAssScale(it) },
+            maxValue = 300,
+            minValue = 50,
+            step = 5,
+            label = stringResource(R.string.setting_ass_scale),
+            displayValue = { "$it%" },
+            subtitle = stringResource(R.string.setting_ass_scale_sub)
+        )
         SwitchSettingItem(
-            title = stringResource(R.string.setting_auto_load_subtitle),
-            subtitle = stringResource(R.string.setting_auto_load_subtitle_sub),
-            checked = state.autoLoadSubtitle,
-            onCheckedChange = { settingsVM.toggleAutoLoadSubtitle(it) }
+            title = stringResource(R.string.setting_ignore_ass_font),
+            subtitle = stringResource(R.string.setting_ignore_ass_font_sub),
+            checked = state.ignoreAssFont,
+            onCheckedChange = { settingsVM.toggleIgnoreAssFont(it) }
         )
     }
 }
